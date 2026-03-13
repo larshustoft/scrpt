@@ -1,0 +1,32 @@
+# BOOKR Engine — Python Dependencies
+# =====================================
+
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Data validation
+pydantic==2.10.4
+
+# PDF generation (book interiors)
+reportlab==4.2.5
+
+# Image processing
+Pillow==11.1.0
+
+# Browser automation (cover rendering + KDP uploads)
+playwright==1.49.1
+
+# HTTP client (ComfyUI, Amazon research)
+httpx==0.28.1
+aiohttp==3.11.11
+
+# Puzzle generation helpers
+numpy==2.0.2
+
+# AI integration (Claude API for listing optimization + vision review)
+anthropic==0.42.0
+
+# Utilities
+python-multipart==0.0.20
+python-dotenv==1.0.1

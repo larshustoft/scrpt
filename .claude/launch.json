@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bookr-frontend",
+      "runtimeExecutable": "/Users/tiger/.nvm/versions/node/v20.20.0/bin/npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "cwd": "/Users/tiger/Desktop/CATALOG ENGINE/bookr/frontend"
+    }
+  ]
+}

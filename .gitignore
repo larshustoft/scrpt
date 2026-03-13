@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.next/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Database (local)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Generated output
+output/
+
+# Environment
+.env
+.env.local
+.env.production.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Vercel
+.vercel/
+
+# Playwright
+/playwright-report/
+/test-results/
+
+# Logs
+*.log
