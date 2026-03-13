@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import type { Book } from "@/lib/types";
@@ -53,12 +53,13 @@ function InteriorPreview({
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imgKey, setImgKey] = useState(0);
+  const autoTriggered = useRef(false);
 
   const totalPages = files?.interior_pages || 0;
   const hasInterior = files?.has_interior || false;
   const catalogNumber = book.catalog_number;
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     setGenerating(true);
     setError(null);
     try {
@@ -82,34 +83,49 @@ function InteriorPreview({
     } finally {
       setGenerating(false);
     }
-  };
+  }, [book, onRefresh]);
+
+  // Auto-generate when no interior exists and book is in draft status
+  useEffect(() => {
+    if (!hasInterior && !generating && !autoTriggered.current && book.status === "draft") {
+      autoTriggered.current = true;
+      handleGenerate();
+    }
+  }, [hasInterior, generating, book.status, handleGenerate]);
 
   if (!hasInterior) {
     return (
       <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-lg border border-dashed border-slate-200">
         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-          <IconFileText className="w-5 h-5 text-slate-400" />
+          {generating ? (
+            <IconLoader className="w-5 h-5 text-blue-500" />
+          ) : (
+            <IconFileText className="w-5 h-5 text-slate-400" />
+          )}
         </div>
         <h3 className="text-sm font-semibold text-slate-700 mb-1">
-          No Interior Generated
+          {generating ? "Generating Interior..." : "No Interior Generated"}
         </h3>
         <p className="text-xs text-slate-400 mb-5">
-          Generate the interior PDF to preview pages
+          {generating
+            ? "Creating puzzles and laying out pages — this may take a moment"
+            : "Generate the interior PDF to preview pages"}
         </p>
-        <button
-          onClick={handleGenerate}
-          disabled={generating}
-          className="rounded-md bg-slate-900 px-5 py-2 text-xs font-medium text-white hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {generating ? (
-            <span className="flex items-center gap-2">
-              <IconLoader className="w-3.5 h-3.5" />
-              Generating...
-            </span>
-          ) : (
-            "Generate Interior"
-          )}
-        </button>
+        {!generating && (
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="rounded-md bg-slate-900 px-5 py-2 text-xs font-medium text-white hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Generate Interior
+          </button>
+        )}
+        {generating && (
+          <div className="flex items-center gap-2 text-xs text-blue-600">
+            <IconLoader className="w-3.5 h-3.5" />
+            Working...
+          </div>
+        )}
         {error && (
           <p className="text-xs text-red-500 mt-3 max-w-sm text-center">{error}</p>
         )}
@@ -240,12 +256,14 @@ function CoverPreview({
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imgKey, setImgKey] = useState(0);
+  const autoTriggered = useRef(false);
 
   const hasCover = files?.has_cover || false;
   const hasCoverFront = files?.has_cover_front || false;
+  const hasInterior = files?.has_interior || false;
   const catalogNumber = book.catalog_number;
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     setGenerating(true);
     setError(null);
     try {
@@ -271,34 +289,49 @@ function CoverPreview({
     } finally {
       setGenerating(false);
     }
-  };
+  }, [book, onRefresh]);
+
+  // Auto-generate cover after interior is done
+  useEffect(() => {
+    if (hasInterior && !hasCover && !hasCoverFront && !generating && !autoTriggered.current) {
+      autoTriggered.current = true;
+      handleGenerate();
+    }
+  }, [hasInterior, hasCover, hasCoverFront, generating, handleGenerate]);
 
   if (!hasCover && !hasCoverFront) {
     return (
       <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-lg border border-dashed border-slate-200">
         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-          <IconPalette className="w-5 h-5 text-slate-400" />
+          {generating ? (
+            <IconLoader className="w-5 h-5 text-blue-500" />
+          ) : (
+            <IconPalette className="w-5 h-5 text-slate-400" />
+          )}
         </div>
         <h3 className="text-sm font-semibold text-slate-700 mb-1">
-          No Cover Generated
+          {generating ? "Generating Cover..." : "No Cover Generated"}
         </h3>
         <p className="text-xs text-slate-400 mb-5">
-          Generate the cover to preview artwork
+          {generating
+            ? "Designing cover layout and artwork — this may take a moment"
+            : "Generate the cover to preview artwork"}
         </p>
-        <button
-          onClick={handleGenerate}
-          disabled={generating}
-          className="rounded-md bg-slate-900 px-5 py-2 text-xs font-medium text-white hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {generating ? (
-            <span className="flex items-center gap-2">
-              <IconLoader className="w-3.5 h-3.5" />
-              Generating...
-            </span>
-          ) : (
-            "Generate Cover"
-          )}
-        </button>
+        {!generating && (
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="rounded-md bg-slate-900 px-5 py-2 text-xs font-medium text-white hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Generate Cover
+          </button>
+        )}
+        {generating && (
+          <div className="flex items-center gap-2 text-xs text-blue-600">
+            <IconLoader className="w-3.5 h-3.5" />
+            Working...
+          </div>
+        )}
         {error && (
           <p className="text-xs text-red-500 mt-3 max-w-sm text-center">
             {error}

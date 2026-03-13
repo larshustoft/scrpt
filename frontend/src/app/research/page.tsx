@@ -11,6 +11,14 @@ import { IconTarget, IconCheck, IconLoader } from "@/components/icons";
 
 type IdeaCategory = "bestsellers" | "emerging" | "seasonal" | "quick_wins";
 
+interface MarketData {
+  bsr: number;
+  search_results: string;
+  reviews: number;
+  demand: "very_strong" | "strong" | "moderate" | "weak";
+  verified_date: string;
+}
+
 interface BookIdea {
   id: string;
   title: string;
@@ -26,6 +34,7 @@ interface BookIdea {
   est_monthly_revenue: string;
   category: IdeaCategory;
   generator_config: Record<string, unknown>;
+  market_data?: MarketData | null;
 }
 
 // ── Constants ───────────────────────────────────────────────────
@@ -77,6 +86,32 @@ const PAPER_LABELS: Record<string, string> = {
   premium_color: "Premium Color",
 };
 
+const DEMAND_META: Record<
+  string,
+  { label: string; color: string; dotColor: string }
+> = {
+  very_strong: {
+    label: "Very Strong",
+    color: "text-emerald-700",
+    dotColor: "bg-emerald-500",
+  },
+  strong: {
+    label: "Strong",
+    color: "text-blue-700",
+    dotColor: "bg-blue-500",
+  },
+  moderate: {
+    label: "Moderate",
+    color: "text-amber-700",
+    dotColor: "bg-amber-500",
+  },
+  weak: {
+    label: "Weak",
+    color: "text-red-600",
+    dotColor: "bg-red-400",
+  },
+};
+
 // ── 28 Curated Book Ideas ───────────────────────────────────────
 
 const BOOK_IDEAS: BookIdea[] = [
@@ -92,9 +127,9 @@ const BOOK_IDEAS: BookIdea[] = [
     list_price: 12.97,
     niche_keyword: "large print word search seniors",
     description:
-      "The highest-selling KDP activity book niche. Large print format targets the 65+ demographic with themed puzzles across nature, travel, food, and everyday life.",
+      "The highest-selling KDP activity book niche. Top KDP book ranks BSR #7,898 with 7,655 reviews. Large print format targets the 65+ demographic with themed puzzles.",
     target_audience: "Seniors 65+",
-    est_monthly_revenue: "$150 - $300",
+    est_monthly_revenue: "$200 - $500",
     category: "bestsellers",
     generator_config: {
       subtitle: "Relaxing Themed Puzzles",
@@ -103,6 +138,13 @@ const BOOK_IDEAS: BookIdea[] = [
       words_per_puzzle: 15,
       difficulty: "medium",
       large_print: true,
+    },
+    market_data: {
+      bsr: 7898,
+      search_results: "60,000+",
+      reviews: 7655,
+      demand: "very_strong",
+      verified_date: "2026-03-13",
     },
   },
   {
@@ -116,15 +158,22 @@ const BOOK_IDEAS: BookIdea[] = [
     list_price: 9.97,
     niche_keyword: "easy sudoku large print beginners",
     description:
-      "Beginner-friendly sudoku with 35-40 clue puzzles in large print. Targets new puzzle solvers and seniors looking for relaxing brain exercise without frustration.",
+      "Beginner-friendly sudoku in large print. Top KDP book ranks BSR #18,576 with only 198 reviews — less entrenched than word search, easier to compete.",
     target_audience: "New puzzlers / Seniors",
-    est_monthly_revenue: "$80 - $180",
+    est_monthly_revenue: "$100 - $250",
     category: "bestsellers",
     generator_config: {
       subtitle: "Gentle Brain Training",
       num_puzzles: 55,
       difficulty: "easy",
       large_print: true,
+    },
+    market_data: {
+      bsr: 18576,
+      search_results: "10,000+",
+      reviews: 198,
+      demand: "strong",
+      verified_date: "2026-03-13",
     },
   },
   {
@@ -138,9 +187,9 @@ const BOOK_IDEAS: BookIdea[] = [
     list_price: 12.97,
     niche_keyword: "multiplication division practice grade 3 4",
     description:
-      "Parents buy math workbooks year-round for supplemental practice. Multiplication and division focus for grades 3-4 is a perennial best-seller with strong back-to-school demand.",
+      "Parents buy math workbooks year-round. Top KDP book BSR #31,979, 430 reviews, #18 in Arithmetic. Solid perennial demand with strong back-to-school spikes.",
     target_audience: "Parents / Kids 8-10",
-    est_monthly_revenue: "$120 - $250",
+    est_monthly_revenue: "$80 - $200",
     category: "bestsellers",
     generator_config: {
       subtitle: "Multiplication & Division Practice",
@@ -149,6 +198,13 @@ const BOOK_IDEAS: BookIdea[] = [
       operation: "mixed",
       difficulty: "medium",
       large_print: true,
+    },
+    market_data: {
+      bsr: 31979,
+      search_results: "1,000+",
+      reviews: 430,
+      demand: "strong",
+      verified_date: "2026-03-13",
     },
   },
   {
@@ -186,13 +242,20 @@ const BOOK_IDEAS: BookIdea[] = [
     list_price: 7.99,
     niche_keyword: "password organizer book alphabetical",
     description:
-      "A top-10 KDP utility niche. Seniors and non-tech-savvy users buy physical password books for simple, secure offline storage. Alphabetical tabs for easy lookup.",
+      "Caution: niche dominated by physical spiral-bound products, not KDP paperbacks. Top KDP book BSR #359,250 despite 2,017 reviews. Lower revenue potential than puzzle books.",
     target_audience: "Seniors / Non-tech users",
-    est_monthly_revenue: "$60 - $150",
+    est_monthly_revenue: "$15 - $50",
     category: "bestsellers",
     generator_config: {
       subtitle: "Keep Your Passwords Safe & Organized",
       log_type: "password_organizer",
+    },
+    market_data: {
+      bsr: 359250,
+      search_results: "40,000+",
+      reviews: 2017,
+      demand: "weak",
+      verified_date: "2026-03-13",
     },
   },
   {
@@ -206,13 +269,20 @@ const BOOK_IDEAS: BookIdea[] = [
     list_price: 9.99,
     niche_keyword: "gratitude journal daily",
     description:
-      "Gratitude journals are a proven evergreen niche in wellness. Cream paper gives a premium feel. Each page includes structured prompts for morning reflection.",
+      "Proven evergreen wellness niche. Top KDP journal BSR #27,754 with 1,451 reviews, #121 in Journal Writing. Cream paper gives a premium feel with structured prompts.",
     target_audience: "Wellness / Self-help",
-    est_monthly_revenue: "$80 - $200",
+    est_monthly_revenue: "$100 - $250",
     category: "bestsellers",
     generator_config: {
       subtitle: "Start Each Day with Gratitude",
       log_type: "gratitude_journal",
+    },
+    market_data: {
+      bsr: 27754,
+      search_results: "60,000+",
+      reviews: 1451,
+      demand: "strong",
+      verified_date: "2026-03-13",
     },
   },
   {
@@ -226,14 +296,21 @@ const BOOK_IDEAS: BookIdea[] = [
     list_price: 11.97,
     niche_keyword: "large print cryptogram puzzles adults",
     description:
-      "Cryptograms are an underserved niche with strong demand from adult puzzle enthusiasts. Each puzzle decodes an inspirational quote, combining word play with motivation.",
+      "Smaller niche (4K results) but less competition. Top KDP book BSR #64,794, 64 reviews, #227 in Logic & Brain Teasers. Room to become a top seller with quality content.",
     target_audience: "Adult puzzle fans",
-    est_monthly_revenue: "$100 - $200",
+    est_monthly_revenue: "$50 - $120",
     category: "bestsellers",
     generator_config: {
       subtitle: "Decode Famous Quotes",
       num_puzzles: 55,
       large_print: true,
+    },
+    market_data: {
+      bsr: 64794,
+      search_results: "4,000+",
+      reviews: 64,
+      demand: "moderate",
+      verified_date: "2026-03-13",
     },
   },
   {
@@ -590,9 +667,9 @@ const BOOK_IDEAS: BookIdea[] = [
     list_price: 7.99,
     niche_keyword: "password tracker floral cover women",
     description:
-      "A design variant of the proven password organizer niche. Floral covers appeal strongly to women 40+. Same interior, different cover — fast to produce with minimal effort.",
+      "A design variant of the password organizer niche. Note: KDP paperback password books face stiff competition from spiral-bound physical products. Low revenue potential.",
     target_audience: "Women 40+ / Gift buyers",
-    est_monthly_revenue: "$40 - $120",
+    est_monthly_revenue: "$10 - $40",
     category: "quick_wins",
     generator_config: {
       subtitle: "Beautiful & Practical Password Keeper",
@@ -881,8 +958,9 @@ export default function ResearchPage() {
             </h3>
             <p className="text-xs text-blue-600 mt-1">
               Each idea is pre-configured with optimal format, pricing, and
-              generator settings for proven KDP niches. Select one or more and
-              create production-ready book projects instantly.
+              generator settings. Ideas with a demand signal are backed by real
+              Amazon BSR data. Select one or more and create production-ready
+              book projects instantly.
             </p>
           </div>
         </div>
@@ -1046,6 +1124,40 @@ export default function ResearchPage() {
                       {PAPER_LABELS[idea.paper_type] || idea.paper_type}
                     </span>
                   </div>
+
+                  {/* Market Data Row */}
+                  {idea.market_data && (
+                    <div className="flex items-center gap-2 mt-3 py-2 px-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`inline-block w-2 h-2 rounded-full ${DEMAND_META[idea.market_data.demand].dotColor}`}
+                        />
+                        <span
+                          className={`text-[10px] font-semibold ${DEMAND_META[idea.market_data.demand].color}`}
+                        >
+                          {DEMAND_META[idea.market_data.demand].label}
+                        </span>
+                      </div>
+                      <span className="text-slate-300 text-[10px]">
+                        &middot;
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        BSR #{idea.market_data.bsr.toLocaleString()}
+                      </span>
+                      <span className="text-slate-300 text-[10px]">
+                        &middot;
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {idea.market_data.search_results} results
+                      </span>
+                      <span className="text-slate-300 text-[10px]">
+                        &middot;
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {idea.market_data.reviews.toLocaleString()} reviews
+                      </span>
+                    </div>
+                  )}
 
                   {/* Bottom Row */}
                   <div className="flex items-center justify-between mt-3">

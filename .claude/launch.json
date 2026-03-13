@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "cwd": "/Users/tiger/Desktop/CATALOG ENGINE/bookr/frontend"
+    },
+    {
+      "name": "bookr-engine",
+      "runtimeExecutable": "/usr/bin/python3",
+      "runtimeArgs": ["-m", "uvicorn", "engine.main:app", "--reload", "--port", "8000"],
+      "port": 8000,
+      "cwd": "/Users/tiger/Desktop/CATALOG ENGINE/bookr"
     }
   ]
 }
