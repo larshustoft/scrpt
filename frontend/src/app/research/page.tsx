@@ -1,35 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { NicheListResponse } from "@/lib/types";
-import { getNiches, deleteNiche } from "@/lib/api";
+import { useState } from "react";
+import type { Niche } from "@/lib/types";
 import { IconTarget, IconSearch } from "@/components/icons";
 
 export default function ResearchPage() {
-  const [data, setData] = useState<NicheListResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [niches] = useState<Niche[]>([]);
+  const [loading] = useState(false);
+  const [error] = useState<string | null>(null);
 
-  const fetchNiches = () => {
-    setLoading(true);
-    getNiches()
-      .then(setData)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchNiches();
-  }, []);
+  const data = niches.length > 0 ? { niches, total: niches.length } : null;
 
   const handleDelete = async (id: string, keyword: string) => {
     if (!confirm(`Delete niche "${keyword}"?`)) return;
-    try {
-      await deleteNiche(id);
-      fetchNiches();
-    } catch (e) {
-      alert(`Failed: ${(e as Error).message}`);
-    }
+    // TODO: implement Supabase niche deletion
+    console.log("Delete niche", id);
   };
 
   const getDemandColor = (level: string | null) => {

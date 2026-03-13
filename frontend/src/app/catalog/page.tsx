@@ -1,42 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Book, BookListResponse } from "@/lib/types";
-import { getBooks, deleteBook } from "@/lib/api";
+import { useBooks } from "@/hooks/useBooks";
 import { BOOK_TYPE_LABELS, BOOK_TYPE_SHORT, STATUS_COLORS, STATUS_LABELS } from "@/lib/types";
 import type { BookType, BookStatus } from "@/lib/types";
 import { IconLibrary, IconPlus, IconEye, IconTrash } from "@/components/icons";
 
 export default function CatalogPage() {
   const router = useRouter();
-  const [data, setData] = useState<BookListResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { books, loading, deleteBook: remove } = useBooks();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
 
-  const fetchBooks = () => {
-    setLoading(true);
-    getBooks({
-      status: statusFilter || undefined,
-      book_type: typeFilter || undefined,
-    })
-      .then(setData)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  };
+  const filtered = useMemo(() => {
+    return books.filter((b) => {
+      if (statusFilter && b.status !== statusFilter) return false;
+      if (typeFilter && b.data.book_type !== typeFilter) return false;
+      return true;
+    });
+  }, [books, statusFilter, typeFilter]);
 
-  useEffect(() => {
-    fetchBooks();
-  }, [statusFilter, typeFilter]);
-
-  const handleDelete = async (book: Book) => {
+  const handleDelete = async (book: { id: string; title: string; catalog_number: string }) => {
     if (!confirm(`Delete "${book.title}" (${book.catalog_number})?`)) return;
     try {
-      await deleteBook(book.id);
-      fetchBooks();
+      await remove(book.id);
     } catch (e) {
       alert(`Failed to delete: ${(e as Error).message}`);
     }
@@ -97,11 +86,7 @@ export default function CatalogPage() {
         <div className="flex justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
         </div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <p className="text-sm text-red-500">{error}</p>
-        </div>
-      ) : !data || data.books.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
             <IconLibrary className="w-6 h-6 text-slate-400" />
@@ -125,48 +110,30 @@ export default function CatalogPage() {
       ) : (
         <>
           <div className="text-[11px] text-slate-400 mb-3">
-            Showing {data.books.length} of {data.total} books
+            Showing {filtered.length} of {books.length} books
           </div>
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Catalog #
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Title
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Pages
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Catalog #</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Title</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Pages</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Price</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Created</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {data.books.map((book) => (
+                {filtered.map((book) => (
                   <tr
                     key={book.id}
                     className="hover:bg-slate-50/70 transition-colors cursor-pointer"
                     onClick={() => router.push(`/catalog/${book.id}`)}
                   >
-                    <td className="px-4 py-3 text-[11px] font-mono text-slate-400">
-                      {book.catalog_number}
-                    </td>
+                    <td className="px-4 py-3 text-[11px] font-mono text-slate-400">{book.catalog_number}</td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/catalog/${book.id}`}
@@ -193,15 +160,9 @@ export default function CatalogPage() {
                         {STATUS_LABELS[book.status as BookStatus] || book.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[13px] text-slate-500">
-                      {book.data.page_count}
-                    </td>
-                    <td className="px-4 py-3 text-[13px] font-medium text-slate-900">
-                      ${book.data.list_price.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-[11px] text-slate-400">
-                      {new Date(book.created_at).toLocaleDateString()}
-                    </td>
+                    <td className="px-4 py-3 text-[13px] text-slate-500">{book.data.page_count}</td>
+                    <td className="px-4 py-3 text-[13px] font-medium text-slate-900">${book.data.list_price?.toFixed(2) || "0.00"}</td>
+                    <td className="px-4 py-3 text-[11px] text-slate-400">{new Date(book.created_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
                         <Link

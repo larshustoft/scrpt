@@ -207,28 +207,52 @@ class DashboardStats(BaseModel):
 
 
 # ── Generation Models ────────────────────────────────────────────
+# Companion mode: frontend sends full book data inline (no local DB lookup).
+# Legacy mode: send book_id to look up from local SQLite.
 
 class GenerateInteriorRequest(BaseModel):
     """Request to generate a book interior."""
-    book_id: str
+    # Companion mode — inline data from Supabase
+    catalog_number: Optional[str] = None
+    title: Optional[str] = None
+    book_type: Optional[str] = None
+    trim_size: str = "8.5x11"
+    paper_type: str = "white_bw"
+    page_count: int = 120
+    generator_config: dict = Field(default_factory=dict)
+    # Legacy mode — look up from local SQLite
+    book_id: Optional[str] = None
     force_regenerate: bool = False
 
 
 class GenerateCoverRequest(BaseModel):
     """Request to generate a book cover."""
-    book_id: str
+    # Companion mode — inline data from Supabase
+    catalog_number: Optional[str] = None
+    title: Optional[str] = None
+    subtitle: Optional[str] = ""
+    author_name: Optional[str] = ""
+    book_type: Optional[str] = None
+    trim_size: str = "8.5x11"
+    paper_type: str = "white_bw"
+    page_count: int = 120
+    generator_config: dict = Field(default_factory=dict)
+    # Legacy mode — look up from local SQLite
+    book_id: Optional[str] = None
     force_regenerate: bool = False
 
 
 class QualityCheckRequest(BaseModel):
     """Request to run quality checks on a book."""
-    book_id: str
+    book_id: Optional[str] = None
+    catalog_number: Optional[str] = None
     skip_ai_review: bool = False
 
 
 class UploadRequest(BaseModel):
     """Request to upload a book to KDP."""
-    book_id: str
+    book_id: Optional[str] = None
+    catalog_number: Optional[str] = None
 
 
 # ── Settings Model ───────────────────────────────────────────────

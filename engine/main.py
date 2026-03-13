@@ -282,42 +282,96 @@ async def update_settings_endpoint(settings: SettingsUpdate):
 # GENERATION ENDPOINTS (stubs — implemented in later phases)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+def _resolve_book_data(request, required_fields=None):
+    """Resolve book data from companion mode (inline) or legacy mode (SQLite lookup).
+    Returns (book_data, catalog_number, book_id_or_none).
+    """
+    # Companion mode: inline data from Supabase
+    if request.catalog_number and request.title:
+        book_data = {
+            "title": request.title,
+            "book_type": getattr(request, "book_type", None) or "word_search",
+            "trim_size": request.trim_size,
+            "paper_type": request.paper_type,
+            "page_count": request.page_count,
+            "generator_config": request.generator_config,
+        }
+        # Cover-specific fields
+        if hasattr(request, "subtitle"):
+            book_data["subtitle"] = request.subtitle or ""
+        if hasattr(request, "author_name"):
+            book_data["author_name"] = request.author_name or ""
+        return book_data, request.catalog_number, None
+
+    # Legacy mode: look up from local SQLite
+    if request.book_id:
+        book = get_book(request.book_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+        book_data = {**book["data"], "title": book["title"]}
+        return book_data, book["catalog_number"], request.book_id
+
+    raise HTTPException(
+        status_code=400,
+        detail="Provide either (catalog_number + title) or book_id"
+    )
+
+
+def _resolve_catalog_number(identifier: str) -> str:
+    """Resolve a path identifier to a catalog number.
+    Accepts a catalog number directly (SC-XXX) or a book UUID (legacy).
+    """
+    # If it looks like a catalog number, use directly
+    if identifier.upper().startswith("SC-"):
+        return identifier.upper()
+
+    # Legacy: try DB lookup by UUID
+    try:
+        book = get_book(identifier)
+        if book:
+            return book["catalog_number"]
+    except Exception:
+        pass
+
+    # Fall back to using the identifier as-is (e.g., catalog number without SC- prefix)
+    return identifier
+
+
 @app.post("/api/generate/interior")
 async def generate_interior(request: GenerateInteriorRequest):
-    """Generate the book interior PDF."""
-    book = get_book(request.book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+    """Generate the book interior PDF.
+    Companion mode: send catalog_number + title + book data inline.
+    Legacy mode: send book_id to look up from local SQLite.
+    """
+    book_data, catalog_number, book_id = _resolve_book_data(request)
 
     # Check if already generated (unless force)
-    if book["data"].get("interior_pdf") and not request.force_regenerate:
-        return {"success": True, "message": "Interior already generated", "path": book["data"]["interior_pdf"]}
+    output_dir = OUTPUT_DIR / catalog_number
+    interior_path = output_dir / "interior.pdf"
+    if interior_path.exists() and not request.force_regenerate:
+        return {"success": True, "message": "Interior already generated", "path": str(interior_path)}
 
-    # Update status
-    update_book(request.book_id, {"status": "generating"})
+    # Update status in local DB if available
+    if book_id:
+        update_book(book_id, {"status": "generating"})
 
     try:
         from .generators.interior_builder import build_interior
 
-        # Build interior data from book record
-        book_data = {
-            **book["data"],
-            "title": book["title"],
-        }
-
-        output_dir = OUTPUT_DIR / book["catalog_number"]
         result = build_interior(book_data, output_dir)
 
         if result.get("error"):
-            update_book(request.book_id, {"status": "draft"})
+            if book_id:
+                update_book(book_id, {"status": "draft"})
             return {"success": False, "message": result["error"]}
 
-        # Update book with generated file info
-        update_book(request.book_id, {
-            "status": "draft",
-            "interior_pdf": result["path"],
-            "page_count": result["page_count"],
-        })
+        # Update local DB if available
+        if book_id:
+            update_book(book_id, {
+                "status": "draft",
+                "interior_pdf": result["path"],
+                "page_count": result["page_count"],
+            })
 
         return {
             "success": True,
@@ -327,59 +381,63 @@ async def generate_interior(request: GenerateInteriorRequest):
         }
 
     except Exception as e:
-        update_book(request.book_id, {"status": "draft"})
+        if book_id:
+            update_book(book_id, {"status": "draft"})
         raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
 
 @app.post("/api/generate/cover")
 async def generate_cover(request: GenerateCoverRequest):
-    """Generate the book cover PDF."""
-    book = get_book(request.book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+    """Generate the book cover PDF.
+    Companion mode: send catalog_number + title + book data inline.
+    Legacy mode: send book_id to look up from local SQLite.
+    """
+    book_data, catalog_number, book_id = _resolve_book_data(request)
 
     # Check if already generated (unless force)
-    if book["data"].get("cover_pdf") and not request.force_regenerate:
-        return {"success": True, "message": "Cover already generated", "path": book["data"]["cover_pdf"]}
+    output_dir = OUTPUT_DIR / catalog_number
+    cover_path = output_dir / "cover.pdf"
+    if cover_path.exists() and not request.force_regenerate:
+        return {"success": True, "message": "Cover already generated", "path": str(cover_path)}
 
-    update_book(request.book_id, {"status": "generating"})
+    if book_id:
+        update_book(book_id, {"status": "generating"})
 
     try:
         from .cover.renderer import render_cover
 
-        data = book["data"]
-        page_count = data.get("page_count", 120)
-        trim_size = data.get("trim_size", "8.5x11")
-        paper_type = data.get("paper_type", "white_bw")
-        gen_config = data.get("generator_config", {})
+        page_count = book_data.get("page_count", 120)
+        trim_size = book_data.get("trim_size", "8.5x11")
+        paper_type = book_data.get("paper_type", "white_bw")
+        gen_config = book_data.get("generator_config", {})
 
-        output_dir = OUTPUT_DIR / book["catalog_number"]
         output_dir.mkdir(parents=True, exist_ok=True)
 
         result = await render_cover(
             page_count=page_count,
             trim_size=trim_size,
             paper_type=paper_type,
-            title=book["title"],
-            subtitle=data.get("subtitle", ""),
-            author=data.get("author_name", "Creative Puzzles Press"),
-            book_type=data.get("book_type", "default"),
+            title=book_data.get("title", "Untitled"),
+            subtitle=book_data.get("subtitle", ""),
+            author=book_data.get("author_name", "Creative Puzzles Press"),
+            book_type=book_data.get("book_type", "default"),
             output_dir=output_dir,
             puzzle_count=gen_config.get("num_puzzles", 55),
         )
 
         if not result.get("success", False):
-            update_book(request.book_id, {"status": "draft"})
+            if book_id:
+                update_book(book_id, {"status": "draft"})
             return {"success": False, "message": result.get("error", "Cover generation failed")}
 
-        # Update book with cover file paths
-        update_data = {"status": "draft"}
-        if result.get("cover_pdf"):
-            update_data["cover_pdf"] = result["cover_pdf"]
-        if result.get("cover_png"):
-            update_data["cover_front_png"] = result["cover_png"]
-
-        update_book(request.book_id, update_data)
+        # Update local DB if available
+        if book_id:
+            update_data = {"status": "draft"}
+            if result.get("cover_pdf"):
+                update_data["cover_pdf"] = result["cover_pdf"]
+            if result.get("cover_png"):
+                update_data["cover_front_png"] = result["cover_png"]
+            update_book(book_id, update_data)
 
         return {
             "success": True,
@@ -389,17 +447,14 @@ async def generate_cover(request: GenerateCoverRequest):
         }
 
     except Exception as e:
-        update_book(request.book_id, {"status": "draft"})
+        if book_id:
+            update_book(book_id, {"status": "draft"})
         raise HTTPException(status_code=500, detail=f"Cover generation failed: {str(e)}")
 
 
 @app.post("/api/quality/validate", response_model=SuccessResponse)
 async def run_quality_check(request: QualityCheckRequest):
     """Run the 5-gate quality validation pipeline. (Phase 5)"""
-    book = get_book(request.book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-
     # TODO: Phase 5 — run quality pipeline
     return {"success": True, "message": "Quality check queued (not yet implemented)"}
 
@@ -425,16 +480,6 @@ async def optimize_listing(book_id: str):
 @app.post("/api/upload/submit", response_model=SuccessResponse)
 async def submit_to_kdp(request: UploadRequest):
     """Upload a book to Amazon KDP. (Phase 8)"""
-    book = get_book(request.book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-
-    if book["status"] != "ready":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Book must be in 'ready' status to upload. Current: {book['status']}"
-        )
-
     # TODO: Phase 8 — Playwright KDP upload
     return {"success": True, "message": "Upload queued (not yet implemented)"}
 
@@ -443,15 +488,15 @@ async def submit_to_kdp(request: UploadRequest):
 # FILE SERVING (generated PDFs and images)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@app.get("/api/files/{book_id}/{filename}")
-async def serve_file(book_id: str, filename: str):
-    """Serve generated files (PDFs, images) for a book."""
-    book = get_book(book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+@app.get("/api/files/{identifier}/{filename}")
+async def serve_file(identifier: str, filename: str):
+    """Serve generated files (PDFs, images) for a book.
+    Identifier can be a catalog_number (SC-001) or legacy book_id (UUID).
+    """
+    catalog_number = _resolve_catalog_number(identifier)
 
     # Files are stored in output/{catalog_number}/
-    file_path = OUTPUT_DIR / book["catalog_number"] / filename
+    file_path = OUTPUT_DIR / catalog_number / filename
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
@@ -511,14 +556,14 @@ def _render_pdf_page(pdf_path: str, page_num: int, width: int = 800) -> bytes:
     return png_bytes
 
 
-@app.get("/api/preview/{book_id}/files")
-async def get_book_files(book_id: str):
-    """List all generated files for a book."""
-    book = get_book(book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+@app.get("/api/preview/{identifier}/files")
+async def get_book_files(identifier: str):
+    """List all generated files for a book.
+    Identifier can be a catalog_number (SC-001) or legacy book_id (UUID).
+    """
+    catalog_number = _resolve_catalog_number(identifier)
 
-    output_path = OUTPUT_DIR / book["catalog_number"]
+    output_path = OUTPUT_DIR / catalog_number
     files = {}
 
     if output_path.exists():
@@ -527,7 +572,7 @@ async def get_book_files(book_id: str):
                 files[f.name] = {
                     "name": f.name,
                     "size": f.stat().st_size,
-                    "url": f"/api/files/{book_id}/{f.name}",
+                    "url": f"/api/files/{catalog_number}/{f.name}",
                 }
 
     # Check for interior PDF page count
@@ -547,7 +592,7 @@ async def get_book_files(book_id: str):
     cover_front_path = output_path / "cover-front.png"
 
     return {
-        "catalog_number": book["catalog_number"],
+        "catalog_number": catalog_number,
         "files": files,
         "has_interior": interior_path.exists(),
         "interior_pages": interior_pages,
@@ -556,18 +601,18 @@ async def get_book_files(book_id: str):
     }
 
 
-@app.get("/api/preview/{book_id}/interior/{page_num}")
+@app.get("/api/preview/{identifier}/interior/{page_num}")
 async def preview_interior_page(
-    book_id: str,
+    identifier: str,
     page_num: int,
     width: int = Query(800, ge=200, le=2400, description="Render width in pixels"),
 ):
-    """Render a single interior PDF page as PNG image."""
-    book = get_book(book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+    """Render a single interior PDF page as PNG image.
+    Identifier can be a catalog_number (SC-001) or legacy book_id (UUID).
+    """
+    catalog_number = _resolve_catalog_number(identifier)
 
-    pdf_path = OUTPUT_DIR / book["catalog_number"] / "interior.pdf"
+    pdf_path = OUTPUT_DIR / catalog_number / "interior.pdf"
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail="Interior PDF not found. Generate the interior first.")
 
@@ -581,17 +626,16 @@ async def preview_interior_page(
     return Response(content=png_bytes, media_type="image/png")
 
 
-@app.get("/api/preview/{book_id}/cover")
+@app.get("/api/preview/{identifier}/cover")
 async def preview_cover(
-    book_id: str,
+    identifier: str,
     width: int = Query(800, ge=200, le=2400, description="Render width in pixels"),
 ):
-    """Get the front cover preview image."""
-    book = get_book(book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-
-    output_path = OUTPUT_DIR / book["catalog_number"]
+    """Get the front cover preview image.
+    Identifier can be a catalog_number (SC-001) or legacy book_id (UUID).
+    """
+    catalog_number = _resolve_catalog_number(identifier)
+    output_path = OUTPUT_DIR / catalog_number
 
     # First try the pre-rendered PNG
     cover_front = output_path / "cover-front.png"
@@ -610,17 +654,17 @@ async def preview_cover(
     raise HTTPException(status_code=404, detail="No cover found. Generate the cover first.")
 
 
-@app.get("/api/preview/{book_id}/cover/full")
+@app.get("/api/preview/{identifier}/cover/full")
 async def preview_cover_full(
-    book_id: str,
+    identifier: str,
     width: int = Query(1600, ge=200, le=4800, description="Render width in pixels"),
 ):
-    """Get the full cover (front + spine + back) preview image."""
-    book = get_book(book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+    """Get the full cover (front + spine + back) preview image.
+    Identifier can be a catalog_number (SC-001) or legacy book_id (UUID).
+    """
+    catalog_number = _resolve_catalog_number(identifier)
 
-    cover_pdf = OUTPUT_DIR / book["catalog_number"] / "cover.pdf"
+    cover_pdf = OUTPUT_DIR / catalog_number / "cover.pdf"
     if not cover_pdf.exists():
         raise HTTPException(status_code=404, detail="Cover PDF not found.")
 

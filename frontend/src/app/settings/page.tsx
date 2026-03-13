@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getSettings, updateSettings } from "@/lib/api";
-import type { AuthorPenName } from "@/lib/api";
+import { useState } from "react";
+import { useSettings } from "@/hooks/useSettings";
+import type { AuthorPenName } from "@/hooks/useSettings";
 import { BOOK_TYPE_LABELS, BOOK_TYPE_SHORT } from "@/lib/types";
 import type { BookType } from "@/lib/types";
 import { IconPlus, IconTrash, IconCheck } from "@/components/icons";
+import { useAuthContext } from "@/components/AuthProvider";
 
 // ── Trim / Paper options (mirror backend config) ────────────────
 const TRIM_OPTIONS = [
@@ -32,73 +33,49 @@ const LABEL_CLS = "block text-[13px] font-medium text-slate-900 mb-1.5";
 const HINT_CLS = "text-xs text-slate-400 mt-1";
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { allSettings, defaults, settings: userSettings, loading, saving, updateDefaults, updateSettings: updateUserSettings } = useSettings();
+  const { user, signOut } = useAuthContext();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    getSettings()
-      .then(setSettings)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+  // Flat settings for backward-compatible accessors
+  const settings = allSettings as Record<string, unknown>;
 
   // ── Helpers ──────────────────────────────────────────────────
-  const set = (key: string, value: unknown) =>
-    setSettings((prev) => (prev ? { ...prev, [key]: value } : prev));
+  const set = (key: string, value: unknown) => {
+    // Determine if key belongs to defaults or settings
+    const defaultKeys = ["publisher_name", "publisher_logo", "copyright_holder", "website", "kdp_email", "default_trim_size", "default_paper_type", "default_description_template", "default_keywords", "default_categories"];
+    if (defaultKeys.includes(key)) {
+      updateDefaults({ [key]: value } as Record<string, unknown>);
+    } else {
+      updateUserSettings({ [key]: value } as Record<string, unknown>);
+    }
+  };
 
   const str = (key: string) => (settings?.[key] as string) || "";
   const arr = (key: string) => (settings?.[key] as string[]) || [];
-  const penNames = () => (settings?.author_pen_names as AuthorPenName[]) || [];
+  const penNames = () => (userSettings?.author_pen_names as AuthorPenName[]) || [];
 
-  // ── Save ─────────────────────────────────────────────────────
+  // ── Save (now auto-saves via debounce, but keep button for UX feedback)
   const handleSave = async () => {
-    if (!settings) return;
-    setSaving(true);
-    setSaved(false);
-    setError(null);
-    try {
-      await updateSettings({
-        publisher_name: str("publisher_name"),
-        author_name: str("author_name"),
-        copyright_holder: str("copyright_holder"),
-        website: str("website"),
-        kdp_email: str("kdp_email"),
-        default_trim_size: str("default_trim_size"),
-        default_paper_type: str("default_paper_type"),
-        default_description_template: str("default_description_template"),
-        default_keywords: arr("default_keywords"),
-        default_categories: arr("default_categories"),
-        author_pen_names: penNames(),
-        comfyui_url: str("comfyui_url") || "http://127.0.0.1:8188",
-        auto_upload: settings.auto_upload as boolean,
-        daily_upload_limit: (settings.daily_upload_limit as number) || 3,
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   // ── Pen‑name management ──────────────────────────────────────
   const addPenName = () => {
     const current = penNames();
-    set("author_pen_names", [...current, { name: "", genres: [] }]);
+    updateUserSettings({ author_pen_names: [...current, { name: "", genres: [] }] });
   };
 
   const updatePenName = (index: number, field: "name" | "genres", value: unknown) => {
     const current = [...penNames()];
     current[index] = { ...current[index], [field]: value };
-    set("author_pen_names", current);
+    updateUserSettings({ author_pen_names: current });
   };
 
   const removePenName = (index: number) => {
-    set("author_pen_names", penNames().filter((_, i) => i !== index));
+    updateUserSettings({ author_pen_names: penNames().filter((_, i) => i !== index) });
   };
 
   const toggleGenre = (penIndex: number, genre: string) => {
@@ -109,7 +86,7 @@ export default function SettingsPage() {
     } else {
       current[penIndex] = { ...current[penIndex], genres: [...genres, genre] };
     }
-    set("author_pen_names", current);
+    updateUserSettings({ author_pen_names: current });
   };
 
   // ── Keywords as comma-separated input ────────────────────────
@@ -445,10 +422,30 @@ export default function SettingsPage() {
               Settings saved
             </span>
           )}
+          {saving && (
+            <span className="text-[11px] text-slate-400">Auto-saving...</span>
+          )}
           {error && (
             <span className="text-[13px] text-red-500">{error}</span>
           )}
         </div>
+
+        {/* ─── Account ───────────────────────────────────────── */}
+        <section className="pt-6 border-t border-slate-200">
+          <h2 className="text-sm font-semibold text-slate-900 mb-4">Account</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-700">{user?.email || "Not signed in"}</p>
+              <p className="text-xs text-slate-400 mt-0.5">Signed in via Supabase Auth</p>
+            </div>
+            <button
+              onClick={() => signOut()}
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   );

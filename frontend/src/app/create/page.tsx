@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBook } from "@/lib/api";
+import { useBooks } from "@/hooks/useBooks";
 import { BOOK_TYPE_LABELS, BOOK_TYPE_SHORT } from "@/lib/types";
 import type { BookType } from "@/lib/types";
 
@@ -38,6 +38,7 @@ const BOOK_TYPE_DEFAULTS: Record<string, { trim: string; pages: number; price: n
 
 export default function CreateBookPage() {
   const router = useRouter();
+  const { createBook } = useBooks();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

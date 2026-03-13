@@ -27,7 +27,7 @@ DATABASE_PATH = DATA_DIR / "scrpt.db"
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
 # ── Server ───────────────────────────────────────────────────────
-API_HOST = "0.0.0.0"
+API_HOST = "127.0.0.1"  # Companion mode: only accessible locally
 API_PORT = 8000
 FRONTEND_URL = "http://localhost:3000"
 CORS_ORIGINS = [
@@ -35,6 +35,8 @@ CORS_ORIGINS = [
     "http://localhost:3002",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3002",
+    "https://scrpt.ai",
+    "https://www.scrpt.ai",
 ]
 
 # ── Amazon KDP ───────────────────────────────────────────────────

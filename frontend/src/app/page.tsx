@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { DashboardStats } from "@/lib/types";
-import { getDashboard } from "@/lib/api";
+import { useBooks } from "@/hooks/useBooks";
+import { checkHealth } from "@/lib/companion";
 import {
   IconLibrary,
   IconGlobe,
@@ -37,45 +37,37 @@ function StatusBadge({ status }: { status: string }) {
 
 const STAT_CARDS = [
   {
-    key: "total_books",
+    key: "total_books" as const,
     label: "Total Books",
     Icon: IconLibrary,
     accent: "text-slate-900",
-    bg: "bg-white",
   },
   {
-    key: "books_live",
+    key: "books_live" as const,
     label: "Live on Amazon",
     Icon: IconGlobe,
     accent: "text-emerald-600",
-    bg: "bg-white",
   },
   {
-    key: "books_in_progress",
+    key: "books_in_progress" as const,
     label: "In Progress",
     Icon: IconClock,
     accent: "text-blue-600",
-    bg: "bg-white",
   },
   {
-    key: "validated_niches",
+    key: "validated_niches" as const,
     label: "Validated Niches",
     Icon: IconTarget,
     accent: "text-slate-900",
-    bg: "bg-white",
   },
 ];
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { dashboardStats: stats, loading } = useBooks();
+  const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
 
   useEffect(() => {
-    getDashboard()
-      .then(setStats)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    checkHealth().then(setEngineOnline);
   }, []);
 
   if (loading) {
@@ -86,32 +78,25 @@ export default function Dashboard() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center max-w-sm">
-          <div className="mx-auto w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center mb-4">
-            <IconAlertTriangle className="w-5 h-5 text-amber-500" />
-          </div>
-          <h2 className="text-sm font-semibold text-slate-900">Backend Not Connected</h2>
-          <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
-            Make sure the SCRPT engine is running on port 8000.
-          </p>
-          <code className="mt-3 block rounded bg-slate-100 px-3 py-2 text-[11px] text-slate-600 font-mono">
-            python3 -m uvicorn engine.main:app --reload --port 8000
-          </code>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-8 max-w-[1200px]">
-      <div className="mb-8">
-        <h1 className="text-lg font-semibold text-slate-900 tracking-tight">Dashboard</h1>
-        <p className="text-xs text-slate-400 mt-0.5">
-          Publishing engine overview
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900 tracking-tight">Dashboard</h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Publishing engine overview
+          </p>
+        </div>
+        {engineOnline !== null && (
+          <div className="flex items-center gap-2 text-xs">
+            <span
+              className={`h-2 w-2 rounded-full ${engineOnline ? "bg-emerald-500" : "bg-red-400"}`}
+            />
+            <span className={engineOnline ? "text-slate-500" : "text-red-400"}>
+              {engineOnline ? "Engine running" : "Engine offline"}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Stat Cards */}
@@ -124,7 +109,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <card.Icon className="w-4 h-4 text-slate-400" />
               <span className={`text-2xl font-semibold tabular-nums ${card.accent}`}>
-                {(stats as Record<string, unknown>)?.[card.key] as number ?? 0}
+                {(stats as unknown as Record<string, unknown>)?.[card.key] as number ?? 0}
               </span>
             </div>
             <p className="mt-2 text-xs text-slate-500 font-medium">{card.label}</p>
@@ -146,7 +131,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="divide-y divide-slate-50">
-            {stats?.recent_books && stats.recent_books.length > 0 ? (
+            {stats.recent_books && stats.recent_books.length > 0 ? (
               stats.recent_books.slice(0, 8).map((book) => (
                 <Link
                   key={book.id}
@@ -189,7 +174,7 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold text-slate-900">Pipeline Status</h2>
           </div>
           <div className="px-5 py-4">
-            {stats?.books_by_status &&
+            {stats.books_by_status &&
             Object.keys(stats.books_by_status).length > 0 ? (
               <div className="space-y-2.5">
                 {Object.entries(stats.books_by_status).map(([status, count]) => (
