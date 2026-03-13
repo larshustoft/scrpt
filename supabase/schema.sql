@@ -104,11 +104,11 @@ CREATE POLICY profiles_update ON profiles
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO profiles (id, email) VALUES (NEW.id, NEW.email);
-  INSERT INTO user_settings (user_id) VALUES (NEW.id);
+  INSERT INTO public.profiles (id, email) VALUES (NEW.id, NEW.email);
+  INSERT INTO public.user_settings (user_id) VALUES (NEW.id);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users

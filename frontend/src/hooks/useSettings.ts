@@ -11,7 +11,8 @@ export interface AuthorPenName {
 
 export interface UserDefaults {
   publisher_name: string
-  publisher_logo: string | null  // base64 data URL (PNG, max 512x512)
+  publisher_logo: string | null  // base64 data URL (PNG, max 512x512) — dark logo for light backgrounds
+  publisher_logo_light: string | null  // base64 data URL (PNG, max 512x512) — light logo for dark backgrounds
   copyright_holder: string
   website: string
   kdp_email: string
@@ -34,6 +35,7 @@ const CACHE_KEY = "scrpt-settings"
 const DEFAULT_DEFAULTS: UserDefaults = {
   publisher_name: "",
   publisher_logo: null,
+  publisher_logo_light: null,
   copyright_holder: "",
   website: "",
   kdp_email: "",
@@ -64,8 +66,12 @@ function loadCache(): { defaults: UserDefaults; settings: UserSettings } | null 
 function saveCache(defaults: UserDefaults, settings: UserSettings) {
   if (typeof window === "undefined") return
   try {
-    // Strip logo from cache to save space
-    const stripped = { ...defaults, publisher_logo: defaults.publisher_logo ? "_hasLogo" : null }
+    // Strip logos from cache to save space
+    const stripped = {
+      ...defaults,
+      publisher_logo: defaults.publisher_logo ? "_hasLogo" : null,
+      publisher_logo_light: defaults.publisher_logo_light ? "_hasLogo" : null,
+    }
     localStorage.setItem(CACHE_KEY, JSON.stringify({ defaults: stripped, settings }))
   } catch {
     // silently ignore

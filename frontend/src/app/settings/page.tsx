@@ -37,13 +37,19 @@ const MAX_LOGO_SIZE = 512;
 const MAX_FILE_BYTES = 500_000; // 500 KB
 
 function LogoUpload({
+  label,
+  hint,
   currentLogo,
   onUpload,
   onRemove,
+  variant,
 }: {
+  label: string;
+  hint: string;
   currentLogo: string | null;
   onUpload: (dataUrl: string) => void;
   onRemove: () => void;
+  variant: "light" | "dark";
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,23 +91,26 @@ function LogoUpload({
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  const previewBg = variant === "dark" ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200";
+  const emptyText = variant === "dark" ? "text-slate-500" : "text-slate-400";
+
   return (
     <div>
-      <label className={LABEL_CLS}>Publisher Logo</label>
+      <label className={LABEL_CLS}>{label}</label>
       <div className="flex items-start gap-4">
         {/* Preview */}
         <div
-          className="w-20 h-20 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden cursor-pointer hover:border-blue-300 transition-colors"
+          className={`w-20 h-20 rounded-lg border flex items-center justify-center overflow-hidden cursor-pointer hover:border-blue-400 transition-colors ${previewBg}`}
           onClick={() => fileRef.current?.click()}
         >
           {currentLogo ? (
             <img
               src={currentLogo}
-              alt="Publisher logo"
+              alt={label}
               className="w-full h-full object-contain p-1"
             />
           ) : (
-            <span className="text-[10px] text-slate-400 text-center leading-tight px-1">
+            <span className={`text-[10px] text-center leading-tight px-1 ${emptyText}`}>
               No logo
             </span>
           )}
@@ -127,7 +136,7 @@ function LogoUpload({
             )}
           </div>
           <p className={HINT_CLS}>
-            PNG only, max {MAX_LOGO_SIZE}x{MAX_LOGO_SIZE}px. Used on title page, copyright page, and back cover.
+            {hint}
           </p>
           {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
         </div>
@@ -156,7 +165,7 @@ export default function SettingsPage() {
   // ── Helpers ──────────────────────────────────────────────────
   const set = (key: string, value: unknown) => {
     // Determine if key belongs to defaults or settings
-    const defaultKeys = ["publisher_name", "publisher_logo", "copyright_holder", "website", "kdp_email", "default_trim_size", "default_paper_type", "default_description_template", "default_keywords", "default_categories"];
+    const defaultKeys = ["publisher_name", "publisher_logo", "publisher_logo_light", "copyright_holder", "website", "kdp_email", "default_trim_size", "default_paper_type", "default_description_template", "default_keywords", "default_categories"];
     if (defaultKeys.includes(key)) {
       updateDefaults({ [key]: value } as Record<string, unknown>);
     } else {
@@ -260,11 +269,24 @@ export default function SettingsPage() {
               />
               <p className={HINT_CLS}>Appears on title page and copyright page</p>
             </div>
-            <LogoUpload
-              currentLogo={defaults?.publisher_logo || null}
-              onUpload={(dataUrl) => updateDefaults({ publisher_logo: dataUrl })}
-              onRemove={() => updateDefaults({ publisher_logo: null })}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <LogoUpload
+                label="Logo (for light backgrounds)"
+                hint="Dark logo for interior pages and light covers. PNG, max 512×512px."
+                variant="light"
+                currentLogo={defaults?.publisher_logo || null}
+                onUpload={(dataUrl) => updateDefaults({ publisher_logo: dataUrl })}
+                onRemove={() => updateDefaults({ publisher_logo: null })}
+              />
+              <LogoUpload
+                label="Logo (for dark backgrounds)"
+                hint="Light/white logo for colored covers and dark surfaces. PNG, max 512×512px."
+                variant="dark"
+                currentLogo={defaults?.publisher_logo_light || null}
+                onUpload={(dataUrl) => updateDefaults({ publisher_logo_light: dataUrl })}
+                onRemove={() => updateDefaults({ publisher_logo_light: null })}
+              />
+            </div>
             <div>
               <label className={LABEL_CLS}>Copyright Holder</label>
               <input
