@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,6 +10,7 @@ import {
   IconSearch,
   IconSettings,
 } from "@/components/icons";
+import { checkHealth } from "@/lib/companion";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", Icon: IconDashboard },
@@ -20,6 +22,16 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check immediately, then poll every 30 seconds
+    checkHealth().then(setEngineOnline);
+    const interval = setInterval(() => {
+      checkHealth().then(setEngineOnline);
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <aside className="flex w-[220px] flex-col bg-[#0B0F1A] text-slate-300 shrink-0">
@@ -54,6 +66,22 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Engine Status */}
+      {engineOnline !== null && (
+        <div className="px-5 py-2.5 border-t border-white/[0.06]">
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                engineOnline ? "bg-emerald-400" : "bg-red-400"
+              }`}
+            />
+            <span className="text-[11px] text-slate-500">
+              {engineOnline ? "Engine running" : "Engine offline"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="px-5 py-3 border-t border-white/[0.06]">

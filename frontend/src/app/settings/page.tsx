@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import type { AuthorPenName } from "@/hooks/useSettings";
 import { BOOK_TYPE_LABELS, BOOK_TYPE_SHORT } from "@/lib/types";
@@ -31,6 +31,118 @@ const INPUT_CLS =
   "w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
 const LABEL_CLS = "block text-[13px] font-medium text-slate-900 mb-1.5";
 const HINT_CLS = "text-xs text-slate-400 mt-1";
+
+// ── Logo Upload Component ──────────────────────────────────────
+const MAX_LOGO_SIZE = 512;
+const MAX_FILE_BYTES = 500_000; // 500 KB
+
+function LogoUpload({
+  currentLogo,
+  onUpload,
+  onRemove,
+}: {
+  currentLogo: string | null;
+  onUpload: (dataUrl: string) => void;
+  onRemove: () => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null);
+
+    // Validate type
+    if (!file.type.startsWith("image/png")) {
+      setError("Only PNG files are accepted");
+      return;
+    }
+
+    // Validate size
+    if (file.size > MAX_FILE_BYTES) {
+      setError("File must be under 500 KB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // Validate dimensions
+        if (img.width > MAX_LOGO_SIZE || img.height > MAX_LOGO_SIZE) {
+          setError(`Image must be ${MAX_LOGO_SIZE}x${MAX_LOGO_SIZE}px or smaller (got ${img.width}x${img.height})`);
+          return;
+        }
+        onUpload(reader.result as string);
+      };
+      img.onerror = () => setError("Failed to load image");
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input so same file can be re-selected
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  return (
+    <div>
+      <label className={LABEL_CLS}>Publisher Logo</label>
+      <div className="flex items-start gap-4">
+        {/* Preview */}
+        <div
+          className="w-20 h-20 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden cursor-pointer hover:border-blue-300 transition-colors"
+          onClick={() => fileRef.current?.click()}
+        >
+          {currentLogo ? (
+            <img
+              src={currentLogo}
+              alt="Publisher logo"
+              className="w-full h-full object-contain p-1"
+            />
+          ) : (
+            <span className="text-[10px] text-slate-400 text-center leading-tight px-1">
+              No logo
+            </span>
+          )}
+        </div>
+
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              {currentLogo ? "Change" : "Upload"}
+            </button>
+            {currentLogo && (
+              <button
+                type="button"
+                onClick={onRemove}
+                className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          <p className={HINT_CLS}>
+            PNG only, max {MAX_LOGO_SIZE}x{MAX_LOGO_SIZE}px. Used on title page, copyright page, and back cover.
+          </p>
+          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        </div>
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png"
+        onChange={handleFile}
+        className="hidden"
+      />
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const { allSettings, defaults, settings: userSettings, loading, saving, updateDefaults, updateSettings: updateUserSettings } = useSettings();
@@ -148,6 +260,11 @@ export default function SettingsPage() {
               />
               <p className={HINT_CLS}>Appears on title page and copyright page</p>
             </div>
+            <LogoUpload
+              currentLogo={defaults?.publisher_logo || null}
+              onUpload={(dataUrl) => updateDefaults({ publisher_logo: dataUrl })}
+              onRemove={() => updateDefaults({ publisher_logo: null })}
+            />
             <div>
               <label className={LABEL_CLS}>Copyright Holder</label>
               <input
