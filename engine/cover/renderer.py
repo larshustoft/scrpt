@@ -172,48 +172,111 @@ NICHE_TEMPLATES = {
             /* ── Back Cover ── */
             .back-cover {
                 background: #142d4c;
-                padding: 250px 180px 400px;
+                padding: 120px 90px 330px;
                 color: white;
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
-                align-items: flex-start;
+                align-items: center;
             }
-            .back-cover .back-tagline {
-                font-size: 56px;
+            .back-header {
+                font-size: 52px;
+                font-family: Arial, Helvetica, sans-serif;
+                font-weight: bold;
+                color: #e2b44d;
+                letter-spacing: 12px;
+                margin-bottom: 40px;
+                text-align: center;
+                text-transform: uppercase;
+            }
+            .preview-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 36px;
+                width: 100%;
+                flex: 1;
+            }
+            .preview-card {
+                background: white;
+                border-radius: 10px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+            }
+            .card-header {
+                background: linear-gradient(135deg, #f0f0f0, #e4e4e4);
+                padding: 14px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid #d0d0d0;
+            }
+            .card-num {
+                font-size: 22px;
+                font-weight: bold;
+                color: #333;
+                font-family: Arial, sans-serif;
+            }
+            .card-theme {
+                font-size: 20px;
+                color: #666;
                 font-family: 'Georgia', serif;
                 font-style: italic;
-                color: rgba(255,255,255,0.5);
-                margin-bottom: 80px;
-                line-height: 1.6;
-                text-align: center;
+            }
+            .card-grid-wrap {
+                padding: 14px 18px 10px;
+                flex: 1;
+                display: flex;
+                align-items: stretch;
+                justify-content: stretch;
+            }
+            .card-grid {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                grid-template-rows: repeat(7, 1fr);
+                gap: 1px;
                 width: 100%;
+                border: 2px solid #bbb;
+                background: #d0d0d0;
             }
-            .back-cover h3 {
-                font-size: 80px;
-                margin-bottom: 60px;
-                font-family: 'Georgia', serif;
-                color: #e2b44d;
+            .card-grid span {
+                font-size: 34px;
+                font-family: 'Courier New', monospace;
+                font-weight: bold;
+                color: #444;
+                background: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
-            .back-cover p {
-                font-size: 46px;
-                line-height: 1.8;
-                opacity: 0.9;
-                margin-bottom: 20px;
+            .card-grid span.h {
+                background: #fef3c7;
+                color: #b91c1c;
             }
-            .back-cover .back-divider {
-                width: 500px;
-                height: 4px;
-                background: linear-gradient(90deg, #e2b44d, transparent);
-                margin: 60px 0;
+            .card-words {
+                padding: 12px 20px 16px;
+                display: flex;
+                gap: 18px;
+                justify-content: center;
+                background: #f8f8f8;
+                border-top: 1px solid #e0e0e0;
+                flex-wrap: wrap;
             }
-            .back-cover .feature-list {
-                margin-top: 10px;
+            .card-words span {
+                font-size: 20px;
+                font-family: Arial, sans-serif;
+                font-weight: bold;
+                color: #555;
+                letter-spacing: 2px;
             }
-            .back-cover .feature-item {
-                font-size: 44px;
-                line-height: 2.2;
-                opacity: 0.85;
+            .back-features {
+                font-size: 38px;
+                color: rgba(255,255,255,0.75);
+                letter-spacing: 3px;
+                margin-top: 45px;
+                text-align: center;
+                font-family: Arial, Helvetica, sans-serif;
+                line-height: 1.9;
             }
 
             /* ── Front Cover — Bold dark design ── */
@@ -394,20 +457,74 @@ NICHE_TEMPLATES = {
             <div class="bottom-accent"></div>
         """,
         "back_cover_html": """
-            <div class="back-tagline">"The perfect companion for quiet<br>afternoons and cozy evenings."</div>
-            <h3>About This Book</h3>
-            <p>Challenge your mind with ${puzzle_count} carefully crafted
-            word search puzzles. Each puzzle features a unique theme with
-            large, easy-to-read letters designed for comfortable reading.
-            Perfect for relaxing at home or on the go.</p>
-            <div class="back-divider"></div>
-            <div class="feature-list">
-                <div class="feature-item">&#9733; Large, easy-to-read print</div>
-                <div class="feature-item">&#9733; ${puzzle_count} unique themed puzzles</div>
-                <div class="feature-item">&#9733; Complete answer key included</div>
-                <div class="feature-item">&#9733; Premium quality paper</div>
-                <div class="feature-item">&#9733; Perfect gift for puzzle lovers</div>
+            <div class="back-header">&#9733; Look Inside &#9733;</div>
+            <div class="preview-grid">
+                <div class="preview-card">
+                    <div class="card-header">
+                        <span class="card-num">Puzzle 1</span>
+                        <span class="card-theme">Garden Flowers</span>
+                    </div>
+                    <div class="card-grid-wrap"><div class="card-grid">
+                        <span>R</span><span>M</span><span>T</span><span>U</span><span>K</span><span>P</span><span>Q</span>
+                        <span class="h">D</span><span class="h">A</span><span class="h">I</span><span class="h">S</span><span class="h">Y</span><span>W</span><span>B</span>
+                        <span>A</span><span>O</span><span>N</span><span>F</span><span>J</span><span>G</span><span>V</span>
+                        <span class="h">R</span><span>X</span><span>E</span><span>C</span><span>I</span><span>L</span><span>H</span>
+                        <span class="h">O</span><span>H</span><span>A</span><span>R</span><span>N</span><span>S</span><span>W</span>
+                        <span class="h">S</span><span class="h">T</span><span class="h">U</span><span class="h">L</span><span class="h">I</span><span class="h">P</span><span>E</span>
+                        <span class="h">E</span><span>F</span><span>Q</span><span>Z</span><span>D</span><span>M</span><span>J</span>
+                    </div></div>
+                    <div class="card-words"><span>DAISY</span><span>TULIP</span><span>ROSE</span></div>
+                </div>
+                <div class="preview-card">
+                    <div class="card-header">
+                        <span class="card-num">Puzzle 14</span>
+                        <span class="card-theme">Ocean Life</span>
+                    </div>
+                    <div class="card-grid-wrap"><div class="card-grid">
+                        <span>B</span><span>O</span><span>C</span><span>E</span><span>A</span><span>N</span><span>F</span>
+                        <span>S</span><span class="h">S</span><span class="h">H</span><span class="h">E</span><span class="h">L</span><span class="h">L</span><span>K</span>
+                        <span class="h">W</span><span class="h">A</span><span class="h">V</span><span class="h">E</span><span class="h">S</span><span>D</span><span>P</span>
+                        <span>T</span><span>I</span><span>D</span><span>E</span><span>G</span><span>R</span><span>M</span>
+                        <span>Q</span><span>F</span><span>U</span><span>X</span><span class="h">C</span><span>J</span><span>L</span>
+                        <span>N</span><span>A</span><span>H</span><span>Y</span><span class="h">O</span><span>V</span><span>Z</span>
+                        <span>W</span><span>S</span><span>G</span><span>R</span><span class="h">R</span><span>B</span><span>D</span>
+                    </div></div>
+                    <div class="card-words"><span>SHELL</span><span>WAVES</span><span>CORAL</span></div>
+                </div>
+                <div class="preview-card">
+                    <div class="card-header">
+                        <span class="card-num">Puzzle 27</span>
+                        <span class="card-theme">Sweet Treats</span>
+                    </div>
+                    <div class="card-grid-wrap"><div class="card-grid">
+                        <span>L</span><span>M</span><span>N</span><span>G</span><span>R</span><span>P</span><span>W</span>
+                        <span class="h">C</span><span class="h">O</span><span class="h">O</span><span class="h">K</span><span class="h">I</span><span class="h">E</span><span>V</span>
+                        <span>D</span><span>A</span><span>B</span><span>F</span><span>T</span><span>Q</span><span class="h">C</span>
+                        <span>H</span><span>X</span><span class="h">F</span><span class="h">U</span><span class="h">D</span><span class="h">G</span><span class="h">E</span>
+                        <span>J</span><span>K</span><span>S</span><span>Y</span><span>Z</span><span>I</span><span>U</span>
+                        <span>E</span><span>R</span><span>O</span><span>U</span><span>C</span><span>N</span><span>A</span>
+                        <span class="h">C</span><span class="h">A</span><span class="h">K</span><span class="h">E</span><span>P</span><span>W</span><span>B</span>
+                    </div></div>
+                    <div class="card-words"><span>COOKIE</span><span>FUDGE</span><span>CAKE</span></div>
+                </div>
+                <div class="preview-card">
+                    <div class="card-header">
+                        <span class="card-num">Puzzle 42</span>
+                        <span class="card-theme">At the Park</span>
+                    </div>
+                    <div class="card-grid-wrap"><div class="card-grid">
+                        <span class="h">B</span><span>V</span><span>K</span><span>W</span><span>Q</span><span>M</span><span>J</span>
+                        <span class="h">E</span><span>L</span><span class="h">T</span><span class="h">R</span><span class="h">E</span><span class="h">E</span><span class="h">S</span>
+                        <span class="h">N</span><span>P</span><span>U</span><span>H</span><span>G</span><span>R</span><span>A</span>
+                        <span class="h">C</span><span>D</span><span>F</span><span>X</span><span>I</span><span>O</span><span>N</span>
+                        <span class="h">H</span><span>W</span><span>Y</span><span>M</span><span>B</span><span>S</span><span>L</span>
+                        <span>Q</span><span>A</span><span>J</span><span class="h">P</span><span class="h">A</span><span class="h">T</span><span class="h">H</span>
+                        <span>R</span><span>G</span><span>Z</span><span>C</span><span>N</span><span>F</span><span>D</span>
+                    </div></div>
+                    <div class="card-words"><span>BENCH</span><span>TREES</span><span>PATH</span></div>
+                </div>
             </div>
+            <div class="back-features">${puzzle_count} Themed Puzzles &middot; Large Print &middot; Full Answer Key</div>
         """,
         "spine_html": '<div class="spine-text">${title} &mdash; ${author}</div>',
     },
