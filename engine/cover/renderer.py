@@ -32,6 +32,12 @@ COVER_TEMPLATE_HTML = Template("""<!DOCTYPE html>
 /* ── Injected cover dimensions ── */
 ${cover_css}
 
+/* ── Force single-page PDF at exact content size ── */
+@page {
+    size: var(--total-width) var(--total-height);
+    margin: 0;
+}
+
 /* ── Base layout ── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -670,11 +676,12 @@ async def render_cover(
 
             await page.set_content(html, wait_until="networkidle")
 
-            # Export full cover PDF
+            # Export full cover PDF (single page at exact content dimensions)
             await page.pdf(
                 path=str(pdf_path),
-                width=f"{dims.total_width}in",
-                height=f"{dims.total_height}in",
+                width=f"{dims.total_width_px}px",
+                height=f"{dims.total_height_px}px",
+                prefer_css_page_size=True,
                 print_background=True,
                 margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
             )
