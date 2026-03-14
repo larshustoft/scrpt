@@ -68,7 +68,8 @@ async def search_bestseller_covers(
     """
     from playwright.async_api import async_playwright
 
-    search_url = f"https://www.amazon.com/s?k={quote_plus(keyword)}&i=stripbooks"
+    # Sort by popularity (best sellers first) in Books department
+    search_url = f"https://www.amazon.com/s?k={quote_plus(keyword)}&i=stripbooks&s=exact-aware-popularity-rank"
     results: list[BestsellerCover] = []
 
     try:
