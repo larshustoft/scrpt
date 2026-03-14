@@ -144,11 +144,13 @@ export function getInteriorPageUrl(
 }
 
 export function getCoverPreviewUrl(catalogNumber: string, width = 800) {
-  return `${COMPANION_URL}/api/preview/${catalogNumber}/cover?width=${width}`
+  const t = Date.now()
+  return `${COMPANION_URL}/api/preview/${catalogNumber}/cover?width=${width}&t=${t}`
 }
 
 export function getCoverFullUrl(catalogNumber: string, width = 1600) {
-  return `${COMPANION_URL}/api/preview/${catalogNumber}/cover/full?width=${width}`
+  const t = Date.now()
+  return `${COMPANION_URL}/api/preview/${catalogNumber}/cover/full?width=${width}&t=${t}`
 }
 
 // ── Upload ────────────────────────────────────────────────────────
