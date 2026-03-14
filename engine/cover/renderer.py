@@ -172,30 +172,47 @@ NICHE_TEMPLATES = {
             /* ── Back Cover ── */
             .back-cover {
                 background: #142d4c;
-                padding: 180px 140px;
+                padding: 250px 180px 400px;
                 color: white;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
+                align-items: flex-start;
+            }
+            .back-cover .back-tagline {
+                font-size: 56px;
+                font-family: 'Georgia', serif;
+                font-style: italic;
+                color: rgba(255,255,255,0.5);
+                margin-bottom: 80px;
+                line-height: 1.6;
+                text-align: center;
+                width: 100%;
             }
             .back-cover h3 {
-                font-size: 72px;
-                margin-bottom: 50px;
+                font-size: 80px;
+                margin-bottom: 60px;
                 font-family: 'Georgia', serif;
                 color: #e2b44d;
             }
             .back-cover p {
-                font-size: 42px;
-                line-height: 1.7;
+                font-size: 46px;
+                line-height: 1.8;
                 opacity: 0.9;
-                margin-bottom: 8px;
+                margin-bottom: 20px;
+            }
+            .back-cover .back-divider {
+                width: 500px;
+                height: 4px;
+                background: linear-gradient(90deg, #e2b44d, transparent);
+                margin: 60px 0;
             }
             .back-cover .feature-list {
-                margin-top: 50px;
+                margin-top: 10px;
             }
             .back-cover .feature-item {
-                font-size: 40px;
-                line-height: 2.0;
+                font-size: 44px;
+                line-height: 2.2;
                 opacity: 0.85;
             }
 
@@ -377,11 +394,13 @@ NICHE_TEMPLATES = {
             <div class="bottom-accent"></div>
         """,
         "back_cover_html": """
+            <div class="back-tagline">"The perfect companion for quiet<br>afternoons and cozy evenings."</div>
             <h3>About This Book</h3>
             <p>Challenge your mind with ${puzzle_count} carefully crafted
             word search puzzles. Each puzzle features a unique theme with
-            large, easy-to-read letters. Perfect for relaxing at home
-            or on the go.</p>
+            large, easy-to-read letters designed for comfortable reading.
+            Perfect for relaxing at home or on the go.</p>
+            <div class="back-divider"></div>
             <div class="feature-list">
                 <div class="feature-item">&#9733; Large, easy-to-read print</div>
                 <div class="feature-item">&#9733; ${puzzle_count} unique themed puzzles</div>
@@ -552,6 +571,28 @@ NICHE_TEMPLATES = {
 }
 
 
+def _png_to_pdf(png_path: str, pdf_path: str, dims: CoverDimensions):
+    """Convert a full-spread PNG screenshot to a PDF at correct print dimensions.
+
+    The PNG is at 300 DPI pixel resolution (e.g. 5252×3375 px).
+    The PDF will be at the correct print dimensions (e.g. 17.5"×11.25").
+    This ensures KDP gets a properly-sized single-page PDF.
+    """
+    from reportlab.lib.units import inch
+    from reportlab.pdfgen import canvas as rl_canvas
+    from reportlab.lib.utils import ImageReader
+
+    # PDF page size in points (1 inch = 72 points)
+    page_w = dims.total_width * inch   # e.g. 17.5067 * 72 = 1260.5 pts
+    page_h = dims.total_height * inch  # e.g. 11.25 * 72 = 810 pts
+
+    c = rl_canvas.Canvas(pdf_path, pagesize=(page_w, page_h))
+    img = ImageReader(png_path)
+    # Draw the image to fill the entire page (300 DPI mapping)
+    c.drawImage(img, 0, 0, width=page_w, height=page_h)
+    c.save()
+
+
 def build_cover_html(
     dims: CoverDimensions,
     title: str,
@@ -676,18 +717,11 @@ async def render_cover(
 
             await page.set_content(html, wait_until="networkidle")
 
-            # Export full cover PDF (single page at exact content dimensions)
-            await page.pdf(
-                path=str(pdf_path),
-                width=f"{dims.total_width_px}px",
-                height=f"{dims.total_height_px}px",
-                prefer_css_page_size=True,
-                print_background=True,
-                margin={"top": "0", "right": "0", "bottom": "0", "left": "0"},
-            )
+            # Export full spread as PNG screenshot (pixel-perfect at 300 DPI)
+            full_png_path = output_dir / "cover-full.png"
+            await page.screenshot(path=str(full_png_path), full_page=True)
 
             # Export front cover PNG for preview
-            # Crop to just the front cover area
             await page.screenshot(
                 path=str(png_path),
                 clip={
@@ -699,6 +733,9 @@ async def render_cover(
             )
 
             await browser.close()
+
+            # Convert full spread PNG to PDF at correct print dimensions (300 DPI)
+            _png_to_pdf(str(full_png_path), str(pdf_path), dims)
 
         return {
             "success": True,
