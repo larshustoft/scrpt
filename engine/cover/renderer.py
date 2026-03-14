@@ -200,8 +200,9 @@ NICHE_TEMPLATES = {
                 color: white;
                 position: relative;
                 overflow: hidden;
-                justify-content: flex-start;
-                padding-top: 80px;
+                justify-content: center;
+                padding-top: 0;
+                padding-bottom: 120px;
             }
 
             /* Grid pattern overlay */
@@ -271,68 +272,68 @@ NICHE_TEMPLATES = {
             /* ── Decorative word search grid ── */
             .grid-motif {
                 display: grid;
-                grid-template-columns: repeat(9, 1fr);
-                gap: 2px;
-                width: 1000px;
-                margin: 30px auto 50px;
-                padding: 30px;
+                grid-template-columns: repeat(10, 1fr);
+                gap: 4px;
+                width: 1400px;
+                margin: 40px auto 60px;
+                padding: 40px;
                 background: rgba(255,255,255,0.06);
-                border-radius: 20px;
-                border: 3px solid rgba(255,255,255,0.08);
+                border-radius: 24px;
+                border: 3px solid rgba(255,255,255,0.10);
             }
             .grid-motif span {
-                font-size: 56px;
+                font-size: 68px;
                 font-family: 'Courier New', monospace;
                 font-weight: bold;
-                color: rgba(255,255,255,0.20);
+                color: rgba(255,255,255,0.18);
                 text-align: center;
-                line-height: 1.5;
+                line-height: 1.4;
             }
             .grid-motif span.hl {
                 color: #f4d03f;
-                opacity: 0.7;
+                opacity: 0.8;
             }
 
             /* ── Puzzle count badge ── */
             .puzzle-badge {
                 background: linear-gradient(135deg, #f4d03f 0%, #f39c12 100%);
                 color: #0c2340;
-                padding: 25px 80px;
+                padding: 30px 100px;
                 border-radius: 100px;
-                font-size: 68px;
+                font-size: 72px;
                 font-weight: bold;
                 font-family: Arial, Helvetica, sans-serif;
-                margin-bottom: 20px;
-                box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-                letter-spacing: 2px;
+                margin-bottom: 25px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+                letter-spacing: 3px;
             }
 
             .features-text {
-                font-size: 44px;
-                color: rgba(255,255,255,0.6);
-                margin-bottom: 30px;
-                letter-spacing: 1px;
+                font-size: 48px;
+                color: rgba(255,255,255,0.65);
+                margin-bottom: 40px;
+                letter-spacing: 2px;
             }
 
             /* ── Bottom section ── */
             .bottom-section {
-                margin-top: auto;
                 width: 100%;
                 text-align: center;
+                margin-top: 60px;
             }
 
             .bottom-divider {
-                width: 400px;
+                width: 500px;
                 height: 3px;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-                margin: 0 auto 30px;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+                margin: 0 auto 40px;
             }
 
             .author {
-                font-size: 64px;
-                color: rgba(255,255,255,0.7);
+                font-size: 72px;
+                color: rgba(255,255,255,0.75);
                 font-family: 'Georgia', serif;
-                letter-spacing: 3px;
+                letter-spacing: 4px;
             }
 
             /* ── Bottom accent ── */
@@ -353,11 +354,13 @@ NICHE_TEMPLATES = {
             <div class="decorative"></div>
             <div class="subtitle">${subtitle}</div>
             <div class="grid-motif">
-                <span class="hl">W</span><span>G</span><span>T</span><span class="hl">O</span><span>N</span><span>P</span><span class="hl">R</span><span>K</span><span class="hl">D</span>
-                <span>A</span><span class="hl">S</span><span>M</span><span>B</span><span class="hl">E</span><span>Q</span><span>F</span><span class="hl">A</span><span>L</span>
-                <span>H</span><span>R</span><span class="hl">R</span><span>D</span><span>U</span><span class="hl">C</span><span>W</span><span>E</span><span class="hl">H</span>
-                <span class="hl">P</span><span>K</span><span>M</span><span class="hl">U</span><span>T</span><span>B</span><span class="hl">Z</span><span>O</span><span class="hl">Z</span>
-                <span>Y</span><span class="hl">L</span><span>A</span><span>N</span><span class="hl">E</span><span>R</span><span>G</span><span class="hl">I</span><span>C</span>
+                <span class="hl">W</span><span>G</span><span>T</span><span class="hl">O</span><span>N</span><span>P</span><span class="hl">R</span><span>K</span><span class="hl">D</span><span>M</span>
+                <span>A</span><span class="hl">S</span><span>M</span><span>B</span><span class="hl">E</span><span>Q</span><span>F</span><span class="hl">A</span><span>L</span><span>V</span>
+                <span>H</span><span>R</span><span class="hl">R</span><span>D</span><span>U</span><span class="hl">C</span><span>W</span><span>E</span><span class="hl">H</span><span>J</span>
+                <span class="hl">P</span><span>K</span><span>M</span><span class="hl">U</span><span>T</span><span>B</span><span class="hl">Z</span><span>O</span><span class="hl">Z</span><span>N</span>
+                <span>Y</span><span class="hl">L</span><span>A</span><span>N</span><span class="hl">E</span><span>R</span><span>G</span><span class="hl">I</span><span>C</span><span>Q</span>
+                <span>D</span><span>F</span><span class="hl">S</span><span>X</span><span>W</span><span class="hl">N</span><span>O</span><span>R</span><span>T</span><span class="hl">E</span>
+                <span class="hl">B</span><span>I</span><span>V</span><span class="hl">G</span><span>J</span><span>A</span><span class="hl">M</span><span>H</span><span>K</span><span class="hl">F</span>
             </div>
             <div class="puzzle-badge">${puzzle_count} THEMED PUZZLES</div>
             <div class="features-text">Complete Answer Key Included</div>
