@@ -637,17 +637,19 @@ async def preview_cover(
     catalog_number = _resolve_catalog_number(identifier)
     output_path = OUTPUT_DIR / catalog_number
 
+    no_cache_headers = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+
     # First try the pre-rendered PNG
     cover_front = output_path / "cover-front.png"
     if cover_front.exists():
-        return FileResponse(str(cover_front), media_type="image/png")
+        return FileResponse(str(cover_front), media_type="image/png", headers=no_cache_headers)
 
     # Fall back to rendering from cover PDF
     cover_pdf = output_path / "cover.pdf"
     if cover_pdf.exists():
         try:
             png_bytes = _render_pdf_page(str(cover_pdf), 0, width)
-            return Response(content=png_bytes, media_type="image/png")
+            return Response(content=png_bytes, media_type="image/png", headers=no_cache_headers)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Cover render failed: {str(e)}")
 
@@ -673,7 +675,8 @@ async def preview_cover_full(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cover render failed: {str(e)}")
 
-    return Response(content=png_bytes, media_type="image/png")
+    no_cache_headers = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+    return Response(content=png_bytes, media_type="image/png", headers=no_cache_headers)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
