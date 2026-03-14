@@ -76,12 +76,13 @@ body {
     writing-mode: vertical-rl;
     text-orientation: mixed;
     transform: rotate(180deg);
-    font-size: 14px;
+    font-size: 42px;
     font-weight: bold;
-    letter-spacing: 1px;
+    letter-spacing: 3px;
     white-space: nowrap;
     color: white;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    font-family: 'Georgia', serif;
 }
 
 .front-cover {
@@ -156,177 +157,382 @@ ${template_css}
 NICHE_TEMPLATES = {
     "word_search": {
         "template_css": """
+            /* ── Background ── */
             .bleed-fill {
-                background: linear-gradient(135deg, #1a365d 0%, #2d3748 40%, #1a365d 100%);
+                background: linear-gradient(160deg, #0f2027 0%, #1a365d 35%, #203a5c 65%, #0f2027 100%);
             }
-            .spine { background: #1a365d; }
+            .spine { background: #142d4c; }
+
+            /* ── Back Cover ── */
             .back-cover {
-                background: #1a365d;
-                padding: 80px;
+                background: #142d4c;
+                padding: 180px 140px;
                 color: white;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
             }
             .back-cover h3 {
-                font-size: 28px;
-                margin-bottom: 20px;
+                font-size: 72px;
+                margin-bottom: 50px;
                 font-family: 'Georgia', serif;
+                color: #e2b44d;
             }
             .back-cover p {
-                font-size: 16px;
-                line-height: 1.6;
+                font-size: 42px;
+                line-height: 1.7;
                 opacity: 0.9;
+                margin-bottom: 8px;
             }
+            .back-cover .feature-list {
+                margin-top: 50px;
+            }
+            .back-cover .feature-item {
+                font-size: 40px;
+                line-height: 2.0;
+                opacity: 0.85;
+            }
+
+            /* ── Front Cover — Bold dark design ── */
             .front-cover {
-                background: linear-gradient(180deg, #ebf8ff 0%, #bee3f8 100%);
+                background: linear-gradient(175deg, #0c2340 0%, #163a5f 40%, #1a4a6e 60%, #0c2340 100%);
                 text-align: center;
-                color: #1a365d;
-            }
-            .title {
-                font-size: 72px;
-                font-weight: bold;
-                font-family: 'Georgia', serif;
-                line-height: 1.1;
-                margin-bottom: 20px;
-                color: #1a365d;
-            }
-            .subtitle {
-                font-size: 32px;
-                font-family: 'Georgia', serif;
-                color: #2b6cb0;
-                margin-bottom: 40px;
-            }
-            .badge {
-                background: #1a365d;
                 color: white;
-                padding: 12px 36px;
-                border-radius: 50px;
-                font-size: 22px;
+                position: relative;
+                overflow: hidden;
+                justify-content: flex-start;
+                padding-top: 80px;
+            }
+
+            /* Grid pattern overlay */
+            .front-cover::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background-image:
+                    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+                background-size: 130px 130px;
+                z-index: 0;
+            }
+
+            .front-cover > * { position: relative; z-index: 1; }
+
+            /* ── LARGE PRINT banner at top ── */
+            .top-banner {
+                background: linear-gradient(135deg, #c0392b 0%, #e74c3c 50%, #c0392b 100%);
+                color: white;
+                padding: 22px 120px;
+                font-size: 64px;
                 font-weight: bold;
-                letter-spacing: 2px;
-                margin-bottom: 30px;
-            }
-            .puzzle-count {
-                font-size: 24px;
-                color: #4a5568;
+                letter-spacing: 10px;
+                font-family: Arial, Helvetica, sans-serif;
                 margin-bottom: 60px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.4);
             }
-            .author {
-                font-size: 28px;
-                color: #4a5568;
+
+            /* ── Main title "WORD SEARCH" huge ── */
+            .title-main {
+                font-size: 280px;
+                font-weight: bold;
+                font-family: Arial, Helvetica, sans-serif;
+                line-height: 1.0;
+                color: white;
+                text-shadow: 4px 6px 12px rgba(0,0,0,0.3);
+                letter-spacing: 6px;
+                margin-bottom: 10px;
+            }
+
+            /* ── Sub-title target audience ── */
+            .title-audience {
+                font-size: 130px;
+                font-weight: bold;
                 font-family: 'Georgia', serif;
+                color: #f4d03f;
+                margin-bottom: 50px;
+                text-shadow: 2px 4px 8px rgba(0,0,0,0.3);
             }
+
             .decorative {
-                width: 120px;
-                height: 4px;
-                background: #2b6cb0;
-                margin: 20px auto;
-                border-radius: 2px;
+                width: 600px;
+                height: 6px;
+                background: linear-gradient(90deg, transparent, rgba(244,208,63,0.6), transparent);
+                margin: 10px auto 40px;
+            }
+
+            .subtitle {
+                font-size: 80px;
+                font-family: 'Georgia', serif;
+                color: rgba(255,255,255,0.85);
+                margin-bottom: 40px;
+                font-style: italic;
+            }
+
+            /* ── Decorative word search grid ── */
+            .grid-motif {
+                display: grid;
+                grid-template-columns: repeat(9, 1fr);
+                gap: 2px;
+                width: 1000px;
+                margin: 30px auto 50px;
+                padding: 30px;
+                background: rgba(255,255,255,0.06);
+                border-radius: 20px;
+                border: 3px solid rgba(255,255,255,0.08);
+            }
+            .grid-motif span {
+                font-size: 56px;
+                font-family: 'Courier New', monospace;
+                font-weight: bold;
+                color: rgba(255,255,255,0.20);
+                text-align: center;
+                line-height: 1.5;
+            }
+            .grid-motif span.hl {
+                color: #f4d03f;
+                opacity: 0.7;
+            }
+
+            /* ── Puzzle count badge ── */
+            .puzzle-badge {
+                background: linear-gradient(135deg, #f4d03f 0%, #f39c12 100%);
+                color: #0c2340;
+                padding: 25px 80px;
+                border-radius: 100px;
+                font-size: 68px;
+                font-weight: bold;
+                font-family: Arial, Helvetica, sans-serif;
+                margin-bottom: 20px;
+                box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+                letter-spacing: 2px;
+            }
+
+            .features-text {
+                font-size: 44px;
+                color: rgba(255,255,255,0.6);
+                margin-bottom: 30px;
+                letter-spacing: 1px;
+            }
+
+            /* ── Bottom section ── */
+            .bottom-section {
+                margin-top: auto;
+                width: 100%;
+                text-align: center;
+            }
+
+            .bottom-divider {
+                width: 400px;
+                height: 3px;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+                margin: 0 auto 30px;
+            }
+
+            .author {
+                font-size: 64px;
+                color: rgba(255,255,255,0.7);
+                font-family: 'Georgia', serif;
+                letter-spacing: 3px;
+            }
+
+            /* ── Bottom accent ── */
+            .bottom-accent {
+                width: 100%;
+                height: 50px;
+                background: linear-gradient(90deg, #c0392b, #e74c3c, #c0392b);
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 2;
             }
         """,
         "front_cover_html": """
-            <div class="title">${title}</div>
+            <div class="top-banner">LARGE PRINT</div>
+            <div class="title-main">WORD<br>SEARCH</div>
+            <div class="title-audience">for Seniors</div>
             <div class="decorative"></div>
             <div class="subtitle">${subtitle}</div>
-            <div class="badge">LARGE PRINT</div>
-            <div class="puzzle-count">${puzzle_count} Puzzles</div>
-            <div class="author">${author}</div>
+            <div class="grid-motif">
+                <span class="hl">W</span><span>G</span><span>T</span><span class="hl">O</span><span>N</span><span>P</span><span class="hl">R</span><span>K</span><span class="hl">D</span>
+                <span>A</span><span class="hl">S</span><span>M</span><span>B</span><span class="hl">E</span><span>Q</span><span>F</span><span class="hl">A</span><span>L</span>
+                <span>H</span><span>R</span><span class="hl">R</span><span>D</span><span>U</span><span class="hl">C</span><span>W</span><span>E</span><span class="hl">H</span>
+                <span class="hl">P</span><span>K</span><span>M</span><span class="hl">U</span><span>T</span><span>B</span><span class="hl">Z</span><span>O</span><span class="hl">Z</span>
+                <span>Y</span><span class="hl">L</span><span>A</span><span>N</span><span class="hl">E</span><span>R</span><span>G</span><span class="hl">I</span><span>C</span>
+            </div>
+            <div class="puzzle-badge">${puzzle_count} THEMED PUZZLES</div>
+            <div class="features-text">Complete Answer Key Included</div>
+            <div class="bottom-section">
+                <div class="bottom-divider"></div>
+                <div class="author">${author}</div>
+            </div>
+            <div class="bottom-accent"></div>
         """,
         "back_cover_html": """
             <h3>About This Book</h3>
-            <p>Challenge your mind with ${puzzle_count} carefully crafted word search puzzles.
-            Large print format makes every letter easy to see.
-            Perfect for relaxing at home or on the go.</p>
-            <p style="margin-top: 30px;">Features:</p>
-            <p>&#8226; Large, easy-to-read letters</p>
-            <p>&#8226; ${puzzle_count} unique themed puzzles</p>
-            <p>&#8226; Complete answer key included</p>
-            <p>&#8226; Premium quality paper</p>
+            <p>Challenge your mind with ${puzzle_count} carefully crafted
+            word search puzzles. Each puzzle features a unique theme with
+            large, easy-to-read letters. Perfect for relaxing at home
+            or on the go.</p>
+            <div class="feature-list">
+                <div class="feature-item">&#9733; Large, easy-to-read print</div>
+                <div class="feature-item">&#9733; ${puzzle_count} unique themed puzzles</div>
+                <div class="feature-item">&#9733; Complete answer key included</div>
+                <div class="feature-item">&#9733; Premium quality paper</div>
+                <div class="feature-item">&#9733; Perfect gift for puzzle lovers</div>
+            </div>
         """,
         "spine_html": '<div class="spine-text">${title} &mdash; ${author}</div>',
     },
 
     "sudoku": {
         "template_css": """
-            .bleed-fill { background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%); }
-            .spine { background: #2d3748; }
-            .back-cover { background: #2d3748; padding: 80px; color: white; }
-            .back-cover h3 { font-size: 28px; margin-bottom: 20px; }
-            .back-cover p { font-size: 16px; line-height: 1.6; opacity: 0.9; }
+            .bleed-fill { background: linear-gradient(160deg, #1a1a2e 0%, #2d3748 50%, #1a1a2e 100%); }
+            .spine { background: #1a1a2e; }
+            .back-cover { background: #1a1a2e; padding: 180px 140px; color: white; display: flex; flex-direction: column; justify-content: center; }
+            .back-cover h3 { font-size: 72px; margin-bottom: 50px; color: #f6e05e; font-family: 'Georgia', serif; }
+            .back-cover p { font-size: 42px; line-height: 1.7; opacity: 0.9; }
             .front-cover {
-                background: linear-gradient(180deg, #fefcbf 0%, #f6e05e 100%);
+                background: linear-gradient(175deg, #fffef0 0%, #fef9c3 50%, #fde68a 100%);
                 text-align: center; color: #2d3748;
+                position: relative; overflow: hidden;
             }
-            .title { font-size: 72px; font-weight: bold; font-family: 'Georgia', serif; line-height: 1.1; margin-bottom: 20px; }
-            .subtitle { font-size: 32px; color: #4a5568; margin-bottom: 30px; }
-            .badge { background: #2d3748; color: #f6e05e; padding: 12px 36px; border-radius: 50px; font-size: 22px; font-weight: bold; letter-spacing: 2px; margin-bottom: 30px; }
-            .author { font-size: 28px; color: #4a5568; margin-top: 40px; }
-            .decorative { width: 120px; height: 4px; background: #d69e2e; margin: 20px auto; border-radius: 2px; }
+            .front-cover::before {
+                content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                background-image:
+                    linear-gradient(rgba(45,55,72,0.04) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(45,55,72,0.04) 1px, transparent 1px);
+                background-size: 160px 160px;
+                z-index: 0;
+            }
+            .front-cover::after {
+                content: ''; position: absolute;
+                top: 100px; left: 100px; right: 100px; bottom: 100px;
+                border: 6px solid rgba(45,55,72,0.07); border-radius: 30px; z-index: 0;
+            }
+            .front-cover > * { position: relative; z-index: 1; }
+            .top-accent { width: 100%; height: 60px; background: linear-gradient(90deg, #2d3748, #4a5568, #2d3748); position: absolute; top: 0; left: 0; z-index: 2; }
+            .title { font-size: 200px; font-weight: bold; font-family: 'Georgia', serif; line-height: 1.12; margin-bottom: 40px; color: #2d3748; max-width: 90%; }
+            .decorative { width: 500px; height: 8px; background: linear-gradient(90deg, transparent, #d69e2e, transparent); margin: 30px auto; }
+            .subtitle { font-size: 90px; font-family: 'Georgia', serif; color: #92400e; margin-bottom: 60px; font-style: italic; }
+            .badge { background: linear-gradient(135deg, #2d3748, #4a5568); color: #f6e05e; padding: 30px 100px; border-radius: 100px; font-size: 72px; font-weight: bold; letter-spacing: 8px; margin-bottom: 50px; box-shadow: 0 8px 30px rgba(45,55,72,0.25); }
+            .author { font-size: 72px; color: #6b7280; font-family: 'Georgia', serif; letter-spacing: 2px; }
+            .bottom-accent { width: 100%; height: 60px; background: linear-gradient(90deg, #2d3748, #4a5568, #2d3748); position: absolute; bottom: 0; left: 0; z-index: 2; }
+            .bottom-section { margin-top: auto; width: 100%; text-align: center; }
+            .bottom-divider { width: 300px; height: 4px; background: linear-gradient(90deg, transparent, rgba(45,55,72,0.2), transparent); margin: 0 auto 40px; }
         """,
         "front_cover_html": """
+            <div class="top-accent"></div>
             <div class="title">${title}</div>
             <div class="decorative"></div>
             <div class="subtitle">${subtitle}</div>
             <div class="badge">LARGE PRINT</div>
-            <div class="author">${author}</div>
+            <div class="bottom-section">
+                <div class="bottom-divider"></div>
+                <div class="author">${author}</div>
+            </div>
+            <div class="bottom-accent"></div>
         """,
         "back_cover_html": """
             <h3>About This Book</h3>
-            <p>Enjoy hours of brain-training fun with these carefully crafted sudoku puzzles.</p>
+            <p>Enjoy hours of brain-training fun with these carefully crafted sudoku puzzles.
+            Large print format for easy reading. Complete answer key included.</p>
         """,
         "spine_html": '<div class="spine-text">${title} &mdash; ${author}</div>',
     },
 
     "cryptogram": {
         "template_css": """
-            .bleed-fill { background: linear-gradient(135deg, #2c5282 0%, #2b6cb0 100%); }
-            .spine { background: #2c5282; }
-            .back-cover { background: #2c5282; padding: 80px; color: white; }
-            .back-cover h3 { font-size: 28px; margin-bottom: 20px; }
-            .back-cover p { font-size: 16px; line-height: 1.6; opacity: 0.9; }
+            .bleed-fill { background: linear-gradient(160deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%); }
+            .spine { background: #1e1b4b; }
+            .back-cover { background: #1e1b4b; padding: 180px 140px; color: white; display: flex; flex-direction: column; justify-content: center; }
+            .back-cover h3 { font-size: 72px; margin-bottom: 50px; color: #a5b4fc; font-family: 'Georgia', serif; }
+            .back-cover p { font-size: 42px; line-height: 1.7; opacity: 0.9; }
             .front-cover {
-                background: linear-gradient(180deg, #ebf4ff 0%, #c3dafe 100%);
-                text-align: center; color: #2c5282;
+                background: linear-gradient(175deg, #eef2ff 0%, #e0e7ff 50%, #c7d2fe 100%);
+                text-align: center; color: #1e1b4b;
+                position: relative; overflow: hidden;
             }
-            .title { font-size: 66px; font-weight: bold; font-family: 'Georgia', serif; line-height: 1.1; margin-bottom: 20px; }
-            .subtitle { font-size: 28px; color: #4c51bf; margin-bottom: 30px; }
-            .badge { background: #2c5282; color: white; padding: 12px 36px; border-radius: 50px; font-size: 22px; font-weight: bold; margin-bottom: 30px; }
-            .author { font-size: 28px; color: #4a5568; margin-top: 40px; }
-            .decorative { width: 120px; height: 4px; background: #4c51bf; margin: 20px auto; }
+            .front-cover::before {
+                content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                background-image:
+                    linear-gradient(rgba(30,27,75,0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(30,27,75,0.03) 1px, transparent 1px);
+                background-size: 120px 120px;
+                z-index: 0;
+            }
+            .front-cover::after {
+                content: ''; position: absolute;
+                top: 100px; left: 100px; right: 100px; bottom: 100px;
+                border: 6px solid rgba(30,27,75,0.07); border-radius: 30px; z-index: 0;
+            }
+            .front-cover > * { position: relative; z-index: 1; }
+            .top-accent { width: 100%; height: 60px; background: linear-gradient(90deg, #312e81, #4338ca, #312e81); position: absolute; top: 0; left: 0; z-index: 2; }
+            .title { font-size: 190px; font-weight: bold; font-family: 'Georgia', serif; line-height: 1.12; margin-bottom: 40px; color: #1e1b4b; max-width: 90%; }
+            .decorative { width: 500px; height: 8px; background: linear-gradient(90deg, transparent, #6366f1, transparent); margin: 30px auto; }
+            .subtitle { font-size: 90px; font-family: 'Georgia', serif; color: #4338ca; margin-bottom: 60px; font-style: italic; }
+            .badge { background: linear-gradient(135deg, #312e81, #4338ca); color: white; padding: 30px 100px; border-radius: 100px; font-size: 72px; font-weight: bold; letter-spacing: 8px; margin-bottom: 50px; box-shadow: 0 8px 30px rgba(30,27,75,0.25); }
+            .author { font-size: 72px; color: #6b7280; font-family: 'Georgia', serif; letter-spacing: 2px; }
+            .bottom-accent { width: 100%; height: 60px; background: linear-gradient(90deg, #312e81, #4338ca, #312e81); position: absolute; bottom: 0; left: 0; z-index: 2; }
+            .bottom-section { margin-top: auto; width: 100%; text-align: center; }
+            .bottom-divider { width: 300px; height: 4px; background: linear-gradient(90deg, transparent, rgba(30,27,75,0.2), transparent); margin: 0 auto 40px; }
         """,
         "front_cover_html": """
+            <div class="top-accent"></div>
             <div class="title">${title}</div>
             <div class="decorative"></div>
             <div class="subtitle">${subtitle}</div>
             <div class="badge">LARGE PRINT</div>
-            <div class="author">${author}</div>
+            <div class="bottom-section">
+                <div class="bottom-divider"></div>
+                <div class="author">${author}</div>
+            </div>
+            <div class="bottom-accent"></div>
         """,
         "back_cover_html": """
             <h3>About This Book</h3>
-            <p>Decode famous quotes and sayings in these entertaining cryptogram puzzles. Complete answer key included.</p>
+            <p>Decode famous quotes and sayings in these entertaining cryptogram puzzles.
+            Large print for easy reading. Complete answer key included.</p>
         """,
         "spine_html": '<div class="spine-text">${title} &mdash; ${author}</div>',
     },
 
     "default": {
         "template_css": """
-            .bleed-fill { background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%); }
-            .spine { background: #2d3748; }
-            .back-cover { background: #2d3748; padding: 80px; color: white; }
-            .back-cover h3 { font-size: 28px; margin-bottom: 20px; }
-            .back-cover p { font-size: 16px; line-height: 1.6; opacity: 0.9; }
+            .bleed-fill { background: linear-gradient(160deg, #1f2937 0%, #374151 50%, #1f2937 100%); }
+            .spine { background: #1f2937; }
+            .back-cover { background: #1f2937; padding: 180px 140px; color: white; display: flex; flex-direction: column; justify-content: center; }
+            .back-cover h3 { font-size: 72px; margin-bottom: 50px; font-family: 'Georgia', serif; }
+            .back-cover p { font-size: 42px; line-height: 1.7; opacity: 0.9; }
             .front-cover {
-                background: linear-gradient(180deg, #f7fafc 0%, #edf2f7 100%);
-                text-align: center; color: #2d3748;
+                background: linear-gradient(175deg, #f9fafb 0%, #f3f4f6 50%, #e5e7eb 100%);
+                text-align: center; color: #1f2937;
+                position: relative; overflow: hidden;
             }
-            .title { font-size: 66px; font-weight: bold; font-family: 'Georgia', serif; line-height: 1.1; margin-bottom: 20px; }
-            .subtitle { font-size: 28px; color: #4a5568; margin-bottom: 30px; }
-            .author { font-size: 28px; color: #4a5568; margin-top: 40px; }
-            .decorative { width: 120px; height: 4px; background: #4a5568; margin: 20px auto; }
+            .front-cover::after {
+                content: ''; position: absolute;
+                top: 100px; left: 100px; right: 100px; bottom: 100px;
+                border: 6px solid rgba(31,41,55,0.06); border-radius: 30px; z-index: 0;
+            }
+            .front-cover > * { position: relative; z-index: 1; }
+            .top-accent { width: 100%; height: 60px; background: linear-gradient(90deg, #1f2937, #374151, #1f2937); position: absolute; top: 0; left: 0; z-index: 2; }
+            .title { font-size: 200px; font-weight: bold; font-family: 'Georgia', serif; line-height: 1.12; margin-bottom: 40px; color: #1f2937; max-width: 90%; }
+            .decorative { width: 500px; height: 8px; background: linear-gradient(90deg, transparent, #6b7280, transparent); margin: 30px auto; }
+            .subtitle { font-size: 90px; font-family: 'Georgia', serif; color: #4b5563; margin-bottom: 60px; font-style: italic; }
+            .author { font-size: 72px; color: #6b7280; font-family: 'Georgia', serif; letter-spacing: 2px; }
+            .bottom-accent { width: 100%; height: 60px; background: linear-gradient(90deg, #1f2937, #374151, #1f2937); position: absolute; bottom: 0; left: 0; z-index: 2; }
+            .bottom-section { margin-top: auto; width: 100%; text-align: center; }
+            .bottom-divider { width: 300px; height: 4px; background: linear-gradient(90deg, transparent, rgba(31,41,55,0.2), transparent); margin: 0 auto 40px; }
         """,
         "front_cover_html": """
+            <div class="top-accent"></div>
             <div class="title">${title}</div>
             <div class="decorative"></div>
             <div class="subtitle">${subtitle}</div>
-            <div class="author">${author}</div>
+            <div class="bottom-section">
+                <div class="bottom-divider"></div>
+                <div class="author">${author}</div>
+            </div>
+            <div class="bottom-accent"></div>
         """,
         "back_cover_html": """
             <h3>About This Book</h3>
