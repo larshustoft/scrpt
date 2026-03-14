@@ -15,7 +15,7 @@ ENGINE_DIR = Path(__file__).parent
 PROJECT_ROOT = ENGINE_DIR.parent
 
 # ── Environment Variables ────────────────────────────────────────
-load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(PROJECT_ROOT / ".env", override=True)
 
 # ── Data & Output Directories ───────────────────────────────────
 DATA_DIR = PROJECT_ROOT / "data"
