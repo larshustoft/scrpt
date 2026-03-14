@@ -106,18 +106,24 @@ body {
 }
 
 /* ── Barcode zone ── */
+/* Coords from dimensions.py are in full-spread space; subtract bleed
+   because .barcode-zone sits inside .back-cover which starts at (bleed, bleed) */
 .barcode-zone {
     position: absolute;
-    left: var(--barcode-x);
-    top: var(--barcode-y);
+    left: calc(var(--barcode-x) - var(--bleed));
+    top: calc(var(--barcode-y) - var(--bleed));
     width: var(--barcode-width);
     height: var(--barcode-height);
-    border: 2px dashed rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.92);
+    border: 2px dashed rgba(0,0,0,0.15);
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
-    color: rgba(255,255,255,0.5);
+    font-size: 18px;
+    font-family: Arial, sans-serif;
+    color: rgba(0,0,0,0.25);
+    letter-spacing: 2px;
 }
 
 /* ── Bleed area (background extends into it) ── */
@@ -171,112 +177,77 @@ NICHE_TEMPLATES = {
 
             /* ── Back Cover ── */
             .back-cover {
-                background: #142d4c;
-                padding: 120px 90px 330px;
-                color: white;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
+                background: #0e1f33;
             }
-            .back-header {
-                font-size: 52px;
-                font-family: Arial, Helvetica, sans-serif;
-                font-weight: bold;
-                color: #e2b44d;
-                letter-spacing: 12px;
-                margin-bottom: 40px;
-                text-align: center;
-                text-transform: uppercase;
-            }
-            .preview-grid {
+            /* 2×2 page-preview grid — positioned with KDP safe-zone margins */
+            .back-pages {
+                position: absolute;
+                top: 75px;       /* 0.25" safe zone */
+                left: 75px;      /* 0.25" safe zone */
+                right: 75px;     /* 0.25" from spine */
+                bottom: 640px;   /* clears barcode zone (0.76" + 1.2" + gap) */
                 display: grid;
                 grid-template-columns: 1fr 1fr;
-                gap: 36px;
-                width: 100%;
-                flex: 1;
+                grid-template-rows: 1fr 1fr;
+                gap: 28px;
+                justify-items: center;
+                align-items: stretch;
             }
-            .preview-card {
-                background: white;
-                border-radius: 10px;
-                overflow: hidden;
+            /* Each preview looks like a real interior page */
+            .pg {
+                background: #fff;
+                border-radius: 3px;
+                box-shadow: 2px 4px 18px rgba(0,0,0,0.55);
                 display: flex;
                 flex-direction: column;
-                box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+                padding: 16px 14px 10px;
+                width: 100%;
             }
-            .card-header {
-                background: linear-gradient(135deg, #f0f0f0, #e4e4e4);
-                padding: 14px 20px;
+            .pg-hd {
                 display: flex;
                 justify-content: space-between;
-                align-items: center;
-                border-bottom: 2px solid #d0d0d0;
+                align-items: baseline;
+                padding-bottom: 6px;
+                border-bottom: 1.5px solid #ddd;
+                margin-bottom: 6px;
             }
-            .card-num {
-                font-size: 22px;
-                font-weight: bold;
-                color: #333;
-                font-family: Arial, sans-serif;
+            .pg-hd b {
+                font: bold 20px/1.2 Arial, sans-serif;
+                color: #222;
             }
-            .card-theme {
-                font-size: 20px;
-                color: #666;
-                font-family: 'Georgia', serif;
-                font-style: italic;
+            .pg-hd em {
+                font: italic 17px/1.2 'Georgia', serif;
+                color: #999;
             }
-            .card-grid-wrap {
-                padding: 14px 18px 10px;
+            .pg-g {
                 flex: 1;
-                display: flex;
-                align-items: stretch;
-                justify-content: stretch;
-            }
-            .card-grid {
                 display: grid;
-                grid-template-columns: repeat(7, 1fr);
-                grid-template-rows: repeat(7, 1fr);
-                gap: 1px;
-                width: 100%;
-                border: 2px solid #bbb;
-                background: #d0d0d0;
+                grid-template-columns: repeat(10, 1fr);
+                grid-template-rows: repeat(10, 1fr);
+                border: 1.5px solid #999;
+                background: #ccc;
+                gap: 0.5px;
             }
-            .card-grid span {
-                font-size: 34px;
-                font-family: 'Courier New', monospace;
-                font-weight: bold;
-                color: #444;
-                background: white;
+            .pg-g span {
+                background: #fff;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                font: bold 62px 'Courier New', monospace;
+                color: #333;
             }
-            .card-grid span.h {
-                background: #fef3c7;
-                color: #b91c1c;
+            .pg-g span.h {
+                background: #dbeafe;
+                color: #1e40af;
             }
-            .card-words {
-                padding: 12px 20px 16px;
-                display: flex;
-                gap: 18px;
-                justify-content: center;
-                background: #f8f8f8;
-                border-top: 1px solid #e0e0e0;
-                flex-wrap: wrap;
-            }
-            .card-words span {
-                font-size: 20px;
-                font-family: Arial, sans-serif;
-                font-weight: bold;
-                color: #555;
-                letter-spacing: 2px;
-            }
-            .back-features {
-                font-size: 38px;
-                color: rgba(255,255,255,0.75);
-                letter-spacing: 3px;
-                margin-top: 45px;
+            .pg-wl {
+                margin-top: 6px;
+                padding-top: 6px;
+                border-top: 1px solid #eee;
+                font: bold 14px/1.4 Arial, sans-serif;
+                color: #888;
                 text-align: center;
-                font-family: Arial, Helvetica, sans-serif;
-                line-height: 1.9;
+                letter-spacing: 1px;
             }
 
             /* ── Front Cover — Bold dark design ── */
@@ -457,74 +428,72 @@ NICHE_TEMPLATES = {
             <div class="bottom-accent"></div>
         """,
         "back_cover_html": """
-            <div class="back-header">&#9733; Look Inside &#9733;</div>
-            <div class="preview-grid">
-                <div class="preview-card">
-                    <div class="card-header">
-                        <span class="card-num">Puzzle 1</span>
-                        <span class="card-theme">Garden Flowers</span>
+            <div class="back-pages">
+                <div class="pg">
+                    <div class="pg-hd"><b>Puzzle #1</b> <em>Garden Flowers</em></div>
+                    <div class="pg-g">
+                        <span>R</span><span>M</span><span>T</span><span>U</span><span>K</span><span>P</span><span>Q</span><span>A</span><span>J</span><span>L</span>
+                        <span class="h">D</span><span class="h">A</span><span class="h">I</span><span class="h">S</span><span class="h">Y</span><span>W</span><span>B</span><span>N</span><span>E</span><span>G</span>
+                        <span>A</span><span>O</span><span>N</span><span>F</span><span>J</span><span>G</span><span>V</span><span>H</span><span>K</span><span>X</span>
+                        <span class="h">R</span><span>X</span><span>E</span><span>C</span><span>I</span><span>L</span><span>H</span><span>M</span><span>D</span><span>Q</span>
+                        <span class="h">O</span><span>H</span><span>A</span><span>R</span><span>N</span><span>S</span><span>W</span><span>P</span><span>B</span><span>T</span>
+                        <span class="h">S</span><span class="h">T</span><span class="h">U</span><span class="h">L</span><span class="h">I</span><span class="h">P</span><span>E</span><span>Y</span><span>F</span><span>G</span>
+                        <span class="h">E</span><span>F</span><span>Q</span><span>Z</span><span>D</span><span>M</span><span>J</span><span>A</span><span>K</span><span>N</span>
+                        <span>V</span><span>K</span><span>B</span><span>H</span><span>L</span><span>Y</span><span>A</span><span>R</span><span>W</span><span>C</span>
+                        <span>S</span><span class="h">L</span><span class="h">I</span><span class="h">L</span><span class="h">Y</span><span>D</span><span>M</span><span>E</span><span>P</span><span>H</span>
+                        <span>J</span><span>G</span><span>T</span><span>X</span><span>B</span><span>N</span><span>F</span><span>C</span><span>A</span><span>R</span>
                     </div>
-                    <div class="card-grid-wrap"><div class="card-grid">
-                        <span>R</span><span>M</span><span>T</span><span>U</span><span>K</span><span>P</span><span>Q</span>
-                        <span class="h">D</span><span class="h">A</span><span class="h">I</span><span class="h">S</span><span class="h">Y</span><span>W</span><span>B</span>
-                        <span>A</span><span>O</span><span>N</span><span>F</span><span>J</span><span>G</span><span>V</span>
-                        <span class="h">R</span><span>X</span><span>E</span><span>C</span><span>I</span><span>L</span><span>H</span>
-                        <span class="h">O</span><span>H</span><span>A</span><span>R</span><span>N</span><span>S</span><span>W</span>
-                        <span class="h">S</span><span class="h">T</span><span class="h">U</span><span class="h">L</span><span class="h">I</span><span class="h">P</span><span>E</span>
-                        <span class="h">E</span><span>F</span><span>Q</span><span>Z</span><span>D</span><span>M</span><span>J</span>
-                    </div></div>
-                    <div class="card-words"><span>DAISY</span><span>TULIP</span><span>ROSE</span></div>
+                    <div class="pg-wl">DAISY &middot; TULIP &middot; ROSE &middot; LILY &middot; ORCHID</div>
                 </div>
-                <div class="preview-card">
-                    <div class="card-header">
-                        <span class="card-num">Puzzle 14</span>
-                        <span class="card-theme">Ocean Life</span>
+                <div class="pg">
+                    <div class="pg-hd"><b>Puzzle #14</b> <em>Ocean Life</em></div>
+                    <div class="pg-g">
+                        <span>B</span><span>O</span><span>C</span><span>E</span><span>A</span><span>N</span><span>F</span><span>G</span><span class="h">C</span><span>K</span>
+                        <span>S</span><span class="h">S</span><span class="h">H</span><span class="h">E</span><span class="h">L</span><span class="h">L</span><span>K</span><span>P</span><span class="h">O</span><span>W</span>
+                        <span class="h">W</span><span class="h">A</span><span class="h">V</span><span class="h">E</span><span class="h">S</span><span>D</span><span>R</span><span>J</span><span class="h">R</span><span>V</span>
+                        <span>T</span><span>I</span><span>D</span><span>E</span><span>G</span><span>R</span><span>M</span><span>N</span><span class="h">A</span><span>Y</span>
+                        <span>Q</span><span>F</span><span>U</span><span>X</span><span>P</span><span>J</span><span>L</span><span>H</span><span class="h">L</span><span>B</span>
+                        <span>N</span><span>A</span><span>H</span><span>Y</span><span>Z</span><span>V</span><span>G</span><span>E</span><span>S</span><span>K</span>
+                        <span>F</span><span>I</span><span>D</span><span>R</span><span>B</span><span>D</span><span>M</span><span>T</span><span>P</span><span>J</span>
+                        <span>W</span><span>S</span><span>G</span><span>R</span><span>B</span><span>D</span><span>Q</span><span>A</span><span>X</span><span>L</span>
+                        <span class="h">F</span><span class="h">I</span><span class="h">S</span><span class="h">H</span><span>K</span><span>C</span><span>Y</span><span>N</span><span>V</span><span>G</span>
+                        <span>R</span><span>M</span><span>T</span><span>E</span><span>L</span><span>P</span><span>W</span><span>H</span><span>B</span><span>A</span>
                     </div>
-                    <div class="card-grid-wrap"><div class="card-grid">
-                        <span>B</span><span>O</span><span>C</span><span>E</span><span>A</span><span>N</span><span>F</span>
-                        <span>S</span><span class="h">S</span><span class="h">H</span><span class="h">E</span><span class="h">L</span><span class="h">L</span><span>K</span>
-                        <span class="h">W</span><span class="h">A</span><span class="h">V</span><span class="h">E</span><span class="h">S</span><span>D</span><span>P</span>
-                        <span>T</span><span>I</span><span>D</span><span>E</span><span>G</span><span>R</span><span>M</span>
-                        <span>Q</span><span>F</span><span>U</span><span>X</span><span class="h">C</span><span>J</span><span>L</span>
-                        <span>N</span><span>A</span><span>H</span><span>Y</span><span class="h">O</span><span>V</span><span>Z</span>
-                        <span>W</span><span>S</span><span>G</span><span>R</span><span class="h">R</span><span>B</span><span>D</span>
-                    </div></div>
-                    <div class="card-words"><span>SHELL</span><span>WAVES</span><span>CORAL</span></div>
+                    <div class="pg-wl">SHELL &middot; WAVES &middot; CORAL &middot; FISH &middot; TIDE</div>
                 </div>
-                <div class="preview-card">
-                    <div class="card-header">
-                        <span class="card-num">Puzzle 27</span>
-                        <span class="card-theme">Sweet Treats</span>
+                <div class="pg">
+                    <div class="pg-hd"><b>Puzzle #27</b> <em>Sweet Treats</em></div>
+                    <div class="pg-g">
+                        <span>L</span><span>M</span><span>N</span><span>G</span><span>R</span><span>P</span><span>W</span><span>V</span><span>H</span><span>D</span>
+                        <span class="h">C</span><span class="h">O</span><span class="h">O</span><span class="h">K</span><span class="h">I</span><span class="h">E</span><span>X</span><span>A</span><span>J</span><span>Y</span>
+                        <span>D</span><span>B</span><span>F</span><span>T</span><span>Q</span><span>R</span><span>C</span><span>K</span><span>N</span><span>M</span>
+                        <span>H</span><span>X</span><span>Y</span><span>S</span><span>I</span><span>U</span><span>A</span><span>W</span><span>E</span><span>P</span>
+                        <span class="h">F</span><span class="h">U</span><span class="h">D</span><span class="h">G</span><span class="h">E</span><span>Z</span><span>K</span><span>J</span><span>L</span><span>B</span>
+                        <span>J</span><span>K</span><span>S</span><span>U</span><span>Z</span><span>I</span><span>E</span><span>P</span><span>A</span><span>H</span>
+                        <span>E</span><span>R</span><span>O</span><span>V</span><span>C</span><span>N</span><span>A</span><span>M</span><span>D</span><span>G</span>
+                        <span>B</span><span>T</span><span class="h">C</span><span class="h">A</span><span class="h">N</span><span class="h">D</span><span class="h">Y</span><span>W</span><span>S</span><span>J</span>
+                        <span class="h">C</span><span class="h">A</span><span class="h">K</span><span class="h">E</span><span>F</span><span>W</span><span>S</span><span>L</span><span>M</span><span>G</span>
+                        <span>Q</span><span>Y</span><span>X</span><span>Z</span><span>M</span><span>A</span><span>D</span><span>N</span><span>E</span><span>T</span>
                     </div>
-                    <div class="card-grid-wrap"><div class="card-grid">
-                        <span>L</span><span>M</span><span>N</span><span>G</span><span>R</span><span>P</span><span>W</span>
-                        <span class="h">C</span><span class="h">O</span><span class="h">O</span><span class="h">K</span><span class="h">I</span><span class="h">E</span><span>V</span>
-                        <span>D</span><span>A</span><span>B</span><span>F</span><span>T</span><span>Q</span><span class="h">C</span>
-                        <span>H</span><span>X</span><span class="h">F</span><span class="h">U</span><span class="h">D</span><span class="h">G</span><span class="h">E</span>
-                        <span>J</span><span>K</span><span>S</span><span>Y</span><span>Z</span><span>I</span><span>U</span>
-                        <span>E</span><span>R</span><span>O</span><span>U</span><span>C</span><span>N</span><span>A</span>
-                        <span class="h">C</span><span class="h">A</span><span class="h">K</span><span class="h">E</span><span>P</span><span>W</span><span>B</span>
-                    </div></div>
-                    <div class="card-words"><span>COOKIE</span><span>FUDGE</span><span>CAKE</span></div>
+                    <div class="pg-wl">COOKIE &middot; FUDGE &middot; CANDY &middot; CAKE &middot; PIE</div>
                 </div>
-                <div class="preview-card">
-                    <div class="card-header">
-                        <span class="card-num">Puzzle 42</span>
-                        <span class="card-theme">At the Park</span>
+                <div class="pg">
+                    <div class="pg-hd"><b>Puzzle #42</b> <em>Animals</em></div>
+                    <div class="pg-g">
+                        <span class="h">B</span><span>V</span><span>K</span><span>W</span><span>Q</span><span>M</span><span>J</span><span>R</span><span>G</span><span>T</span>
+                        <span class="h">E</span><span>L</span><span class="h">T</span><span class="h">I</span><span class="h">G</span><span class="h">E</span><span class="h">R</span><span>S</span><span>A</span><span>N</span>
+                        <span class="h">A</span><span>P</span><span>U</span><span>H</span><span>G</span><span>R</span><span>A</span><span>D</span><span>F</span><span>J</span>
+                        <span class="h">R</span><span>D</span><span>F</span><span>X</span><span>I</span><span>O</span><span>N</span><span>K</span><span>L</span><span>W</span>
+                        <span>Y</span><span>W</span><span>J</span><span>M</span><span>B</span><span>S</span><span>L</span><span>G</span><span>Q</span><span>E</span>
+                        <span class="h">H</span><span class="h">O</span><span class="h">R</span><span class="h">S</span><span class="h">E</span><span>A</span><span>N</span><span>P</span><span>V</span><span>K</span>
+                        <span>Q</span><span>A</span><span>J</span><span>T</span><span>D</span><span class="h">E</span><span>M</span><span>C</span><span>B</span><span>X</span>
+                        <span>R</span><span>G</span><span>Z</span><span>C</span><span>N</span><span class="h">A</span><span>F</span><span>Y</span><span>D</span><span>H</span>
+                        <span>M</span><span>B</span><span>L</span><span>P</span><span>W</span><span class="h">G</span><span>I</span><span>J</span><span>K</span><span>T</span>
+                        <span>S</span><span>F</span><span>X</span><span>V</span><span>R</span><span class="h">L</span><span class="h">E</span><span>H</span><span>A</span><span>N</span>
                     </div>
-                    <div class="card-grid-wrap"><div class="card-grid">
-                        <span class="h">B</span><span>V</span><span>K</span><span>W</span><span>Q</span><span>M</span><span>J</span>
-                        <span class="h">E</span><span>L</span><span class="h">T</span><span class="h">R</span><span class="h">E</span><span class="h">E</span><span class="h">S</span>
-                        <span class="h">N</span><span>P</span><span>U</span><span>H</span><span>G</span><span>R</span><span>A</span>
-                        <span class="h">C</span><span>D</span><span>F</span><span>X</span><span>I</span><span>O</span><span>N</span>
-                        <span class="h">H</span><span>W</span><span>Y</span><span>M</span><span>B</span><span>S</span><span>L</span>
-                        <span>Q</span><span>A</span><span>J</span><span class="h">P</span><span class="h">A</span><span class="h">T</span><span class="h">H</span>
-                        <span>R</span><span>G</span><span>Z</span><span>C</span><span>N</span><span>F</span><span>D</span>
-                    </div></div>
-                    <div class="card-words"><span>BENCH</span><span>TREES</span><span>PATH</span></div>
+                    <div class="pg-wl">BEAR &middot; TIGER &middot; HORSE &middot; EAGLE &middot; WOLF</div>
                 </div>
             </div>
-            <div class="back-features">${puzzle_count} Themed Puzzles &middot; Large Print &middot; Full Answer Key</div>
         """,
         "spine_html": '<div class="spine-text">${title} &mdash; ${author}</div>',
     },

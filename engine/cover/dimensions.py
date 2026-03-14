@@ -48,6 +48,7 @@ BLEED = 0.125           # inches on each side
 SAFE_ZONE = 0.25        # keep text/art this far from trim edges
 BARCODE_WIDTH = 2.0     # inches
 BARCODE_HEIGHT = 1.2    # inches
+BARCODE_BOTTOM_MARGIN = 0.76  # inches — KDP min distance from bottom trim edge
 MIN_SPINE_FOR_TEXT = 79 # pages — KDP only prints spine text if 79+ pages
 DPI = 300               # print resolution
 
@@ -194,11 +195,14 @@ def calculate_cover(
     front_start = spine_end
     front_end   = total_w_px                        # front cover + bleed
 
-    # ── Barcode zone (lower-right of back cover) ──────────────
+    # ── Barcode zone (lower-right of back cover WHEN VIEWED) ────
+    # In full-spread coords, the "right side when viewed from back" = LEFT side of back panel
+    # (away from spine). KDP requires ≥0.76" from bottom, ≥0.25" from outer edges.
     barcode_w_px = round(BARCODE_WIDTH * DPI)
     barcode_h_px = round(BARCODE_HEIGHT * DPI)
-    barcode_x = back_end - barcode_w_px - safe_px   # inside back cover, offset from spine
-    barcode_y = total_h_px - bleed_px - barcode_h_px - safe_px  # above bottom bleed
+    barcode_bottom_px = round(BARCODE_BOTTOM_MARGIN * DPI)
+    barcode_x = bleed_px + safe_px                                  # outer edge of back cover (right when viewed)
+    barcode_y = total_h_px - bleed_px - barcode_h_px - barcode_bottom_px  # 0.76" above bottom trim
 
     # ── Gutter margin ─────────────────────────────────────────
     gutter = 0.375  # default
