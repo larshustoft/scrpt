@@ -1,0 +1,130 @@
+{
+  "niche": "word_search",
+  "display_name": "Large Print Word Search",
+  "references": [
+    {
+      "filename": "ref_01.jpg",
+      "asin": "B0GJ6M19MD",
+      "title": "Large Print Word Search Puzzle Books for Adults and Seniors",
+      "author": "CL Cor",
+      "reviews": 39,
+      "rating": 5.0,
+      "price": 12.99,
+      "captured_date": "2026-03-14",
+      "notes": "Dark maroon/brown background. White WORD SEARCH in ultra-bold. Yellow PUZZLE BOOK. Red LARGE PRINT banner. 3D stacked puzzle pages with pencil. Orange starburst badges (CLEAN LAYOUTS, 2000+ WORDS). Red bottom bar: 125 PUZZLES WITH SOLUTIONS. 4 interior previews on back."
+    },
+    {
+      "filename": "ref_02.jpg",
+      "asin": "B0D9TGNKKG",
+      "title": "Big Book of Large Print Word Search Puzzles: 5000 Words - 224 Themed Puzzles",
+      "author": "Martin Littlewolf",
+      "reviews": 2609,
+      "rating": 4.6,
+      "price": 5.75,
+      "captured_date": "2026-03-14",
+      "notes": "#1 Best Seller in Word Lists. Bold red/white design. Large '5000' number dominates. '224 THEMED PUZZLES' in green badge. Visible word grid background with highlighted words. Compact 6x9 travel size format."
+    },
+    {
+      "filename": "ref_03.jpg",
+      "asin": "B0FTWW8XTL",
+      "title": "New Word Search Book for Adults: 10000 Unique Words, Endless Themes to Explore",
+      "author": "My Brain Is Busy",
+      "reviews": 221,
+      "rating": 4.8,
+      "price": 9.99,
+      "captured_date": "2026-03-14",
+      "notes": "Green/white fresh modern design. 'NEW 2026' year tag. Bold red WORD SEARCH. Large yellow '10 000 UNIQUE WORDS'. Blue/green 'ENDLESS THEMES TO EXPLORE'. White 'LARGE PRINT' badge at bottom. Clean layout without grid illustrations."
+    }
+  ],
+  "design_decisions": {
+    "rationale": "Dark navy backgrounds dominate top 20 bestsellers in the large print word search for seniors niche. Gold (#f4d03f) accent for badges and highlights creates premium feel. Red banner for LARGE PRINT callout is immediately visible at thumbnail scale. Grid motif on front reinforces puzzle identity. 2x2 page preview grid on back demonstrates interior quality (show, don't tell).",
+    "inspired_by": ["ref_01.jpg"]
+  },
+  "typography": {
+    "title": {
+      "font": "Arial, Helvetica, sans-serif",
+      "weight": "bold",
+      "size_px": 280,
+      "color": "#ffffff",
+      "notes": "WORD and SEARCH on separate lines for maximum impact"
+    },
+    "audience": {
+      "font": "Georgia, serif",
+      "weight": "bold",
+      "size_px": 130,
+      "color": "#f4d03f",
+      "notes": "Gold color draws eye to target audience"
+    },
+    "subtitle": {
+      "font": "Georgia, serif",
+      "size_px": 80,
+      "color": "rgba(255,255,255,0.85)",
+      "style": "italic"
+    },
+    "author": {
+      "font": "Georgia, serif",
+      "size_px": 72,
+      "color": "rgba(255,255,255,0.75)",
+      "letter_spacing": "4px"
+    },
+    "banner": {
+      "font": "Arial, Helvetica, sans-serif",
+      "weight": "bold",
+      "size_px": 64,
+      "color": "#ffffff",
+      "letter_spacing": "10px"
+    }
+  },
+  "colors": {
+    "background_gradient": "linear-gradient(160deg, #0f2027 0%, #1a365d 35%, #203a5c 65%, #0f2027 100%)",
+    "front_gradient": "linear-gradient(175deg, #0c2340 0%, #163a5f 40%, #1a4a6e 60%, #0c2340 100%)",
+    "accent_primary": "#f4d03f",
+    "accent_secondary": "#c0392b",
+    "badge_gradient": "linear-gradient(135deg, #f4d03f 0%, #f39c12 100%)",
+    "banner_gradient": "linear-gradient(135deg, #c0392b 0%, #e74c3c 50%, #c0392b 100%)",
+    "text_primary": "#ffffff",
+    "text_secondary": "rgba(255,255,255,0.85)",
+    "text_muted": "rgba(255,255,255,0.65)",
+    "spine": "#142d4c",
+    "back_cover": "#0e1f33"
+  },
+  "layout": {
+    "front_elements": [
+      "top_banner (LARGE PRINT - red gradient)",
+      "title_main (WORD SEARCH - white, 280px)",
+      "title_audience (for Seniors - gold, 130px)",
+      "decorative (gold gradient divider)",
+      "subtitle (italic, white 85%)",
+      "grid_motif (7x10 letter grid with H/V highlighted words)",
+      "puzzle_badge (gold pill shape)",
+      "features_text (answer key callout)",
+      "author (bottom section)",
+      "bottom_accent (red gradient bar)"
+    ],
+    "back_layout": "sample_pages_2x2",
+    "back_elements": [
+      "4 puzzle preview cards in 2x2 grid",
+      "Each card: header (puzzle # + theme), 10x10 letter grid, word list",
+      "Highlighted cells show found words (horizontal/vertical ONLY)",
+      "Barcode zone at bottom"
+    ],
+    "grid_motif_words": {
+      "SEARCH": "horizontal, row 1, cols 3-8",
+      "FIND": "vertical, col 2, rows 2-5",
+      "WORD": "horizontal, row 5, cols 4-7",
+      "PLAY": "vertical, col 9, rows 3-6"
+    }
+  },
+  "template_variables": {
+    "required": ["title", "author"],
+    "optional": {
+      "subtitle": "",
+      "puzzle_count": "55"
+    }
+  },
+  "constraints": {
+    "word_placement": "All highlighted words in grids must be HORIZONTAL or VERTICAL only. Never diagonal, never L-shaped.",
+    "thumbnail_readability": "Title must be legible at Amazon thumbnail size (~150px wide). Red banner and gold title provide color contrast.",
+    "kdp_compliance": "Barcode zone must be clear. Safe zones (0.25 inch) respected on all edges."
+  }
+}

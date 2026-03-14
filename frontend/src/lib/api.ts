@@ -297,3 +297,55 @@ export function getCoverPreviewUrl(bookId: string, width: number = 800) {
 export function getCoverFullUrl(bookId: string, width: number = 1600) {
   return `${API_BASE}/api/preview/${bookId}/cover/full?width=${width}`;
 }
+
+// ── Cover Design Search & AI Generation ──────────────────────
+
+export interface CoverSearchResult {
+  title: string;
+  asin: string;
+  cover_image_url: string;
+  price: number | null;
+  reviews: number | null;
+  rating: number | null;
+}
+
+export interface CoverSearchResponse {
+  keyword: string;
+  results: CoverSearchResult[];
+  count: number;
+  error?: string;
+}
+
+export async function searchBestsellerCovers(
+  keyword: string,
+  maxResults: number = 5
+) {
+  const params = new URLSearchParams({
+    keyword,
+    max_results: String(maxResults),
+  });
+  return apiFetch<CoverSearchResponse>(
+    `/api/cover/search?${params.toString()}`
+  );
+}
+
+export interface GenerateDesignResponse {
+  success: boolean;
+  variant_id?: string;
+  niche?: string;
+  design_notes?: string;
+  error?: string;
+  fallback?: string;
+}
+
+export async function generateDesignFromReference(data: {
+  reference_image_url: string;
+  reference_asin?: string;
+  book_type: string;
+  niche_keyword?: string;
+}) {
+  return apiFetch<GenerateDesignResponse>("/api/cover/generate-design", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}

@@ -1,0 +1,56 @@
+{
+  "niche": "cryptogram",
+  "display_name": "Large Print Cryptogram",
+  "references": [],
+  "design_decisions": {
+    "rationale": "Deep indigo/purple palette evokes mystery and code-breaking. Light lavender front with subtle grid overlay. Indigo accent bars and badge maintain premium feel while differentiating from word search and sudoku niches.",
+    "inspired_by": []
+  },
+  "typography": {
+    "title": {
+      "font": "Georgia, serif",
+      "weight": "bold",
+      "size_px": 190,
+      "color": "#1e1b4b"
+    },
+    "subtitle": {
+      "font": "Georgia, serif",
+      "size_px": 90,
+      "color": "#4338ca",
+      "style": "italic"
+    },
+    "author": {
+      "font": "Georgia, serif",
+      "size_px": 72,
+      "color": "#6b7280"
+    }
+  },
+  "colors": {
+    "background_gradient": "linear-gradient(160deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%)",
+    "front_gradient": "linear-gradient(175deg, #eef2ff 0%, #e0e7ff 50%, #c7d2fe 100%)",
+    "accent_primary": "#6366f1",
+    "accent_secondary": "#4338ca",
+    "text_primary": "#1e1b4b",
+    "text_secondary": "#4338ca",
+    "spine": "#1e1b4b",
+    "back_cover": "#1e1b4b"
+  },
+  "layout": {
+    "front_elements": [
+      "top_accent (indigo gradient bar)",
+      "title (Georgia serif, dark indigo)",
+      "decorative (indigo gradient divider)",
+      "subtitle (italic, indigo)",
+      "badge (LARGE PRINT pill, white text on indigo bg)",
+      "author (bottom section)",
+      "bottom_accent (indigo gradient bar)"
+    ],
+    "back_layout": "text_description"
+  },
+  "template_variables": {
+    "required": ["title", "author"],
+    "optional": {
+      "subtitle": ""
+    }
+  }
+}

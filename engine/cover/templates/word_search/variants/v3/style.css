@@ -1,0 +1,163 @@
+/* ══════════════════════════════════════════════════════════════
+   WORD SEARCH — Variant 3: Fresh Green Modern
+   ══════════════════════════════════════════════════════════════
+   Inspired by "My Brain Is Busy — New Word Search Book for Adults"
+   Fresh green/white modern design. Clean typography, no grid
+   illustration. Color-blocked sections with year tag.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Background ── */
+.bleed-fill {
+    background: linear-gradient(160deg, #14532d 0%, #166534 35%, #15803d 65%, #14532d 100%);
+}
+.spine { background: #14532d; }
+
+/* ── Back Cover ── */
+.back-cover {
+    background: #14532d;
+    padding: 180px 140px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.back-cover h3 {
+    font-size: 72px;
+    margin-bottom: 50px;
+    font-family: 'Georgia', serif;
+}
+.back-cover p {
+    font-size: 42px;
+    line-height: 1.7;
+    opacity: 0.9;
+}
+
+/* ── Front Cover ── */
+.front-cover {
+    background: white;
+    text-align: center;
+    color: #1a1a1a;
+    position: relative;
+    overflow: hidden;
+    justify-content: center;
+    padding-top: 80px;
+    padding-bottom: 120px;
+}
+
+.front-cover > * { position: relative; z-index: 1; }
+
+/* ── "NEW 2026" year tag ── */
+.top-banner {
+    background: #16a34a;
+    color: white;
+    padding: 18px 80px;
+    font-size: 56px;
+    font-weight: bold;
+    letter-spacing: 6px;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 70px;
+    display: inline-block;
+    border-radius: 100px;
+}
+
+/* ── Main title "WORD SEARCH" ── */
+.title-main {
+    font-size: 260px;
+    font-weight: 900;
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.0;
+    color: #dc2626;
+    margin-bottom: 40px;
+    letter-spacing: 4px;
+}
+
+/* ── Word count highlight ── */
+.title-audience {
+    font-size: 180px;
+    font-weight: 900;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #f59e0b;
+    margin-bottom: 30px;
+    letter-spacing: 2px;
+}
+
+.decorative {
+    width: 700px;
+    height: 6px;
+    background: linear-gradient(90deg, transparent, #16a34a, transparent);
+    margin: 20px auto 40px;
+}
+
+.subtitle {
+    font-size: 76px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    color: #1d4ed8;
+    margin-bottom: 50px;
+    font-style: normal;
+}
+
+/* ── Hide grid motif for this clean design ── */
+.grid-motif {
+    display: none;
+}
+
+/* ── Puzzle count badge ── */
+.puzzle-badge {
+    background: #16a34a;
+    color: white;
+    padding: 28px 100px;
+    border-radius: 100px;
+    font-size: 68px;
+    font-weight: bold;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 30px;
+    letter-spacing: 3px;
+}
+
+/* ── LARGE PRINT badge at bottom ── */
+.features-text {
+    background: white;
+    border: 5px solid #1a1a1a;
+    color: #1a1a1a;
+    padding: 18px 80px;
+    border-radius: 100px;
+    font-size: 52px;
+    font-weight: bold;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 50px;
+    letter-spacing: 4px;
+    display: inline-block;
+}
+
+/* ── Bottom section ── */
+.bottom-section {
+    width: 100%;
+    text-align: center;
+    margin-top: 60px;
+}
+
+.bottom-divider {
+    width: 500px;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, #16a34a, transparent);
+    margin: 0 auto 40px;
+}
+
+.author {
+    font-size: 68px;
+    color: #6b7280;
+    font-family: 'Georgia', serif;
+    letter-spacing: 4px;
+}
+
+/* ── Bottom accent ── */
+.bottom-accent {
+    width: 100%;
+    height: 50px;
+    background: linear-gradient(90deg, #16a34a, #22c55e, #16a34a);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+}

@@ -242,6 +242,14 @@ class GenerateCoverRequest(BaseModel):
     force_regenerate: bool = False
 
 
+class GenerateDesignRequest(BaseModel):
+    """Request to generate a cover design from a reference image."""
+    reference_image_url: str
+    reference_asin: Optional[str] = None
+    book_type: str
+    niche_keyword: Optional[str] = None
+
+
 class QualityCheckRequest(BaseModel):
     """Request to run quality checks on a book."""
     book_id: Optional[str] = None

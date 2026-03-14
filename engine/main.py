@@ -54,6 +54,7 @@ from .models import (
     ErrorResponse,
     GenerateInteriorRequest,
     GenerateCoverRequest,
+    GenerateDesignRequest,
     QualityCheckRequest,
     UploadRequest,
 )
@@ -423,6 +424,7 @@ async def generate_cover(request: GenerateCoverRequest):
             book_type=book_data.get("book_type", "default"),
             output_dir=output_dir,
             puzzle_count=gen_config.get("num_puzzles", 55),
+            variant_id=gen_config.get("cover_variant_id"),
         )
 
         if not result.get("success", False):
@@ -720,3 +722,218 @@ async def get_cover_dimensions(
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── Cover Template & Reference API ─────────────────────────────
+
+@app.get("/api/cover/templates")
+async def list_cover_templates():
+    """List all available cover templates with their status (file/inline, has spec, reference count)."""
+    from .cover.template_loader import get_template_loader
+    loader = get_template_loader()
+    return {"templates": loader.list_niches()}
+
+
+@app.get("/api/cover/references/{niche}")
+async def get_cover_references(niche: str):
+    """Get reference images and design specification for a niche."""
+    from .cover.template_loader import get_template_loader
+    loader = get_template_loader()
+    spec = loader.load_spec(niche)
+    if not spec:
+        raise HTTPException(status_code=404, detail=f"No design spec found for niche: {niche}")
+
+    references = []
+    for img_path in spec.reference_images:
+        source_info = next(
+            (s for s in spec.data.get("references", [])
+             if s.get("filename") == img_path.name),
+            {},
+        )
+        references.append({
+            "filename": img_path.name,
+            "url": f"/api/cover/references/{niche}/{img_path.name}",
+            **source_info,
+        })
+
+    return {
+        "niche": niche,
+        "display_name": spec.display_name,
+        "references": references,
+        "design_decisions": spec.data.get("design_decisions", {}),
+        "typography": spec.data.get("typography", {}),
+        "colors": spec.data.get("colors", {}),
+        "layout": spec.data.get("layout", {}),
+    }
+
+
+@app.get("/api/cover/references/{niche}/{filename}")
+async def get_reference_image(niche: str, filename: str):
+    """Serve a reference image file."""
+    from .config import TEMPLATES_DIR
+    ref_path = TEMPLATES_DIR / niche / "references" / filename
+    if not ref_path.exists():
+        raise HTTPException(status_code=404, detail=f"Reference image not found: {filename}")
+    suffix = ref_path.suffix.lower()
+    media_type = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}.get(suffix, "image/png")
+    return FileResponse(str(ref_path), media_type=media_type)
+
+
+@app.get("/api/cover/variants/{niche}")
+async def get_cover_variants(niche: str):
+    """List available design variants for a niche with reference image URLs."""
+    from .cover.template_loader import get_template_loader
+    loader = get_template_loader()
+    variants = loader.list_variants(niche)
+    return {
+        "niche": niche,
+        "variants": [
+            {
+                "variant_id": v.variant_id,
+                "name": v.name,
+                "description": v.description,
+                "inspired_by": v.inspired_by,
+                "reference_image_url": f"/api/cover/references/{niche}/{v.reference_filename}" if v.reference_filename else None,
+            }
+            for v in variants
+        ],
+    }
+
+
+@app.get("/api/cover/compare/{identifier}")
+async def compare_cover(identifier: str, width: int = Query(800)):
+    """
+    Get comparison data for a book: reference images + generated cover URLs.
+    Frontend renders these side-by-side for visual quality benchmarking.
+    """
+    from .cover.template_loader import get_template_loader
+
+    catalog_number = identifier
+    output_path = OUTPUT_DIR / catalog_number
+
+    # Determine book type
+    book = get_book_by_catalog(catalog_number)
+    niche = book["data"].get("book_type", "default") if book else "default"
+
+    loader = get_template_loader()
+    spec = loader.load_spec(niche)
+    template = loader.load_template(niche)
+
+    cover_front = output_path / "cover-front.png"
+
+    return {
+        "catalog_number": catalog_number,
+        "niche": niche,
+        "template_source": template.source,
+        "generated_cover_url": f"/api/preview/{catalog_number}/cover?width={width}" if cover_front.exists() else None,
+        "generated_full_url": f"/api/preview/{catalog_number}/cover/full?width={width * 2}",
+        "references": [
+            {
+                "filename": img.name,
+                "url": f"/api/cover/references/{niche}/{img.name}",
+            }
+            for img in (spec.reference_images if spec else [])
+        ],
+        "spec": spec.data if spec else None,
+    }
+
+
+@app.post("/api/cover/templates/{niche}/reload")
+async def reload_template(niche: str):
+    """Invalidate cache for a niche template. Picks up file changes without server restart."""
+    from .cover.template_loader import get_template_loader
+    loader = get_template_loader()
+    loader.invalidate_cache(niche)
+    return {"success": True, "message": f"Template cache cleared for '{niche}'"}
+
+
+# ── Cover Design Search & AI Generation ───────────────────────
+
+@app.get("/api/cover/search")
+async def search_covers(
+    keyword: str = Query(..., description="Niche keyword to search for"),
+    max_results: int = Query(5, ge=1, le=10),
+):
+    """Search Amazon for bestselling book covers in a niche using Playwright."""
+    from .cover.amazon_search import search_bestseller_covers
+
+    try:
+        results = await search_bestseller_covers(keyword, max_results)
+        return {
+            "keyword": keyword,
+            "results": [
+                {
+                    "title": r.title,
+                    "asin": r.asin,
+                    "cover_image_url": r.cover_image_url,
+                    "price": r.price,
+                    "reviews": r.reviews,
+                    "rating": r.rating,
+                }
+                for r in results
+            ],
+            "count": len(results),
+        }
+    except Exception as e:
+        return {
+            "keyword": keyword,
+            "results": [],
+            "count": 0,
+            "error": str(e),
+        }
+
+
+@app.post("/api/cover/generate-design")
+async def generate_design(request: GenerateDesignRequest):
+    """
+    Generate a cover design from a reference image using Claude Vision.
+    Fetches the reference image, sends to Claude for analysis, and saves
+    the generated CSS/HTML as a variant template.
+    """
+    from .cover.amazon_search import fetch_cover_image
+    from .cover.design_generator import (
+        generate_design_from_reference,
+        save_generated_design,
+    )
+    from .cover.template_loader import get_template_loader
+
+    # Fetch the reference image
+    try:
+        image_bytes = await fetch_cover_image(request.reference_image_url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch reference image: {e}")
+
+    # Generate design via Claude Vision
+    design = await generate_design_from_reference(
+        reference_image_bytes=image_bytes,
+        book_type=request.book_type,
+        niche_keyword=request.niche_keyword or request.book_type.replace("_", " "),
+        reference_asin=request.reference_asin or "",
+    )
+
+    if not design.success:
+        return {
+            "success": False,
+            "error": design.error,
+            "fallback": "default",
+        }
+
+    # Save as a variant
+    variant_id = f"ai_{request.reference_asin}" if request.reference_asin else "ai_custom"
+
+    await save_generated_design(
+        design=design,
+        niche=request.book_type,
+        variant_id=variant_id,
+        reference_asin=request.reference_asin or "",
+    )
+
+    # Invalidate template cache so the new variant is immediately available
+    get_template_loader().invalidate_cache(request.book_type)
+
+    return {
+        "success": True,
+        "variant_id": variant_id,
+        "niche": request.book_type,
+        "design_notes": design.design_notes,
+    }

@@ -1,0 +1,111 @@
+/* ══════════════════════════════════════════════════════════════
+   SCRPT Cover Base Styles
+   ══════════════════════════════════════════════════════════════
+   Shared layout CSS for all cover templates.
+   CSS custom properties (--total-width, --bleed, etc.) are
+   injected by generate_cover_css() from dimensions.py.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Force single-page PDF at exact content size ── */
+@page {
+    size: var(--total-width) var(--total-height);
+    margin: 0;
+}
+
+/* ── Base layout ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    width: var(--total-width);
+    height: var(--total-height);
+    overflow: hidden;
+    font-family: 'Georgia', 'Times New Roman', serif;
+}
+
+.cover {
+    position: relative;
+    width: var(--total-width);
+    height: var(--total-height);
+    display: flex;
+    flex-direction: row;
+}
+
+/* ── Cover sections ── */
+.back-cover {
+    position: absolute;
+    left: var(--bleed);
+    top: var(--bleed);
+    width: var(--back-cover-width);
+    height: calc(var(--total-height) - 2 * var(--bleed));
+    overflow: hidden;
+}
+
+.spine {
+    position: absolute;
+    left: var(--spine-start);
+    top: var(--bleed);
+    width: var(--spine-width);
+    height: calc(var(--total-height) - 2 * var(--bleed));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.spine-text {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: 42px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    white-space: nowrap;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    font-family: 'Georgia', serif;
+}
+
+.front-cover {
+    position: absolute;
+    left: var(--front-start);
+    top: var(--bleed);
+    width: var(--front-cover-width);
+    height: calc(var(--total-height) - 2 * var(--bleed));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: var(--safe-zone);
+}
+
+/* ── Barcode zone ── */
+/* Coords from dimensions.py are in full-spread space; subtract bleed
+   because .barcode-zone sits inside .back-cover which starts at (bleed, bleed) */
+.barcode-zone {
+    position: absolute;
+    left: calc(var(--barcode-x) - var(--bleed));
+    top: calc(var(--barcode-y) - var(--bleed));
+    width: var(--barcode-width);
+    height: var(--barcode-height);
+    background: rgba(255,255,255,0.92);
+    border: 2px dashed rgba(0,0,0,0.15);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-family: Arial, sans-serif;
+    color: rgba(0,0,0,0.25);
+    letter-spacing: 2px;
+}
+
+/* ── Bleed area (background extends into it) ── */
+.bleed-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}

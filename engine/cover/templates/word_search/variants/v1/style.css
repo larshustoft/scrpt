@@ -1,0 +1,248 @@
+/* ══════════════════════════════════════════════════════════════
+   WORD SEARCH — Cover Template Styles
+   ══════════════════════════════════════════════════════════════
+   Design inspired by Amazon bestsellers in the "large print
+   word search for seniors" niche. See references/ for benchmarks.
+
+   Key design decisions:
+   - Dark navy background (dominates top 20 bestsellers)
+   - Gold (#f4d03f) accent for badges and highlights
+   - Red banner for "LARGE PRINT" callout
+   - Grid motif on front reinforces puzzle identity at thumbnail
+   - 2×2 page preview grid on back (show, don't tell)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Background ── */
+.bleed-fill {
+    background: linear-gradient(160deg, #0f2027 0%, #1a365d 35%, #203a5c 65%, #0f2027 100%);
+}
+.spine { background: #142d4c; }
+
+/* ── Back Cover ── */
+.back-cover {
+    background: #0e1f33;
+}
+/* 2×2 page-preview grid — positioned with KDP safe-zone margins */
+.back-pages {
+    position: absolute;
+    top: 75px;       /* 0.25" safe zone */
+    left: 75px;      /* 0.25" safe zone */
+    right: 75px;     /* 0.25" from spine */
+    bottom: 640px;   /* clears barcode zone (0.76" + 1.2" + gap) */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 28px;
+    justify-items: center;
+    align-items: stretch;
+}
+/* Each preview looks like a real interior page */
+.pg {
+    background: #fff;
+    border-radius: 3px;
+    box-shadow: 2px 4px 18px rgba(0,0,0,0.55);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 14px 10px;
+    width: 100%;
+}
+.pg-hd {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 6px;
+    border-bottom: 1.5px solid #ddd;
+    margin-bottom: 6px;
+}
+.pg-hd b {
+    font: bold 20px/1.2 Arial, sans-serif;
+    color: #222;
+}
+.pg-hd em {
+    font: italic 17px/1.2 'Georgia', serif;
+    color: #999;
+}
+.pg-g {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    border: 1.5px solid #999;
+    background: #ccc;
+    gap: 0.5px;
+}
+.pg-g span {
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: bold 62px 'Courier New', monospace;
+    color: #333;
+}
+.pg-g span.h {
+    background: #dbeafe;
+    color: #1e40af;
+}
+.pg-wl {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #eee;
+    font: bold 14px/1.4 Arial, sans-serif;
+    color: #888;
+    text-align: center;
+    letter-spacing: 1px;
+}
+
+/* ── Front Cover — Bold dark design ── */
+.front-cover {
+    background: linear-gradient(175deg, #0c2340 0%, #163a5f 40%, #1a4a6e 60%, #0c2340 100%);
+    text-align: center;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    justify-content: center;
+    padding-top: 0;
+    padding-bottom: 120px;
+}
+
+/* Grid pattern overlay */
+.front-cover::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 130px 130px;
+    z-index: 0;
+}
+
+.front-cover > * { position: relative; z-index: 1; }
+
+/* ── LARGE PRINT banner at top ── */
+.top-banner {
+    background: linear-gradient(135deg, #c0392b 0%, #e74c3c 50%, #c0392b 100%);
+    color: white;
+    padding: 22px 120px;
+    font-size: 64px;
+    font-weight: bold;
+    letter-spacing: 10px;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 60px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+/* ── Main title "WORD SEARCH" huge ── */
+.title-main {
+    font-size: 280px;
+    font-weight: bold;
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.0;
+    color: white;
+    text-shadow: 4px 6px 12px rgba(0,0,0,0.3);
+    letter-spacing: 6px;
+    margin-bottom: 10px;
+}
+
+/* ── Sub-title target audience ── */
+.title-audience {
+    font-size: 130px;
+    font-weight: bold;
+    font-family: 'Georgia', serif;
+    color: #f4d03f;
+    margin-bottom: 50px;
+    text-shadow: 2px 4px 8px rgba(0,0,0,0.3);
+}
+
+.decorative {
+    width: 600px;
+    height: 6px;
+    background: linear-gradient(90deg, transparent, rgba(244,208,63,0.6), transparent);
+    margin: 10px auto 40px;
+}
+
+.subtitle {
+    font-size: 80px;
+    font-family: 'Georgia', serif;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 40px;
+    font-style: italic;
+}
+
+/* ── Decorative word search grid ── */
+.grid-motif {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 4px;
+    width: 1400px;
+    margin: 40px auto 60px;
+    padding: 40px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 24px;
+    border: 3px solid rgba(255,255,255,0.10);
+}
+.grid-motif span {
+    font-size: 68px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: rgba(255,255,255,0.18);
+    text-align: center;
+    line-height: 1.4;
+}
+.grid-motif span.hl {
+    color: #f4d03f;
+    opacity: 0.8;
+}
+
+/* ── Puzzle count badge ── */
+.puzzle-badge {
+    background: linear-gradient(135deg, #f4d03f 0%, #f39c12 100%);
+    color: #0c2340;
+    padding: 30px 100px;
+    border-radius: 100px;
+    font-size: 72px;
+    font-weight: bold;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 25px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    letter-spacing: 3px;
+}
+
+.features-text {
+    font-size: 48px;
+    color: rgba(255,255,255,0.65);
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+}
+
+/* ── Bottom section ── */
+.bottom-section {
+    width: 100%;
+    text-align: center;
+    margin-top: 60px;
+}
+
+.bottom-divider {
+    width: 500px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+    margin: 0 auto 40px;
+}
+
+.author {
+    font-size: 72px;
+    color: rgba(255,255,255,0.75);
+    font-family: 'Georgia', serif;
+    letter-spacing: 4px;
+}
+
+/* ── Bottom accent ── */
+.bottom-accent {
+    width: 100%;
+    height: 50px;
+    background: linear-gradient(90deg, #c0392b, #e74c3c, #c0392b);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+/* ── Injected cover dimensions ── */
+${cover_css}
+
+/* ── Base layout (from _base/base.css is prepended to template_css) ── */
+
+/* ── Custom template styles ── */
+${template_css}
+</style>
+</head>
+<body>
+<div class="cover">
+    <div class="bleed-fill" id="bleed-fill"></div>
+
+    <!-- Back Cover -->
+    <div class="back-cover" id="back-cover">
+        ${back_cover_html}
+        <div class="barcode-zone">ISBN BARCODE</div>
+    </div>
+
+    <!-- Spine -->
+    <div class="spine" id="spine">
+        ${spine_html}
+    </div>
+
+    <!-- Front Cover -->
+    <div class="front-cover" id="front-cover">
+        ${front_cover_html}
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+{
+  "niche": "default",
+  "display_name": "Default",
+  "references": [],
+  "design_decisions": {
+    "rationale": "Neutral gray palette serves as a clean fallback for any book type not yet assigned a custom niche template. Minimalist design with subtle accents avoids niche-specific assumptions.",
+    "inspired_by": []
+  },
+  "typography": {
+    "title": {
+      "font": "Georgia, serif",
+      "weight": "bold",
+      "size_px": 200,
+      "color": "#1f2937"
+    },
+    "subtitle": {
+      "font": "Georgia, serif",
+      "size_px": 90,
+      "color": "#4b5563",
+      "style": "italic"
+    },
+    "author": {
+      "font": "Georgia, serif",
+      "size_px": 72,
+      "color": "#6b7280"
+    }
+  },
+  "colors": {
+    "background_gradient": "linear-gradient(160deg, #1f2937 0%, #374151 50%, #1f2937 100%)",
+    "front_gradient": "linear-gradient(175deg, #f9fafb 0%, #f3f4f6 50%, #e5e7eb 100%)",
+    "accent_primary": "#6b7280",
+    "text_primary": "#1f2937",
+    "text_secondary": "#4b5563",
+    "spine": "#1f2937",
+    "back_cover": "#1f2937"
+  },
+  "layout": {
+    "front_elements": [
+      "top_accent (gray gradient bar)",
+      "title (Georgia serif, dark gray)",
+      "decorative (gray gradient divider)",
+      "subtitle (italic, medium gray)",
+      "author (bottom section)",
+      "bottom_accent (gray gradient bar)"
+    ],
+    "back_layout": "text_description"
+  },
+  "template_variables": {
+    "required": ["title", "author"],
+    "optional": {
+      "subtitle": ""
+    }
+  }
+}

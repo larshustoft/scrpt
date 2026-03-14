@@ -1,0 +1,56 @@
+{
+  "niche": "sudoku",
+  "display_name": "Large Print Sudoku",
+  "references": [],
+  "design_decisions": {
+    "rationale": "Warm cream/gold gradient front conveys classic elegance. Dark navy back and accent bars provide contrast. Gold decorative elements and badge create premium feel without competing with the puzzle-focused cover.",
+    "inspired_by": []
+  },
+  "typography": {
+    "title": {
+      "font": "Georgia, serif",
+      "weight": "bold",
+      "size_px": 200,
+      "color": "#2d3748"
+    },
+    "subtitle": {
+      "font": "Georgia, serif",
+      "size_px": 90,
+      "color": "#92400e",
+      "style": "italic"
+    },
+    "author": {
+      "font": "Georgia, serif",
+      "size_px": 72,
+      "color": "#6b7280"
+    }
+  },
+  "colors": {
+    "background_gradient": "linear-gradient(160deg, #1a1a2e 0%, #2d3748 50%, #1a1a2e 100%)",
+    "front_gradient": "linear-gradient(175deg, #fffef0 0%, #fef9c3 50%, #fde68a 100%)",
+    "accent_primary": "#f6e05e",
+    "accent_secondary": "#d69e2e",
+    "text_primary": "#2d3748",
+    "text_secondary": "#92400e",
+    "spine": "#1a1a2e",
+    "back_cover": "#1a1a2e"
+  },
+  "layout": {
+    "front_elements": [
+      "top_accent (dark gradient bar)",
+      "title (Georgia serif, dark slate)",
+      "decorative (gold gradient divider)",
+      "subtitle (italic, amber)",
+      "badge (LARGE PRINT pill, gold text on dark bg)",
+      "author (bottom section)",
+      "bottom_accent (dark gradient bar)"
+    ],
+    "back_layout": "text_description"
+  },
+  "template_variables": {
+    "required": ["title", "author"],
+    "optional": {
+      "subtitle": ""
+    }
+  }
+}

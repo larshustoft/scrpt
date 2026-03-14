@@ -411,13 +411,13 @@ NICHE_TEMPLATES = {
             <div class="decorative"></div>
             <div class="subtitle">${subtitle}</div>
             <div class="grid-motif">
-                <span class="hl">W</span><span>G</span><span>T</span><span class="hl">O</span><span>N</span><span>P</span><span class="hl">R</span><span>K</span><span class="hl">D</span><span>M</span>
-                <span>A</span><span class="hl">S</span><span>M</span><span>B</span><span class="hl">E</span><span>Q</span><span>F</span><span class="hl">A</span><span>L</span><span>V</span>
-                <span>H</span><span>R</span><span class="hl">R</span><span>D</span><span>U</span><span class="hl">C</span><span>W</span><span>E</span><span class="hl">H</span><span>J</span>
-                <span class="hl">P</span><span>K</span><span>M</span><span class="hl">U</span><span>T</span><span>B</span><span class="hl">Z</span><span>O</span><span class="hl">Z</span><span>N</span>
-                <span>Y</span><span class="hl">L</span><span>A</span><span>N</span><span class="hl">E</span><span>R</span><span>G</span><span class="hl">I</span><span>C</span><span>Q</span>
-                <span>D</span><span>F</span><span class="hl">S</span><span>X</span><span>W</span><span class="hl">N</span><span>O</span><span>R</span><span>T</span><span class="hl">E</span>
-                <span class="hl">B</span><span>I</span><span>V</span><span class="hl">G</span><span>J</span><span>A</span><span class="hl">M</span><span>H</span><span>K</span><span class="hl">F</span>
+                <span>W</span><span>G</span><span class="hl">S</span><span class="hl">E</span><span class="hl">A</span><span class="hl">R</span><span class="hl">C</span><span class="hl">H</span><span>K</span><span>M</span>
+                <span>A</span><span class="hl">F</span><span>M</span><span>B</span><span>E</span><span>Q</span><span>T</span><span>U</span><span>L</span><span>V</span>
+                <span>H</span><span class="hl">I</span><span>R</span><span>D</span><span>U</span><span>C</span><span>W</span><span>E</span><span class="hl">P</span><span>J</span>
+                <span>T</span><span class="hl">N</span><span>K</span><span>U</span><span>T</span><span>B</span><span>Z</span><span>O</span><span class="hl">L</span><span>N</span>
+                <span>Y</span><span class="hl">D</span><span>Q</span><span class="hl">W</span><span class="hl">O</span><span class="hl">R</span><span class="hl">D</span><span>S</span><span class="hl">A</span><span>X</span>
+                <span>G</span><span>L</span><span>S</span><span>X</span><span>W</span><span>N</span><span>O</span><span>R</span><span class="hl">Y</span><span>E</span>
+                <span>B</span><span>I</span><span>V</span><span>G</span><span>J</span><span>A</span><span>M</span><span>H</span><span>K</span><span>F</span>
             </div>
             <div class="puzzle-badge">${puzzle_count} THEMED PUZZLES</div>
             <div class="features-text">Complete Answer Key Included</div>
@@ -482,14 +482,14 @@ NICHE_TEMPLATES = {
                     <div class="pg-g">
                         <span class="h">B</span><span>V</span><span>K</span><span>W</span><span>Q</span><span>M</span><span>J</span><span>R</span><span>G</span><span>T</span>
                         <span class="h">E</span><span>L</span><span class="h">T</span><span class="h">I</span><span class="h">G</span><span class="h">E</span><span class="h">R</span><span>S</span><span>A</span><span>N</span>
-                        <span class="h">A</span><span>P</span><span>U</span><span>H</span><span>G</span><span>R</span><span>A</span><span>D</span><span>F</span><span>J</span>
-                        <span class="h">R</span><span>D</span><span>F</span><span>X</span><span>I</span><span>O</span><span>N</span><span>K</span><span>L</span><span>W</span>
-                        <span>Y</span><span>W</span><span>J</span><span>M</span><span>B</span><span>S</span><span>L</span><span>G</span><span>Q</span><span>E</span>
-                        <span class="h">H</span><span class="h">O</span><span class="h">R</span><span class="h">S</span><span class="h">E</span><span>A</span><span>N</span><span>P</span><span>V</span><span>K</span>
-                        <span>Q</span><span>A</span><span>J</span><span>T</span><span>D</span><span class="h">E</span><span>M</span><span>C</span><span>B</span><span>X</span>
-                        <span>R</span><span>G</span><span>Z</span><span>C</span><span>N</span><span class="h">A</span><span>F</span><span>Y</span><span>D</span><span>H</span>
-                        <span>M</span><span>B</span><span>L</span><span>P</span><span>W</span><span class="h">G</span><span>I</span><span>J</span><span>K</span><span>T</span>
-                        <span>S</span><span>F</span><span>X</span><span>V</span><span>R</span><span class="h">L</span><span class="h">E</span><span>H</span><span>A</span><span>N</span>
+                        <span class="h">A</span><span>P</span><span>U</span><span>H</span><span>G</span><span>R</span><span>A</span><span>D</span><span class="h">W</span><span>J</span>
+                        <span class="h">R</span><span>D</span><span>F</span><span>X</span><span>I</span><span>O</span><span>N</span><span>K</span><span class="h">O</span><span>W</span>
+                        <span>Y</span><span>W</span><span>J</span><span>M</span><span>B</span><span>S</span><span>L</span><span>G</span><span class="h">L</span><span>E</span>
+                        <span class="h">H</span><span class="h">O</span><span class="h">R</span><span class="h">S</span><span class="h">E</span><span>A</span><span>N</span><span>P</span><span class="h">F</span><span>K</span>
+                        <span>Q</span><span>A</span><span>J</span><span>T</span><span>D</span><span>C</span><span>M</span><span>B</span><span>X</span><span>V</span>
+                        <span>R</span><span>G</span><span>Z</span><span>C</span><span>N</span><span>H</span><span>F</span><span>Y</span><span>D</span><span>U</span>
+                        <span>M</span><span>B</span><span class="h">E</span><span class="h">A</span><span class="h">G</span><span class="h">L</span><span class="h">E</span><span>J</span><span>K</span><span>T</span>
+                        <span>S</span><span>F</span><span>X</span><span>V</span><span>R</span><span>P</span><span>W</span><span>H</span><span>A</span><span>N</span>
                     </div>
                     <div class="pg-wl">BEAR &middot; TIGER &middot; HORSE &middot; EAGLE &middot; WOLF</div>
                 </div>
@@ -686,9 +686,14 @@ def build_cover_html(
     author: str = "",
     book_type: str = "default",
     puzzle_count: int = 55,
+    variant_id: Optional[str] = None,
 ) -> str:
     """
     Build the complete HTML for a book cover.
+
+    Uses the TemplateLoader to load niche-specific templates from the
+    filesystem (engine/cover/templates/{niche}/). Falls back to the
+    inline NICHE_TEMPLATES dict for niches not yet migrated to files.
 
     Args:
         dims: Calculated cover dimensions
@@ -697,12 +702,15 @@ def build_cover_html(
         author: Author/publisher name
         book_type: Which niche template to use
         puzzle_count: Number of puzzles (for template text)
+        variant_id: Optional design variant (e.g., "v1", "v2")
 
     Returns:
         Complete HTML string ready for Playwright rendering
     """
-    # Get niche template or fall back to default
-    niche = NICHE_TEMPLATES.get(book_type, NICHE_TEMPLATES["default"])
+    from .template_loader import get_template_loader
+
+    loader = get_template_loader()
+    template = loader.load_template(book_type, variant_id=variant_id)
 
     # Get CSS variables from dimensions
     cover_css = generate_cover_css(dims)
@@ -716,18 +724,19 @@ def build_cover_html(
     }
 
     # Substitute variables in niche template content
-    front_html = Template(niche["front_cover_html"]).safe_substitute(template_vars)
-    back_html = Template(niche["back_cover_html"]).safe_substitute(template_vars)
-    spine_html = Template(niche["spine_html"]).safe_substitute(template_vars)
+    front_html = Template(template.front_cover_html).safe_substitute(template_vars)
+    back_html = Template(template.back_cover_html).safe_substitute(template_vars)
+    spine_html = Template(template.spine_html).safe_substitute(template_vars)
 
     # Don't render spine text if book is too thin
     if not dims.spine_has_text:
         spine_html = ""
 
-    # Build final HTML
-    html = COVER_TEMPLATE_HTML.substitute(
+    # Build final HTML using base template (file-based or inline fallback)
+    base_html_str = loader.load_base_html()
+    html = Template(base_html_str).substitute(
         cover_css=cover_css,
-        template_css=niche["template_css"],
+        template_css=template.template_css,
         front_cover_html=front_html,
         back_cover_html=back_html,
         spine_html=spine_html,
@@ -746,6 +755,7 @@ async def render_cover(
     book_type: str = "default",
     output_dir: Optional[Path] = None,
     puzzle_count: int = 55,
+    variant_id: Optional[str] = None,
 ) -> dict:
     """
     Generate a complete book cover — HTML → PDF + PNG via Playwright.
@@ -760,6 +770,7 @@ async def render_cover(
         book_type: Niche template key
         output_dir: Where to save files
         puzzle_count: For template text
+        variant_id: Optional design variant (e.g., "v1", "v2")
 
     Returns:
         Dict with paths to cover.pdf and cover-front.png
@@ -775,6 +786,7 @@ async def render_cover(
         author=author,
         book_type=book_type,
         puzzle_count=puzzle_count,
+        variant_id=variant_id,
     )
 
     if output_dir is None:
@@ -868,6 +880,7 @@ def render_cover_sync(
     book_type: str = "default",
     output_dir: Optional[Path] = None,
     puzzle_count: int = 55,
+    variant_id: Optional[str] = None,
 ) -> dict:
     """Synchronous wrapper for render_cover."""
     return asyncio.run(render_cover(
@@ -880,6 +893,7 @@ def render_cover_sync(
         book_type=book_type,
         output_dir=output_dir,
         puzzle_count=puzzle_count,
+        variant_id=variant_id,
     ))
 
 

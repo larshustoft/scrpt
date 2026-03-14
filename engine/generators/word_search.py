@@ -4,7 +4,8 @@ SCRPT Word Search Generator
 Creates complete word search puzzle books ready for Amazon KDP.
 
 Each puzzle:
-  - Places words in a grid (horizontal, vertical, diagonal, reversed)
+  - Places words in a grid (horizontal, vertical, and optionally diagonal,
+    including reversed)
   - Fills remaining cells with random letters
   - Generates a word list for the solver
   - Includes answer key pages at the back
@@ -31,16 +32,21 @@ from reportlab.lib.enums import TA_CENTER
 
 # ── Puzzle Grid Logic ────────────────────────────────────────────
 
-DIRECTIONS = [
+DIRECTIONS_HV = [
     (0, 1),   # right
     (1, 0),   # down
     (0, -1),  # left
     (-1, 0),  # up
-    (1, 1),   # diagonal down-right
-    (1, -1),  # diagonal down-left
-    (-1, 1),  # diagonal up-right
-    (-1, -1), # diagonal up-left
 ]
+
+DIRECTIONS_DIAGONAL = [
+    (1, 1),   # down-right
+    (1, -1),  # down-left
+    (-1, 1),  # up-right
+    (-1, -1), # up-left
+]
+
+DIRECTIONS_ALL = DIRECTIONS_HV + DIRECTIONS_DIAGONAL
 
 
 @dataclass
@@ -68,6 +74,7 @@ def generate_puzzle(
     words: list[str],
     grid_size: int = 15,
     max_attempts: int = 100,
+    allow_diagonal: bool = False,
 ) -> WordSearchPuzzle:
     """
     Generate a single word search puzzle.
@@ -76,6 +83,7 @@ def generate_puzzle(
         words: List of words to hide in the grid
         grid_size: Width and height of the grid
         max_attempts: Max placement attempts per word
+        allow_diagonal: If True, words can be placed diagonally too
 
     Returns:
         WordSearchPuzzle with filled grid
@@ -92,7 +100,7 @@ def generate_puzzle(
         if len(word_upper) > grid_size:
             continue  # Skip words too long for the grid
 
-        placed_word = _try_place_word(grid, word_upper, grid_size, max_attempts)
+        placed_word = _try_place_word(grid, word_upper, grid_size, max_attempts, allow_diagonal)
         if placed_word:
             placed.append(placed_word)
 
@@ -115,9 +123,10 @@ def _try_place_word(
     word: str,
     grid_size: int,
     max_attempts: int,
+    allow_diagonal: bool = False,
 ) -> Optional[PlacedWord]:
     """Try to place a word in the grid."""
-    directions = list(DIRECTIONS)
+    directions = list(DIRECTIONS_ALL if allow_diagonal else DIRECTIONS_HV)
 
     for _ in range(max_attempts):
         direction = random.choice(directions)
@@ -381,6 +390,7 @@ class WordSearchBookConfig:
     grid_size: int = 15            # 15x15 grid
     words_per_puzzle: int = 15
     difficulty: str = "medium"     # easy, medium, hard
+    allow_diagonal: bool = False   # If True, some puzzles include diagonal words
     large_print: bool = True       # Large print for seniors market
     trim_width: float = 8.5        # inches
     trim_height: float = 11.0      # inches
@@ -444,7 +454,7 @@ def generate_word_search_book(
         )
         used_themes.append(theme_name)
 
-        puzzle = generate_puzzle(words, config.grid_size)
+        puzzle = generate_puzzle(words, config.grid_size, allow_diagonal=config.allow_diagonal)
         puzzle.puzzle_number = i + 1
         puzzle.title = theme_name.replace("_", " ").title()
         puzzles.append(puzzle)

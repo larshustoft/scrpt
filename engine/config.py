@@ -7,11 +7,15 @@ Everything runs locally — no cloud dependencies.
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # ── Project Root ─────────────────────────────────────────────────
 # scrpt/ is the project root, engine/ is where this file lives
 ENGINE_DIR = Path(__file__).parent
 PROJECT_ROOT = ENGINE_DIR.parent
+
+# ── Environment Variables ────────────────────────────────────────
+load_dotenv(PROJECT_ROOT / ".env")
 
 # ── Data & Output Directories ───────────────────────────────────
 DATA_DIR = PROJECT_ROOT / "data"
@@ -49,6 +53,9 @@ KDP_PRINT_DPI = 300
 QUALITY_SCORE_MINIMUM = 85          # Minimum design quality score (0-100)
 AI_VISION_SCORE_MINIMUM = 80       # Minimum AI review score (0-100)
 DIMENSION_TOLERANCE = 0.005         # inches — Amazon cross-check tolerance
+
+# ── AI API Keys ────────────────────────────────────────────────
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 # ── ComfyUI (Local Stable Diffusion) ────────────────────────────
 COMFYUI_URL = "http://127.0.0.1:8188"

@@ -1,0 +1,144 @@
+/* ══════════════════════════════════════════════════════════════
+   CRYPTOGRAM — Cover Template Styles
+   ══════════════════════════════════════════════════════════════
+   Deep indigo/purple palette. Light lavender front, dark indigo back.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Background ── */
+.bleed-fill { background: linear-gradient(160deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%); }
+.spine { background: #1e1b4b; }
+
+/* ── Back Cover ── */
+.back-cover {
+    background: #1e1b4b;
+    padding: 180px 140px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.back-cover h3 {
+    font-size: 72px;
+    margin-bottom: 50px;
+    color: #a5b4fc;
+    font-family: 'Georgia', serif;
+}
+.back-cover p {
+    font-size: 42px;
+    line-height: 1.7;
+    opacity: 0.9;
+}
+
+/* ── Front Cover — Light lavender ── */
+.front-cover {
+    background: linear-gradient(175deg, #eef2ff 0%, #e0e7ff 50%, #c7d2fe 100%);
+    text-align: center;
+    color: #1e1b4b;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Grid pattern overlay */
+.front-cover::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+        linear-gradient(rgba(30,27,75,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30,27,75,0.03) 1px, transparent 1px);
+    background-size: 120px 120px;
+    z-index: 0;
+}
+
+/* Inner border */
+.front-cover::after {
+    content: '';
+    position: absolute;
+    top: 100px; left: 100px; right: 100px; bottom: 100px;
+    border: 6px solid rgba(30,27,75,0.07);
+    border-radius: 30px;
+    z-index: 0;
+}
+
+.front-cover > * { position: relative; z-index: 1; }
+
+/* ── Top/Bottom accent bars ── */
+.top-accent {
+    width: 100%;
+    height: 60px;
+    background: linear-gradient(90deg, #312e81, #4338ca, #312e81);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+}
+.bottom-accent {
+    width: 100%;
+    height: 60px;
+    background: linear-gradient(90deg, #312e81, #4338ca, #312e81);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+}
+
+/* ── Title ── */
+.title {
+    font-size: 190px;
+    font-weight: bold;
+    font-family: 'Georgia', serif;
+    line-height: 1.12;
+    margin-bottom: 40px;
+    color: #1e1b4b;
+    max-width: 90%;
+}
+
+.decorative {
+    width: 500px;
+    height: 8px;
+    background: linear-gradient(90deg, transparent, #6366f1, transparent);
+    margin: 30px auto;
+}
+
+.subtitle {
+    font-size: 90px;
+    font-family: 'Georgia', serif;
+    color: #4338ca;
+    margin-bottom: 60px;
+    font-style: italic;
+}
+
+/* ── Badge ── */
+.badge {
+    background: linear-gradient(135deg, #312e81, #4338ca);
+    color: white;
+    padding: 30px 100px;
+    border-radius: 100px;
+    font-size: 72px;
+    font-weight: bold;
+    letter-spacing: 8px;
+    margin-bottom: 50px;
+    box-shadow: 0 8px 30px rgba(30,27,75,0.25);
+}
+
+/* ── Author ── */
+.author {
+    font-size: 72px;
+    color: #6b7280;
+    font-family: 'Georgia', serif;
+    letter-spacing: 2px;
+}
+
+/* ── Bottom section ── */
+.bottom-section {
+    margin-top: auto;
+    width: 100%;
+    text-align: center;
+}
+
+.bottom-divider {
+    width: 300px;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, rgba(30,27,75,0.2), transparent);
+    margin: 0 auto 40px;
+}
