@@ -110,7 +110,10 @@ async def search_bestseller_covers(
                 try:
                     result = await _extract_product_card(card)
                     if result and result.asin and result.cover_image_url:
-                        results.append(result)
+                        # Skip duplicates
+                        seen_asins = {r.asin for r in results}
+                        if result.asin not in seen_asins:
+                            results.append(result)
                 except Exception as e:
                     logger.debug(f"Failed to extract product card: {e}")
                     continue
@@ -131,60 +134,71 @@ async def _extract_product_card(card) -> Optional[BestsellerCover]:
     if not asin or len(asin) != 10:
         return None
 
-    # Title from h2 > a > span
+    # Title — try multiple selectors (Amazon changes HTML frequently)
     title = ""
-    title_el = await card.query_selector("h2 a span")
-    if title_el:
-        title = (await title_el.text_content() or "").strip()
+    for selector in ["h2 a span", "h2 span", "h2"]:
+        title_el = await card.query_selector(selector)
+        if title_el:
+            title = (await title_el.text_content() or "").strip()
+            if title:
+                break
     if not title:
         return None
 
-    # Cover image URL from .s-image
+    # Cover image URL — try multiple selectors
     cover_url = ""
-    img_el = await card.query_selector("img.s-image")
-    if img_el:
-        cover_url = await img_el.get_attribute("src") or ""
-    if not cover_url or "m.media-amazon.com" not in cover_url:
+    for selector in ["img.s-image", "img[data-image-latency]", ".s-image-fixed-height img", "img"]:
+        img_el = await card.query_selector(selector)
+        if img_el:
+            cover_url = await img_el.get_attribute("src") or ""
+            if cover_url and "m.media-amazon.com" in cover_url:
+                break
+            cover_url = ""
+    if not cover_url:
         return None
 
     # Upgrade to high-res
     cover_url = _upgrade_image_url(cover_url, 1500)
 
-    # Price
+    # Price — extract numeric value from any currency format
     price = None
     price_el = await card.query_selector(".a-price .a-offscreen")
     if price_el:
         price_text = (await price_el.text_content() or "").strip()
-        try:
-            price = float(price_text.replace("$", "").replace(",", ""))
-        except ValueError:
-            pass
+        # Extract numeric value from formats like "$12.97", "EUR 6.09", "£8.99"
+        price_match = re.search(r'[\d]+[.,]?\d*', price_text.replace(",", ""))
+        if price_match:
+            try:
+                price = float(price_match.group().replace(",", "."))
+            except ValueError:
+                pass
 
     # Review count
     reviews = None
-    reviews_el = await card.query_selector(
-        'span[aria-label*="stars"] + span a span, '
-        '.a-size-base.s-underline-text'
-    )
+    reviews_el = await card.query_selector('a[href*="customerReviews"] span')
     if reviews_el:
         reviews_text = (await reviews_el.text_content() or "").strip()
-        reviews_text = reviews_text.replace(",", "").replace("(", "").replace(")", "")
-        try:
-            reviews = int(reviews_text)
-        except ValueError:
-            pass
+        reviews_text = re.sub(r'[^\d]', '', reviews_text)
+        if reviews_text:
+            try:
+                reviews = int(reviews_text)
+            except ValueError:
+                pass
 
     # Rating
     rating = None
-    rating_el = await card.query_selector('span[aria-label*="out of 5 stars"]')
-    if rating_el:
-        rating_label = await rating_el.get_attribute("aria-label") or ""
-        match = re.search(r'([\d.]+)\s+out of', rating_label)
-        if match:
-            try:
-                rating = float(match.group(1))
-            except ValueError:
-                pass
+    for rating_sel in ['span[aria-label*="out of 5 stars"]', '.a-icon-alt', 'span.a-icon-alt']:
+        rating_el = await card.query_selector(rating_sel)
+        if rating_el:
+            rating_text = (await rating_el.get_attribute("aria-label") or
+                          await rating_el.text_content() or "")
+            match = re.search(r'([\d.]+)\s+out of', rating_text)
+            if match:
+                try:
+                    rating = float(match.group(1))
+                    break
+                except ValueError:
+                    pass
 
     return BestsellerCover(
         title=title,
