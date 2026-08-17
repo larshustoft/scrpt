@@ -21,6 +21,27 @@ declare global {
   }
 }
 
+function Clock() {
+  const [now, setNow] = useState<string>("");
+
+  useEffect(() => {
+    const tick = () => setNow(new Date().toLocaleTimeString([], {
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    }));
+    tick();
+    const interval = setInterval(tick, 10_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!now) return null;
+  return (
+    <span className="text-[13px] text-text-secondary tabular-nums select-none"
+          title={new Date().toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}>
+      {now}
+    </span>
+  );
+}
+
 function FullscreenToggle() {
   const [isFull, setIsFull] = useState(false);
 
@@ -122,6 +143,7 @@ export function Navbar() {
       <div className="h-4 w-px bg-border-subtle" />
 
       <div className="flex items-center gap-4">
+        <Clock />
         <FullscreenToggle />
         <div className="flex items-center gap-2" title={engineOnline ? "Local engine running" : "Local engine offline — start the SCRPT companion"}>
           <span

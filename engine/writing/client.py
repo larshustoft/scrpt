@@ -33,7 +33,6 @@ async def complete(
     system: str,
     user: str,
     max_tokens: int = 8000,
-    temperature: float = 1.0,
     retries: int = 3,
 ) -> str:
     """One-shot completion with retry on transient errors."""
@@ -43,7 +42,6 @@ async def complete(
             resp = await client().messages.create(
                 model=writing_model(),
                 max_tokens=max_tokens,
-                temperature=temperature,
                 system=system,
                 messages=[{"role": "user", "content": user}],
             )
@@ -52,6 +50,29 @@ async def complete(
             last_err = e
             await asyncio.sleep(2 ** attempt * 2)
     raise RuntimeError(f"Claude request failed after {retries} attempts: {last_err}")
+
+
+async def complete_chat(
+    system: str,
+    messages: list[dict],
+    max_tokens: int = 1200,
+    retries: int = 2,
+) -> str:
+    """Multi-turn completion (assistant conversations)."""
+    last_err = None
+    for attempt in range(retries):
+        try:
+            resp = await client().messages.create(
+                model=writing_model(),
+                max_tokens=max_tokens,
+                system=system,
+                messages=messages,
+            )
+            return "".join(b.text for b in resp.content if b.type == "text")
+        except Exception as e:
+            last_err = e
+            await asyncio.sleep(2 ** attempt)
+    raise RuntimeError(f"Claude chat failed: {last_err}")
 
 
 def extract_json(text: str):

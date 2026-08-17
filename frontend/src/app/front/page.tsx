@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { scrpt, type Job, type ScrptBook } from "@/lib/scrpt";
+import { AssistantDock } from "@/components/AssistantDock";
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -20,7 +21,7 @@ export default function HQPage() {
   const [current, setCurrent] = useState<ScrptBook | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
-  const [assistantNote, setAssistantNote] = useState(false);
+
 
   useEffect(() => {
     let alive = true;
@@ -78,7 +79,7 @@ export default function HQPage() {
                 style={{ background: drafting ? "var(--status-amber)" : "var(--status-green)" }}
               />
               <span className="text-[11px] tracking-[0.22em] uppercase text-text-secondary">
-                Working on right now
+                Writing right now
               </span>
             </div>
           )}
@@ -120,9 +121,12 @@ export default function HQPage() {
               </div>
               <div className="mt-4 text-[12px] text-text-secondary"
                    style={{ textShadow: "0 1px 10px rgba(0,0,0,0.9)" }}>
-                {drafting
-                  ? `Writing — ${Math.round(job!.progress * 100)}%`
-                  : `${ms?.word_count ? ms.word_count.toLocaleString() + " words · " : ""}${current.status}`}
+                {(() => {
+                  const isBook = Boolean(current.data.interior?.page_count);
+                  const kindLabel = isBook ? "Book" : "Manuscript";
+                  if (drafting) return `${kindLabel} — writing ${Math.round(job!.progress * 100)}%`;
+                  return `${kindLabel}${ms?.word_count ? " · " + ms.word_count.toLocaleString() + " words" : ""} · ${current.status}`;
+                })()}
                 <span className="text-accent ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   Open →
                 </span>
@@ -161,29 +165,7 @@ export default function HQPage() {
       </div>
 
       {/* the assistant — bottom right */}
-      <div className="absolute bottom-16 right-16 flex flex-col items-center gap-3">
-        {assistantNote && (
-          <div className="card text-[12px] text-text-secondary max-w-[220px] text-center py-3 px-4 fade-up">
-            The assistant joins the front office in a coming update.
-          </div>
-        )}
-        <button
-          aria-label="Assistant"
-          onClick={() => setAssistantNote((v) => !v)}
-          className="relative h-[64px] w-[64px] rounded-full transition-transform hover:scale-105"
-          style={{
-            background:
-              "radial-gradient(circle at 35% 30%, rgba(218,184,111,0.9), rgba(138,109,53,0.85) 55%, rgba(23,18,5,0.95))",
-            boxShadow:
-              "0 0 40px rgba(201,164,92,0.35), 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.35)",
-          }}
-        >
-          <span
-            className="absolute inset-[-10px] rounded-full pulse-soft"
-            style={{ boxShadow: "0 0 46px rgba(201,164,92,0.28)" }}
-          />
-        </button>
-      </div>
+      <AssistantDock />
     </div>
   );
 }
