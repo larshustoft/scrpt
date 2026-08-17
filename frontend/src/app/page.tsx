@@ -24,7 +24,7 @@ export default function SalesPage() {
             Pricing
           </a>
           {user ? (
-            <Link href="/hq" className="btn-brass">Open the studio</Link>
+            <Link href="/study" className="btn-brass">Open the studio</Link>
           ) : (
             <Link href="/login" className="btn-brass">Sign in</Link>
           )}

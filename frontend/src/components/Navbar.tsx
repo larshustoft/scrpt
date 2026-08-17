@@ -8,9 +8,67 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { ScrptLogo } from "@/components/Logo";
 
 const NAV_ITEMS = [
-  { href: "/hq", label: "HQ" },
+  { href: "/study", label: "The Study" },
   { href: "/office", label: "Back Office" },
 ];
+
+declare global {
+  interface Window {
+    scrptDesktop?: {
+      toggleFullscreen: () => Promise<boolean>;
+      isFullscreen: () => Promise<boolean>;
+    };
+  }
+}
+
+function FullscreenToggle() {
+  const [isFull, setIsFull] = useState(false);
+
+  useEffect(() => {
+    if (window.scrptDesktop) {
+      window.scrptDesktop.isFullscreen().then(setIsFull);
+    } else {
+      const sync = () => setIsFull(Boolean(document.fullscreenElement));
+      document.addEventListener("fullscreenchange", sync);
+      return () => document.removeEventListener("fullscreenchange", sync);
+    }
+  }, []);
+
+  const toggle = async () => {
+    if (window.scrptDesktop) {
+      setIsFull(await window.scrptDesktop.toggleFullscreen());
+    } else if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      setIsFull(false);
+    } else {
+      await document.documentElement.requestFullscreen();
+      setIsFull(true);
+    }
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      title={isFull ? "Exit full screen" : "Enter full screen"}
+      className="text-text-tertiary hover:text-text-primary transition-colors p-1"
+      aria-label="Toggle full screen"
+    >
+      {isFull ? (
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4"
+                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
+                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
+                strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
+  );
+}
 
 export function Navbar() {
   const pathname = usePathname();
@@ -28,7 +86,7 @@ export function Navbar() {
       className="sticky top-0 z-50 h-[64px] px-8 flex items-center gap-6 border-b border-border-subtle"
       style={{ background: "var(--nav-bg)", backdropFilter: "blur(16px)" }}
     >
-      <Link href="/hq" className="text-accent hover:opacity-80 transition-opacity">
+      <Link href="/study" className="text-accent hover:opacity-80 transition-opacity">
         <ScrptLogo size={15} />
       </Link>
 
@@ -62,6 +120,7 @@ export function Navbar() {
       <div className="h-4 w-px bg-border-subtle" />
 
       <div className="flex items-center gap-4">
+        <FullscreenToggle />
         <div className="flex items-center gap-2" title={engineOnline ? "Local engine running" : "Local engine offline — start the SCRPT companion"}>
           <span
             className={`h-[7px] w-[7px] rounded-full ${

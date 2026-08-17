@@ -46,7 +46,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     // Logged in but on login page — into the study
     if (configured && user && isLoginPage) {
-      router.replace("/hq")
+      router.replace("/study")
     }
   }, [user, loading, configured, isPublicPage, isLoginPage, router])
 

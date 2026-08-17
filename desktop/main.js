@@ -5,7 +5,7 @@
  * the engine is a companion service, not a child of the window.
  */
 
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
@@ -20,7 +20,7 @@ const LOG_DIR = path.join(os.homedir(), ".scrpt");
 
 const ENGINE_URL = "http://127.0.0.1:8000/api/health";
 const FRONTEND_URL = "http://localhost:3000";
-const START_URL = `${FRONTEND_URL}/hq`;
+const START_URL = `${FRONTEND_URL}/study`;
 
 function ping(url) {
   return new Promise((resolve) => {
@@ -86,7 +86,18 @@ async function createWindow() {
     title: "SCRPT",
     show: true,
     fullscreen: true, // STCKR-style: the studio takes the whole screen
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+    },
   });
+
+  ipcMain.removeHandler("toggle-fullscreen");
+  ipcMain.removeHandler("is-fullscreen");
+  ipcMain.handle("toggle-fullscreen", () => {
+    win.setFullScreen(!win.isFullScreen());
+    return win.isFullScreen();
+  });
+  ipcMain.handle("is-fullscreen", () => win.isFullScreen());
 
   win.loadURL(SPLASH);
 
