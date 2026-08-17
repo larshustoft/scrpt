@@ -81,16 +81,16 @@ function FullscreenToggle() {
       aria-label="Toggle full screen"
     >
       {isFull ? (
-        // in fullscreen: arrows pointing inward — click to return to a window
+        // in fullscreen: click to return to a window
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-          <path d="M2 6h4V2M14 6h-4V2M2 10h4v4M14 10h-4v4"
+          <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
                 stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
                 strokeLinejoin="round" />
         </svg>
       ) : (
-        // windowed: arrows pointing outward — click to go fullscreen
+        // windowed: click to go fullscreen
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-          <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
+          <path d="M2 6h4V2M14 6h-4V2M2 10h4v4M14 10h-4v4"
                 stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
                 strokeLinejoin="round" />
         </svg>
