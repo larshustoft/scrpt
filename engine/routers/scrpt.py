@@ -61,10 +61,16 @@ async def create_workorder(req: WorkOrderRequest):
             font_preset=req.font_preset or preset["font"],
             paragraph_style="indent" if req.kind == BookKind.FICTION else "spaced",
         )
-        title = req.title if (n_books == 1 and req.title) else (
-            f"Untitled ({req.series_title} #{book_no})" if req.series_title
-            else req.title or "Untitled"
-        )
+        researched = (req.book_titles[book_no - 1].strip()
+                      if book_no - 1 < len(req.book_titles) else "")
+        if book_no == 1 and req.title:
+            title = req.title
+        elif researched:
+            title = researched
+        elif req.series_title:
+            title = f"Untitled ({req.series_title} #{book_no})"
+        else:
+            title = req.title or "Untitled"
         data = {
             "kind": req.kind.value,
             "book_type": req.kind.value,          # legacy field compatibility

@@ -56,9 +56,14 @@ async def develop_idea(kind: str, genre_preset: str, idea: str,
         f"structure: {preset.get('structure', '')}.\n"
         f"{playbook}\n\n"
         "As head of acquisitions, develop this into a commissioning package. "
-        "Draw on real, current market knowledge of the genre — actual reader "
-        "appetites, actual comparable authors and titles, tropes with proven "
-        "demand. Be concrete and commercially honest, never generic.\n"
+        "FIRST use web search to check the LIVE market: the current Amazon "
+        "bestseller lists for this genre (Kindle and paperback), which titles "
+        "and authors dominate right now, what their covers and titles signal, "
+        "and any adjacent universe readers collect (e.g. Austen/Pride & "
+        "Prejudice-adjacent shelves for Regency romance). Then combine that "
+        "with your craft knowledge. Actual reader appetites, actual comparable "
+        "authors and titles, tropes with proven demand. Be concrete and "
+        "commercially honest, never generic.\n"
         "Return JSON only:\n"
         "{"
         '"market_analysis": "150-220 words: who the reader is, what they buy '
@@ -85,8 +90,8 @@ async def develop_idea(kind: str, genre_preset: str, idea: str,
     )
     raw = await complete(
         "You are the head of acquisitions at a commercial publishing house — "
-        "equal parts market analyst and story editor. Your market knowledge is "
-        "real and current; you name actual authors, titles and tropes, and you "
-        "flag honestly when demand is thin.",
-        prompt, max_tokens=6000)
+        "equal parts market analyst and story editor. You verify the market "
+        "with live web searches before you write; you name actual authors, "
+        "titles and tropes, and you flag honestly when demand is thin.",
+        prompt, max_tokens=8000, web_search=6)
     return extract_json(raw)

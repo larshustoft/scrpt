@@ -60,6 +60,18 @@ def _merged_direction(book: dict, extra_direction: str) -> str:
     return " ".join(p for p in (stored, extra) if p)
 
 
+def _ensure_real_title(book: dict) -> str:
+    """The title is baked into the art — refuse to paint a placeholder."""
+    t = (book["title"] or "").strip()
+    if not t or t.lower().startswith("untitled") or len(t) > 120 or "\n" in t:
+        raise ValueError(
+            "This book doesn't have its real title yet — the title is painted "
+            "into the artwork, so covers would say the placeholder. Title the "
+            "book first (drafting sets it at the bible stage), then generate "
+            "covers.")
+    return t
+
+
 async def build_cover_brief(book: dict, ms: Manuscript) -> str:
     """Claude writes the image-generation prompt from the book's own bible."""
     preset = GENRE_PRESETS.get(ms.genre_preset, {})
@@ -105,6 +117,80 @@ async def build_cover_brief(book: dict, ms: Manuscript) -> str:
     return " ".join(p for p in parts if p)
 
 
+async def build_variant_briefs(book: dict, ms: Manuscript, count: int,
+                               direction: str) -> list:
+    """Claude art-directs N GENUINELY DIFFERENT covers for one book.
+
+    One call: check what the genre's current bestselling covers look like
+    (live web search), then return N distinct painter briefs — different
+    compositions and moments, not the same image four times. Each brief is a
+    complete prompt with the exact title/author/tagline baked in.
+    """
+    preset = GENRE_PRESETS.get(ms.genre_preset, {})
+    style = GENRE_COVER_STYLE.get(ms.genre_preset, "commercial bestseller cover")
+    author = (book["data"].get("author_name") or "").strip()
+    title = _ensure_real_title(book)
+    bible = ""
+    if ms.story_bible:
+        b = ms.story_bible
+        bible = (f"Logline: {b.logline}\nSetting: {b.setting} ({b.time_period})\n"
+                 f"Tone: {b.tone}")
+    elif ms.concept_bible:
+        c = ms.concept_bible
+        bible = (f"Thesis: {c.thesis}\nFramework: {c.framework_name}\n"
+                 f"Audience: {c.audience}")
+    else:
+        bible = f"Concept: {ms.idea[:900]}"
+    trim = (book["data"].get("format") or {}).get("trim_size") \
+        or book["data"].get("trim_size") or "5.5x8.5"
+    trim_label = trim.replace("x", '\" × ') + '\"'
+
+    prompt = (
+        f"You are art-directing the cover of \"{title}\""
+        + (f" by {author}" if author else "") + f", a {trim_label} paperback "
+        f"{preset.get('label', 'book').lower()}.\n\nTHE BOOK:\n{bible}\n"
+        + (f"BLURB: {ms.blurb[:500]}\n" if ms.blurb else "")
+        + (f"TAGLINE (use exactly if it fits): \"{ms.tagline}\"\n" if ms.tagline else "")
+        + (f"\nPUBLISHER'S DIRECTION (binding): {direction}\n" if direction else "")
+        + f"\nGenre shelf convention: {style}.\n\n"
+        "FIRST, web-search what the current bestselling covers in this exact "
+        "genre look like on Amazon right now — the composition, palette and "
+        "typography patterns readers use to recognize the shelf.\n\n"
+        f"THEN write {count} DISTINCT image-generation prompts — {count} "
+        "different covers a top publisher would genuinely consider, not one "
+        "idea repeated. Vary the concept across them: e.g. an intimate "
+        "character moment; a wider scene where setting is the star; a bold "
+        "symbolic/object composition; a type-led design with ornament. Every "
+        "prompt must:\n"
+        f"- state it is a portrait book cover, and include the exact title "
+        f"\"{title}\"" + (f" and author name \"{author}\"" if author else "")
+        + " as text rendered INTO the artwork, with specific type direction "
+        "(placement, case, style) that competes on today's shelf\n"
+        "- describe one specific, vivid scene or composition — concrete "
+        "light, palette, wardrobe/props, mood; no vague adjectives\n"
+        "- demand professional trade-cover finish; no extra text beyond "
+        "title, author"
+        + (", tagline" if ms.tagline else "") + "\n"
+        "- read as one self-contained paragraph (the image model sees ONLY "
+        "that paragraph)\n\n"
+        'Return JSON only: {"briefs": [{"concept": "2-4 word label", '
+        '"prompt": "the full paragraph"}]}'
+    )
+    raw = await complete(
+        "You are a celebrated book-cover art director. Your covers win the "
+        "shelf: instantly on-genre, but composed and lit like no one else's. "
+        "You check the live market before you direct.",
+        prompt, max_tokens=6000, web_search=3)
+    briefs = extract_json(raw).get("briefs") or []
+    briefs = [b for b in briefs if b.get("prompt")][:count]
+    if not briefs:
+        raise RuntimeError("Art direction returned no usable briefs")
+    # fill to count by reusing the strongest (first) concepts
+    while len(briefs) < count:
+        briefs.append(briefs[len(briefs) % max(1, len(briefs))])
+    return briefs
+
+
 async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
     book = get_book_by_catalog(catalog)
     if not book:
@@ -113,6 +199,7 @@ async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY is not configured in the engine .env")
 
+    _ensure_real_title(book)
     brief = await build_cover_brief(book, ms)
     direction = _merged_direction(book, extra_direction)
     if direction:
@@ -228,18 +315,19 @@ async def generate_cover_variants(catalog: str, count: int = 4,
     ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY is not configured in the engine .env")
-
-    brief = await build_cover_brief(book, ms)
-    direction = _merged_direction(book, extra_direction)
-    if direction:
-        brief = f"{brief} Additional direction from the publisher: {direction}"
-    if on_progress:
-        on_progress(0.15, f"Painting {count} covers in parallel")
+    _ensure_real_title(book)
 
     count = max(2, min(6, count))
+    direction = _merged_direction(book, extra_direction)
+    if on_progress:
+        on_progress(0.1, "Art-directing against the live market")
+    briefs = await build_variant_briefs(book, ms, count, direction)
+    if on_progress:
+        on_progress(0.3, f"Painting {len(briefs)} distinct covers in parallel")
+
     async with httpx.AsyncClient() as client:
         results = await asyncio.gather(
-            *[_generate_one(client, brief) for _ in range(count)],
+            *[_generate_one(client, b["prompt"]) for b in briefs],
             return_exceptions=True)
 
     out_dir = Path(OUTPUT_DIR) / catalog
@@ -256,7 +344,9 @@ async def generate_cover_variants(catalog: str, count: int = 4,
         img.resize((400, 640), Image.LANCZOS).save(
             out_dir / f"cover-variant-{i + 1}-preview.png", optimize=True)
         variants.append({"index": i + 1,
-                         "preview": f"cover-variant-{i + 1}-preview.png"})
+                         "preview": f"cover-variant-{i + 1}-preview.png",
+                         "concept": briefs[i].get("concept", ""),
+                         "brief": briefs[i]["prompt"]})
     if not variants:
         first_err = next((r for r in results if isinstance(r, Exception)), None)
         raise RuntimeError(f"All variants failed: {first_err}")
@@ -264,10 +354,9 @@ async def generate_cover_variants(catalog: str, count: int = 4,
     data = dict(get_book_by_catalog(catalog)["data"])
     cover = data.get("cover") or {}
     cover["variants"] = variants
-    cover["art_brief"] = brief
     data["cover"] = cover
     update_book(book["id"], data)
-    return {"variants": variants, "brief": brief}
+    return {"variants": variants}
 
 
 def select_cover_variant(catalog: str, index: int) -> dict:
@@ -276,7 +365,9 @@ def select_cover_variant(catalog: str, index: int) -> dict:
     if not vpath.exists():
         raise ValueError(f"Variant {index} not found")
     book = get_book_by_catalog(catalog)
-    brief = ((book["data"].get("cover") or {}).get("art_brief")) or ""
+    stored = (book["data"].get("cover") or {}).get("variants") or []
+    brief = next((v.get("brief", "") for v in stored if v.get("index") == index),
+                 ((book["data"].get("cover") or {}).get("art_brief")) or "")
     result = _install_cover(catalog, vpath.read_bytes(), brief)
     data = dict(get_book_by_catalog(catalog)["data"])
     data["cover"]["selected_variant"] = index

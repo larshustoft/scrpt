@@ -497,27 +497,52 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
             <div className="label-scrpt">Alternatives — click to make it the cover</div>
             <div className="grid grid-cols-4 gap-3 mt-1">
               {variants.map((v) => (
-                <button key={v.index} onClick={() => choose(v.index)}
-                        disabled={selecting !== null}
-                        className="relative rounded-[5px] overflow-hidden transition-transform hover:scale-[1.04]"
-                        style={{
-                          boxShadow: cover.selected_variant === v.index
-                            ? "0 0 0 2px var(--accent), var(--shadow-page)"
-                            : "var(--shadow-page)",
-                          opacity: selecting !== null && selecting !== v.index ? 0.5 : 1,
-                        }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`${scrpt.engineUrl}/api/files/${catalog}/${v.preview}?v=${imgKey}`}
-                       alt={`Variant ${v.index}`} className="w-full block" />
-                  {selecting === v.index && (
-                    <span className="absolute inset-0 flex items-center justify-center text-[11px]"
-                          style={{ background: "rgba(14,12,9,0.6)" }}>
-                      Installing…
-                    </span>
+                <div key={v.index}>
+                  <button onClick={() => choose(v.index)}
+                          disabled={selecting !== null}
+                          className="relative rounded-[5px] overflow-hidden transition-transform hover:scale-[1.04] w-full"
+                          style={{
+                            boxShadow: cover.selected_variant === v.index
+                              ? "0 0 0 2px var(--accent), var(--shadow-page)"
+                              : "var(--shadow-page)",
+                            opacity: selecting !== null && selecting !== v.index ? 0.5 : 1,
+                          }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`${scrpt.engineUrl}/api/files/${catalog}/${v.preview}?v=${imgKey}`}
+                         alt={`Variant ${v.index}`} className="w-full block" />
+                    {selecting === v.index && (
+                      <span className="absolute inset-0 flex items-center justify-center text-[11px]"
+                            style={{ background: "rgba(14,12,9,0.6)" }}>
+                        Installing…
+                      </span>
+                    )}
+                  </button>
+                  {v.concept && (
+                    <div className="text-[10px] text-text-faint text-center mt-1.5 leading-snug">
+                      {v.concept}
+                    </div>
                   )}
-                </button>
+                </div>
               ))}
             </div>
+            {variants.some((v: { brief?: string }) => v.brief) && (
+              <details className="mt-3">
+                <summary className="text-[11px] text-text-tertiary cursor-pointer hover:text-text-primary transition-colors">
+                  Show the painter&apos;s briefs
+                </summary>
+                <div className="mt-2 space-y-3">
+                  {variants.filter((v: { brief?: string }) => v.brief).map((v: { index: number; concept?: string; brief?: string }) => (
+                    <div key={v.index} className="text-[11px] text-text-tertiary leading-relaxed rounded-md p-3"
+                         style={{ background: "var(--surface-elevated)" }}>
+                      <span className="font-medium text-text-secondary">
+                        {v.index}. {v.concept || `Variant ${v.index}`}:
+                      </span>{" "}
+                      {v.brief}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
           </div>
         )}
       </div>

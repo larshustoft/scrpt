@@ -173,7 +173,8 @@ async def build_bible(catalog: str, chosen: int = 0, edits: str = "") -> None:
     book, ms = _load(catalog)
     p = _preset(ms)
     series = _series_context(book)
-    plot = ms.plot_options[chosen] if ms.plot_options else {"title": ms.idea, "synopsis": ms.idea}
+    # no plot options (auto-draft): the idea is the synopsis, NEVER the title
+    plot = ms.plot_options[chosen] if ms.plot_options else {"title": "", "synopsis": ms.idea}
     ms.chosen_plot = chosen
     user_notes = f"\nPublisher notes to incorporate:\n{edits}\n" if edits else ""
 
@@ -243,9 +244,33 @@ async def build_bible(catalog: str, chosen: int = 0, edits: str = "") -> None:
         except Exception:
             pass  # series bible is enhancement, never a blocker
 
-    # adopt the chosen plot's title if the book still has a placeholder title
-    if plot.get("title") and (not book["title"] or book["title"].startswith("Untitled")):
-        update_book(book["id"], {"title": plot["title"]})
+    # give the book its real title the moment the bible exists — the title and
+    # author are baked into cover art, so a placeholder must never survive
+    # past this stage. Prefer the chosen plot's title; otherwise Claude titles
+    # the book from the bible under the house title craft bar.
+    placeholder = (not book["title"] or book["title"].startswith("Untitled")
+                   or len(book["title"]) > 120 or "\n" in book["title"])
+    if placeholder:
+        real_title = (plot.get("title") or "").strip()
+        if not real_title:
+            bar = ("one to three words, ownable, franchise-grade — never "
+                   "generic, never explanatory"
+                   if ms.kind == BookKind.FICTION and "thriller" in ms.genre_preset
+                   else "short and evocative in the genre's bestseller register "
+                        "— never generic, never explanatory")
+            series_ctx = book["data"].get("series") or {}
+            t_prompt = (
+                f"{_bible_digest(ms)}\n\n"
+                + (f"This is book {series_ctx.get('book_number')} of the series "
+                   f"\"{series_ctx.get('series_title')}\".\n" if series_ctx.get("series_title") else "")
+                + f"Title this {p['label'].lower()}. The bar: {bar}. "
+                'Return JSON only: {"title": "..."}'
+            )
+            raw_t = await complete(_fiction_system(ms) if ms.kind == BookKind.FICTION
+                                   else _nonfiction_system(ms), t_prompt, max_tokens=300)
+            real_title = str(extract_json(raw_t).get("title", "")).strip()
+        if real_title and len(real_title) <= 120:
+            update_book(book["id"], {"title": real_title})
 
 
 # ── stage 3: outline ─────────────────────────────────────────────

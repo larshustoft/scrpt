@@ -62,6 +62,8 @@ export default function WorkOrderPage() {
   const [seedIdea, setSeedIdea] = useState("");
   // visual direction from the research — rides along into the cover generator
   const [coverDirection, setCoverDirection] = useState("");
+  // researched titles for every series book — books 2+ are named from birth
+  const [bookTitles, setBookTitles] = useState<string[]>([]);
   const [nameSuggestions, setNameSuggestions] = useState<{ name: string; rationale: string }[]>([]);
   const [suggestingNames, setSuggestingNames] = useState(false);
   interface HouseAuthor { name: string; books: { catalog_number: string; title: string; series_title: string; status: string }[] }
@@ -122,6 +124,7 @@ export default function WorkOrderPage() {
 
     const firstBook = pkg.book_ideas?.[0] || pkg.title_suggestions?.[0];
     if (firstBook) setTitle(firstBook.title);
+    setBookTitles((pkg.book_ideas || []).map((b) => b.title));
     if (pkg.pen_name) setPenName((p) => (p.trim() ? p : pkg.pen_name!));
     // format comes from the research too — length and trim
     if (pkg.recommendations?.target_words) setTargetWords(pkg.recommendations.target_words);
@@ -212,6 +215,7 @@ export default function WorkOrderPage() {
         trim_size: trim || null,
         font_preset: font || null,
         cover_direction: coverDirection,
+        book_titles: isSeries ? bookTitles : [],
         generate_plot_options: flow === "options",
         auto_draft: flow === "auto",
       };

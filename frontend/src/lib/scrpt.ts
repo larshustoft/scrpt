@@ -136,7 +136,7 @@ export interface ScrptBook {
       uploaded_path?: string;
       cover_pdf?: string;
       cover_front_png?: string;
-      variants?: { index: number; preview: string }[];
+      variants?: { index: number; preview: string; concept?: string; brief?: string }[];
       selected_variant?: number;
       validation?: ValidationReport;
     };
@@ -217,6 +217,7 @@ export interface WorkOrderPayload {
   paper_type?: string | null;
   font_preset?: string | null;
   cover_direction?: string;
+  book_titles?: string[];
   generate_plot_options?: boolean;
   auto_draft?: boolean;
 }

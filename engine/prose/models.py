@@ -9,7 +9,7 @@ and `data["series"]`. This keeps the existing books table schema unchanged.
 """
 
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -435,6 +435,7 @@ class WorkOrderRequest(BaseModel):
     pen_name: str = ""
     series_title: str = ""                # empty -> standalone
     series_books: int = 1
+    book_titles: List[str] = []           # researched titles, one per series book
     target_words: Optional[int] = None
     trim_size: Optional[str] = None
     paper_type: Optional[str] = None
