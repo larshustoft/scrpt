@@ -161,6 +161,13 @@ def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
     ebook = crop_to_ratio(img, 1600 / 2560).resize((1600, 2560), Image.LANCZOS)
     ebook_path = out_dir / "ebook-cover.jpg"
     ebook.save(ebook_path, quality=92, optimize=True)
+    # audiobook cover: square 3000x3000 (Spotify/Google/Kobo/aggregator spec)
+    side = min(img.size)
+    sq = crop_to_ratio(img, 1.0)
+    audio_size = min(3000, side * 2)  # upscale cap: 2x source
+    sq.resize((audio_size, audio_size), Image.LANCZOS).save(
+        out_dir / "audiobook-cover.jpg", quality=92, optimize=True)
+
     # preview / print reference: the book's actual trim proportions
     pv = crop_to_ratio(img, tw / th)
     pw = 800
