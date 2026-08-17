@@ -170,7 +170,8 @@ async def audiobook_job(handle: JobHandle, catalog: str) -> dict:
     if not ms.chapters or not any(c.blocks for c in ms.chapters):
         raise ValueError("Manuscript has no drafted chapters")
 
-    api_key = get_setting("elevenlabs_api_key", "")
+    from ..routers.assistant import elevenlabs_key
+    api_key = elevenlabs_key()
     voice_id = get_setting("elevenlabs_voice_id", "")
     voice_name = get_setting("elevenlabs_voice_name", "an AI voice")
     model_id = get_setting("elevenlabs_model_id", "eleven_multilingual_v2")
