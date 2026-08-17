@@ -158,36 +158,31 @@ async def build_variant_briefs(book: dict, ms: Manuscript, count: int,
         + (f"TAGLINE (use exactly if it fits): \"{ms.tagline}\"\n" if ms.tagline else "")
         + (f"\nPUBLISHER'S DIRECTION (binding): {direction}\n" if direction else "")
         + f"\nGenre shelf convention: {style}.\n\n"
-        "FIRST, web-search what the current bestselling covers in this exact "
-        "genre look like on Amazon right now — the composition, palette and "
-        "typography patterns readers use to recognize the shelf.\n\n"
+        "FIRST, glance at what the current bestselling covers in this exact "
+        "genre look like on Amazon right now, so the shelf register is "
+        "current.\n\n"
         f"THEN write {count} DISTINCT image-generation prompts — {count} "
         "different covers a top publisher would genuinely consider, not one "
-        "idea repeated. Vary the concept across them: e.g. an intimate "
-        "character moment; a wider scene where setting is the star; a bold "
-        "symbolic/object composition; a type-led design with ornament. Every "
-        "prompt must:\n"
-        f"- state it is a portrait book cover, and include the exact title "
-        f"\"{title}\"" + (f" and author name \"{author}\"" if author else "")
-        + " as text rendered INTO the artwork, with specific type direction "
-        "(placement, case, style) that competes on today's shelf\n"
-        "- describe one specific, vivid scene or composition — concrete "
-        "light, palette, wardrobe/props, mood; no vague adjectives. Favor "
-        "compositions that do not hinge on a large front-facing photoreal "
-        "face (figures from behind, in profile, in middle distance, or "
-        "symbolic compositions read premium and avoid uncanny artifacts)\n"
-        "- text may additionally include a small category descriptor line "
-        f"(e.g. \"A {preset.get('label', 'Novel')}\") and, for series, an "
-        "ornamental border/frame device that makes the set collectible — "
-        "but nothing else\n"
-        "- demand professional trade-cover finish; no extra text beyond "
-        "title, author"
-        + (", tagline" if ms.tagline else "")
-        + ", the optional category line\n"
-        "- read as one self-contained paragraph (the image model sees ONLY "
-        "that paragraph)\n\n"
+        "idea repeated (e.g. an intimate character moment; a scene where the "
+        "setting is the star; a symbolic/object composition; a type-led "
+        "design).\n\n"
+        "HOUSE RULE — the publisher's proven brief shape (do not exceed it): "
+        "the essentials, ONE famous comp anchor, and at most one sentence of "
+        "visual angle to make this variant distinct. The comp anchor does "
+        "the heavy lifting — name one famous title or universe every shelf "
+        "reader recognizes (the way 'a historical romance like Pride & "
+        "Prejudice' hands the model an entire visual language); pick the "
+        "strongest comp for THIS book. "
+        "No typography direction, no palette lists, no constraint bullets. "
+        "The image model is the designer; get out of its way.\n"
+        "Each prompt is self-contained (the image model sees only that "
+        "paragraph), names it a portrait book cover in the "
+        f"{trim_label} format, and carries the exact title "
+        f"\"{title}\"" + (f", the author name \"{author}\"" if author else "")
+        + (f", and the tagline \"{ms.tagline}\"" if ms.tagline else "")
+        + " as text in the artwork.\n\n"
         'Return JSON only: {"briefs": [{"concept": "2-4 word label", '
-        '"prompt": "the full paragraph"}]}'
+        '"prompt": "the paragraph"}]}'
     )
     raw = await complete(
         "You are a celebrated book-cover art director. Your covers win the "
