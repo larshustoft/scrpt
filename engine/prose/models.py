@@ -439,6 +439,7 @@ class WorkOrderRequest(BaseModel):
     trim_size: Optional[str] = None
     paper_type: Optional[str] = None
     font_preset: Optional[str] = None
+    cover_direction: str = ""             # visual direction from the acquisitions research
     generate_plot_options: bool = True    # produce 3 plot options for approval first
     auto_draft: bool = False              # skip approval, draft immediately with option 1
 

@@ -57,6 +57,8 @@ export default function WorkOrderPage() {
   // the original rough idea, kept so "research again" re-develops from the
   // publisher's seed, not from the previous suggestion
   const [seedIdea, setSeedIdea] = useState("");
+  // visual direction from the research — rides along into the cover generator
+  const [coverDirection, setCoverDirection] = useState("");
   const [nameSuggestions, setNameSuggestions] = useState<{ name: string; rationale: string }[]>([]);
   const [suggestingNames, setSuggestingNames] = useState(false);
   interface HouseAuthor { name: string; books: { catalog_number: string; title: string; series_title: string; status: string }[] }
@@ -88,12 +90,29 @@ export default function WorkOrderPage() {
   // fill the whole form from a commissioning package — the publisher only
   // re-presses the button if they want a different suggestion
   const applyPackage = (pkg: DevPackage) => {
-    if (pkg.extended_idea) setIdea(pkg.extended_idea);
+    const seriesAdopted = Boolean(pkg.series_titles?.length);
+    // The idea field becomes the full commissioning brief: what the book is
+    // (genre, standalone or series), then the storyline. This same text later
+    // feeds the cover generator's premise when no story bible exists yet.
+    const label = preset?.label || "book";
+    const shape = seriesAdopted || isSeries
+      ? `a series of ${seriesBooks} ${label} books`
+      : `a standalone ${label}`;
+    const brief = [
+      `This is ${shape}${pkg.series_titles?.length ? ` — “${pkg.series_titles[0]}”` : ""}.`,
+      pkg.positioning || "",
+      "",
+      pkg.extended_idea || "",
+      pkg.series_engine ? `\nThe series engine: ${pkg.series_engine}` : "",
+    ].join("\n").replace(/\n{3,}/g, "\n\n").trim();
+    if (brief) setIdea(brief);
+
     const firstBook = pkg.book_ideas?.[0] || pkg.title_suggestions?.[0];
     if (firstBook) setTitle(firstBook.title);
-    if (pkg.series_titles?.length) { setIsSeries(true); setSeriesTitle(pkg.series_titles[0]); }
+    if (seriesAdopted) { setIsSeries(true); setSeriesTitle(pkg.series_titles![0]); }
     if (pkg.pen_name) setPenName((p) => (p.trim() ? p : pkg.pen_name!));
     if (pkg.recommendations?.target_words) setTargetWords(pkg.recommendations.target_words);
+    setCoverDirection(pkg.cover_direction || "");
   };
 
   const developIdea = async () => {
@@ -177,6 +196,7 @@ export default function WorkOrderPage() {
         target_words: targetWords === "" ? null : targetWords,
         trim_size: trim || null,
         font_preset: font || null,
+        cover_direction: coverDirection,
         generate_plot_options: flow === "options",
         auto_draft: flow === "auto",
       };
@@ -341,7 +361,7 @@ export default function WorkOrderPage() {
             )}
             {dev.cover_direction && (
               <div>
-                <div className="label-scrpt">Cover direction (feeds artwork prompts)</div>
+                <div className="label-scrpt">Cover direction — rides along with the work order into the cover generator</div>
                 <p className="text-[13px] text-text-secondary leading-relaxed">{dev.cover_direction}</p>
               </div>
             )}

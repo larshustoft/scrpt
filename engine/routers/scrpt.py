@@ -70,6 +70,7 @@ async def create_workorder(req: WorkOrderRequest):
             "book_type": req.kind.value,          # legacy field compatibility
             "genre_preset": req.genre_preset,
             "author_name": req.pen_name,
+            "cover_direction": req.cover_direction,
             "trim_size": fmt.trim_size,
             "paper_type": fmt.paper_type,
             "page_count": 0,

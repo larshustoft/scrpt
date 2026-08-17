@@ -216,6 +216,7 @@ export interface WorkOrderPayload {
   trim_size?: string | null;
   paper_type?: string | null;
   font_preset?: string | null;
+  cover_direction?: string;
   generate_plot_options?: boolean;
   auto_draft?: boolean;
 }

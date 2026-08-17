@@ -53,6 +53,13 @@ GENRE_COVER_STYLE = {
 }
 
 
+def _merged_direction(book: dict, extra_direction: str) -> str:
+    """Publisher direction = acquisitions research direction + ad-hoc extra."""
+    stored = (book["data"].get("cover_direction") or "").strip()
+    extra = extra_direction.strip()
+    return " ".join(p for p in (stored, extra) if p)
+
+
 async def build_cover_brief(book: dict, ms: Manuscript) -> str:
     """Claude writes the image-generation prompt from the book's own bible."""
     preset = GENRE_PRESETS.get(ms.genre_preset, {})
@@ -65,6 +72,9 @@ async def build_cover_brief(book: dict, ms: Manuscript) -> str:
     elif ms.concept_bible:
         c = ms.concept_bible
         bible = f"Thesis: {c.thesis}\nFramework: {c.framework_name}\nAudience: {c.audience}"
+    else:
+        # pre-bible: the commissioning brief is the premise source
+        bible = f"Concept: {ms.idea[:900]}"
 
     # Premise-first briefing (Lars-validated): tell the model the story and the
     # names, then let it do its own cover-design thinking. Over-specified art
@@ -104,8 +114,9 @@ async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
         raise ValueError("OPENAI_API_KEY is not configured in the engine .env")
 
     brief = await build_cover_brief(book, ms)
-    if extra_direction.strip():
-        brief = f"{brief}\n\nAdditional direction from the publisher: {extra_direction.strip()}"
+    direction = _merged_direction(book, extra_direction)
+    if direction:
+        brief = f"{brief}\n\nAdditional direction from the publisher: {direction}"
 
     async with httpx.AsyncClient() as client:
         r = await client.post(
@@ -219,8 +230,9 @@ async def generate_cover_variants(catalog: str, count: int = 4,
         raise ValueError("OPENAI_API_KEY is not configured in the engine .env")
 
     brief = await build_cover_brief(book, ms)
-    if extra_direction.strip():
-        brief = f"{brief} Additional direction from the publisher: {extra_direction.strip()}"
+    direction = _merged_direction(book, extra_direction)
+    if direction:
+        brief = f"{brief} Additional direction from the publisher: {direction}"
     if on_progress:
         on_progress(0.15, f"Painting {count} covers in parallel")
 
