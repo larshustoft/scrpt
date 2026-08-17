@@ -166,7 +166,15 @@ export function Navbar() {
           </span>
         </div>
         <button
-          onClick={() => signOut()}
+          onClick={async () => {
+            if (process.env.NEXT_PUBLIC_AUTH_MODE === "local") {
+              const { localSignOut } = await import("@/lib/local-auth");
+              localSignOut();
+              window.location.href = "/login";
+            } else {
+              signOut();
+            }
+          }}
           className="text-[12px] text-text-tertiary hover:text-text-primary transition-colors"
         >
           Sign out

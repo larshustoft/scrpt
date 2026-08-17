@@ -74,6 +74,8 @@ export default function SettingsPage() {
                settings={settings} save={save} savedField={savedField} />
       </Section>
 
+      <AccountSection />
+
       <Section title="Amazon KDP"
                sub="For reference only. SCRPT never automates KDP logins and never stores your KDP password — uploads are manual (3/day cap), royalties come from report file imports.">
         <Field label="KDP account email" k="kdp_email" placeholder="you@example.com"
@@ -99,6 +101,84 @@ export default function SettingsPage() {
                settings={settings} save={save} savedField={savedField} />
       </Section>
     </div>
+  );
+}
+
+function AccountSection() {
+  const isLocal = process.env.NEXT_PUBLIC_AUTH_MODE === "local";
+  const [current, setCurrent] = useState("");
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    if (isLocal) return;
+    import("@/lib/supabase-browser").then(({ getSupabaseBrowser }) => {
+      getSupabaseBrowser()?.auth.getUser()
+        .then(({ data }) => setEmail(data.user?.email || ""));
+    });
+  }, [isLocal]);
+
+  const change = async () => {
+    setErr(""); setMsg("");
+    if (pw.length < 8) { setErr("At least 8 characters."); return; }
+    if (pw !== pw2) { setErr("Passwords don't match."); return; }
+    setBusy(true);
+    try {
+      if (isLocal) {
+        const { localChange } = await import("@/lib/local-auth");
+        const { error } = await localChange(current, pw);
+        if (error) { setErr(error); return; }
+      } else {
+        const { getSupabaseBrowser } = await import("@/lib/supabase-browser");
+        const supabase = getSupabaseBrowser();
+        if (!supabase) { setErr("Auth not configured."); return; }
+        const { error } = await supabase.auth.updateUser({ password: pw });
+        if (error) { setErr(error.message); return; }
+      }
+      setMsg("Password updated.");
+      setCurrent(""); setPw(""); setPw2("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section title="Account"
+             sub={isLocal
+               ? "This installation is locked with a house password stored (hashed) on this Mac. Changing it signs out every other window."
+               : `Signed in${email ? ` as ${email}` : ""}. Set a new password here any time — handy if you came in through an email link.`}>
+      <div className="grid md:grid-cols-3 gap-4">
+        {isLocal && (
+          <div>
+            <div className="label-scrpt">Current password</div>
+            <input className="input-scrpt" type="password" value={current}
+                   autoComplete="current-password" onChange={(e) => setCurrent(e.target.value)} />
+          </div>
+        )}
+        <div>
+          <div className="label-scrpt">New password</div>
+          <input className="input-scrpt" type="password" value={pw}
+                 autoComplete="new-password" onChange={(e) => setPw(e.target.value)} />
+        </div>
+        <div>
+          <div className="label-scrpt">Repeat it</div>
+          <input className="input-scrpt" type="password" value={pw2}
+                 autoComplete="new-password" onChange={(e) => setPw2(e.target.value)} />
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <button className="btn-ghost text-[12px]" disabled={busy || !pw || (isLocal && !current)}
+                onClick={change}>
+          {busy ? "Updating…" : "Update password"}
+        </button>
+        {msg && <span className="text-[12px]" style={{ color: "var(--status-green)" }}>{msg}</span>}
+        {err && <span className="text-[12px]" style={{ color: "var(--status-red)" }}>{err}</span>}
+      </div>
+    </Section>
   );
 }
 

@@ -103,8 +103,10 @@ app = FastAPI(
 # ── SCRPT prose-book API ────────────────────────────────────────
 from .routers.scrpt import router as scrpt_router  # noqa: E402
 from .routers.assistant import router as assistant_router  # noqa: E402
+from .routers.auth_local import router as auth_local_router  # noqa: E402
 app.include_router(scrpt_router)
 app.include_router(assistant_router)
+app.include_router(auth_local_router)
 
 # ── CORS ─────────────────────────────────────────────────────────
 app.add_middleware(

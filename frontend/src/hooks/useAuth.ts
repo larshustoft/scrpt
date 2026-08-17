@@ -134,16 +134,12 @@ export function useAuth() {
     }
   }, [])
 
-  const signUpWithEmail = useCallback(async (email: string, password: string) => {
-    const supabase = getSupabaseBrowser()
-    if (!supabase) return { error: "Supabase not configured" }
-
-    try {
-      const { error } = await supabase.auth.signUp({ email, password })
-      return { error: error?.message || null }
-    } catch (err: unknown) {
-      return { error: err instanceof Error ? err.message : "Sign-up failed" }
-    }
+  // Account creation is closed while SCRPT is pre-launch. Re-open when the
+  // hosted product ships (also re-enable signups in the Supabase dashboard —
+  // that toggle is the real enforcement, this is just the polite front door).
+  const signUpWithEmail = useCallback(async (_email: string, _password: string) => {
+    void _email; void _password
+    return { error: "SCRPT is invite-only for now — accounts open at launch." }
   }, [])
 
   const signInWithMagicLink = useCallback(async (email: string) => {
@@ -153,7 +149,11 @@ export function useAuth() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: window.location.origin },
+        options: {
+          emailRedirectTo: window.location.origin,
+          // never silently create an account for an unknown email
+          shouldCreateUser: false,
+        },
       })
       return { error: error?.message || null }
     } catch (err: unknown) {

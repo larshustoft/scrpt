@@ -28,6 +28,41 @@ function isPublic(pathname: string) {
 /** Local-dev auth bypass — set NEXT_PUBLIC_DEV_NO_AUTH=1 in .env.local only. */
 const DEV_NO_AUTH = process.env.NEXT_PUBLIC_DEV_NO_AUTH === "1"
 
+/**
+ * Local house-password gate (installed edition, NEXT_PUBLIC_AUTH_MODE=local).
+ * The engine holds the password hash; we hold an opaque session token.
+ */
+function LocalAuthGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const isPublicPage = isPublic(pathname) || DEV_NO_AUTH
+  const isLoginPage = pathname === "/login"
+  const [state, setState] = useState<"checking" | "in" | "out">("checking")
+
+  useEffect(() => {
+    let alive = true
+    import("@/lib/local-auth").then(({ localVerify }) =>
+      localVerify().then((ok) => { if (alive) setState(ok ? "in" : "out") }))
+    return () => { alive = false }
+  }, [pathname])
+
+  useEffect(() => {
+    if (state === "out" && !isPublicPage) router.replace("/login")
+    if (state === "in" && isLoginPage) router.replace("/front")
+  }, [state, isPublicPage, isLoginPage, router])
+
+  if (!isPublicPage && state !== "in") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="serif-display text-accent text-lg tracking-[0.3em] pulse-soft">
+          SCRPT
+        </span>
+      </div>
+    )
+  }
+  return <>{children}</>
+}
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, configured } = useAuthContext()
   const pathname = usePathname()
@@ -115,7 +150,18 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
   )
 }
 
+const LOCAL_AUTH = process.env.NEXT_PUBLIC_AUTH_MODE === "local"
+
 export function Providers({ children }: { children: React.ReactNode }) {
+  if (LOCAL_AUTH) {
+    return (
+      <LocalAuthGate>
+        <LayoutShell>
+          {children}
+        </LayoutShell>
+      </LocalAuthGate>
+    )
+  }
   return (
     <AuthProvider>
       <AuthGate>
