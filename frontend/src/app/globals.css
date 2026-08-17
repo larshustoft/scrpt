@@ -1,60 +1,260 @@
 @import "tailwindcss";
 
+/* ── SCRPT book fonts (local, OFL) — used by UI display + typesetting ── */
+@font-face {
+  font-family: "EB Garamond";
+  src: url("/fonts/EBGaramond.ttf") format("truetype-variations");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "EB Garamond";
+  src: url("/fonts/EBGaramond-Italic.ttf") format("truetype-variations");
+  font-weight: 400 800;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Literata";
+  src: url("/fonts/Literata.ttf") format("truetype-variations");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Literata";
+  src: url("/fonts/Literata-Italic.ttf") format("truetype-variations");
+  font-weight: 200 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/fonts/SourceSerif4.ttf") format("truetype-variations");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Source Serif 4";
+  src: url("/fonts/SourceSerif4-Italic.ttf") format("truetype-variations");
+  font-weight: 200 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Crimson Pro";
+  src: url("/fonts/CrimsonPro.ttf") format("truetype-variations");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Crimson Pro";
+  src: url("/fonts/CrimsonPro-Italic.ttf") format("truetype-variations");
+  font-weight: 200 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ── SCRPT identity: the dark study ──────────────────────────────
+   One deliberate look. Warm near-black surfaces, brass accents,
+   ivory text, serif display type. No light mode by design. */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --sidebar-bg: #0f172a;
-  --sidebar-text: #e2e8f0;
-  --sidebar-active: #3b82f6;
-  --card-bg: #ffffff;
-  --card-border: #e2e8f0;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --muted: #64748b;
+  --bg: #0e0c09;
+  --bg-gradient: radial-gradient(ellipse 90% 65% at 50% -15%, rgba(201, 164, 92, 0.07), transparent);
+  --surface: #17130f;
+  --surface-elevated: #1f1a14;
+  --border-subtle: rgba(236, 229, 218, 0.08);
+  --border-hover: rgba(236, 229, 218, 0.16);
+
+  --text-primary: #ece5da;
+  --text-secondary: #b3a793;
+  --text-tertiary: #83786a;
+  --text-faint: #574f44;
+
+  --accent: #c9a45c;          /* brass */
+  --accent-hover: #dab86f;
+  --accent-deep: #8a6d35;
+  --accent-subtle: rgba(201, 164, 92, 0.10);
+  --accent-glow: rgba(201, 164, 92, 0.18);
+
+  --status-green: #5da173;
+  --status-amber: #d4a244;
+  --status-red: #c25b4e;
+  --status-blue: #6b93cf;
+
+  --paper: #f6f1e7;           /* book page in the studio */
+  --paper-ink: #1c1914;
+
+  --nav-bg: rgba(14, 12, 9, 0.82);
+  --shadow-card: 0 0 0 1px rgba(236, 229, 218, 0.06), 0 2px 12px rgba(0, 0, 0, 0.45);
+  --shadow-card-hover: 0 0 0 1px rgba(236, 229, 218, 0.10), 0 6px 24px rgba(0, 0, 0, 0.55);
+  --shadow-page: 0 1px 3px rgba(0, 0, 0, 0.5), 0 8px 30px rgba(0, 0, 0, 0.45);
+
+  --font-display: "EB Garamond", Georgia, serif;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-sidebar-bg: var(--sidebar-bg);
-  --color-sidebar-text: var(--sidebar-text);
-  --color-sidebar-active: var(--sidebar-active);
-  --color-card-bg: var(--card-bg);
-  --color-card-border: var(--card-border);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-hover: var(--border-hover);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-faint: var(--text-faint);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-  --color-muted: var(--muted);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-status-green: var(--status-green);
+  --color-status-amber: var(--status-amber);
+  --color-status-red: var(--status-red);
+  --color-status-blue: var(--status-blue);
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --radius-card: 14px;
+  --font-display: var(--font-display);
+}
+
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  background-color: var(--bg);
+  background-image: var(--bg-gradient);
+  background-repeat: no-repeat;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+::selection {
+  background: var(--accent-subtle);
+  color: var(--text-primary);
 }
 
-::-webkit-scrollbar-track {
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(236, 229, 218, 0.12);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+/* shared primitives */
+.card {
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+  position: relative;
+  overflow: clip;
+}
+.card-hover {
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+.btn-brass {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+  color: #171205;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+.btn-brass:hover {
+  filter: brightness(1.12);
+}
+.btn-brass:active {
+  transform: scale(0.985);
+}
+.btn-brass:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 13px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  transition: all 150ms ease;
+}
+.btn-ghost:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+  background: rgba(236, 229, 218, 0.03);
+}
+
+.input-scrpt {
+  width: 100%;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.input-scrpt:focus {
+  outline: none;
+  border-color: var(--accent-deep);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+.input-scrpt::placeholder {
+  color: var(--text-faint);
+}
+
+.label-scrpt {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+
+.serif-display {
+  font-family: var(--font-display);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up {
+  animation: fadeUp 300ms ease both;
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.pulse-soft {
+  animation: pulseSoft 1.8s ease-in-out infinite;
 }

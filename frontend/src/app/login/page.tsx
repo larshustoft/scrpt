@@ -1,238 +1,117 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/hooks/useAuth"
+import { useState } from "react";
+import { useAuthContext } from "@/components/AuthProvider";
 
-type Mode = "signin" | "signup" | "magic"
+type Mode = "signin" | "signup" | "magic";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const { signInWithEmail, signUpWithEmail, signInWithMagicLink, configured } = useAuth()
+  const { signInWithEmail, signUpWithEmail, signInWithMagicLink, configured } = useAuthContext();
+  const [mode, setMode] = useState<Mode>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const [mode, setMode] = useState<Mode>("signin")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [magicLinkSent, setMagicLinkSent] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
-
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
       if (mode === "magic") {
-        const result = await signInWithMagicLink(email)
-        if (result.error) {
-          setError(result.error)
-        } else {
-          setMagicLinkSent(true)
-        }
-        return
-      }
-
-      const fn = mode === "signin" ? signInWithEmail : signUpWithEmail
-      const result = await fn(email, password)
-
-      if (result.error) {
-        setError(result.error)
+        const { error } = await signInWithMagicLink(email);
+        if (error) setError(error);
+        else setNotice("Check your inbox — the sign-in link is on its way.");
+      } else if (mode === "signup") {
+        const { error } = await signUpWithEmail(email, password);
+        if (error) setError(error);
+        else setNotice("Account created. Check your inbox to confirm your email, then sign in.");
       } else {
-        router.push("/")
+        const { error } = await signInWithEmail(email, password);
+        if (error) setError(error);
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong")
     } finally {
-      setLoading(false)
+      setBusy(false);
     }
-  }
+  };
 
-  // Supabase not configured — show setup instructions
-  if (!configured) {
-    return (
-      <div className="min-h-screen bg-[#0F1219] flex items-center justify-center px-6">
-        <div className="max-w-[480px] mx-auto">
-          <div className="flex justify-center mb-8">
-            <span className="text-[28px] font-semibold tracking-[0.12em] text-white">
-              SCRPT
-            </span>
-          </div>
-
-          <h1 className="text-xl font-semibold text-white text-center mb-2">
-            Welcome to SCRPT
-          </h1>
-          <p className="text-sm text-slate-400 text-center mb-8">
-            Set up a free cloud account to get started.
-          </p>
-
-          <div className="space-y-4 text-sm text-slate-400">
-            {[
-              {
-                n: 1,
-                title: "Create a Supabase project",
-                desc: (
-                  <>
-                    Go to{" "}
-                    <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
-                      supabase.com
-                    </a>{" "}
-                    and create a free project.
-                  </>
-                ),
-              },
-              {
-                n: 2,
-                title: "Run the database schema",
-                desc: (
-                  <>
-                    In your Supabase project, go to <strong className="text-slate-300">SQL Editor</strong> and run{" "}
-                    <code className="font-mono bg-white/5 px-1.5 py-0.5 rounded text-[12px]">supabase/schema.sql</code>
-                  </>
-                ),
-              },
-              {
-                n: 3,
-                title: "Add your API keys",
-                desc: (
-                  <>
-                    Copy{" "}
-                    <code className="font-mono bg-white/5 px-1.5 py-0.5 rounded text-[12px]">.env.local.example</code>{" "}
-                    to{" "}
-                    <code className="font-mono bg-white/5 px-1.5 py-0.5 rounded text-[12px]">.env.local</code>{" "}
-                    and paste your Project URL and anon key.
-                  </>
-                ),
-              },
-              {
-                n: 4,
-                title: "Restart the app",
-                desc: (
-                  <>
-                    Stop and restart{" "}
-                    <code className="font-mono bg-white/5 px-1.5 py-0.5 rounded text-[12px]">npm run dev</code>
-                  </>
-                ),
-              },
-            ].map((step) => (
-              <div key={step.n} className="flex gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center text-[11px] font-medium">
-                  {step.n}
-                </span>
-                <div>
-                  <p className="text-white font-medium">{step.title}</p>
-                  <p className="mt-1">{step.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Supabase configured — show sign-in / sign-up form
   return (
-    <div className="min-h-screen bg-[#0F1219] flex items-center justify-center px-6">
-      <div className="w-full max-w-[380px] mx-auto">
-        <div className="flex justify-center mb-8">
-          <span className="text-[28px] font-semibold tracking-[0.12em] text-white">
+    <div className="min-h-screen relative flex items-center justify-center px-6">
+      <div className="absolute inset-0 bg-cover bg-center"
+           style={{ backgroundImage: "url(/hq-background.png)" }} />
+      <div className="absolute inset-0" style={{ background: "rgba(14,12,9,0.72)" }} />
+
+      <div className="relative w-full max-w-[400px]">
+        <div className="text-center mb-8">
+          <div className="serif-display text-[34px] font-semibold tracking-[0.24em] text-accent"
+               style={{ textShadow: "0 0 40px var(--accent-glow)" }}>
             SCRPT
-          </span>
+          </div>
+          <div className="text-[11px] tracking-[0.3em] uppercase text-text-tertiary mt-1">
+            Write · Publish · Sell
+          </div>
         </div>
 
-        <h1 className="text-xl font-semibold text-white text-center mb-6">
-          {mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Magic link"}
-        </h1>
-
-        {magicLinkSent ? (
-          <div className="text-center space-y-4">
-            <p className="text-sm text-slate-400">
-              Check your inbox for a login link.
-            </p>
-            <button
-              onClick={() => { setMagicLinkSent(false); setMode("signin") }}
-              className="text-sm text-slate-500 hover:text-white transition-colors"
-            >
-              Back to sign in
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-[13px] font-medium text-slate-300 mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                className="w-full rounded-lg border border-slate-700 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
+        <div className="card">
+          {!configured ? (
+            <div className="text-[13px] text-text-secondary leading-relaxed">
+              <div className="font-semibold text-text-primary mb-2">Setup needed</div>
+              Supabase credentials are missing. Copy{" "}
+              <code className="text-accent">.env.local.example</code> to{" "}
+              <code className="text-accent">.env.local</code> in the frontend
+              folder and add your project&apos;s URL and anon key.
             </div>
-
-            {mode !== "magic" && (
-              <div>
-                <label className="block text-[13px] font-medium text-slate-300 mb-1.5">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full rounded-lg border border-slate-700 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            )}
-
-            {error && (
-              <p className="text-sm text-red-400">{error}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading
-                ? "Loading..."
-                : mode === "signin"
-                ? "Sign in"
-                : mode === "signup"
-                ? "Create account"
-                : "Send magic link"}
-            </button>
-
-            <div className="flex items-center gap-3 text-sm text-slate-600">
-              <div className="flex-1 h-px bg-slate-800" />
-              <span>or</span>
-              <div className="flex-1 h-px bg-slate-800" />
-            </div>
-
-            <div className="flex justify-center gap-4 text-sm">
-              {mode !== "signin" && (
-                <button type="button" onClick={() => setMode("signin")} className="text-slate-500 hover:text-white transition-colors">
-                  Sign in
-                </button>
-              )}
-              {mode !== "signup" && (
-                <button type="button" onClick={() => setMode("signup")} className="text-slate-500 hover:text-white transition-colors">
-                  Create account
-                </button>
-              )}
+          ) : (
+            <form onSubmit={submit}>
+              <div className="label-scrpt">Email</div>
+              <input className="input-scrpt" type="email" value={email} required
+                     autoComplete="email"
+                     onChange={(e) => setEmail(e.target.value)} />
               {mode !== "magic" && (
-                <button type="button" onClick={() => setMode("magic")} className="text-slate-500 hover:text-white transition-colors">
-                  Magic link
-                </button>
+                <>
+                  <div className="label-scrpt mt-4">Password</div>
+                  <input className="input-scrpt" type="password" value={password} required
+                         autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                         minLength={8}
+                         onChange={(e) => setPassword(e.target.value)} />
+                </>
               )}
-            </div>
-          </form>
+
+              {error && <div className="text-[12px] mt-3" style={{ color: "var(--status-red)" }}>{error}</div>}
+              {notice && <div className="text-[12px] mt-3" style={{ color: "var(--status-green)" }}>{notice}</div>}
+
+              <button type="submit" className="btn-brass w-full justify-center mt-5" disabled={busy}>
+                {busy ? "One moment…"
+                  : mode === "signin" ? "Enter the studio"
+                  : mode === "signup" ? "Create account"
+                  : "Send sign-in link"}
+              </button>
+            </form>
+          )}
+        </div>
+
+        {configured && (
+          <div className="flex justify-center gap-5 mt-5 text-[12px] text-text-tertiary">
+            {mode !== "signin" && (
+              <button onClick={() => setMode("signin")} className="hover:text-text-primary transition-colors">
+                Sign in
+              </button>
+            )}
+            {mode !== "signup" && (
+              <button onClick={() => setMode("signup")} className="hover:text-text-primary transition-colors">
+                Create account
+              </button>
+            )}
+            {mode !== "magic" && (
+              <button onClick={() => setMode("magic")} className="hover:text-text-primary transition-colors">
+                Email me a link
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
-  )
+  );
 }

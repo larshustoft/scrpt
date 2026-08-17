@@ -1,0 +1,92 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { scrpt } from "@/lib/scrpt";
+import { useAuthContext } from "@/components/AuthProvider";
+
+const NAV_ITEMS = [
+  { href: "/hq", label: "HQ" },
+  { href: "/workorder", label: "Work Order" },
+  { href: "/shelf", label: "Bookshelf" },
+  { href: "/analytics", label: "Analytics" },
+  { href: "/settings", label: "Settings" },
+];
+
+export function Navbar() {
+  const pathname = usePathname();
+  const { signOut } = useAuthContext();
+  const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    scrpt.health().then(setEngineOnline);
+    const interval = setInterval(() => scrpt.health().then(setEngineOnline), 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <header
+      className="sticky top-0 z-50 h-[64px] px-8 flex items-center gap-6 border-b border-border-subtle"
+      style={{ background: "var(--nav-bg)", backdropFilter: "blur(16px)" }}
+    >
+      <Link href="/hq" className="flex items-baseline gap-2 select-none">
+        <span
+          className="serif-display text-[22px] font-semibold tracking-[0.22em] text-accent"
+          style={{ textShadow: "0 0 24px var(--accent-glow)" }}
+        >
+          SCRPT
+        </span>
+        <span className="text-[10px] tracking-[0.28em] text-text-faint uppercase hidden sm:inline">
+          Write · Publish · Sell
+        </span>
+      </Link>
+
+      <div className="flex-1" />
+
+      <nav className="flex items-center gap-1">
+        {NAV_ITEMS.map((item) => {
+          const isActive = pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`px-3 py-[6px] rounded-md text-[13px] font-medium transition-colors ${
+                isActive
+                  ? "text-text-primary bg-accent-subtle"
+                  : "text-text-tertiary hover:text-text-primary"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="h-4 w-px bg-border-subtle" />
+
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2" title={engineOnline ? "Local engine running" : "Local engine offline — start the SCRPT companion"}>
+          <span
+            className={`h-[7px] w-[7px] rounded-full ${
+              engineOnline === null
+                ? "bg-text-faint"
+                : engineOnline
+                  ? "bg-status-green"
+                  : "bg-status-red pulse-soft"
+            }`}
+          />
+          <span className="text-[11px] text-text-tertiary hidden md:inline">
+            {engineOnline === null ? "Engine…" : engineOnline ? "Engine" : "Offline"}
+          </span>
+        </div>
+        <button
+          onClick={() => signOut()}
+          className="text-[12px] text-text-tertiary hover:text-text-primary transition-colors"
+        >
+          Sign out
+        </button>
+      </div>
+    </header>
+  );
+}

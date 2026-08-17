@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SCRPT — Amazon KDP Publishing Engine",
+  title: "SCRPT — Write. Publish. Sell.",
   description:
-    "Automated book publishing for Amazon KDP. Research, create, validate, and upload.",
+    "The AI book studio. Write, format, and publish professional books and audiobooks for Amazon KDP.",
 };
 
 export default function RootLayout({

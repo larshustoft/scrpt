@@ -1,53 +1,44 @@
 #!/bin/bash
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SCRPT — Start Script
-# Launches both the Python backend and Next.js frontend
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SCRPT dev launcher — engine (:8000) + frontend (:3000).
+#
+# The repo lives on iCloud Desktop, which stalls Next.js file watching, so the
+# frontend is mirrored to local disk (~/.scrpt/dev/frontend) and served from
+# there. Re-run this script after editing frontend source to re-sync (fast,
+# incremental), or edit directly in the mirror during long UI sessions and
+# rsync back.
 
-DIR="$(cd "$(dirname "$0")" && pwd)"
+set -e
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+MIRROR="$HOME/.scrpt/dev/frontend"
 
-# Load NVM for Node.js
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  SCRPT — Write. Publish. Sell."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  SCRPT — Amazon KDP Publishing Engine"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "  Backend:  http://localhost:8000"
-echo "  Frontend: http://localhost:3000"
-echo ""
-echo "  Press Ctrl+C to stop both servers"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+# ── engine ──
+cd "$ROOT"
+PYTHONPATH=. python3 -m uvicorn engine.main:app --reload --port 8000 &
+ENGINE_PID=$!
 
-# Start Python backend
-echo "[SCRPT] Starting Python backend..."
-cd "$DIR"
-python3 -m uvicorn engine.main:app --reload --port 8000 &
-BACKEND_PID=$!
-
-# Wait for backend to start
-sleep 2
-
-# Start Next.js frontend
-echo "[SCRPT] Starting Next.js frontend..."
-cd "$DIR/frontend"
-npm run dev &
+# ── frontend (local-disk mirror) ──
+mkdir -p "$MIRROR"
+rsync -a --delete --exclude ".git" --exclude ".next" --exclude "node_modules" \
+  "$ROOT/frontend/" "$MIRROR/"
+if [ ! -d "$MIRROR/node_modules" ]; then
+  echo "Installing frontend dependencies (first run)…"
+  (cd "$MIRROR" && npm install)
+fi
+(cd "$MIRROR" && npm run dev) &
 FRONTEND_PID=$!
 
-# Trap Ctrl+C to kill both
 cleanup() {
-    echo ""
-    echo "[SCRPT] Shutting down..."
-    kill $BACKEND_PID 2>/dev/null
-    kill $FRONTEND_PID 2>/dev/null
-    wait $BACKEND_PID 2>/dev/null
-    wait $FRONTEND_PID 2>/dev/null
-    echo "[SCRPT] Stopped."
+  echo "Shutting down…"
+  kill "$ENGINE_PID" "$FRONTEND_PID" 2>/dev/null || true
 }
-
 trap cleanup EXIT INT TERM
 
-# Wait for either process to exit
+echo ""
+echo "  Engine:   http://localhost:8000"
+echo "  Frontend: http://localhost:3000"
+echo ""
 wait

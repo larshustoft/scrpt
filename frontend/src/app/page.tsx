@@ -1,231 +1,179 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useBooks } from "@/hooks/useBooks";
-import { checkHealth } from "@/lib/companion";
-import {
-  IconLibrary,
-  IconGlobe,
-  IconClock,
-  IconTarget,
-  IconAlertTriangle,
-  IconArrowRight,
-} from "@/components/icons";
+import { useAuthContext } from "@/components/AuthProvider";
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    draft: "bg-slate-100 text-slate-600",
-    generating: "bg-blue-50 text-blue-600",
-    quality_check: "bg-amber-50 text-amber-700",
-    ready: "bg-emerald-50 text-emerald-700",
-    uploading: "bg-violet-50 text-violet-600",
-    in_review: "bg-orange-50 text-orange-600",
-    live: "bg-emerald-50 text-emerald-700",
-    rejected: "bg-red-50 text-red-600",
-    paused: "bg-slate-100 text-slate-500",
-  };
+/**
+ * scrpt.ai — the sales page.
+ * Public, full-bleed, no app chrome.
+ */
+export default function SalesPage() {
+  const { user } = useAuthContext();
 
   return (
-    <span
-      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium ${colors[status] || "bg-slate-100 text-slate-600"}`}
-    >
-      {status.replace("_", " ")}
-    </span>
+    <div className="min-h-screen">
+      {/* top bar */}
+      <header className="absolute top-0 inset-x-0 z-20 h-[72px] px-8 flex items-center justify-between">
+        <span className="serif-display text-[24px] font-semibold tracking-[0.22em] text-accent">
+          SCRPT
+        </span>
+        <nav className="flex items-center gap-6">
+          <a href="#how" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
+            How it works
+          </a>
+          <a href="#pricing" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
+            Pricing
+          </a>
+          {user ? (
+            <Link href="/hq" className="btn-brass">Open the studio</Link>
+          ) : (
+            <Link href="/login" className="btn-brass">Sign in</Link>
+          )}
+        </nav>
+      </header>
+
+      {/* hero */}
+      <section className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url(/hq-background.png)" }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(14,12,9,0.55) 0%, rgba(14,12,9,0.35) 45%, var(--bg) 100%)",
+          }}
+        />
+        <div className="relative max-w-[1100px] mx-auto px-8 pt-44 pb-28 text-center">
+          <h1
+            className="serif-display text-[52px] leading-[1.1] font-semibold text-text-primary max-w-[750px] mx-auto"
+            style={{ textShadow: "0 2px 30px rgba(0,0,0,0.85)" }}
+          >
+            Your publishing house.
+            <br />
+            <span className="text-accent">Population: you.</span>
+          </h1>
+          <p
+            className="text-[16px] text-text-secondary mt-6 max-w-[560px] mx-auto leading-relaxed"
+            style={{ textShadow: "0 1px 16px rgba(0,0,0,0.9)" }}
+          >
+            SCRPT plots, writes, and typesets professional books — thrillers,
+            romance, non-fiction — formats them precisely for Amazon KDP,
+            narrates the audiobook, and tracks every royalty. You are the
+            publisher. SCRPT is the house.
+          </p>
+          <div className="flex items-center justify-center gap-4 mt-10">
+            <Link href="/login" className="btn-brass text-[14px] px-7 py-3">
+              Start your catalog
+            </Link>
+            <a href="#how" className="btn-ghost"
+               style={{ background: "rgba(14,12,9,0.5)", backdropFilter: "blur(8px)" }}>
+              See how it works
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* how it works */}
+      <section id="how" className="max-w-[1100px] mx-auto px-8 py-24">
+        <h2 className="serif-display text-[32px] font-semibold text-center">
+          From idea to bookstore
+        </h2>
+        <p className="text-[14px] text-text-secondary text-center mt-2 max-w-[520px] mx-auto">
+          One work order sets the whole house in motion.
+        </p>
+        <div className="grid md:grid-cols-4 gap-5 mt-14">
+          <Step
+            n="I"
+            title="Commission"
+            body="Describe the book — or the series. Pick the genre. SCRPT develops three plot directions and builds a full story bible before a word is written."
+          />
+          <Step
+            n="II"
+            title="Write"
+            body="Chapter by chapter, with a living continuity bible, genre structure, and your edits folded back in. You direct; the house writes."
+          />
+          <Step
+            n="III"
+            title="Format"
+            body="A true-to-print page studio: real trim sizes, mirrored margins, running heads, front matter — exported as a vector PDF that passes KDP's checks."
+          />
+          <Step
+            n="IV"
+            title="Publish"
+            body="Print, ebook, and AI-narrated audiobook masters, listing copy included. Then royalty reports flow back into one quiet dashboard."
+          />
+        </div>
+      </section>
+
+      {/* the details */}
+      <section className="border-t border-border-subtle">
+        <div className="max-w-[1100px] mx-auto px-8 py-24 grid md:grid-cols-3 gap-10">
+          <Detail
+            title="KDP-exact, to the thousandth of an inch"
+            body="Gutter margins from Amazon's own page-count tables, spine width from paper stock, bleed geometry, embedded fonts. The preview is the print file."
+          />
+          <Detail
+            title="Series that remember themselves"
+            body="A series bible carries your characters, world, and arcs across every book, so book four never contradicts book one."
+          />
+          <Detail
+            title="Honest AI, disclosed"
+            body="SCRPT follows Amazon's AI-content policy — disclosure on, quality first. The tool accelerates a publisher; it doesn't spam a marketplace."
+          />
+        </div>
+      </section>
+
+      {/* pricing */}
+      <section id="pricing" className="border-t border-border-subtle">
+        <div className="max-w-[720px] mx-auto px-8 py-24 text-center">
+          <h2 className="serif-display text-[32px] font-semibold">Pricing</h2>
+          <div className="card mt-10 py-12">
+            <div className="serif-display text-[22px] font-semibold text-accent">
+              Early access
+            </div>
+            <p className="text-[14px] text-text-secondary mt-3 max-w-[420px] mx-auto">
+              SCRPT is in private early access while the first catalogs are
+              built. Create an account to join the list — founding publishers
+              set their own terms.
+            </p>
+            <Link href="/login" className="btn-brass mt-8">
+              Request access
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-border-subtle">
+        <div className="max-w-[1100px] mx-auto px-8 py-10 flex items-center justify-between">
+          <span className="serif-display text-[15px] tracking-[0.22em] text-text-tertiary">
+            SCRPT
+          </span>
+          <span className="text-[12px] text-text-faint">
+            Write. Publish. Sell.
+          </span>
+        </div>
+      </footer>
+    </div>
   );
 }
 
-const STAT_CARDS = [
-  {
-    key: "total_books" as const,
-    label: "Total Books",
-    Icon: IconLibrary,
-    accent: "text-slate-900",
-  },
-  {
-    key: "books_live" as const,
-    label: "Live on Amazon",
-    Icon: IconGlobe,
-    accent: "text-emerald-600",
-  },
-  {
-    key: "books_in_progress" as const,
-    label: "In Progress",
-    Icon: IconClock,
-    accent: "text-blue-600",
-  },
-  {
-    key: "validated_niches" as const,
-    label: "Validated Niches",
-    Icon: IconTarget,
-    accent: "text-slate-900",
-  },
-];
-
-export default function Dashboard() {
-  const { dashboardStats: stats, loading } = useBooks();
-  const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    checkHealth().then(setEngineOnline);
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
-      </div>
-    );
-  }
-
+function Step({ n, title, body }: { n: string; title: string; body: string }) {
   return (
-    <div className="p-8 max-w-[1200px]">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Publishing engine overview
-          </p>
-        </div>
-        {engineOnline !== null && (
-          <div className="flex items-center gap-2 text-xs">
-            <span
-              className={`h-2 w-2 rounded-full ${engineOnline ? "bg-emerald-500" : "bg-red-400"}`}
-            />
-            <span className={engineOnline ? "text-slate-500" : "text-red-400"}>
-              {engineOnline ? "Engine running" : "Engine offline"}
-            </span>
-          </div>
-        )}
-      </div>
+    <div className="card">
+      <div className="serif-display text-[26px] text-accent">{n}</div>
+      <div className="serif-display text-[18px] font-semibold mt-3">{title}</div>
+      <p className="text-[13px] text-text-secondary mt-2 leading-relaxed">{body}</p>
+    </div>
+  );
+}
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {STAT_CARDS.map((card) => (
-          <div
-            key={card.key}
-            className="rounded-lg border border-slate-200 bg-white px-5 py-4"
-          >
-            <div className="flex items-center justify-between">
-              <card.Icon className="w-4 h-4 text-slate-400" />
-              <span className={`text-2xl font-semibold tabular-nums ${card.accent}`}>
-                {(stats as unknown as Record<string, unknown>)?.[card.key] as number ?? 0}
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-slate-500 font-medium">{card.label}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Books */}
-        <div className="rounded-lg border border-slate-200 bg-white">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-            <h2 className="text-sm font-semibold text-slate-900">Recent Books</h2>
-            <Link
-              href="/catalog"
-              className="text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1"
-            >
-              View all
-              <IconArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {stats.recent_books && stats.recent_books.length > 0 ? (
-              stats.recent_books.slice(0, 8).map((book) => (
-                <Link
-                  key={book.id}
-                  href={`/catalog/${book.id}`}
-                  className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-slate-400">
-                        {book.catalog_number}
-                      </span>
-                      <StatusBadge status={book.status} />
-                    </div>
-                    <p className="mt-0.5 text-sm font-medium text-slate-700 truncate">
-                      {book.title}
-                    </p>
-                  </div>
-                  <span className="text-[11px] text-slate-400 ml-4 shrink-0">
-                    {new Date(book.created_at).toLocaleDateString()}
-                  </span>
-                </Link>
-              ))
-            ) : (
-              <div className="px-5 py-10 text-center">
-                <p className="text-sm text-slate-400">No books yet</p>
-                <Link
-                  href="/create"
-                  className="mt-2 inline-flex text-xs font-medium text-blue-600 hover:text-blue-700"
-                >
-                  Create your first book
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Pipeline Status */}
-        <div className="rounded-lg border border-slate-200 bg-white">
-          <div className="px-5 py-3 border-b border-slate-100">
-            <h2 className="text-sm font-semibold text-slate-900">Pipeline Status</h2>
-          </div>
-          <div className="px-5 py-4">
-            {stats.books_by_status &&
-            Object.keys(stats.books_by_status).length > 0 ? (
-              <div className="space-y-2.5">
-                {Object.entries(stats.books_by_status).map(([status, count]) => (
-                  <div key={status} className="flex items-center justify-between">
-                    <StatusBadge status={status} />
-                    <span className="text-sm font-semibold text-slate-700 tabular-nums">{count}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-6 text-center">
-                <p className="text-sm text-slate-400">
-                  Pipeline stats will appear here
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="px-5 py-3 border-t border-slate-100">
-            <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-2.5">
-              Quick Actions
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Link
-                href="/create"
-                className="rounded border border-slate-200 px-3 py-1.5 text-center text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                New Book
-              </Link>
-              <Link
-                href="/research"
-                className="rounded border border-slate-200 px-3 py-1.5 text-center text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Research
-              </Link>
-              <Link
-                href="/catalog"
-                className="rounded border border-slate-200 px-3 py-1.5 text-center text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Catalog
-              </Link>
-              <Link
-                href="/settings"
-                className="rounded border border-slate-200 px-3 py-1.5 text-center text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-              >
-                Settings
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+function Detail({ title, body }: { title: string; body: string }) {
+  return (
+    <div>
+      <h3 className="serif-display text-[19px] font-semibold leading-snug">{title}</h3>
+      <p className="text-[13px] text-text-secondary mt-3 leading-relaxed">{body}</p>
     </div>
   );
 }

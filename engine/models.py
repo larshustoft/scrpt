@@ -309,6 +309,13 @@ class SettingsUpdate(BaseModel):
     auto_upload: Optional[bool] = None
     daily_upload_limit: Optional[int] = None
 
+    # SCRPT prose engine
+    writing_model: Optional[str] = None            # Claude model for the writing pipeline
+    elevenlabs_api_key: Optional[str] = None       # audiobook narration
+    elevenlabs_voice_id: Optional[str] = None
+    elevenlabs_voice_name: Optional[str] = None
+    elevenlabs_model_id: Optional[str] = None
+
 
 # ── API Response Wrappers ────────────────────────────────────────
 

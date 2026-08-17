@@ -3,10 +3,19 @@
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { AuthProvider, useAuthContext } from "@/components/AuthProvider"
-import { Sidebar } from "@/components/sidebar"
+import { Navbar } from "@/components/Navbar"
 
 /** Routes that don't require authentication */
-const PUBLIC_PATHS = ["/login"]
+const PUBLIC_PATHS = ["/", "/login"]
+/** Route prefixes rendered bare: no auth, no navbar (headless print engine) */
+const BARE_PREFIXES = ["/print"]
+
+function isPublic(pathname: string) {
+  return (
+    PUBLIC_PATHS.includes(pathname) ||
+    BARE_PREFIXES.some((p) => pathname.startsWith(p))
+  )
+}
 
 /**
  * Auth gate — redirects unauthenticated users to /login.
@@ -16,7 +25,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, configured } = useAuthContext()
   const pathname = usePathname()
   const router = useRouter()
-  const isPublicPage = PUBLIC_PATHS.includes(pathname)
+  const isPublicPage = isPublic(pathname)
   const isLoginPage = pathname === "/login"
 
   useEffect(() => {
@@ -32,26 +41,28 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       router.replace("/login")
     }
 
-    // Logged in but on login page — redirect to dashboard
+    // Logged in but on login page — into the study
     if (configured && user && isLoginPage) {
-      router.replace("/")
+      router.replace("/hq")
     }
   }, [user, loading, configured, isPublicPage, isLoginPage, router])
 
-  // While auth is resolving on protected pages, show loading
   if (loading && !isPublicPage) {
     return (
-      <div className="min-h-screen bg-[#0F1219] flex items-center justify-center">
-        <div className="text-slate-500 text-sm animate-pulse">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="serif-display text-accent text-lg tracking-[0.3em] pulse-soft">
+          SCRPT
+        </span>
       </div>
     )
   }
 
-  // Not authenticated and on a protected page — wait for redirect
   if (!isPublicPage && !user && !loading) {
     return (
-      <div className="min-h-screen bg-[#0F1219] flex items-center justify-center">
-        <div className="text-slate-500 text-sm animate-pulse">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="serif-display text-accent text-lg tracking-[0.3em] pulse-soft">
+          SCRPT
+        </span>
       </div>
     )
   }
@@ -60,11 +71,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Layout wrapper — login page renders full-page, all other pages get sidebar.
+ * Layout wrapper — public + print pages render full-bleed,
+ * app pages get the SCRPT navbar.
  */
 function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isPublicPage = PUBLIC_PATHS.includes(pathname)
+  const bare = isPublic(pathname)
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -73,15 +85,15 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
     return () => cancelAnimationFrame(frame)
   }, [pathname])
 
-  if (isPublicPage) {
+  if (bare) {
     return <>{children}</>
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
       <main
-        className="flex-1 overflow-auto transition-all duration-200"
+        className="flex-1 transition-all duration-200"
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? "translateY(0)" : "translateY(6px)",
