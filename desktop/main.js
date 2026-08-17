@@ -85,6 +85,7 @@ async function createWindow() {
     backgroundColor: "#0e0c09",
     title: "SCRPT",
     show: true,
+    fullscreen: true, // STCKR-style: the studio takes the whole screen
   });
 
   win.loadURL(SPLASH);

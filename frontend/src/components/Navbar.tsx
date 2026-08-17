@@ -5,13 +5,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { scrpt } from "@/lib/scrpt";
 import { useAuthContext } from "@/components/AuthProvider";
+import { ScrptLogo } from "@/components/Logo";
 
 const NAV_ITEMS = [
   { href: "/hq", label: "HQ" },
-  { href: "/workorder", label: "Work Order" },
-  { href: "/shelf", label: "Bookshelf" },
-  { href: "/analytics", label: "Analytics" },
-  { href: "/settings", label: "Settings" },
+  { href: "/office", label: "Back Office" },
 ];
 
 export function Navbar() {
@@ -30,23 +28,18 @@ export function Navbar() {
       className="sticky top-0 z-50 h-[64px] px-8 flex items-center gap-6 border-b border-border-subtle"
       style={{ background: "var(--nav-bg)", backdropFilter: "blur(16px)" }}
     >
-      <Link href="/hq" className="flex items-baseline gap-2 select-none">
-        <span
-          className="serif-display text-[22px] font-semibold tracking-[0.22em] text-accent"
-          style={{ textShadow: "0 0 24px var(--accent-glow)" }}
-        >
-          SCRPT
-        </span>
-        <span className="text-[10px] tracking-[0.28em] text-text-faint uppercase hidden sm:inline">
-          Write · Publish · Sell
-        </span>
+      <Link href="/hq" className="text-accent hover:opacity-80 transition-opacity">
+        <ScrptLogo size={15} />
       </Link>
 
       <div className="flex-1" />
 
       <nav className="flex items-center gap-1">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname.startsWith(item.href);
+          const isActive =
+            item.href === "/office"
+              ? ["/office", "/shelf", "/analytics", "/settings"].some((p) => pathname.startsWith(p))
+              : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
@@ -61,6 +54,9 @@ export function Navbar() {
             </Link>
           );
         })}
+        <Link href="/workorder" className="btn-brass ml-3 text-[12px] px-4 py-[7px]">
+          New Work Order
+        </Link>
       </nav>
 
       <div className="h-4 w-px bg-border-subtle" />

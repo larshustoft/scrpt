@@ -12,23 +12,15 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
-  generating: "Writing",
-  quality_check: "Quality check",
-  ready: "Ready",
-  uploading: "Uploading",
-  in_review: "In review",
-  live: "Live",
-  rejected: "Rejected",
-  paused: "Paused",
-};
-
+/**
+ * The HQ — the study. Air, the book on the desk, the assistant.
+ * Everything operational lives in the Back Office.
+ */
 export default function HQPage() {
-  const [books, setBooks] = useState<ScrptBook[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [current, setCurrent] = useState<ScrptBook | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [assistantNote, setAssistantNote] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -38,240 +30,144 @@ export default function HQPage() {
       setEngineOnline(online);
       if (online) {
         try {
-          const [bookList, jobList] = await Promise.all([
+          const [list, jobs] = await Promise.all([
             scrpt.listBooks(),
             scrpt.jobs(undefined, true),
           ]);
           if (!alive) return;
-          setBooks(bookList.books.filter((b) => b.data.manuscript));
-          setJobs(jobList.jobs);
-        } catch { /* engine flaked mid-load */ }
+          const prose = list.books
+            .filter((b) => b.data.manuscript)
+            .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+          setCurrent(prose[0] || null);
+          setJob(jobs.jobs[0] || null);
+        } catch { /* engine flaked */ }
       }
-      setLoaded(true);
     };
     load();
-    const interval = setInterval(load, 10_000);
+    const interval = setInterval(load, 8000);
     return () => { alive = false; clearInterval(interval); };
   }, []);
 
-  const totalWords = books.reduce(
-    (sum, b) => sum + (b.data.manuscript?.word_count || 0), 0);
-  const liveBooks = books.filter((b) => b.status === "live").length;
-  const inProduction = books.filter((b) =>
-    ["draft", "generating", "quality_check"].includes(b.status)).length;
-  const readyBooks = books.filter((b) => b.status === "ready").length;
+  const ms = current?.data.manuscript;
+  const drafting = job && current && job.book_catalog === current.catalog_number;
 
   return (
-    <div className="fade-up">
-      {/* The study — hero */}
-      <section className="relative overflow-hidden" style={{ minHeight: 380 }}>
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url(/hq-background.png)" }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(14,12,9,0.25) 0%, rgba(14,12,9,0.55) 62%, var(--bg) 100%)",
-          }}
-        />
-        <div className="relative max-w-[1200px] mx-auto px-8 pt-20 pb-16">
+    <div className="relative overflow-hidden" style={{ height: "calc(100vh - 64px)" }}>
+      {/* the study */}
+      <div
+        className="absolute inset-0 bg-cover"
+        style={{ backgroundImage: "url(/hq-background.png)", backgroundPosition: "center 30%" }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(105deg, rgba(14,12,9,0.82) 0%, rgba(14,12,9,0.45) 45%, rgba(14,12,9,0.15) 75%, rgba(14,12,9,0.35) 100%)",
+        }}
+      />
+
+      {/* greeting — top left, generous air */}
+      <div className="relative h-full max-w-[1280px] mx-auto px-12 flex items-center">
+        <div className="max-w-[440px]">
           <h1
-            className="serif-display text-[40px] font-semibold text-text-primary"
-            style={{ textShadow: "0 2px 24px rgba(0,0,0,0.8)" }}
+            className="serif-display text-[44px] font-semibold leading-tight"
+            style={{ textShadow: "0 2px 28px rgba(0,0,0,0.85)" }}
           >
             {getGreeting()}.
           </h1>
-          <p className="text-text-secondary text-[15px] mt-1 max-w-[520px]"
-             style={{ textShadow: "0 1px 12px rgba(0,0,0,0.9)" }}>
-            {inProduction > 0
-              ? `${inProduction} book${inProduction === 1 ? "" : "s"} in production. The presses are warm.`
-              : "The study is quiet. Commission the next book."}
+          <p
+            className="text-[14px] text-text-secondary mt-3 leading-relaxed"
+            style={{ textShadow: "0 1px 14px rgba(0,0,0,0.9)" }}
+          >
+            {engineOnline === false
+              ? "The engine is asleep — start the companion to wake the house."
+              : drafting
+                ? `The house is writing. ${job!.detail || ""}`
+                : current
+                  ? "The desk is set. Pick up where you left off."
+                  : "The study is quiet. Commission the first book."}
           </p>
-          <div className="flex gap-3 mt-8">
-            <Link href="/workorder" className="btn-brass">
-              <PlusIcon /> New Work Order
-            </Link>
-            <Link href="/shelf" className="btn-ghost"
-                  style={{ background: "rgba(14,12,9,0.5)", backdropFilter: "blur(8px)" }}>
-              Open the Bookshelf
-            </Link>
-          </div>
-        </div>
-      </section>
 
-      <div className="max-w-[1200px] mx-auto px-8 pb-16 -mt-2">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Books on the shelf" value={books.length} />
-          <StatCard label="Words written" value={totalWords.toLocaleString()} />
-          <StatCard label="Ready to publish" value={readyBooks} accent={readyBooks > 0} />
-          <StatCard label="Live on Amazon" value={liveBooks} accent={liveBooks > 0} />
-        </div>
-
-        {/* Engine offline notice */}
-        {loaded && engineOnline === false && (
-          <div className="card mt-6 flex items-center gap-4"
-               style={{ borderLeft: "3px solid var(--status-amber)" }}>
-            <div>
-              <div className="text-[14px] font-semibold">The engine is offline</div>
-              <div className="text-[13px] text-text-secondary mt-0.5">
-                Start the SCRPT companion on this machine to write, format, and
-                export books: <code className="text-accent">./start.sh</code> in
-                the SCRPT folder, or install the launch agent from Settings.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Production line */}
-        {jobs.length > 0 && (
-          <section className="mt-10">
-            <h2 className="serif-display text-[20px] font-semibold mb-4">
-              Production line
-            </h2>
-            <div className="space-y-3">
-              {jobs.map((job) => (
-                <div key={job.id} className="card flex items-center gap-5">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-[13px] font-semibold">
-                        {jobLabel(job.kind)}
-                      </span>
-                      {job.book_catalog && (
-                        <Link href={`/shelf/${job.book_catalog}`}
-                              className="text-[12px] text-accent hover:underline">
-                          {job.book_catalog}
-                        </Link>
-                      )}
-                    </div>
-                    <div className="text-[12px] text-text-tertiary truncate mt-0.5">
-                      {job.detail || job.stage || "Working…"}
-                    </div>
+          {/* the book on the desk */}
+          {current && (
+            <Link
+              href={`/shelf/${current.catalog_number}`}
+              className="group relative mt-10 block w-[240px]"
+            >
+              <div
+                className="relative rounded-[5px] overflow-hidden transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-[0.6deg]"
+                style={{
+                  aspectRatio: "5.5 / 8.5",
+                  background: "linear-gradient(155deg, #33291f, #171310 88%)",
+                  boxShadow:
+                    "0 2px 6px rgba(0,0,0,0.6), 0 24px 60px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(236,229,218,0.09)",
+                }}
+              >
+                {/* spine shadow fold */}
+                <div className="absolute inset-y-0 left-0 w-[10px]"
+                     style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.5), transparent)" }} />
+                <div className="absolute inset-0 flex flex-col items-center text-center px-6">
+                  <div className="mt-[26%] serif-display text-[20px] leading-snug text-[#e8dfd0]">
+                    {current.title}
                   </div>
-                  <div className="w-40 shrink-0">
-                    <div className="h-[5px] rounded-full overflow-hidden"
-                         style={{ background: "rgba(236,229,218,0.08)" }}>
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${Math.round(job.progress * 100)}%`,
-                          background: "linear-gradient(90deg, var(--accent-deep), var(--accent))",
-                        }}
-                      />
-                    </div>
+                  <div className="mt-auto mb-7 text-[10px] tracking-[0.22em] uppercase text-[#a6987f]">
+                    {(current.data.author_name as string) || "—"}
                   </div>
-                  <span className="text-[12px] text-text-secondary w-10 text-right shrink-0">
-                    {Math.round(job.progress * 100)}%
-                  </span>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Recent books */}
-        {books.length > 0 && (
-          <section className="mt-10">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="serif-display text-[20px] font-semibold">
-                Recently on the desk
-              </h2>
-              <Link href="/shelf" className="text-[12px] text-accent hover:underline">
-                View all
-              </Link>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              {books.slice(0, 6).map((book) => (
-                <Link key={book.id} href={`/shelf/${book.catalog_number}`}
-                      className="card card-hover block">
-                  <div className="text-[11px] tracking-[0.1em] text-text-faint">
-                    {book.catalog_number}
+                {drafting && (
+                  <div className="absolute bottom-0 inset-x-0 h-[3px]" style={{ background: "rgba(0,0,0,0.55)" }}>
+                    <div
+                      className="h-full transition-all duration-700"
+                      style={{ width: `${Math.round(job!.progress * 100)}%`,
+                               background: "linear-gradient(90deg, var(--accent-deep), var(--accent))" }}
+                    />
                   </div>
-                  <div className="serif-display text-[17px] font-semibold mt-1 leading-snug">
-                    {book.title}
-                  </div>
-                  <div className="flex items-center gap-2 mt-3">
-                    <StatusDot status={book.status} />
-                    <span className="text-[12px] text-text-secondary">
-                      {STATUS_LABELS[book.status] || book.status}
-                    </span>
-                    {book.data.manuscript?.word_count ? (
-                      <span className="text-[12px] text-text-faint ml-auto">
-                        {book.data.manuscript.word_count.toLocaleString()} words
-                      </span>
-                    ) : null}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Zero state */}
-        {loaded && books.length === 0 && engineOnline && (
-          <div className="card mt-10 text-center py-14">
-            <div className="serif-display text-[24px] font-semibold text-text-primary">
-              The shelf is empty
-            </div>
-            <p className="text-[13px] text-text-secondary mt-2 max-w-[400px] mx-auto">
-              Every catalog starts with one title. Describe the book you want —
-              SCRPT plots it, writes it, formats it for KDP, and narrates it.
-            </p>
-            <Link href="/workorder" className="btn-brass mt-6">
-              <PlusIcon /> Commission the first book
+                )}
+              </div>
+              <div className="mt-4 text-[12px] text-text-secondary"
+                   style={{ textShadow: "0 1px 10px rgba(0,0,0,0.9)" }}>
+                {drafting
+                  ? `Writing — ${Math.round(job!.progress * 100)}%`
+                  : `${ms?.word_count ? ms.word_count.toLocaleString() + " words · " : ""}${current.status}`}
+                <span className="text-accent ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Open →
+                </span>
+              </div>
             </Link>
+          )}
+
+          {!current && engineOnline && (
+            <Link href="/workorder" className="btn-brass mt-10 inline-flex">
+              Commission the first book
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* the assistant — bottom right */}
+      <div className="absolute bottom-10 right-12 flex flex-col items-center gap-3">
+        {assistantNote && (
+          <div className="card text-[12px] text-text-secondary max-w-[220px] text-center py-3 px-4 fade-up">
+            The assistant takes this desk in a coming update.
           </div>
         )}
+        <button
+          aria-label="Assistant"
+          onClick={() => setAssistantNote((v) => !v)}
+          className="relative h-[64px] w-[64px] rounded-full transition-transform hover:scale-105"
+          style={{
+            background:
+              "radial-gradient(circle at 35% 30%, rgba(218,184,111,0.9), rgba(138,109,53,0.85) 55%, rgba(23,18,5,0.95))",
+            boxShadow:
+              "0 0 40px rgba(201,164,92,0.35), 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.35)",
+          }}
+        >
+          <span
+            className="absolute inset-[-10px] rounded-full pulse-soft"
+            style={{ boxShadow: "0 0 46px rgba(201,164,92,0.28)" }}
+          />
+        </button>
       </div>
     </div>
-  );
-}
-
-function jobLabel(kind: string): string {
-  const labels: Record<string, string> = {
-    full_draft: "Writing manuscript",
-    plot_options: "Developing plot directions",
-    blurb: "Writing listing copy",
-    interior_export: "Exporting print interior",
-    audiobook: "Narrating audiobook",
-  };
-  return labels[kind] || kind;
-}
-
-function StatCard({ label, value, accent = false }: {
-  label: string; value: string | number; accent?: boolean;
-}) {
-  return (
-    <div className="card">
-      <div className={`serif-display text-[30px] font-semibold leading-none ${
-        accent ? "text-accent" : "text-text-primary"}`}>
-        {value}
-      </div>
-      <div className="text-[11px] tracking-[0.08em] uppercase text-text-tertiary mt-2">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function StatusDot({ status }: { status: string }) {
-  const color =
-    status === "live" ? "var(--status-green)"
-    : status === "ready" ? "var(--status-blue)"
-    : status === "generating" ? "var(--status-amber)"
-    : status === "rejected" ? "var(--status-red)"
-    : "var(--text-faint)";
-  return <span className="h-[7px] w-[7px] rounded-full inline-block"
-               style={{ background: color }} />;
-}
-
-function PlusIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-      <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.8"
-            strokeLinecap="round" />
-    </svg>
   );
 }

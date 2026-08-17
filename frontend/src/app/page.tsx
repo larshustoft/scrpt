@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuthContext } from "@/components/AuthProvider";
+import { ScrptLogo } from "@/components/Logo";
 
 /**
  * scrpt.ai — the sales page.
@@ -14,9 +15,7 @@ export default function SalesPage() {
     <div className="min-h-screen">
       {/* top bar */}
       <header className="absolute top-0 inset-x-0 z-20 h-[72px] px-8 flex items-center justify-between">
-        <span className="serif-display text-[24px] font-semibold tracking-[0.22em] text-accent">
-          SCRPT
-        </span>
+        <span className="text-accent"><ScrptLogo size={17} /></span>
         <nav className="flex items-center gap-6">
           <a href="#how" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
             How it works
@@ -35,8 +34,8 @@ export default function SalesPage() {
       {/* hero */}
       <section className="relative overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url(/hq-background.png)" }}
+          className="absolute inset-0 bg-cover"
+          style={{ backgroundImage: "url(/hq-background.png)", backgroundPosition: "center 26%" }}
         />
         <div
           className="absolute inset-0"
@@ -147,9 +146,7 @@ export default function SalesPage() {
 
       <footer className="border-t border-border-subtle">
         <div className="max-w-[1100px] mx-auto px-8 py-10 flex items-center justify-between">
-          <span className="serif-display text-[15px] tracking-[0.22em] text-text-tertiary">
-            SCRPT
-          </span>
+          <span className="text-text-tertiary"><ScrptLogo size={13} /></span>
           <span className="text-[12px] text-text-faint">
             Write. Publish. Sell.
           </span>

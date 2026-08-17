@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuthContext } from "@/components/AuthProvider";
+import { ScrptLogo } from "@/components/Logo";
 
 type Mode = "signin" | "signup" | "magic";
 
@@ -39,19 +40,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center px-6">
-      <div className="absolute inset-0 bg-cover bg-center"
-           style={{ backgroundImage: "url(/hq-background.png)" }} />
+      <div className="absolute inset-0 bg-cover"
+           style={{ backgroundImage: "url(/hq-background.png)", backgroundPosition: "center 30%" }} />
       <div className="absolute inset-0" style={{ background: "rgba(14,12,9,0.72)" }} />
 
       <div className="relative w-full max-w-[400px]">
-        <div className="text-center mb-8">
-          <div className="serif-display text-[34px] font-semibold tracking-[0.24em] text-accent"
-               style={{ textShadow: "0 0 40px var(--accent-glow)" }}>
-            SCRPT
-          </div>
-          <div className="text-[11px] tracking-[0.3em] uppercase text-text-tertiary mt-1">
-            Write · Publish · Sell
-          </div>
+        <div className="flex justify-center mb-8 text-accent">
+          <ScrptLogo size={24} tagline />
         </div>
 
         <div className="card">
