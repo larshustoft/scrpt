@@ -171,10 +171,13 @@ export default function StudioPage({ params }: { params: Promise<{ catalog: stri
     );
   }
 
-  // which pages to show
-  const startIdx = view === 2 ? pageIdx - (pageIdx % 2) : pageIdx;
+  // Which pages to show. Physical books open with page 1 (a recto) alone on
+  // the right; spreads after that are (verso, recto) = indices (odd, even).
+  const spreadAligned = view === 1 ? pageIdx : pageIdx % 2 === 1 ? pageIdx : Math.max(0, pageIdx - 1);
+  const startIdx = spreadAligned;
+  const firstPageAlone = view >= 2 && startIdx === 0;
   const visiblePages = pg
-    ? pg.pages.slice(startIdx, startIdx + view)
+    ? pg.pages.slice(startIdx, startIdx + (firstPageAlone ? 1 : view))
     : [];
 
   return (
@@ -269,6 +272,7 @@ export default function StudioPage({ params }: { params: Promise<{ catalog: stri
             className={`grid gap-8 ${view === 4 ? "grid-cols-2" : view === 2 ? "grid-cols-2" : "grid-cols-1"}`}
             style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
           >
+            {firstPageAlone && <div aria-hidden />}
             {visiblePages.map((page, i) => (
               <div key={startIdx + i} className="relative">
                 <PageView page={page} pg={pg} book={book} ms={ms} settings={settings}

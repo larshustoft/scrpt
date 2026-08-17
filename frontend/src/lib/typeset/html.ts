@@ -13,9 +13,24 @@ function esc(s: string): string {
     .replaceAll(">", "&gt;");
 }
 
+/** Typewriter -> typographic punctuation (curly quotes, apostrophes, dashes). */
+function smarten(s: string): string {
+  return s
+    // apostrophes inside words first (don't -> don’t)
+    .replace(/(\w)'(\w)/g, "$1’$2")
+    // opening quotes: after start/whitespace/open-bracket/dash
+    .replace(/(^|[\s([{—–—-])"/g, "$1“")
+    .replace(/(^|[\s([{—–—-])'/g, "$1‘")
+    // everything remaining closes
+    .replace(/"/g, "”")
+    .replace(/'/g, "’")
+    // double hyphen to em dash
+    .replace(/--/g, "—");
+}
+
 /** *italic* -> <em>italic</em> (the only inline markup in the dialect) */
 export function inline(s: string): string {
-  return esc(s).replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  return esc(smarten(s)).replace(/\*([^*]+)\*/g, "<em>$1</em>");
 }
 
 /**

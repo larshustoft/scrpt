@@ -110,6 +110,14 @@ async def _plot_options_job(handle, catalog: str) -> dict:
 
 # ── manuscript flow ──────────────────────────────────────────────
 
+@router.get("/books")
+def list_prose_books():
+    """All books with full (unfiltered) data — the legacy /api/books endpoint
+    strips unknown keys through its response model."""
+    result = db.list_books(per_page=500)
+    return {"books": result["books"], "total": result["total"]}
+
+
 @router.get("/books/{catalog}")
 def get_book(catalog: str):
     book = db.get_book_by_catalog(catalog)

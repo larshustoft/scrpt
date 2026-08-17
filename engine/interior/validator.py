@@ -122,9 +122,12 @@ def validate_interior_pdf(
     for i in range(n):
         for f in doc.get_page_fonts(i, full=True):
             # fitz font tuple: (xref, ext, type, basefont, name, encoding, referencer)
-            xref = f[0]
+            xref, ftype, basefont = f[0], f[2], f[3]
+            if ftype == "Type3":
+                # Type3 glyphs are inline PDF drawing ops — embedded by construction
+                continue
             if xref and not doc.extract_font(xref)[3]:
-                unembedded.add(f[3])
+                unembedded.add(basefont or ftype)
     report.check(
         "fonts_embedded",
         not unembedded,
