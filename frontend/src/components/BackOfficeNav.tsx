@@ -16,9 +16,6 @@ export function BackOfficeNav() {
   return (
     <div className="h-[46px] px-16 flex items-center gap-1 border-b border-border-subtle"
          style={{ background: "var(--surface)" }}>
-      <span className="text-[10px] tracking-[0.18em] uppercase text-text-faint mr-4 select-none">
-        Back Office
-      </span>
       {ITEMS.map((item) => {
         const active = item.match(pathname);
         return (
