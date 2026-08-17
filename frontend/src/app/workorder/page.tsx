@@ -9,7 +9,7 @@ import {
 // Amazon KDP paperback trim sizes (docs/KDP_INTERIOR_SPEC.md)
 const KDP_TRIMS: { key: string; hint?: string }[] = [
   { key: "5x8", hint: "compact fiction" },
-  { key: "5.06x7.81" },
+  { key: "5.06x7.81", hint: "UK B-format (Bourne/Orion paperbacks)" },
   { key: "5.25x8", hint: "fiction / romance" },
   { key: "5.5x8.5", hint: "fiction workhorse" },
   { key: "6x9", hint: "trade standard / non-fiction" },
