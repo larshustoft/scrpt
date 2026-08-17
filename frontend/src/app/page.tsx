@@ -6,28 +6,30 @@ import { ScrptLogo } from "@/components/Logo";
 
 /**
  * scrpt.ai — the sales page.
- * Public, full-bleed, no app chrome.
+ * Public, full-bleed, real product screenshots. No app chrome.
  */
 export default function SalesPage() {
   const { user } = useAuthContext();
+  const appHref = user ? "/front" : "/login";
 
   return (
     <div className="min-h-screen">
       {/* top bar */}
-      <header className="absolute top-0 inset-x-0 z-20 h-[72px] px-8 flex items-center justify-between">
-        <span className="text-text-primary"><ScrptLogo size={26} /></span>
+      <header className="absolute top-0 inset-x-0 z-20 h-[72px] px-8 md:px-14 flex items-center justify-between">
+        <span className="text-text-primary"><ScrptLogo size={24} /></span>
         <nav className="flex items-center gap-6">
+          <a href="#studio" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
+            The Studio
+          </a>
           <a href="#how" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
             How it works
           </a>
           <a href="#pricing" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
             Pricing
           </a>
-          {user ? (
-            <Link href="/front" className="btn-brass">Open SCRPT</Link>
-          ) : (
-            <Link href="/login" className="btn-brass">Sign in</Link>
-          )}
+          <Link href={appHref} className="btn-brass">
+            {user ? "Open SCRPT" : "Sign in"}
+          </Link>
         </nav>
       </header>
 
@@ -41,15 +43,15 @@ export default function SalesPage() {
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(180deg, rgba(14,12,9,0.55) 0%, rgba(14,12,9,0.35) 45%, var(--bg) 100%)",
+              "linear-gradient(180deg, rgba(14,12,9,0.6) 0%, rgba(14,12,9,0.42) 40%, var(--bg) 96%)",
           }}
         />
-        <div className="relative max-w-[1100px] mx-auto px-8 pt-40 pb-28 text-center">
+        <div className="relative max-w-[1150px] mx-auto px-8 pt-36 pb-16 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-transparent.png" alt="SCRPT" className="w-[190px] mx-auto mb-6"
-               style={{ filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.7))" }} />
+          <img src="/logo-transparent.png" alt="SCRPT" className="w-[200px] mx-auto"
+               style={{ filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.7))", marginBottom: -28 }} />
           <h1
-            className="serif-display text-[52px] leading-[1.1] font-semibold text-text-primary max-w-[750px] mx-auto"
+            className="serif-display text-[44px] md:text-[56px] leading-[1.08] font-semibold text-text-primary max-w-[780px] mx-auto"
             style={{ textShadow: "0 2px 30px rgba(0,0,0,0.85)" }}
           >
             Your publishing house.
@@ -57,7 +59,7 @@ export default function SalesPage() {
             <span className="text-accent">Population: you.</span>
           </h1>
           <p
-            className="text-[16px] text-text-secondary mt-6 max-w-[560px] mx-auto leading-relaxed"
+            className="text-[16px] text-text-secondary mt-6 max-w-[600px] mx-auto leading-relaxed"
             style={{ textShadow: "0 1px 16px rgba(0,0,0,0.9)" }}
           >
             SCRPT plots, writes, and typesets professional books — thrillers,
@@ -65,64 +67,92 @@ export default function SalesPage() {
             narrates the audiobook, and tracks every royalty. You are the
             publisher. SCRPT is the house.
           </p>
-          <div className="flex items-center justify-center gap-4 mt-10">
+          <div className="flex items-center justify-center gap-4 mt-9">
             <Link href="/login" className="btn-brass text-[14px] px-7 py-3">
               Start your catalog
             </Link>
-            <a href="#how" className="btn-ghost"
+            <a href="#studio" className="btn-ghost"
                style={{ background: "rgba(14,12,9,0.5)", backdropFilter: "blur(8px)" }}>
-              See how it works
+              See it working
             </a>
           </div>
+
+          {/* the proof — a real typeset spread */}
+          <div id="studio" className="mt-16 rounded-[14px] overflow-hidden"
+               style={{ boxShadow: "0 0 0 1px rgba(236,229,218,0.1), 0 30px 90px rgba(0,0,0,0.7)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/marketing/formatting-studio.jpg"
+                 alt="The SCRPT Formatting Studio — a real book spread, typeset to print"
+                 className="w-full block" />
+          </div>
+          <p className="text-[12px] text-text-faint mt-4">
+            The Formatting Studio — a real manuscript, typeset live at print
+            size. What you see is the file Amazon receives.
+          </p>
         </div>
       </section>
 
       {/* how it works */}
-      <section id="how" className="max-w-[1100px] mx-auto px-8 py-24">
-        <h2 className="serif-display text-[32px] font-semibold text-center">
+      <section id="how" className="max-w-[1150px] mx-auto px-8 py-24">
+        <h2 className="serif-display text-[34px] font-semibold text-center">
           From idea to bookstore
         </h2>
         <p className="text-[14px] text-text-secondary text-center mt-2 max-w-[520px] mx-auto">
           One work order sets the whole house in motion.
         </p>
         <div className="grid md:grid-cols-4 gap-5 mt-14">
-          <Step
-            n="I"
-            title="Commission"
-            body="Describe the book — or the series. Pick the genre. SCRPT develops three plot directions and builds a full story bible before a word is written."
-          />
-          <Step
-            n="II"
-            title="Write"
-            body="Chapter by chapter, with a living continuity bible, genre structure, and your edits folded back in. You direct; the house writes."
-          />
-          <Step
-            n="III"
-            title="Format"
-            body="A true-to-print page studio: real trim sizes, mirrored margins, running heads, front matter — exported as a vector PDF that passes KDP's checks."
-          />
-          <Step
-            n="IV"
-            title="Publish"
-            body="Print, ebook, and AI-narrated audiobook masters, listing copy included. Then royalty reports flow back into one quiet dashboard."
-          />
+          <Step n="I" title="Commission"
+                body="Describe the book — or the series. Pick the genre. SCRPT develops three plot directions and builds a full story bible before a word is written." />
+          <Step n="II" title="Write"
+                body="Chapter by chapter with a living continuity bible and market-calibrated genre structure. You direct; the house writes. Edit any paragraph and the book reflows." />
+          <Step n="III" title="Format"
+                body="True-to-print pages: real trim sizes, mirrored margins, running heads, front matter — exported as a vector PDF that passes Amazon's checks." />
+          <Step n="IV" title="Publish"
+                body="Print, ebook, and narrated audiobook masters with listing copy included. Royalty reports flow back into one quiet dashboard." />
         </div>
       </section>
 
-      {/* the details */}
+      {/* the front office */}
       <section className="border-t border-border-subtle">
-        <div className="max-w-[1100px] mx-auto px-8 py-24 grid md:grid-cols-3 gap-10">
+        <div className="max-w-[1150px] mx-auto px-8 py-24 grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 className="serif-display text-[30px] font-semibold leading-snug">
+              A front office with an assistant who knows the whole catalog
+            </h2>
+            <p className="text-[14px] text-text-secondary mt-4 leading-relaxed">
+              Walk in, see the book being written right now, and talk to the
+              house. The assistant answers with live production facts — word
+              counts, page counts, royalty math per copy — and speaks its
+              answers aloud. Ask what to do next and it tells you, precisely.
+            </p>
+            <ul className="mt-5 space-y-2 text-[13px] text-text-secondary">
+              <ListItem>Live status on the current title, down to the chapter</ListItem>
+              <ListItem>Voice in, voice out — speech recognition runs locally</ListItem>
+              <ListItem>KDP economics answered with real numbers, print and ebook</ListItem>
+            </ul>
+          </div>
+          <div className="rounded-[14px] overflow-hidden"
+               style={{ boxShadow: "0 0 0 1px rgba(236,229,218,0.1), 0 20px 60px rgba(0,0,0,0.6)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/marketing/front-office.jpg" alt="The SCRPT Front Office" className="w-full block" />
+          </div>
+        </div>
+      </section>
+
+      {/* three pillars */}
+      <section className="border-t border-border-subtle">
+        <div className="max-w-[1150px] mx-auto px-8 py-24 grid md:grid-cols-3 gap-10">
           <Detail
             title="KDP-exact, to the thousandth of an inch"
-            body="Gutter margins from Amazon's own page-count tables, spine width from paper stock, bleed geometry, embedded fonts. The preview is the print file."
+            body="Gutter margins from Amazon's own page-count tables, spine width computed from paper stock, embedded fonts, validated PDFs. The preview is the print file — no surprises at review."
           />
           <Detail
             title="Series that remember themselves"
-            body="A series bible carries your characters, world, and arcs across every book, so book four never contradicts book one."
+            body="A series bible carries your characters, world, and arcs across every book, so book four never contradicts book one. Genre length norms are built in — a thriller ships at thriller length."
           />
           <Detail
-            title="Honest AI, disclosed"
-            body="SCRPT follows Amazon's AI-content policy — disclosure on, quality first. The tool accelerates a publisher; it doesn't spam a marketplace."
+            title="Every format from one manuscript"
+            body="Print interior, ebook, and an ElevenLabs-narrated audiobook mastered to retail spec — plus the cover designer package with exact wrap dimensions for your artist."
           />
         </div>
       </section>
@@ -130,7 +160,7 @@ export default function SalesPage() {
       {/* pricing */}
       <section id="pricing" className="border-t border-border-subtle">
         <div className="max-w-[720px] mx-auto px-8 py-24 text-center">
-          <h2 className="serif-display text-[32px] font-semibold">Pricing</h2>
+          <h2 className="serif-display text-[34px] font-semibold">Pricing</h2>
           <div className="card mt-10 py-12">
             <div className="serif-display text-[22px] font-semibold text-accent">
               Early access
@@ -147,8 +177,20 @@ export default function SalesPage() {
         </div>
       </section>
 
+      {/* closing */}
+      <section className="border-t border-border-subtle">
+        <div className="max-w-[720px] mx-auto px-8 py-20 text-center">
+          <h2 className="serif-display text-[28px] font-semibold leading-snug">
+            The next book on your shelf hasn&apos;t been written yet.
+          </h2>
+          <Link href="/login" className="btn-brass mt-8 text-[14px] px-7 py-3">
+            Commission it
+          </Link>
+        </div>
+      </section>
+
       <footer className="border-t border-border-subtle">
-        <div className="max-w-[1100px] mx-auto px-8 py-10 flex items-center justify-between">
+        <div className="max-w-[1150px] mx-auto px-8 py-10 flex items-center justify-between">
           <span className="text-text-tertiary"><ScrptLogo size={16} /></span>
           <span className="text-[12px] text-text-faint">
             Write. Publish. Sell.
@@ -175,5 +217,14 @@ function Detail({ title, body }: { title: string; body: string }) {
       <h3 className="serif-display text-[19px] font-semibold leading-snug">{title}</h3>
       <p className="text-[13px] text-text-secondary mt-3 leading-relaxed">{body}</p>
     </div>
+  );
+}
+
+function ListItem({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span className="text-accent mt-[1px]">—</span>
+      <span>{children}</span>
+    </li>
   );
 }
