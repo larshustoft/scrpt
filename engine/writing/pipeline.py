@@ -641,14 +641,19 @@ async def full_draft_job(handle: JobHandle, catalog: str, chosen_plot: int = 0,
     handle.progress(0.94, "blurb", "Writing the listing copy")
     await generate_blurb(catalog)
 
-    # automatic front cover — a failure here must not fail the manuscript
-    handle.progress(0.97, "cover", "Painting the front cover")
+    # automatic front cover — a failure here must not fail the manuscript.
+    # A publisher-uploaded cover is the official artwork: never paint over it.
     cover_error = ""
-    try:
-        from ..cover.front_cover import generate_front_cover
-        await generate_front_cover(catalog)
-    except Exception as e:
-        cover_error = str(e)[:300]
+    existing_cover = (get_book_by_catalog(catalog)["data"].get("cover") or {})
+    if existing_cover.get("mode") == "upload":
+        handle.progress(0.97, "cover", "Publisher cover installed — keeping it")
+    else:
+        handle.progress(0.97, "cover", "Painting the front cover")
+        try:
+            from ..cover.front_cover import generate_front_cover
+            await generate_front_cover(catalog)
+        except Exception as e:
+            cover_error = str(e)[:300]
 
     book, ms = _load(catalog)
     ms.status = ManuscriptStatus.DRAFTED
