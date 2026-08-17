@@ -66,29 +66,8 @@ export default function HQPage() {
         }}
       />
 
-      {/* everything stacked bottom-left: greeting just above the book */}
-      <div className="relative h-full px-16 flex flex-col justify-end pb-28">
-        <div className="max-w-[440px] mb-9">
-          <h1
-            className="serif-display text-[44px] font-semibold leading-tight"
-            style={{ textShadow: "0 2px 28px rgba(0,0,0,0.85)" }}
-          >
-            {getGreeting()}.
-          </h1>
-          <p
-            className="text-[14px] text-text-secondary mt-3 leading-relaxed"
-            style={{ textShadow: "0 1px 14px rgba(0,0,0,0.9)" }}
-          >
-            {engineOnline === false
-              ? "The production engine is offline. Start the SCRPT companion."
-              : drafting
-                ? `In production — ${job!.detail || "writing"}`
-                : current
-                  ? "Continue production on the current title."
-                  : "No titles in production. Commission the first."}
-          </p>
-        </div>
-
+      {/* everything stacked bottom-left: book first, greeting beneath it */}
+      <div className="relative h-full px-16 flex flex-col justify-end pb-24">
         <div>
           {/* the book on the desk */}
           {current && (
@@ -156,6 +135,28 @@ export default function HQPage() {
               Commission the first book
             </Link>
           )}
+
+          {/* greeting beneath the book */}
+          <div className="max-w-[440px] mt-9">
+            <h1
+              className="serif-display text-[40px] font-semibold leading-tight"
+              style={{ textShadow: "0 2px 28px rgba(0,0,0,0.85)" }}
+            >
+              {getGreeting()}.
+            </h1>
+            <p
+              className="text-[14px] text-text-secondary mt-2 leading-relaxed"
+              style={{ textShadow: "0 1px 14px rgba(0,0,0,0.9)" }}
+            >
+              {engineOnline === false
+                ? "The production engine is offline. Start the SCRPT companion."
+                : drafting
+                  ? `In production — ${job!.detail || "writing"}`
+                  : current
+                    ? "Continue production on the current title."
+                    : "No titles in production. Commission the first."}
+            </p>
+          </div>
         </div>
       </div>
 
