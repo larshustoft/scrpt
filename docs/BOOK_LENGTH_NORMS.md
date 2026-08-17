@@ -69,3 +69,15 @@ Wikipedia + PRH (nonfiction comps); KDPEasy (words-per-page divisors);
 kboards / Just Publishing Advice (KENPC history); KDP official help
 (spine/printing/royalty). Classic-title word counts are third-party estimates
 — treat with ±15% error bars.
+
+## Indie/KU thriller band (added from competitor reference, 2026-08-17)
+
+Real-world KDP competitor example: "The Capitol Contract" (Patriot Files #3,
+indie, Aug 2025): **215 pages ≈ 55-65k words** — far below the trad band,
+mirroring the KU romance pattern. The indie-velocity position: 55-70k words,
+~200-250 pages, rapid series release, KU-first, comp-author targeting
+("for fans of Vince Flynn / Jack Carr / Patterson") directly in the subtitle.
+Two viable strategies per series: trad-length (95-110k, print credibility,
+higher cost/slower) vs indie-velocity (55-70k, faster testing, thinner).
+SCRPT default stays trad-length; test velocity-band series via the Work
+Order's target-length override and let read-through decide.
