@@ -5,7 +5,7 @@
  * the engine is a companion service, not a child of the window.
  */
 
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, powerSaveBlocker, shell } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
@@ -100,6 +100,29 @@ async function createWindow() {
     return win.isFullScreen();
   });
   ipcMain.handle("is-fullscreen", () => win.isFullScreen());
+
+  // Fullscreen = the studio wall display: keep the screen awake (no display
+  // sleep, no screen saver) while SCRPT owns the screen. Windowed mode
+  // releases the block so normal energy settings apply.
+  let sleepBlockId = null;
+  const holdScreenAwake = () => {
+    const wantBlock = win.isFullScreen();
+    if (wantBlock && sleepBlockId === null) {
+      sleepBlockId = powerSaveBlocker.start("prevent-display-sleep");
+    } else if (!wantBlock && sleepBlockId !== null) {
+      powerSaveBlocker.stop(sleepBlockId);
+      sleepBlockId = null;
+    }
+  };
+  win.on("enter-full-screen", holdScreenAwake);
+  win.on("leave-full-screen", holdScreenAwake);
+  win.on("closed", () => {
+    if (sleepBlockId !== null) {
+      powerSaveBlocker.stop(sleepBlockId);
+      sleepBlockId = null;
+    }
+  });
+  holdScreenAwake(); // launches fullscreen — block from the first frame
 
   win.loadURL(SPLASH);
 
