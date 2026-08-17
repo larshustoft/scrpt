@@ -34,6 +34,13 @@ export function AssistantDock() {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, state]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const speakReply = useCallback(async (text: string) => {
     if (!voiceOn) { setState("idle"); return; }
     setState("speaking");
@@ -176,9 +183,12 @@ export function AssistantDock() {
           {/* the risen presence — large and live while the assistant is open */}
           <div className="flex flex-col items-center pb-3"
                style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-            <div className="rounded-full" style={{ boxShadow: orbGlow }}>
+            <button className="rounded-full transition-transform hover:scale-[1.03]"
+                    style={{ boxShadow: orbGlow }}
+                    title="Close the assistant"
+                    onClick={() => setOpen(false)}>
               <OrbCanvas state={state} size={104} />
-            </div>
+            </button>
             <div className="text-[10px] tracking-[0.22em] uppercase text-text-tertiary mt-2">
               {state === "idle" ? "at your service"
                : state === "listening" ? "listening…"
@@ -310,6 +320,28 @@ function OrbCanvas({ state, size = 64 }: { state: OrbState; size?: number }) {
       ctx.arc(cx, cy, coreR * 1.9, 0, Math.PI * 2);
       ctx.fill();
 
+      // circling presence — always in motion, faster when engaged
+      const orbitSpeed = s === "idle" ? 0.7 : s === "thinking" ? 2.6 : 1.6;
+      for (let i = 0; i < 3; i++) {
+        const a = t * orbitSpeed + (i * Math.PI * 2) / 3;
+        const rx = 20, ry = 12;
+        const x = cx + rx * Math.cos(a), y = cy + ry * Math.sin(a);
+        const depth = 0.55 + 0.45 * Math.sin(a); // fake 3D: brighter in front
+        const g = ctx.createRadialGradient(x, y, 0, x, y, 3.6);
+        g.addColorStop(0, `rgba(255,244,220,${0.75 * depth})`);
+        g.addColorStop(1, "rgba(255,244,220,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, 3.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // rotating arc ring
+      ctx.strokeStyle = "rgba(240,222,185,0.35)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 24, t * orbitSpeed * 0.9, t * orbitSpeed * 0.9 + Math.PI * 0.7);
+      ctx.stroke();
+
       if (s === "listening") {
         // sonar rings drifting outward
         for (let i = 0; i < 3; i++) {
@@ -319,20 +351,6 @@ function OrbCanvas({ state, size = 64 }: { state: OrbState; size?: number }) {
           ctx.beginPath();
           ctx.arc(cx, cy, 6 + phase * 24, 0, Math.PI * 2);
           ctx.stroke();
-        }
-      } else if (s === "thinking") {
-        // a spark orbiting the core
-        for (let i = 0; i < 2; i++) {
-          const a = t * 2.6 + i * Math.PI;
-          const r = 18;
-          const x = cx + r * Math.cos(a), y = cy + r * 0.55 * Math.sin(a);
-          const g = ctx.createRadialGradient(x, y, 0, x, y, 5);
-          g.addColorStop(0, "rgba(255,244,220,0.9)");
-          g.addColorStop(1, "rgba(255,244,220,0)");
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.arc(x, y, 5, 0, Math.PI * 2);
-          ctx.fill();
         }
       } else if (s === "speaking") {
         // voice rings shimmering with pseudo-amplitude
