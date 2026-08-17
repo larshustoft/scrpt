@@ -26,10 +26,18 @@ FAMILY = {
     "action_thriller": "thriller",
     "legal_thriller": "thriller",
     "conspiracy_thriller": "thriller",
+    "psychological_thriller": "thriller",
+    "crime_thriller": "thriller",
+    "cozy_mystery": "thriller",
+    "techno_thriller": "thriller",
     "romance": "romance",
     "historical_romance": "romance",
+    "romantasy": "romance",
+    "dark_romance": "romance",
     "self_help": "nonfiction",
     "business": "nonfiction",
+    "personal_finance": "nonfiction",
+    "health_wellness": "nonfiction",
     "mindfulness": "nonfiction",
 }
 

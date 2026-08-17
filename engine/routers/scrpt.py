@@ -110,6 +110,81 @@ async def _plot_options_job(handle, catalog: str) -> dict:
     return {"options": options}
 
 
+@router.get("/pen-names")
+def pen_names():
+    """Existing pen names with their catalogs, for the Work Order form."""
+    books = db.list_books(per_page=200)["books"]
+    authors: dict[str, list[dict]] = {}
+    for b in books:
+        if not b["data"].get("manuscript"):
+            continue
+        name = (b["data"].get("author_name") or "").strip()
+        if not name:
+            continue
+        authors.setdefault(name, []).append({
+            "catalog_number": b["catalog_number"],
+            "title": b["title"],
+            "genre_preset": b["data"].get("genre_preset", ""),
+            "status": b["status"],
+            "series_title": (b["data"].get("series") or {}).get("series_title", ""),
+            "words": (b["data"].get("manuscript") or {}).get("word_count", 0),
+        })
+    return {"authors": [{"name": n, "books": bs} for n, bs in
+                        sorted(authors.items(), key=lambda kv: -len(kv[1]))]}
+
+
+class PenNameSuggestRequest(BaseModel):
+    kind: BookKind
+    genre_preset: str
+    idea: str = ""
+
+
+@router.post("/workorder/pen-names")
+async def suggest_pen_names(req: PenNameSuggestRequest):
+    """Genre-appropriate pen name suggestions (avoiding existing house names)."""
+    from ..writing.client import complete, extract_json
+    preset = GENRE_PRESETS.get(req.genre_preset, {})
+    existing = [a["name"] for a in pen_names()["authors"]]
+    prompt = (
+        f"Suggest 5 pen names for a {preset.get('label', 'book')} author"
+        f"{' writing: ' + req.idea[:300] if req.idea else ''}.\n"
+        "Rules: names must sound native to the genre's bestseller shelf; "
+        "believable, memorable, easy to say and spell; mix genders where the "
+        "genre supports it; NEVER a real living author's name or anything "
+        "confusable with one; avoid these existing house pen names: "
+        f"{existing or 'none'}.\n"
+        'Return JSON only: [{"name": "...", "rationale": "6-12 words"}]'
+    )
+    raw = await complete(
+        "You name authors for a commercial publishing house. You know how "
+        "bestseller shelves in each genre sound.",
+        prompt, max_tokens=1200)
+    return {"suggestions": extract_json(raw)}
+
+
+class DevelopIdeaRequest(BaseModel):
+    kind: BookKind
+    genre_preset: str
+    idea: str
+    series_books: int = 0
+
+
+@router.post("/workorder/develop")
+async def develop_workorder_idea(req: DevelopIdeaRequest):
+    """Research & extend a rough idea into a commissioning package."""
+    from ..writing.develop import develop_idea
+    if not req.idea.strip():
+        raise HTTPException(400, "Write the rough idea first")
+
+    async def job(handle):
+        handle.progress(0.15, "research", "Researching the market and developing the concept")
+        return await develop_idea(req.kind.value, req.genre_preset,
+                                  req.idea.strip(), req.series_books)
+
+    job_id = start_job("develop_idea", job)
+    return {"job_id": job_id}
+
+
 # ── series ───────────────────────────────────────────────────────
 
 def _series_books(series_id: str) -> list[dict]:

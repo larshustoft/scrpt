@@ -72,6 +72,66 @@ GENRE_PRESETS = {
         "structure": "alternating POV, period world-building woven through, HEA mandatory",
         "font": "crimson",
     },
+    "psychological_thriller": {
+        "kind": "fiction", "label": "Psychological Thriller",
+        "comps": "twisty psychological thriller with an unreliable narrator and domestic secrets",
+        "trim": "5.5x8.5", "paper": "cream_bw",
+        "target_words": 85000, "min_words": 65000, "chapter_words": 2800, "wpp": 265,
+        "pov": "first person, often unreliable; single or dual timeline",
+        "structure": "slow-burn dread, midpoint perspective flip, twist at 85-90% that "
+                     "recontextualizes everything, final-page sting",
+        "font": "garamond",
+    },
+    "crime_thriller": {
+        "kind": "fiction", "label": "Crime / Detective",
+        "comps": "propulsive detective thriller with procedural authenticity and a haunted investigator",
+        "trim": "5.5x8.5", "paper": "cream_bw",
+        "target_words": 90000, "min_words": 70000, "chapter_words": 3200, "wpp": 265,
+        "pov": "third limited on the detective, occasional victim/killer interludes",
+        "structure": "body early, investigation ladder with false leads, personal cost "
+                     "subplot, killer confrontation climax",
+        "font": "garamond",
+    },
+    "cozy_mystery": {
+        "kind": "fiction", "label": "Cozy Mystery",
+        "comps": "charming small-town cozy mystery with an amateur sleuth and zero gore",
+        "trim": "5x8", "paper": "cream_bw",
+        "target_words": 60000, "min_words": 45000, "chapter_words": 2800, "wpp": 240,
+        "pov": "first person amateur sleuth",
+        "structure": "on-page community warmth, murder off-page, suspect carousel, "
+                     "sleuth-in-peril beat, tidy reveal; no explicit violence or sex",
+        "font": "crimson",
+    },
+    "romantasy": {
+        "kind": "fiction", "label": "Romantasy",
+        "comps": "high-heat fantasy romance with an immersive world and fated tension",
+        "trim": "5.5x8.5", "paper": "cream_bw",
+        "target_words": 105000, "min_words": 80000, "chapter_words": 3200, "wpp": 265,
+        "pov": "first person heroine, sometimes dual POV",
+        "structure": "romance beat sheet inside a fantasy quest spine; world-building "
+                     "woven through desire, power-imbalance tension, HEA/HFN",
+        "font": "crimson",
+    },
+    "dark_romance": {
+        "kind": "fiction", "label": "Dark Romance",
+        "comps": "intense dark romance with morally gray leads and high emotional stakes",
+        "trim": "5.25x8", "paper": "cream_bw",
+        "target_words": 70000, "min_words": 50000, "chapter_words": 2800, "wpp": 245,
+        "pov": "first person, dual POV alternating",
+        "structure": "antihero love interest, captor/enemy dynamics with clear consent "
+                     "codes, trauma arcs, HEA required, content warnings expected",
+        "font": "crimson",
+    },
+    "techno_thriller": {
+        "kind": "fiction", "label": "Techno-Thriller",
+        "comps": "high-stakes techno-thriller where cutting-edge technology drives the danger",
+        "trim": "5.5x8.5", "paper": "cream_bw",
+        "target_words": 95000, "min_words": 75000, "chapter_words": 2600, "wpp": 265,
+        "pov": "third limited, alternating specialist/antagonist",
+        "structure": "tech premise grounded in real plausibility, countdown clock, "
+                     "expert protagonist, global-stakes escalation",
+        "font": "garamond",
+    },
     # non-fiction
     "self_help": {
         "kind": "nonfiction", "label": "Self-Help / Personal Development",
@@ -91,6 +151,26 @@ GENRE_PRESETS = {
         "pov": "second person, direct address",
         "structure": "case study + principle + action step rhythm per chapter",
         "font": "sourceserif",
+    },
+    "personal_finance": {
+        "kind": "nonfiction", "label": "Personal Finance",
+        "comps": "clear-eyed personal finance book that turns money anxiety into a simple system",
+        "trim": "6x9", "paper": "white_bw",
+        "target_words": 50000, "min_words": 35000, "chapter_words": 3500, "wpp": 285,
+        "pov": "second person, direct address",
+        "structure": "money psychology first, then a numbered system, worked examples "
+                     "with real arithmetic, action steps per chapter",
+        "font": "sourceserif",
+    },
+    "health_wellness": {
+        "kind": "nonfiction", "label": "Health & Wellness",
+        "comps": "practical evidence-aware health book with sustainable habits over hacks",
+        "trim": "6x9", "paper": "white_bw",
+        "target_words": 55000, "min_words": 40000, "chapter_words": 3500, "wpp": 285,
+        "pov": "second person, direct address",
+        "structure": "myth-busting openers, mechanism explained simply, protocol per "
+                     "chapter, never invented studies — established knowledge only",
+        "font": "literata",
     },
     "mindfulness": {
         "kind": "nonfiction", "label": "Mindfulness / Spirituality",

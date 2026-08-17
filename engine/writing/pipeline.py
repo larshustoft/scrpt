@@ -211,6 +211,38 @@ async def build_bible(catalog: str, chosen: int = 0, edits: str = "") -> None:
     ms.status = ManuscriptStatus.BIBLE
     _save(book, ms)
 
+    # book 1 of a series with no series bible yet: write it from the story
+    # bible and propagate to every member — the same main characters carry
+    # the series (thriller same-hero model; romance shared-world model)
+    series = book["data"].get("series") or {}
+    if (series.get("series_id") and not series.get("series_bible")
+            and ms.kind == BookKind.FICTION and ms.story_bible):
+        try:
+            sb_prompt = (
+                f"STORY BIBLE OF BOOK {series.get('book_number', 1)}:\n"
+                f"{_bible_digest(ms)}\n\n"
+                f"Write the SERIES BIBLE for \"{series.get('series_title')}\" "
+                f"({series.get('total_planned', 3)} books planned) — the canon "
+                "document every later book must honor. 250-350 words covering: "
+                "the recurring protagonist(s) as the series brand (who returns "
+                "every book), recurring supporting cast, world rules and tone, "
+                "the per-book formula (what a new entry looks like), and any "
+                "long arcs that grow across books. Plain text."
+            )
+            series_bible = await complete(_fiction_system(ms), sb_prompt,
+                                          max_tokens=2000)
+            sid = series["series_id"]
+            all_books = get_book_by_catalog  # placeholder to keep imports obvious
+            from ..database import list_books as _list_books
+            for member in _list_books(per_page=200)["books"]:
+                mdata = member["data"]
+                if (mdata.get("series") or {}).get("series_id") == sid:
+                    d = dict(mdata)
+                    d["series"]["series_bible"] = series_bible.strip()[:4000]
+                    update_book(member["id"], d)
+        except Exception:
+            pass  # series bible is enhancement, never a blocker
+
     # adopt the chosen plot's title if the book still has a placeholder title
     if plot.get("title") and (not book["title"] or book["title"].startswith("Untitled")):
         update_book(book["id"], {"title": plot["title"]})
