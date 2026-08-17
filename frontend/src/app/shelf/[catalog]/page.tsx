@@ -145,7 +145,7 @@ export default function BookWorkspace({ params }: { params: Promise<{ catalog: s
       {tab === "manuscript" && <ManuscriptTab book={book} ms={ms} reload={reload} busy={activeJobs.length > 0} />}
       {tab === "cover" && <CoverTab book={book} reload={reload} />}
       {tab === "audiobook" && <AudiobookTab book={book} reload={reload} busy={activeJobs.some((j) => j.kind === "audiobook")} />}
-      {tab === "publishing" && <PublishingTab book={book} ms={ms} />}
+      {tab === "publishing" && <PublishingTab book={book} ms={ms} reload={reload} />}
     </div>
   );
 }
@@ -731,7 +731,81 @@ function ScheduleCard({ book }: { book: ScrptBook }) {
   );
 }
 
-function PublishingTab({ book, ms }: { book: ScrptBook; ms: Manuscript }) {
+function AcceptanceCard({ book, reload }: { book: ScrptBook; reload: () => void }) {
+  const acc = book.data.acceptance;
+  const [running, setRunning] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const run = async () => {
+    setRunning(true);
+    setMsg("The acceptance desk takes the manuscript…");
+    try {
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/acceptance/${book.catalog_number}`,
+        { method: "POST" });
+      const { job_id } = await res.json();
+      const job = await pollJob(job_id, (j) => setMsg(j.detail || j.stage || "Reading…"));
+      setMsg(job.status === "done" ? "" : `Failed: ${(job.error || "").split("\n")[0]}`);
+      reload();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const verdictColor = acc?.verdict === "accept" ? "var(--status-green)" : "var(--status-amber)";
+  return (
+    <div className="card">
+      <div className="flex items-baseline justify-between flex-wrap gap-2">
+        <div className="serif-display text-[17px] font-semibold">The acceptance desk</div>
+        {acc?.verdict && (
+          <span className="text-[12px] font-semibold uppercase tracking-[0.1em]"
+                style={{ color: verdictColor }}>
+            {acc.verdict === "accept" ? "Accepted" : "Revise"}
+            {acc.score ? ` · ${acc.score}/10` : ""}
+          </span>
+        )}
+      </div>
+      <p className="text-[12px] text-text-tertiary mt-1 leading-relaxed">
+        Length gate plus a managing-editor read of the whole manuscript, with
+        automated repair. Runs on the house writing model — re-run after a
+        model upgrade to hold the catalog to the new standard.
+      </p>
+      {acc?.length && (
+        <div className="text-[12px] mt-3"
+             style={{ color: acc.length.ok ? "var(--status-green)" : "var(--status-amber)" }}>
+          {acc.length.total_words.toLocaleString()} words — commercial band{" "}
+          {acc.length.floor.toLocaleString()}–{acc.length.ceiling.toLocaleString()}
+          {(acc.length_repairs?.length || 0) > 0 &&
+            ` · chapters redrafted for length: ${acc.length_repairs!.join(", ")}`}
+        </div>
+      )}
+      {(acc?.revision_orders?.length || 0) > 0 && (
+        <div className="text-[12px] text-text-secondary mt-1">
+          Editor&apos;s orders executed on ch. {acc!.revision_orders!.map((o) => o.chapter).join(", ")}
+        </div>
+      )}
+      {acc?.review?.editor_letter && (
+        <details className="mt-3">
+          <summary className="text-[11px] text-text-tertiary cursor-pointer hover:text-text-primary transition-colors">
+            The editor&apos;s letter
+          </summary>
+          <p className="text-[12.5px] text-text-secondary leading-relaxed mt-2 italic">
+            {acc.review.editor_letter}
+          </p>
+        </details>
+      )}
+      <div className="flex items-center gap-3 mt-4">
+        <button className="btn-ghost text-[12px]" disabled={running} onClick={run}>
+          {running ? "Reading…" : acc ? "Re-run the acceptance desk" : "Run the acceptance desk"}
+        </button>
+        {msg && <span className="text-[11px] text-text-tertiary pulse-soft">{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
+function PublishingTab({ book, ms, reload }: { book: ScrptBook; ms: Manuscript; reload: () => void }) {
   const interior = book.data.interior || {};
   const cover = book.data.cover || {};
   const pages = interior.page_count || 0;
@@ -852,6 +926,7 @@ function PublishingTab({ book, ms }: { book: ScrptBook; ms: Manuscript }) {
       )}
 
       {/* release schedule */}
+      <AcceptanceCard book={book} reload={reload} />
       <ScheduleCard book={book} />
 
       {/* checklist */}

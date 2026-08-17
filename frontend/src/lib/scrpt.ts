@@ -154,6 +154,16 @@ export interface ScrptBook {
       total_planned?: number;
       series_bible?: string;
     };
+    acceptance?: {
+      verdict?: "accept" | "revise";
+      score?: number;
+      length?: { total_words: number; target_words: number; floor: number;
+        ceiling: number; ok: boolean };
+      length_repairs?: number[];
+      revision_orders?: { chapter: number; order: string }[];
+      review?: { strengths?: string[]; editor_letter?: string;
+        issues?: { chapter: number; order: string }[] };
+    };
     [key: string]: unknown;
   };
 }

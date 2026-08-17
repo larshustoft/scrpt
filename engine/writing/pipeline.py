@@ -638,7 +638,25 @@ async def full_draft_job(handle: JobHandle, catalog: str, chosen_plot: int = 0,
     except Exception:
         pass
 
-    handle.progress(0.94, "blurb", "Writing the listing copy")
+    # the acceptance desk: length gate + managing-editor read, with bounded
+    # automated repair. A failure here must not kill the draft — the verdict
+    # (including "revise") is stored and gates the Production Queue instead.
+    handle.progress(0.93, "acceptance", "The acceptance desk takes the manuscript")
+    try:
+        from .acceptance import acceptance_job
+
+        class _Sub:
+            """Scale acceptance progress into the 0.93-0.96 window."""
+            def progress(self, frac, stage, detail):
+                handle.progress(0.93 + 0.03 * frac, stage, detail)
+            def cancelled(self):
+                return handle.cancelled()
+
+        await acceptance_job(_Sub(), catalog)
+    except Exception:
+        pass
+
+    handle.progress(0.96, "blurb", "Writing the listing copy")
     await generate_blurb(catalog)
 
     # automatic front cover — a failure here must not fail the manuscript.

@@ -355,6 +355,23 @@ async def choose_plot(req: PlotChoiceRequest):
     return {"job_id": job_id}
 
 
+@router.post("/acceptance/{catalog}")
+async def run_acceptance(catalog: str):
+    """The acceptance desk on demand: length gate + managing-editor read
+    (with bounded automated repair). Re-run any time — e.g. after a model
+    upgrade, the whole catalog can be re-checked to the new standard."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+
+    async def job(handle):
+        from ..writing.acceptance import acceptance_job
+        return await acceptance_job(handle, catalog)
+
+    job_id = start_job("acceptance", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
 @router.post("/draft/{catalog}")
 async def resume_draft(catalog: str):
     """(Re)start drafting for whatever chapters aren't finished."""
@@ -436,7 +453,11 @@ def _asset_state(book: dict) -> dict:
     audio = d.get("audio") or {}
     return {
         "manuscript": drafted,
-        "quality": bool(ms.get("quality_report", {}).get("chapters_audited")),
+        # quality = the acceptance desk said "accept" (falls back to the
+        # per-chapter audit trail for books that predate the desk)
+        "quality": (d.get("acceptance") or {}).get("verdict") == "accept"
+                   or (not d.get("acceptance")
+                       and bool(ms.get("quality_report", {}).get("chapters_audited"))),
         "interior_pdf": bool(interior.get("page_count"))
                         and bool((interior.get("validation") or {}).get("passed")),
         "epub": bool((d.get("ebook") or {}).get("epub_path")),
