@@ -57,7 +57,16 @@ async def complete(
                 messages=[{"role": "user", "content": user}],
                 **kwargs,
             )
-            return "".join(b.text for b in resp.content if b.type == "text")
+            text = "".join(b.text for b in resp.content if b.type == "text")
+            if text.strip():
+                return text
+            # empty text usually means the budget went to internal reasoning
+            # before any output — double the budget and try again
+            last_err = RuntimeError(
+                f"empty response (stop_reason={getattr(resp, 'stop_reason', '?')}, "
+                f"max_tokens={max_tokens})")
+            max_tokens = min(max_tokens * 2, 32000)
+            continue
         except Exception as e:  # transient API errors: back off and retry
             last_err = e
             msg = str(e).lower()

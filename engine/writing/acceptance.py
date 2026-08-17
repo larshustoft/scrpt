@@ -117,7 +117,7 @@ async def editorial_review(catalog: str) -> dict:
         "You are a veteran managing editor at a commercial publishing house. "
         "You accept nothing that would embarrass the imprint, and your "
         "revision orders are concrete enough to execute.",
-        prompt, max_tokens=6000)
+        prompt, max_tokens=12000)
     out = extract_json(raw)
     # models occasionally emit the object wrapped in a list, or lead with the
     # issues array — normalize to the review dict or fail informatively

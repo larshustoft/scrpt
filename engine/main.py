@@ -90,6 +90,35 @@ async def lifespan(app: FastAPI):
     print("  Amazon KDP Book Publishing Automation")
     print(f"  API running on http://localhost:{API_PORT}")
     print("━" * 60)
+
+    # The production line survives restarts: any book that was mid-draft when
+    # the engine last stopped (crash, reboot, upgrade) resumes automatically.
+    # Chapters already written are on disk; drafting picks up at the next one.
+    async def _resume_interrupted():
+        import asyncio as _aio
+        await _aio.sleep(5)  # let the server settle first
+        try:
+            from . import database as _db
+            from .jobs import list_jobs, start_job
+            from .writing import pipeline as _wp
+            for b in _db.list_books(per_page=500)["books"]:
+                ms = (b.get("data") or {}).get("manuscript") or {}
+                if ms.get("status") != "drafting":
+                    continue
+                catalog = b["catalog_number"]
+                if any(j["kind"] == "full_draft"
+                       for j in list_jobs(catalog, active_only=True)):
+                    continue
+                chosen = ms.get("chosen_plot") or 0
+                start_job("full_draft",
+                          lambda h, c=catalog, p=chosen: _wp.full_draft_job(h, c, p),
+                          book_catalog=catalog)
+                print(f"  ↻ resuming interrupted draft: {catalog} — {b['title'][:50]}")
+        except Exception as e:
+            print(f"  draft auto-resume skipped: {e}")
+
+    import asyncio as _aio
+    _aio.get_event_loop().create_task(_resume_interrupted())
     yield
 
 
