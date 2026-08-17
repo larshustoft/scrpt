@@ -158,16 +158,8 @@ export function AssistantDock() {
       {open && (
         <div className="card fade-up flex flex-col"
              style={{ width: 360, maxHeight: 460, padding: 0 }}>
-          <div className="flex items-center justify-between px-4 py-3"
-               style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-            <div>
-              <div className="text-[13px] font-semibold">Assistant</div>
-              <div className="text-[10px] tracking-[0.14em] uppercase text-text-faint">
-                {state === "idle" ? "at your service"
-                 : state === "listening" ? "listening…"
-                 : state === "thinking" ? "thinking…" : "speaking…"}
-              </div>
-            </div>
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="text-[13px] font-semibold">Assistant</div>
             <div className="flex items-center gap-3">
               <button title={voiceOn ? "Voice on" : "Voice off"}
                       onClick={() => { setVoiceOn(!voiceOn); audioRef.current?.pause(); }}
@@ -178,6 +170,19 @@ export function AssistantDock() {
                       className="text-text-tertiary hover:text-text-primary text-[16px] leading-none">
                 ×
               </button>
+            </div>
+          </div>
+
+          {/* the risen presence — large and live while the assistant is open */}
+          <div className="flex flex-col items-center pb-3"
+               style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+            <div className="rounded-full" style={{ boxShadow: orbGlow }}>
+              <OrbCanvas state={state} size={104} />
+            </div>
+            <div className="text-[10px] tracking-[0.22em] uppercase text-text-tertiary mt-2">
+              {state === "idle" ? "at your service"
+               : state === "listening" ? "listening…"
+               : state === "thinking" ? "thinking…" : "speaking…"}
             </div>
           </div>
 
@@ -236,27 +241,29 @@ export function AssistantDock() {
         </div>
       )}
 
-      {/* the orb — a living presence, motion per state */}
-      <div className="flex flex-col items-center gap-2">
-        <button
-          aria-label="Assistant"
-          onClick={() => setOpen(!open)}
-          className="relative h-[64px] w-[64px] rounded-full transition-transform hover:scale-105 overflow-hidden"
-          style={{ boxShadow: `${orbGlow}, 0 8px 24px rgba(0,0,0,0.6)` }}
-        >
-          <OrbCanvas state={state} />
-        </button>
-        <span className="text-[10px] tracking-[0.26em] uppercase text-text-secondary select-none"
-              style={{ textShadow: "0 1px 8px rgba(0,0,0,0.9)" }}>
-          Assistant
-        </span>
-      </div>
+      {/* the dock orb — steps aside while the presence is risen */}
+      {!open && (
+        <div className="flex flex-col items-center gap-2">
+          <button
+            aria-label="Assistant"
+            onClick={() => setOpen(true)}
+            className="relative h-[64px] w-[64px] rounded-full transition-transform hover:scale-105 overflow-hidden"
+            style={{ boxShadow: `${orbGlow}, 0 8px 24px rgba(0,0,0,0.6)` }}
+          >
+            <OrbCanvas state={state} />
+          </button>
+          <span className="text-[10px] tracking-[0.26em] uppercase text-text-secondary select-none"
+                style={{ textShadow: "0 1px 8px rgba(0,0,0,0.9)" }}>
+            Assistant
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
 /** The presence inside the orb — canvas animation keyed to the state. */
-function OrbCanvas({ state }: { state: OrbState }) {
+function OrbCanvas({ state, size = 64 }: { state: OrbState; size?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<OrbState>(state);
   stateRef.current = state;
@@ -265,27 +272,28 @@ function OrbCanvas({ state }: { state: OrbState }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const size = 64;
     canvas.width = size * dpr;
     canvas.height = size * dpr;
     const ctx = canvas.getContext("2d")!;
-    ctx.scale(dpr, dpr);
-    const cx = size / 2, cy = size / 2;
+    ctx.scale(dpr * size / 64, dpr * size / 64);
+    // everything below draws in 64-unit space and scales with the orb
+    const cx = 32, cy = 32;
+    const sizeU = 64;
     let raf = 0;
 
     const draw = (tMs: number) => {
       const t = tMs / 1000;
       const s = stateRef.current;
-      ctx.clearRect(0, 0, size, size);
+      ctx.clearRect(0, 0, sizeU, sizeU);
 
       // sphere base
-      const base = ctx.createRadialGradient(cx * 0.7, cy * 0.6, 4, cx, cy, size * 0.55);
+      const base = ctx.createRadialGradient(cx * 0.7, cy * 0.6, 4, cx, cy, sizeU * 0.55);
       base.addColorStop(0, "rgba(218,184,111,0.95)");
       base.addColorStop(0.55, "rgba(138,109,53,0.9)");
       base.addColorStop(1, "rgba(23,18,5,0.98)");
       ctx.fillStyle = base;
       ctx.beginPath();
-      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+      ctx.arc(cx, cy, sizeU / 2, 0, Math.PI * 2);
       ctx.fill();
 
       // breathing core (always, stronger when engaged)
@@ -351,11 +359,11 @@ function OrbCanvas({ state }: { state: OrbState }) {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [size]);
 
   return (
     <canvas ref={canvasRef}
-            style={{ width: 64, height: 64, display: "block", borderRadius: "50%" }} />
+            style={{ width: size, height: size, display: "block", borderRadius: "50%" }} />
   );
 }
 
