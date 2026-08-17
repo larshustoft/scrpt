@@ -66,9 +66,9 @@ export default function HQPage() {
         }}
       />
 
-      {/* greeting top-left, the book hard in the left margin — like STCKR */}
-      <div className="relative h-full px-14 flex flex-col justify-between pt-24 pb-28">
-        <div className="max-w-[440px]">
+      {/* everything stacked bottom-left: greeting just above the book */}
+      <div className="relative h-full px-16 flex flex-col justify-end pb-28">
+        <div className="max-w-[440px] mb-9">
           <h1
             className="serif-display text-[44px] font-semibold leading-tight"
             style={{ textShadow: "0 2px 28px rgba(0,0,0,0.85)" }}
@@ -106,7 +106,8 @@ export default function HQPage() {
           {current && (
             <Link
               href={`/shelf/${current.catalog_number}`}
-              className="group relative block w-[310px]"
+              className="group relative block"
+              style={{ width: "clamp(190px, 34vh, 310px)" }}
             >
               <div
                 className="relative rounded-[5px] overflow-hidden transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-[0.6deg]"
@@ -159,7 +160,7 @@ export default function HQPage() {
       </div>
 
       {/* the assistant — bottom right */}
-      <div className="absolute bottom-16 right-14 flex flex-col items-center gap-3">
+      <div className="absolute bottom-16 right-16 flex flex-col items-center gap-3">
         {assistantNote && (
           <div className="card text-[12px] text-text-secondary max-w-[220px] text-center py-3 px-4 fade-up">
             The assistant joins the front office in a coming update.
