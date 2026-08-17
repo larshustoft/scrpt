@@ -19,6 +19,7 @@ from ..prose.models import (
     BookKind, Chapter, ChapterStatus, Character, ConceptBible, GENRE_PRESETS,
     Manuscript, ManuscriptStatus, StoryBible,
 )
+from ..craft import craft
 from .client import complete, extract_json
 from .parsing import parse_chapter_text, count_words
 
@@ -244,7 +245,8 @@ async def build_outline(catalog: str) -> None:
         f"BIBLE:\n{_bible_digest(ms)}\n\n"
         f"Create the chapter outline: exactly {n_chapters} chapters, total length "
         f"{ms.target_words} words (≈{p['chapter_words']} words per chapter). {shape}\n"
-        f"GENRE STRUCTURE (non-negotiable): {genre_structure}\n\n"
+        f"GENRE STRUCTURE (non-negotiable): {genre_structure}\n"
+        f"{craft(ms.genre_preset, 'OUTLINE')}\n"
         "Return JSON only:\n"
         '[{"title": "...", "summary": "120-200 words on what happens / what it teaches", '
         '"beats": ["beat 1", "beat 2", "beat 3", "beat 4", "beat 5"]}]'
@@ -314,6 +316,7 @@ async def draft_chapter(catalog: str, index: int) -> None:
         f"NOW WRITE CHAPTER {index}: \"{ch.title}\"\n"
         f"Chapter brief: {ch.outline_summary}\nBeats to hit:\n{beats}\n\n"
         f"Length: {p['chapter_words']}-{int(p['chapter_words']*1.25)} words. {dialect}\n"
+        f"{craft(ms.genre_preset, 'CHAPTER')}"
         "Write the chapter text only — no chapter number/title header, no commentary.\n"
         "Then, after the chapter, output exactly one line starting with '@@META@@ ' "
         "followed by JSON: {\"rolling_summary\": \"150-250 words: everything a future "
