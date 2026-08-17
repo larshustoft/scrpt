@@ -486,8 +486,25 @@ async def generate_blurb(catalog: str) -> dict:
 
 async def full_draft_job(handle: JobHandle, catalog: str, chosen_plot: int = 0,
                          edits: str = "") -> dict:
-    """bible -> outline -> every chapter -> blurb, with progress reporting."""
+    """market check -> bible -> outline -> every chapter -> blurb."""
     book, ms = _load(catalog)
+
+    # standing stage: verify length + trim against the LIVE market before a
+    # single word is drafted. House presets are templates; the market decides.
+    if not book["data"].get("market_check"):
+        handle.progress(0.01, "market", "Checking the live market: length, format, trim")
+        try:
+            from .market import apply_market_check, market_check
+            check = await market_check(book, ms)
+            data = dict(get_book_by_catalog(catalog)["data"])
+            adjustments = apply_market_check(data, ms, check)
+            check["adjustments"] = adjustments
+            data["market_check"] = check
+            data["manuscript"] = ms.model_dump(mode="json")
+            update_book(book["id"], data)
+            book, ms = _load(catalog)
+        except Exception:
+            pass  # market check must never block production
 
     if ms.status in (ManuscriptStatus.IDEA, ManuscriptStatus.PLOTTING):
         handle.progress(0.02, "bible", "Building the book bible")
