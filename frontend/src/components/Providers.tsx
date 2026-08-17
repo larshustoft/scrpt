@@ -4,6 +4,10 @@ import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { AuthProvider, useAuthContext } from "@/components/AuthProvider"
 import { Navbar } from "@/components/Navbar"
+import { BackOfficeNav } from "@/components/BackOfficeNav"
+
+/** Route prefixes that live in the Back Office and share its tool menu. */
+const BACK_OFFICE_PREFIXES = ["/office", "/shelf", "/analytics", "/settings"]
 
 /** Routes that don't require authentication */
 const PUBLIC_PATHS = ["/", "/login"]
@@ -92,9 +96,12 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
+  const inBackOffice = BACK_OFFICE_PREFIXES.some((p) => pathname.startsWith(p))
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
+      {inBackOffice && <BackOfficeNav />}
       <main
         className="flex-1 transition-all duration-200"
         style={{

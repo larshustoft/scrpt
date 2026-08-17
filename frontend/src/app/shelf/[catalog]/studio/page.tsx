@@ -181,7 +181,7 @@ export default function StudioPage({ params }: { params: Promise<{ catalog: stri
     : [];
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100vh - 64px)" }}>
+    <div className="flex flex-col" style={{ height: "calc(100vh - 110px)" }}>
       {/* toolbar */}
       <div className="h-[52px] px-6 flex items-center gap-4 border-b border-border-subtle shrink-0"
            style={{ background: "var(--surface)" }}>
