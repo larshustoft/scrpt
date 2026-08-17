@@ -68,7 +68,7 @@ async function ensureServers(onStatus) {
   return false;
 }
 
-const SPLASH_HOLD_MS = 2000; // opening screen stays up at least this long
+const SPLASH_HOLD_MS = 5000; // opening screen stays up at least this long
 
 const SPLASH = `data:text/html;charset=utf-8,${encodeURIComponent(`
   <html><body style="margin:0;background:#0e0c09;display:flex;align-items:center;
