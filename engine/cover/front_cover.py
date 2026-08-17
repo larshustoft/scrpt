@@ -41,8 +41,13 @@ GENRE_COVER_STYLE = {
         "composition that rewards a second look",
     "romance": "contemporary romance cover: warm inviting palette, elegant serif or "
         "script title, evocative couple or symbolic scene, soft light",
-    "historical_romance": "historical romance cover: rich period palette, sweeping "
-        "gown or landscape, ornate serif title with flourish",
+    "historical_romance": "historical romance cover, the smart-collectible register: "
+        "heroine seen from behind or in profile in period dress (never a front-facing "
+        "photoreal face), holding a story-object that carries the plot; layered depth — "
+        "figure foreground, gardens midground, estate and light in the distance; soft "
+        "painterly florals framing the composition and a delicate ornamental border as "
+        "the series' collectible device; title mixing refined script with elegant serif, "
+        "small tagline top, discreet category line, author in clean small caps",
     "self_help": "modern self-help cover: clean bold typography as the hero on a "
         "confident flat or gradient background, one striking graphic symbol, generous "
         "white space",
@@ -167,10 +172,18 @@ async def build_variant_briefs(book: dict, ms: Manuscript, count: int,
         + " as text rendered INTO the artwork, with specific type direction "
         "(placement, case, style) that competes on today's shelf\n"
         "- describe one specific, vivid scene or composition — concrete "
-        "light, palette, wardrobe/props, mood; no vague adjectives\n"
+        "light, palette, wardrobe/props, mood; no vague adjectives. Favor "
+        "compositions that do not hinge on a large front-facing photoreal "
+        "face (figures from behind, in profile, in middle distance, or "
+        "symbolic compositions read premium and avoid uncanny artifacts)\n"
+        "- text may additionally include a small category descriptor line "
+        f"(e.g. \"A {preset.get('label', 'Novel')}\") and, for series, an "
+        "ornamental border/frame device that makes the set collectible — "
+        "but nothing else\n"
         "- demand professional trade-cover finish; no extra text beyond "
         "title, author"
-        + (", tagline" if ms.tagline else "") + "\n"
+        + (", tagline" if ms.tagline else "")
+        + ", the optional category line\n"
         "- read as one self-contained paragraph (the image model sees ONLY "
         "that paragraph)\n\n"
         'Return JSON only: {"briefs": [{"concept": "2-4 word label", '
