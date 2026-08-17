@@ -183,11 +183,10 @@ export function AssistantDock() {
           {/* the risen presence — large and live while the assistant is open */}
           <div className="flex flex-col items-center pb-3"
                style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-            <button className="rounded-full transition-transform hover:scale-[1.03]"
-                    style={{ boxShadow: orbGlow }}
+            <button className="transition-transform hover:scale-[1.03]"
                     title="Close the assistant"
                     onClick={() => setOpen(false)}>
-              <OrbCanvas state={state} size={104} />
+              <OrbUniverse state={state} size={132} />
             </button>
             <div className="text-[10px] tracking-[0.22em] uppercase text-text-tertiary mt-2">
               {state === "idle" ? "at your service"
@@ -269,6 +268,109 @@ export function AssistantDock() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The risen presence — a bronze universe. No sphere: a glowing heart with a
+ * swarm of bronze particles circling on tilted elliptical orbits.
+ */
+function OrbUniverse({ state, size = 130 }: { state: OrbState; size?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stateRef = useRef<OrbState>(state);
+  stateRef.current = state;
+
+  interface P { a0: number; speed: number; rx: number; ry: number; tilt: number; r: number; warm: number }
+  const particlesRef = useRef<P[] | null>(null);
+  if (!particlesRef.current) {
+    const ps: P[] = [];
+    for (let i = 0; i < 110; i++) {
+      const band = 0.28 + 0.72 * Math.pow(Math.random(), 0.7); // denser toward center
+      ps.push({
+        a0: Math.random() * Math.PI * 2,
+        speed: (0.25 + Math.random() * 0.9) * (Math.random() < 0.5 ? 1 : -1),
+        rx: band,
+        ry: band * (0.28 + Math.random() * 0.5),
+        tilt: Math.random() * Math.PI,
+        r: 0.5 + Math.random() * 1.4,
+        warm: Math.random(),
+      });
+    }
+    particlesRef.current = ps;
+  }
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+    const cx = size / 2, cy = size / 2;
+    const R = size * 0.46;
+    let raf = 0;
+
+    const draw = (tMs: number) => {
+      const t = tMs / 1000;
+      const s = stateRef.current;
+      const speedMult = s === "idle" ? 0.55 : s === "thinking" ? 2.1 : s === "speaking" ? 1.3 : 1.0;
+      const drift = t * 0.12 * speedMult; // slow precession of the whole system
+      ctx.clearRect(0, 0, size, size);
+
+      // the heart — small, breathing, never a ball
+      const beat = s === "speaking"
+        ? 0.55 + 0.45 * Math.abs(Math.sin(t * 7.1) * Math.sin(t * 4.3))
+        : 0.5 + 0.5 * Math.sin(t * (s === "idle" ? 1.2 : 2.6));
+      const heartR = size * (0.052 + 0.03 * beat);
+      const heart = ctx.createRadialGradient(cx, cy, 0, cx, cy, heartR * 3.4);
+      heart.addColorStop(0, "rgba(255,246,224,0.95)");
+      heart.addColorStop(0.35, "rgba(228,193,124,0.5)");
+      heart.addColorStop(1, "rgba(228,193,124,0)");
+      ctx.fillStyle = heart;
+      ctx.beginPath();
+      ctx.arc(cx, cy, heartR * 3.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // listening: a soft expanding ring through the field
+      if (s === "listening") {
+        const phase = (t * 0.8) % 1;
+        ctx.strokeStyle = `rgba(240,224,190,${0.4 * (1 - phase)})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R * (0.2 + phase * 0.8), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // the universe
+      for (const p of particlesRef.current!) {
+        const a = p.a0 + t * p.speed * speedMult;
+        const ex = p.rx * R * Math.cos(a);
+        const ey = p.ry * R * Math.sin(a);
+        const tilt = p.tilt + drift;
+        const x = cx + ex * Math.cos(tilt) - ey * Math.sin(tilt);
+        const y = cy + ex * Math.sin(tilt) + ey * Math.cos(tilt);
+        const depth = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(a)); // front/back shimmer
+        const alpha = (0.25 + 0.6 * depth) * (s === "idle" ? 0.8 : 1);
+        const warmTone = p.warm < 0.25
+          ? `rgba(255,246,224,${alpha})`         // ivory sparks
+          : p.warm < 0.8
+            ? `rgba(212,172,102,${alpha})`       // bronze
+            : `rgba(160,118,58,${alpha})`;       // deep bronze
+        ctx.fillStyle = warmTone;
+        ctx.beginPath();
+        ctx.arc(x, y, p.r * (0.7 + 0.5 * depth), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [size]);
+
+  return (
+    <canvas ref={canvasRef} style={{ width: size, height: size, display: "block" }} />
   );
 }
 
