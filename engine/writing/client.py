@@ -104,7 +104,7 @@ def extract_json(text: str):
             candidates.append(text[start : end + 1])
     for cand in candidates:
         try:
-            return json.loads(cand)
+            return json.loads(cand, strict=False)
         except ValueError:
             continue
     # salvage a truncated response: from the first bracket, cut back to the
@@ -118,7 +118,8 @@ def extract_json(text: str):
                 continue
             for closer in ("]", "}", "]}", "}]"):
                 try:
-                    return json.loads(piece + closer if piece[0] in "[{" else piece)
+                    return json.loads(piece + closer if piece[0] in "[{" else piece,
+                                      strict=False)
                 except ValueError:
                     continue
         # last resort: progressively truncate at object boundaries
@@ -126,7 +127,8 @@ def extract_json(text: str):
         for e in reversed(ends):
             piece = frag[:e].rstrip().rstrip(",")
             try:
-                return json.loads(piece + ("]" if frag[0] == "[" else ""))
+                return json.loads(piece + ("]" if frag[0] == "[" else ""),
+                                  strict=False)
             except ValueError:
                 continue
     raise ValueError(f"No parseable JSON in response: {text[:300]}")
