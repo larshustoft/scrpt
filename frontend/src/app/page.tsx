@@ -15,7 +15,7 @@ export default function SalesPage() {
     <div className="min-h-screen">
       {/* top bar */}
       <header className="absolute top-0 inset-x-0 z-20 h-[72px] px-8 flex items-center justify-between">
-        <span className="text-accent"><ScrptLogo size={17} /></span>
+        <span className="text-accent"><ScrptLogo size={26} /></span>
         <nav className="flex items-center gap-6">
           <a href="#how" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
             How it works
@@ -24,7 +24,7 @@ export default function SalesPage() {
             Pricing
           </a>
           {user ? (
-            <Link href="/study" className="btn-brass">Open the studio</Link>
+            <Link href="/front" className="btn-brass">Open SCRPT</Link>
           ) : (
             <Link href="/login" className="btn-brass">Sign in</Link>
           )}
@@ -146,7 +146,7 @@ export default function SalesPage() {
 
       <footer className="border-t border-border-subtle">
         <div className="max-w-[1100px] mx-auto px-8 py-10 flex items-center justify-between">
-          <span className="text-text-tertiary"><ScrptLogo size={13} /></span>
+          <span className="text-text-tertiary"><ScrptLogo size={16} /></span>
           <span className="text-[12px] text-text-faint">
             Write. Publish. Sell.
           </span>

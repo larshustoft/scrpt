@@ -8,7 +8,7 @@ import { useAuthContext } from "@/components/AuthProvider";
 import { ScrptLogo } from "@/components/Logo";
 
 const NAV_ITEMS = [
-  { href: "/study", label: "The Study" },
+  { href: "/front", label: "Front Office" },
   { href: "/office", label: "Back Office" },
 ];
 
@@ -86,8 +86,8 @@ export function Navbar() {
       className="sticky top-0 z-50 h-[64px] px-8 flex items-center gap-6 border-b border-border-subtle"
       style={{ background: "var(--nav-bg)", backdropFilter: "blur(16px)" }}
     >
-      <Link href="/study" className="text-accent hover:opacity-80 transition-opacity">
-        <ScrptLogo size={15} />
+      <Link href="/front" className="text-accent hover:opacity-80 transition-opacity">
+        <ScrptLogo size={24} />
       </Link>
 
       <div className="flex-1" />

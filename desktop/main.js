@@ -20,7 +20,7 @@ const LOG_DIR = path.join(os.homedir(), ".scrpt");
 
 const ENGINE_URL = "http://127.0.0.1:8000/api/health";
 const FRONTEND_URL = "http://localhost:3000";
-const START_URL = `${FRONTEND_URL}/study`;
+const START_URL = `${FRONTEND_URL}/front`;
 
 function ping(url) {
   return new Promise((resolve) => {
@@ -68,12 +68,15 @@ async function ensureServers(onStatus) {
   return false;
 }
 
+const SPLASH_HOLD_MS = 2000; // opening screen stays up at least this long
+
 const SPLASH = `data:text/html;charset=utf-8,${encodeURIComponent(`
   <html><body style="margin:0;background:#0e0c09;display:flex;align-items:center;
   justify-content:center;height:100vh;flex-direction:column;font-family:Georgia,serif;">
-  <div style="color:#c9a45c;font-size:34px;letter-spacing:0.24em;">SCRPT</div>
-  <div id="s" style="color:#83786a;font-size:12px;letter-spacing:0.2em;
-  text-transform:uppercase;margin-top:18px;">Opening the study…</div>
+  <div style="color:#c9a45c;font-size:88px;letter-spacing:0.3em;margin-right:-0.3em;
+  text-shadow:0 0 60px rgba(201,164,92,0.25);">SCRPT</div>
+  <div id="s" style="color:#83786a;font-size:13px;letter-spacing:0.34em;
+  text-transform:uppercase;margin-top:28px;font-family:system-ui,sans-serif;">Opening SCRPT…</div>
   </body></html>`)}`;
 
 async function createWindow() {
@@ -110,17 +113,21 @@ async function createWindow() {
     return { action: "allow" };
   });
 
+  const splashShownAt = Date.now();
   const ok = await ensureServers((msg) => {
     win.webContents.executeJavaScript(
       `document.getElementById('s') && (document.getElementById('s').textContent = ${JSON.stringify(msg)})`,
     ).catch(() => {});
   });
 
+  const remaining = SPLASH_HOLD_MS - (Date.now() - splashShownAt);
+  if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
+
   if (ok) {
     win.loadURL(START_URL);
   } else {
     win.loadURL(SPLASH.replace(
-      encodeURIComponent("Opening the study…"),
+      encodeURIComponent("Opening SCRPT…"),
       encodeURIComponent("Could not start the local servers — see ~/.scrpt/*.log"),
     ));
   }

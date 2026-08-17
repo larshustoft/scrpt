@@ -46,7 +46,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-[400px]">
         <div className="flex justify-center mb-8 text-accent">
-          <ScrptLogo size={24} tagline />
+          <ScrptLogo size={30} tagline />
         </div>
 
         <div className="card">
@@ -79,7 +79,7 @@ export default function LoginPage() {
 
               <button type="submit" className="btn-brass w-full justify-center mt-5" disabled={busy}>
                 {busy ? "One moment…"
-                  : mode === "signin" ? "Enter the studio"
+                  : mode === "signin" ? "Sign in"
                   : mode === "signup" ? "Create account"
                   : "Send sign-in link"}
               </button>
