@@ -28,13 +28,13 @@ export default function ShelfPage() {
   }, []);
 
   const { seriesGroups, standalone } = useMemo(() => {
-    const groups = new Map<string, { title: string; books: ScrptBook[] }>();
+    const groups = new Map<string, { id: string; title: string; books: ScrptBook[] }>();
     const single: ScrptBook[] = [];
     for (const b of books) {
       const s = b.data.series;
       if (s?.series_id && s.series_title) {
         if (!groups.has(s.series_id)) {
-          groups.set(s.series_id, { title: s.series_title, books: [] });
+          groups.set(s.series_id, { id: s.series_id, title: s.series_title, books: [] });
         }
         groups.get(s.series_id)!.books.push(b);
       } else {
@@ -71,13 +71,19 @@ export default function ShelfPage() {
       )}
 
       {seriesGroups.map((group) => (
-        <section key={group.title} className="mt-10">
-          <h2 className="serif-display text-[19px] font-semibold text-text-secondary mb-4">
-            {group.title}
-            <span className="text-[12px] text-text-faint ml-3 font-sans">
+        <section key={group.id} className="mt-10">
+          <Link href={`/shelf/series/${group.id}`}
+                className="group/series inline-flex items-baseline gap-3 mb-4">
+            <h2 className="serif-display text-[19px] font-semibold text-text-secondary group-hover/series:text-accent transition-colors">
+              {group.title}
+            </h2>
+            <span className="text-[12px] text-text-faint font-sans">
               series · {group.books.length} books
             </span>
-          </h2>
+            <span className="text-[12px] text-accent opacity-0 group-hover/series:opacity-100 transition-opacity">
+              Open series →
+            </span>
+          </Link>
           <BookRow books={group.books} />
         </section>
       ))}

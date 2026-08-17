@@ -251,6 +251,13 @@ function ManuscriptTab({ book, ms, reload, busy }: {
                   <div className="text-[13px] font-medium truncate">{ch.title}</div>
                   <div className="text-[11px] text-text-faint truncate">{ch.outline_summary}</div>
                 </div>
+                {ch.quality_score != null && (
+                  <span className="text-[11px] shrink-0"
+                        title={ch.quality_notes || "Quality gate score"}
+                        style={{ color: ch.quality_score >= 7 ? "var(--status-green)" : "var(--status-amber)" }}>
+                    Q{ch.quality_score.toFixed(1)}{ch.revised ? " ·r" : ""}
+                  </span>
+                )}
                 <span className="text-[11px] text-text-tertiary shrink-0">
                   {ch.blocks.length > 0 ? `${ch.word_count.toLocaleString()} words` : ch.status}
                 </span>

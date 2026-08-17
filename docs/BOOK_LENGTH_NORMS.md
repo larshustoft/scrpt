@@ -81,3 +81,17 @@ Two viable strategies per series: trad-length (95-110k, print credibility,
 higher cost/slower) vs indie-velocity (55-70k, faster testing, thinner).
 SCRPT default stays trad-length; test velocity-band series via the Work
 Order's target-length override and let read-through decide.
+
+## HOUSE FORMATS (codified 2026-08-17 — research-validated defaults per genre)
+
+| Genre | Trim | Paper | Evidence |
+|---|---|---|---|
+| Action/legal/conspiracy thriller | **5.5 × 8.5″** | cream | Dark State (#1 indie, Financial) exactly 5.5×8.5/452pp; Terminal List mass pb 5.31×8.25; indie standard |
+| Romance (contemporary + historical) | **5.25 × 8″** | cream | Researched band 5–5.5″ × 8–8.5″; 5.25×8 in-band with better print economics than 5×8 |
+| Self-help / business | **6 × 9″** | white | Dominant non-fiction trade standard (multiple sources) |
+| Mindfulness | **5.5 × 8.5″** | cream | Intimate trim, fiction-adjacent feel |
+
+These ARE the GENRE_PRESETS defaults — the Work Order applies them
+automatically; override per book only with reason. Top-chart empirical word
+counts: winning indie thrillers are FULL LENGTH (Dark State 452pp ≈ 110k;
+Terminal List 432pp ≈ 105-115k) — the 215pp mid-tail book is not the model.

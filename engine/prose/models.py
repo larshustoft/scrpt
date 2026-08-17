@@ -147,6 +147,10 @@ class Chapter(BaseModel):
     beats: list[str] = Field(default_factory=list)
     rolling_summary: str = ""             # what actually happened (for continuity)
     word_count: int = 0
+    quality_score: Optional[float] = None # 1-10 from the quality gate
+    quality_notes: str = ""
+    hook_type: str = ""                   # classified chapter-ending hook
+    revised: bool = False                 # rewritten by the quality gate
 
 
 # ── Bibles ───────────────────────────────────────────────────────
@@ -254,6 +258,7 @@ class Manuscript(BaseModel):
     tagline: str = ""
     ai_disclosure: bool = True            # KDP AI-generated content disclosure flag
     word_count: int = 0
+    quality_report: dict = Field(default_factory=dict)  # book-level audit
 
 
 # ── Typesetting config (shared contract with frontend) ───────────

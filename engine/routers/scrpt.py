@@ -110,6 +110,94 @@ async def _plot_options_job(handle, catalog: str) -> dict:
     return {"options": options}
 
 
+# ── series ───────────────────────────────────────────────────────
+
+def _series_books(series_id: str) -> list[dict]:
+    books = db.list_books(per_page=200)["books"]
+    members = [b for b in books
+               if (b["data"].get("series") or {}).get("series_id") == series_id]
+    members.sort(key=lambda b: (b["data"]["series"].get("book_number") or 0))
+    return members
+
+
+@router.get("/series/{series_id}")
+def get_series(series_id: str):
+    members = _series_books(series_id)
+    if not members:
+        raise HTTPException(404, "Series not found")
+    info = members[0]["data"]["series"]
+    return {"series_id": series_id,
+            "series_title": info.get("series_title", ""),
+            "series_bible": info.get("series_bible", ""),
+            "total_planned": max((b["data"]["series"].get("total_planned") or 1)
+                                 for b in members),
+            "books": members}
+
+
+class ExtendSeriesRequest(BaseModel):
+    count: int = 1
+    idea: str = ""     # optional steer for the next book(s)
+
+
+@router.post("/series/{series_id}/extend")
+async def extend_series(series_id: str, req: ExtendSeriesRequest = None):
+    members = _series_books(series_id)
+    if not members:
+        raise HTTPException(404, "Series not found")
+    count = max(1, min(6, req.count if req else 1))
+    steer = (req.idea if req else "") or ""
+
+    template = members[-1]["data"]
+    info = template["series"]
+    max_no = max((b["data"]["series"].get("book_number") or 1) for b in members)
+    new_total = max_no + count
+
+    created = []
+    for offset in range(1, count + 1):
+        book_no = max_no + offset
+        ms = Manuscript(
+            kind=BookKind(template.get("kind", "fiction")),
+            genre_preset=template.get("genre_preset", "action_thriller"),
+            idea=steer or template.get("manuscript", {}).get("idea", ""),
+            target_words=template.get("manuscript", {}).get("target_words", 95000),
+            status=ManuscriptStatus.IDEA,
+        )
+        data = {
+            "kind": template.get("kind", "fiction"),
+            "book_type": template.get("kind", "fiction"),
+            "genre_preset": template.get("genre_preset"),
+            "author_name": template.get("author_name", ""),
+            "trim_size": template.get("trim_size"),
+            "paper_type": template.get("paper_type"),
+            "page_count": 0,
+            "list_price": template.get("list_price", 12.99),
+            "manuscript": ms.model_dump(mode="json"),
+            "format": template.get("format", {}),
+            "interior": {}, "cover": {}, "audio": {},
+            "series": {
+                "series_id": series_id,
+                "series_title": info.get("series_title", ""),
+                "book_number": book_no,
+                "total_planned": new_total,
+                "series_bible": info.get("series_bible", ""),
+            },
+        }
+        created.append(db.create_book(
+            f"Untitled ({info.get('series_title', 'Series')} #{book_no})", data))
+
+    # existing members learn the new series size
+    for b in members:
+        d = dict(b["data"])
+        d["series"]["total_planned"] = new_total
+        db.update_book(b["id"], d)
+
+    catalog = created[0]["catalog_number"]
+    job_id = start_job("plot_options",
+                       lambda h, c=catalog: _plot_options_job(h, c),
+                       book_catalog=catalog)
+    return {"books": created, "job_id": job_id}
+
+
 # ── manuscript flow ──────────────────────────────────────────────
 
 @router.get("/books")

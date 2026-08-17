@@ -36,6 +36,10 @@ export interface Chapter {
   beats: string[];
   rolling_summary: string;
   word_count: number;
+  quality_score?: number | null;
+  quality_notes?: string;
+  hook_type?: string;
+  revised?: boolean;
 }
 
 export interface Manuscript {

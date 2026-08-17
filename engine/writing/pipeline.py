@@ -428,12 +428,24 @@ async def full_draft_job(handle: JobHandle, catalog: str, chosen_plot: int = 0,
             return {}
         _, cur = _load(catalog)
         ch = next(c for c in cur.chapters if c.index == idx)
-        handle.progress(
-            0.08 + 0.86 * (n / max(1, len(remaining))),
-            "drafting",
-            f"Chapter {idx}/{total}: {ch.title}",
-        )
+        base = 0.08 + 0.82 * (n / max(1, len(remaining)))
+        handle.progress(base, "drafting", f"Chapter {idx}/{total}: {ch.title}")
         await draft_chapter(catalog, idx)
+        # quality gate: audit against the playbook, one rewrite if below bar
+        handle.progress(base + 0.4 / max(1, len(remaining)), "quality",
+                        f"Quality gate — chapter {idx}/{total}")
+        try:
+            from .quality import gate_chapter
+            await gate_chapter(catalog, idx)
+        except Exception:
+            pass  # the gate must never kill a draft
+
+    handle.progress(0.92, "audit", "Whole-book quality audit")
+    try:
+        from .quality import book_audit
+        book_audit(catalog)
+    except Exception:
+        pass
 
     handle.progress(0.94, "blurb", "Writing the listing copy")
     await generate_blurb(catalog)
