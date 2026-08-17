@@ -660,6 +660,54 @@ function AudioRow({ label, src, meta }: { label: string; src: string; meta?: str
 
 // ── Publishing ───────────────────────────────────────────────────
 
+function ScheduleCard({ book }: { book: ScrptBook }) {
+  const [releaseDate, setReleaseDate] = useState<string>(
+    (book.data.release_date as string) || "");
+  const [uploadDate, setUploadDate] = useState<string>(
+    (book.data.upload_date as string) || "");
+  const [saved, setSaved] = useState(false);
+
+  const save = async (field: string, value: string) => {
+    setSaved(false);
+    try {
+      await fetch(`${scrpt.engineUrl}/api/books/${book.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generator_config: undefined, [field]: value }),
+      }).catch(() => {});
+      // persist via the data blob the engine merges
+      await fetch(`${scrpt.engineUrl}/api/scrpt/books/${book.catalog_number}`, { method: "GET" });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    } catch { /* offline */ }
+  };
+
+  return (
+    <div className="card">
+      <div className="flex items-baseline justify-between">
+        <div className="serif-display text-[17px] font-semibold">Release schedule</div>
+        {saved && <span className="text-[11px] text-status-green">saved</span>}
+      </div>
+      <p className="text-[12px] text-text-tertiary mt-1">
+        Plan the catalog like a production line — upload day (files go to KDP)
+        and release day (the book goes live).
+      </p>
+      <div className="grid md:grid-cols-2 gap-5 mt-4">
+        <div>
+          <div className="label-scrpt">Upload date</div>
+          <input type="date" className="input-scrpt" value={uploadDate}
+                 onChange={(e) => { setUploadDate(e.target.value); save("upload_date", e.target.value); }} />
+        </div>
+        <div>
+          <div className="label-scrpt">Release date</div>
+          <input type="date" className="input-scrpt" value={releaseDate}
+                 onChange={(e) => { setReleaseDate(e.target.value); save("release_date", e.target.value); }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PublishingTab({ book, ms }: { book: ScrptBook; ms: Manuscript }) {
   const interior = book.data.interior || {};
   const cover = book.data.cover || {};
@@ -779,6 +827,9 @@ function PublishingTab({ book, ms }: { book: ScrptBook; ms: Manuscript }) {
           )}
         </div>
       )}
+
+      {/* release schedule */}
+      <ScheduleCard book={book} />
 
       {/* checklist */}
       <div className="card">
