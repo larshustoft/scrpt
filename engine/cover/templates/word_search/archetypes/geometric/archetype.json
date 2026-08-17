@@ -1,0 +1,49 @@
+{
+  "name": "Geometric",
+  "archetype_id": "geometric",
+  "description": "CSS geometric patterns with triangles, circles, and grid elements. A bold, structured design with mathematical precision.",
+  "font_pair": "B",
+  "tags": ["activity", "puzzle", "word_search", "geometric", "pattern"],
+  "themes": {
+    "dark": {
+      "--bg-primary": "#0C0C1D",
+      "--bg-secondary": "#161633",
+      "--bg-accent": "#222250",
+      "--text-primary": "#F0F0FF",
+      "--text-secondary": "#9898CC",
+      "--accent": "#7B68EE",
+      "--accent-secondary": "#B4A7FF",
+      "--divider": "rgba(123,104,238,0.20)"
+    },
+    "cool": {
+      "--bg-primary": "#061220",
+      "--bg-secondary": "#0C2440",
+      "--bg-accent": "#143660",
+      "--text-primary": "#E8F0FA",
+      "--text-secondary": "#7CA8D0",
+      "--accent": "#00B4D8",
+      "--accent-secondary": "#48D1E8",
+      "--divider": "rgba(0,180,216,0.20)"
+    },
+    "warm": {
+      "--bg-primary": "#180808",
+      "--bg-secondary": "#2C1010",
+      "--bg-accent": "#401818",
+      "--text-primary": "#FFF0F0",
+      "--text-secondary": "#CC8888",
+      "--accent": "#E44D26",
+      "--accent-secondary": "#F4845F",
+      "--divider": "rgba(228,77,38,0.20)"
+    },
+    "muted": {
+      "--bg-primary": "#1E2328",
+      "--bg-secondary": "#2A3038",
+      "--bg-accent": "#363E48",
+      "--text-primary": "#E4E8EC",
+      "--text-secondary": "#8A9AAA",
+      "--accent": "#6B8CA0",
+      "--accent-secondary": "#8FB0C4",
+      "--divider": "rgba(107,140,160,0.20)"
+    }
+  }
+}

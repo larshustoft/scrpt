@@ -1,0 +1,262 @@
+/* ═══════════════════════════════════════════════════════════════
+   COLOR BAND — Horizontal color bands/stripes as background
+   Font Pair A: Playfair Display (700) titles / Montserrat (400) body
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Background ── */
+.bleed-fill {
+    background: var(--bg-primary);
+}
+
+/* ── Spine ── */
+.spine {
+    background: var(--band-2);
+}
+.spine-text {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 36px;
+    color: var(--text-primary);
+    letter-spacing: 2px;
+}
+
+/* ── Back Cover ── */
+.back-cover {
+    background: var(--bg-primary);
+    padding: 200px 160px 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Back cover bands */
+.back-cover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+        linear-gradient(to bottom,
+            var(--band-1) 0%, var(--band-1) 15%,
+            var(--band-2) 15%, var(--band-2) 35%,
+            var(--band-3) 35%, var(--band-3) 65%,
+            var(--band-2) 65%, var(--band-2) 85%,
+            var(--band-1) 85%, var(--band-1) 100%);
+    z-index: 0;
+}
+
+.back-cover > * {
+    position: relative;
+    z-index: 1;
+}
+
+.back-heading {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 80px;
+    color: var(--accent);
+    margin-bottom: 60px;
+}
+
+.back-description {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 46px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.back-features {
+    list-style: none;
+    padding: 0;
+    margin: 60px 0 0;
+}
+
+.back-features li {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 42px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    padding: 18px 0;
+    border-bottom: 1px solid var(--divider);
+}
+
+.back-features li::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 6px;
+    background: var(--accent);
+    margin-right: 20px;
+    vertical-align: middle;
+}
+
+/* ── Front Cover ── */
+.front-cover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--safe-zone);
+    text-align: center;
+}
+
+/* ── Horizontal bands ── */
+.band {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 0;
+}
+
+.band-1 {
+    top: 0;
+    height: 18%;
+    background: var(--band-1);
+}
+
+.band-2 {
+    top: 18%;
+    height: 8%;
+    background: var(--accent);
+    opacity: 0.15;
+}
+
+.band-3 {
+    top: 26%;
+    height: 22%;
+    background: var(--band-2);
+}
+
+.band-4 {
+    top: 48%;
+    height: 4%;
+    background: var(--accent);
+    opacity: 0.25;
+}
+
+.band-5 {
+    top: 52%;
+    height: 20%;
+    background: var(--band-3);
+}
+
+.band-6 {
+    top: 72%;
+    height: 8%;
+    background: var(--accent);
+    opacity: 0.15;
+}
+
+.band-7 {
+    top: 80%;
+    height: 20%;
+    background: var(--band-4);
+}
+
+.front-cover > *:not(.band) {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Category label ── */
+.category-label {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 52px;
+    letter-spacing: 18px;
+    text-transform: uppercase;
+    color: var(--accent-secondary);
+    margin-bottom: 40px;
+}
+
+/* ── Title ── */
+.title-main {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 300px;
+    line-height: 0.95;
+    color: var(--text-primary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.title-second {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 300px;
+    line-height: 0.95;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+}
+
+/* ── Accent stripe separator ── */
+.stripe-sep {
+    width: 80%;
+    height: 6px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin: 20px auto 40px;
+}
+
+/* ── Subtitle ── */
+.subtitle-text {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 70px;
+    color: var(--text-secondary);
+    margin-bottom: 50px;
+    max-width: 80%;
+    line-height: 1.4;
+}
+
+/* ── Feature pill ── */
+.feature-pill {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 48px;
+    color: var(--bg-primary);
+    background: var(--accent);
+    padding: 22px 70px;
+    border-radius: 8px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+}
+
+/* ── Puzzle count ── */
+.puzzle-count {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 44px;
+    color: var(--accent-secondary);
+    letter-spacing: 4px;
+}
+
+/* ── Author ── */
+.bottom-section {
+    width: 100%;
+    text-align: center;
+    margin-top: auto;
+}
+
+.author-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 50px;
+    color: var(--text-secondary);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    opacity: 0.7;
+}

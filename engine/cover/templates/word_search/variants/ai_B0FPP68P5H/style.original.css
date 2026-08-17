@@ -1,0 +1,10 @@
+
+/* ── AI-generated artwork background ── */
+.front-cover {
+    background-image: url('artwork.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.bleed-fill { background: #f4f1e8; } .front-cover { justify-content: flex-start; padding-top: 240px; color: #2d4a3d; text-align: center; } .title { font-family: 'Playfair Display', serif; font-size: 320px; font-weight: 700; line-height: 0.9; margin-bottom: 60px; text-shadow: 2px 2px 8px rgba(0,0,0,0.1); } .subtitle { font-family: 'Montserrat', sans-serif; font-size: 95px; font-weight: 500; letter-spacing: 8px; text-transform: uppercase; color: #7a9471; margin-bottom: 80px; } .tagline { font-family: 'Montserrat', sans-serif; font-size: 72px; font-weight: 400; letter-spacing: 4px; color: #5a6b52; border-top: 2px solid #7a9471; padding-top: 30px; margin-bottom: 120px; } .author { font-family: 'Montserrat', sans-serif; font-size: 65px; font-weight: 300; letter-spacing: 6px; text-transform: uppercase; color: #6b7a63; }

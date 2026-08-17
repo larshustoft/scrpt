@@ -1,0 +1,41 @@
+/* ── AI-generated artwork background ── */
+.front-cover {
+    background-image: url('artwork.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.bleed-fill { background: #F5E6D3; }
+
+.front-cover { justify-content: flex-start; padding-top: 60px; padding-left: 80px; padding-right: 80px; padding-bottom: 20px; font-family: Arial, sans-serif; }
+
+.vintage-badge { background: #B8342B; color: white; padding: 20px 40px; border-radius: 12px; font-weight: 900; border: 4px solid #8B2821; }
+
+.title-section { text-align: center; margin-bottom: 40px; }
+
+.timeless-text { font-size: 80px; color: #B8342B; font-weight: 700; margin-bottom: 15px; text-shadow: 4px 4px 0 #fff, -4px -4px 0 #fff, 4px -4px 0 #fff, -4px 4px 0 #fff, 0 6px 0 #fff, 0 -6px 0 #fff, 6px 0 0 #fff, -6px 0 0 #fff, 0 0 30px rgba(255,255,255,0.8); }
+
+.main-title { font-size: 320px; font-weight: 900; line-height: 0.85; color: #000000; margin-bottom: 20px; text-shadow: 4px 4px 0 #fff, -4px -4px 0 #fff, 4px -4px 0 #fff, -4px 4px 0 #fff, 0 6px 0 #fff, 0 -6px 0 #fff, 6px 0 0 #fff, -6px 0 0 #fff, 0 0 30px rgba(255,255,255,0.8); }
+
+.subtitle-banner { background: #B8342B; color: white; font-size: 80px; font-weight: 700; padding: 20px 40px; border-radius: 8px; margin-bottom: 30px; }
+
+.decades-banner { background: #4A9B8E; color: white; font-size: 100px; font-weight: 900; padding: 25px 40px; text-align: center; border-radius: 12px; margin-bottom: 20px; }
+
+.large-print-banner { background: #2C2C2C; color: white; font-size: 90px; font-weight: 900; padding: 20px 40px; text-align: center; border-radius: 8px; }
+
+.word-count-badge { display: none; }
+
+.feature-text { font-size: 72px; font-weight: 700; }
+
+.back-cover { background: #F5E6D3; padding: 120px 80px; font-family: Arial, sans-serif; color: #2C2C2C; }
+
+.back-title { font-size: 100px; font-weight: 900; color: #B8342B; margin-bottom: 60px; text-align: center; }
+
+.back-description { font-size: 56px; line-height: 1.4; margin-bottom: 40px; }
+
+.back-features { font-size: 52px; line-height: 1.6; }
+
+.spine { background: #B8342B; }
+
+.spine-text { writing-mode: vertical-rl; text-orientation: mixed; font-size: 80px; font-weight: 700; color: white; font-family: Arial, sans-serif; }

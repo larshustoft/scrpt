@@ -55,6 +55,7 @@ from .models import (
     GenerateInteriorRequest,
     GenerateCoverRequest,
     GenerateDesignRequest,
+    CoverPreviewRequest,
     QualityCheckRequest,
     UploadRequest,
 )
@@ -62,10 +63,24 @@ from .models import (
 
 # ── App Lifecycle ────────────────────────────────────────────────
 
+def _cleanup_preview_dirs():
+    """Remove cover preview directories older than 1 hour."""
+    import time
+    preview_root = OUTPUT_DIR / "_preview"
+    if not preview_root.exists():
+        return
+    cutoff = time.time() - 3600  # 1 hour
+    for d in preview_root.iterdir():
+        if d.is_dir() and d.stat().st_mtime < cutoff:
+            import shutil
+            shutil.rmtree(d, ignore_errors=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database on startup."""
     init_database()
+    _cleanup_preview_dirs()
     print("━" * 60)
     print("  SCRPT Engine v1.0")
     print("  Amazon KDP Book Publishing Automation")
@@ -800,6 +815,132 @@ async def get_cover_variants(niche: str):
     }
 
 
+@app.get("/api/cover/archetypes/{book_type}")
+async def list_cover_archetypes(book_type: str):
+    """List available cover archetypes with their themes for the design gallery."""
+    from .cover.template_loader import get_template_loader
+    loader = get_template_loader()
+    archetypes = loader.list_archetypes(book_type)
+    return {"book_type": book_type, "archetypes": archetypes}
+
+
+@app.post("/api/cover/upload-artwork")
+async def upload_cover_artwork(request: dict):
+    """
+    Upload front cover artwork (base64 PNG/JPG). The engine stores it and returns
+    a variant_id that can be used with the preview endpoint.
+
+    The uploaded image is placed as the front cover background. The archetype's
+    typography overlays it, and the back cover + spine use the archetype's
+    CSS-only design.
+
+    Request body:
+    {
+        "book_type": "word_search",
+        "archetype_id": "bold-stack",
+        "theme": "dark",
+        "image_data": "base64-encoded image data",
+        "image_format": "png" | "jpg"
+    }
+    """
+    import base64
+    from .config import TEMPLATES_DIR
+
+    book_type = request.get("book_type", "word_search")
+    archetype_id = request.get("archetype_id", "bold-stack")
+    theme = request.get("theme", "dark")
+    image_data = request.get("image_data", "")
+    image_format = request.get("image_format", "png")
+
+    if not image_data:
+        raise HTTPException(status_code=400, detail="image_data is required")
+
+    # Decode image
+    try:
+        img_bytes = base64.b64decode(image_data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 image data")
+
+    # Create a custom variant directory for this upload
+    import uuid
+    upload_id = f"upload_{uuid.uuid4().hex[:8]}"
+    variant_dir = TEMPLATES_DIR / book_type / "variants" / upload_id
+    variant_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save the uploaded artwork
+    artwork_ext = "png" if image_format == "png" else "jpg"
+    artwork_path = variant_dir / f"artwork.{artwork_ext}"
+    artwork_path.write_bytes(img_bytes)
+
+    # Copy archetype template files but add artwork as background
+    from .cover.template_loader import get_template_loader
+    loader = get_template_loader()
+
+    arch_dir = TEMPLATES_DIR / book_type / "archetypes" / archetype_id
+    if not arch_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Archetype not found: {archetype_id}")
+
+    import json as _json
+    arch_meta = _json.loads((arch_dir / "archetype.json").read_text(encoding="utf-8"))
+    themes = arch_meta.get("themes", {})
+    theme_vars = themes.get(theme, themes.get("dark", {}))
+
+    # Read archetype CSS and inject artwork background on front cover
+    arch_css = (arch_dir / "style.css").read_text(encoding="utf-8")
+    artwork_bg_css = f"""
+/* ── Uploaded artwork background ── */
+.front-cover {{
+    background-image: url('artwork.{artwork_ext}');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}}
+/* Darken overlay for text readability */
+.front-cover::after {{
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg,
+        rgba(0,0,0,0.45) 0%,
+        rgba(0,0,0,0.15) 40%,
+        rgba(0,0,0,0.15) 60%,
+        rgba(0,0,0,0.55) 100%
+    );
+    z-index: 0;
+}}
+"""
+    full_css = arch_css + "\n" + artwork_bg_css
+
+    # Write variant files
+    (variant_dir / "style.css").write_text(full_css, encoding="utf-8")
+
+    # Copy HTML files from archetype
+    for f in ["front.html", "back.html", "spine.html"]:
+        src = arch_dir / f
+        if src.exists():
+            (variant_dir / f).write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # Write variant.json
+    (variant_dir / "variant.json").write_text(_json.dumps({
+        "name": f"Custom Artwork ({archetype_id})",
+        "description": f"Uploaded artwork with {archetype_id} typography",
+        "archetype_id": archetype_id,
+        "theme": theme,
+        "uploaded": True,
+        "has_artwork": True,
+    }, indent=2), encoding="utf-8")
+
+    # Clear cache
+    loader.invalidate_cache(book_type)
+
+    return {
+        "success": True,
+        "variant_id": f"arch_{archetype_id}_{theme}",
+        "upload_variant_id": upload_id,
+        "message": "Artwork uploaded successfully",
+    }
+
+
 @app.get("/api/cover/compare/{identifier}")
 async def compare_cover(identifier: str, width: int = Query(800)):
     """
@@ -896,6 +1037,26 @@ async def generate_design(request: GenerateDesignRequest):
         save_generated_design,
     )
     from .cover.template_loader import get_template_loader
+    from .config import TEMPLATES_DIR
+    import json as _json
+
+    # Check if variant already exists for this ASIN (reuse instead of re-generating)
+    variant_id = f"ai_{request.reference_asin}" if request.reference_asin else "ai_custom"
+    existing_variant_dir = TEMPLATES_DIR / request.book_type / "variants" / variant_id
+    existing_variant_json = existing_variant_dir / "variant.json"
+    if existing_variant_json.exists():
+        try:
+            meta = _json.loads(existing_variant_json.read_text(encoding="utf-8"))
+            return {
+                "success": True,
+                "variant_id": variant_id,
+                "niche": request.book_type,
+                "design_notes": meta.get("description", ""),
+                "has_artwork": meta.get("has_artwork", False),
+                "image_prompt": meta.get("image_prompt", ""),
+            }
+        except Exception:
+            pass  # Fall through to regenerate
 
     # Fetch the reference image
     try:
@@ -936,4 +1097,138 @@ async def generate_design(request: GenerateDesignRequest):
         "variant_id": variant_id,
         "niche": request.book_type,
         "design_notes": design.design_notes,
+        "has_artwork": design.artwork_path is not None,
+        "image_prompt": design.image_prompt or "",
     }
+
+
+# ── Cover Preview (render before book creation) ───────────────
+
+@app.post("/api/cover/preview")
+async def preview_cover_design(request: CoverPreviewRequest):
+    """
+    Render a cover preview before the book exists.
+    For AI-generated variants with artwork, runs a quality control loop
+    (Claude Vision review → fix CSS/HTML → re-render) on first preview.
+    Returns a session_id that can be used to fetch the rendered image.
+    """
+    import json as _json
+    import uuid
+    from .cover.renderer import render_cover
+    from .config import TEMPLATES_DIR
+
+    # Check if this AI variant needs quality control
+    needs_qc = False
+    variant_dir = None
+
+    if request.variant_id and not getattr(request, 'skip_quality_check', False):
+        variant_dir = TEMPLATES_DIR / request.book_type / "variants" / request.variant_id
+        variant_json = variant_dir / "variant.json"
+        if variant_json.exists():
+            try:
+                meta = _json.loads(variant_json.read_text(encoding="utf-8"))
+                if (meta.get("generated")
+                        and meta.get("has_artwork")
+                        and not meta.get("quality_checked")):
+                    needs_qc = True
+            except Exception:
+                pass
+
+    # Run quality control loop for AI variants (first preview only)
+    if needs_qc and variant_dir:
+        try:
+            from .cover.design_controller import quality_control_loop
+
+            preview_dir, review = await quality_control_loop(
+                variant_dir=variant_dir,
+                title=request.title,
+                subtitle=request.subtitle or "",
+                author=request.author_name or "Creative Puzzles Press",
+                book_type=request.book_type,
+                trim_size=request.trim_size,
+                paper_type=request.paper_type,
+                page_count=request.page_count,
+                puzzle_count=request.puzzle_count,
+            )
+
+            session_id = preview_dir.name
+            return {
+                "success": True,
+                "session_id": session_id,
+                "preview_url": f"/api/cover/preview/{session_id}",
+                "quality_score": review.overall_score,
+                "quality_issues": len(review.issues),
+                "quality_passed": review.passed,
+                "quality_notes": review.review_notes,
+            }
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Quality control failed: {e}")
+            # Fall through to normal preview on QC failure
+
+    # Standard preview (non-AI variants, already QC'd, or QC failure fallback)
+    session_id = str(uuid.uuid4())[:8]
+    preview_dir = OUTPUT_DIR / "_preview" / session_id
+    preview_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        result = await render_cover(
+            page_count=request.page_count,
+            trim_size=request.trim_size,
+            paper_type=request.paper_type,
+            title=request.title,
+            subtitle=request.subtitle,
+            author=request.author_name or "Creative Puzzles Press",
+            book_type=request.book_type,
+            output_dir=preview_dir,
+            puzzle_count=request.puzzle_count,
+            variant_id=request.variant_id,
+        )
+
+        if not result.get("success", False):
+            return {
+                "success": False,
+                "error": result.get("error", "Cover preview rendering failed"),
+            }
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "preview_url": f"/api/cover/preview/{session_id}",
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Cover preview failed: {str(e)}",
+        }
+
+
+@app.get("/api/cover/preview/{session_id}")
+async def serve_cover_preview(
+    session_id: str,
+    width: int = Query(800, ge=200, le=2400),
+):
+    """Serve a cover preview image by session_id."""
+    preview_dir = OUTPUT_DIR / "_preview" / session_id
+
+    if not preview_dir.exists():
+        raise HTTPException(status_code=404, detail="Preview not found or expired")
+
+    no_cache = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+
+    # Try front cover PNG first
+    front_png = preview_dir / "cover-front.png"
+    if front_png.exists():
+        return FileResponse(str(front_png), media_type="image/png", headers=no_cache)
+
+    # Fall back to rendering from PDF
+    cover_pdf = preview_dir / "cover.pdf"
+    if cover_pdf.exists():
+        try:
+            png_bytes = _render_pdf_page(str(cover_pdf), 0, width)
+            return Response(content=png_bytes, media_type="image/png", headers=no_cache)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Preview render failed: {str(e)}")
+
+    raise HTTPException(status_code=404, detail="No preview image found")

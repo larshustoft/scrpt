@@ -1,0 +1,65 @@
+{
+  "name": "Color Band",
+  "archetype_id": "band",
+  "description": "Horizontal color bands and stripes as background. A vibrant, layered design with typographic elegance.",
+  "font_pair": "A",
+  "tags": ["activity", "puzzle", "word_search", "colorful", "stripes"],
+  "themes": {
+    "dark": {
+      "--bg-primary": "#0A0A0A",
+      "--bg-secondary": "#1C1C1C",
+      "--bg-accent": "#2E2E2E",
+      "--text-primary": "#FFFFFF",
+      "--text-secondary": "#C0C0C0",
+      "--accent": "#FF4F58",
+      "--accent-secondary": "#FFD166",
+      "--divider": "rgba(255,255,255,0.10)",
+      "--band-1": "#1A1A2E",
+      "--band-2": "#16213E",
+      "--band-3": "#0F3460",
+      "--band-4": "#1A1A2E"
+    },
+    "cool": {
+      "--bg-primary": "#0B132B",
+      "--bg-secondary": "#1C2541",
+      "--bg-accent": "#3A506B",
+      "--text-primary": "#F0F5FF",
+      "--text-secondary": "#94A8C4",
+      "--accent": "#5BC0BE",
+      "--accent-secondary": "#6FFFE9",
+      "--divider": "rgba(255,255,255,0.10)",
+      "--band-1": "#0B132B",
+      "--band-2": "#1C2541",
+      "--band-3": "#3A506B",
+      "--band-4": "#1C2541"
+    },
+    "warm": {
+      "--bg-primary": "#1A0505",
+      "--bg-secondary": "#2D0F0F",
+      "--bg-accent": "#451A1A",
+      "--text-primary": "#FFF5F0",
+      "--text-secondary": "#D4A99A",
+      "--accent": "#FF6B35",
+      "--accent-secondary": "#F7C948",
+      "--divider": "rgba(255,255,255,0.10)",
+      "--band-1": "#2D0F0F",
+      "--band-2": "#451A1A",
+      "--band-3": "#5C2E1A",
+      "--band-4": "#2D0F0F"
+    },
+    "muted": {
+      "--bg-primary": "#2C3639",
+      "--bg-secondary": "#3F4E4F",
+      "--bg-accent": "#556B6B",
+      "--text-primary": "#EDE8E2",
+      "--text-secondary": "#A9B4B0",
+      "--accent": "#DCD7C9",
+      "--accent-secondary": "#E8D5B5",
+      "--divider": "rgba(255,255,255,0.08)",
+      "--band-1": "#2C3639",
+      "--band-2": "#3F4E4F",
+      "--band-3": "#556B6B",
+      "--band-4": "#3F4E4F"
+    }
+  }
+}

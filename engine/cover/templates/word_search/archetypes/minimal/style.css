@@ -1,0 +1,168 @@
+/* ═══════════════════════════════════════════════════════════════
+   MINIMAL MODERN — Extreme typographic contrast, flat color
+   Font Pair C: Montserrat (800) titles / Source Serif 4 (400) body
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Background ── */
+.bleed-fill {
+    background: var(--bg-primary);
+}
+
+/* ── Spine ── */
+.spine {
+    background: var(--bg-primary);
+    border-left: 2px solid var(--divider);
+    border-right: 2px solid var(--divider);
+}
+.spine-text {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 34px;
+    color: var(--text-primary);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+/* ── Back Cover ── */
+.back-cover {
+    background: var(--bg-primary);
+    padding: 280px 180px 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.back-heading {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 60px;
+    color: var(--text-primary);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    margin-bottom: 60px;
+}
+
+.back-description {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 400;
+    font-size: 46px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.back-features {
+    list-style: none;
+    padding: 0;
+    margin: 80px 0 0;
+}
+
+.back-features li {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 400;
+    font-size: 42px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    padding: 20px 0;
+}
+
+.back-features li::before {
+    content: '~';
+    display: inline-block;
+    color: var(--accent);
+    font-weight: 800;
+    margin-right: 20px;
+}
+
+/* ── Front Cover ── */
+.front-cover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 200px 160px;
+}
+
+/* ── Oversized hero word ── */
+.hero-word {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 520px;
+    line-height: 0.85;
+    color: var(--text-primary);
+    letter-spacing: -12px;
+    text-transform: uppercase;
+    margin-bottom: 0;
+    margin-left: -20px;
+}
+
+/* ── Accent dot after hero ── */
+.hero-dot {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 520px;
+    line-height: 0.85;
+    color: var(--accent);
+    display: inline;
+}
+
+/* ── Secondary title word — much smaller ── */
+.title-secondary {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 90px;
+    color: var(--accent);
+    letter-spacing: 30px;
+    text-transform: uppercase;
+    margin-bottom: 80px;
+    margin-top: 20px;
+}
+
+/* ── Thin divider ── */
+.thin-rule {
+    width: 120px;
+    height: 3px;
+    background: var(--accent);
+    margin-bottom: 50px;
+}
+
+/* ── Subtitle — small, understated ── */
+.subtitle-text {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 400;
+    font-size: 60px;
+    font-style: italic;
+    color: var(--text-secondary);
+    margin-bottom: 40px;
+    max-width: 80%;
+    line-height: 1.4;
+}
+
+/* ── Puzzle count — tiny ── */
+.puzzle-count {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 38px;
+    color: var(--text-secondary);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+}
+
+/* ── Author ── */
+.bottom-section {
+    width: 100%;
+    margin-top: auto;
+}
+
+.author-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 40px;
+    color: var(--text-secondary);
+    letter-spacing: 10px;
+    text-transform: uppercase;
+}

@@ -1,0 +1,10 @@
+
+/* ── AI-generated artwork background ── */
+.front-cover {
+    background-image: url('artwork.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.bleed-fill { background: linear-gradient(180deg, #87CEEB 0%, #FFE4B5 100%); } .front-cover { justify-content: flex-start; padding-top: 150px; } .title { font-family: Arial; font-size: 320px; font-weight: 900; color: #FFA500; text-shadow: 3px 3px 0 #B8860B, 0 0 15px rgba(0,0,0,0.5); margin-bottom: 40px; font-style: italic; transform: rotate(-2deg); } .subtitle { font-family: Arial; font-size: 140px; font-weight: 900; color: #DC143C; text-shadow: 2px 2px 0 white, 0 0 12px rgba(0,0,0,0.4); margin-bottom: 60px; letter-spacing: 8px; } .puzzle-count { font-family: Arial; font-size: 100px; font-weight: 700; color: #DC143C; text-shadow: 2px 2px 0 white, 0 0 10px rgba(0,0,0,0.4); margin-bottom: 80px; } .word-grid { background: rgba(255,255,255,0.95); border: 4px solid #333; border-radius: 12px; padding: 30px; margin: 40px 0; box-shadow: 0 8px 20px rgba(0,0,0,0.3); } .grid-letters { font-family: Arial; font-size: 32px; font-weight: bold; color: #333; line-height: 1.2; letter-spacing: 12px; text-align: center; } .feature-banner { background: #8A2BE2; color: white; font-family: Arial; font-size: 80px; font-weight: 700; padding: 20px 60px; border-radius: 40px; margin-top: 40px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0,0,0,0.3); } .back-content { font-family: Arial; font-size: 48px; line-height: 1.6; color: #333; background: rgba(255,255,255,0.9); padding: 60px; border-radius: 20px; margin: 60px; } .back-title { font-size: 72px; font-weight: 700; color: #DC143C; margin-bottom: 40px; text-align: center; } .spine-text { font-family: Arial; font-size: 48px; font-weight: 700; color: white; text-shadow: 2px 2px 0 #333; }

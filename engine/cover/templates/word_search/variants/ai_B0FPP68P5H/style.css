@@ -1,0 +1,62 @@
+/* ── AI-generated artwork background ── */
+.front-cover {
+    background-image: url('artwork.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.bleed-fill { background: #f4f1e8; } 
+.front-cover { 
+    justify-content: flex-start; 
+    padding-top: 120px; 
+    color: #000000; 
+    text-align: center; 
+} 
+.title { 
+    font-family: 'Playfair Display', serif; 
+    font-size: 360px; 
+    font-weight: 700; 
+    line-height: 0.85; 
+    margin-bottom: 40px; 
+    color: #000000;
+    text-shadow: 4px 4px 0 #fff, -4px -4px 0 #fff, 4px -4px 0 #fff, -4px 4px 0 #fff, 0 6px 0 #fff, 0 -6px 0 #fff, 6px 0 0 #fff, -6px 0 0 #fff, 0 0 30px rgba(255,255,255,0.8);
+} 
+.subtitle { 
+    font-family: 'Montserrat', sans-serif; 
+    font-size: 110px; 
+    font-weight: 600; 
+    letter-spacing: 8px; 
+    text-transform: uppercase; 
+    color: #fff;
+    background: #7a9471;
+    padding: 20px 40px;
+    margin: 0 auto 60px auto;
+    border-radius: 8px;
+    max-width: fit-content;
+} 
+.tagline { 
+    font-family: 'Montserrat', sans-serif; 
+    font-size: 85px; 
+    font-weight: 500; 
+    letter-spacing: 4px; 
+    color: #fff;
+    background: #5a6b52;
+    padding: 25px 50px;
+    margin: 0 auto 100px auto;
+    border-radius: 8px;
+    max-width: fit-content;
+} 
+.author { 
+    font-family: 'Montserrat', sans-serif; 
+    font-size: 75px; 
+    font-weight: 400; 
+    letter-spacing: 6px; 
+    text-transform: uppercase; 
+    color: #fff;
+    background: #6b7a63;
+    padding: 20px 40px;
+    margin: 0 auto;
+    border-radius: 8px;
+    max-width: fit-content;
+}

@@ -25,7 +25,10 @@ async function companionFetch<T>(
   timeoutMs = 10_000
 ): Promise<CompanionResponse<T>> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const timer = setTimeout(
+    () => controller.abort(new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`)),
+    timeoutMs,
+  )
 
   try {
     const res = await fetch(`${COMPANION_URL}${path}`, {
@@ -48,7 +51,12 @@ async function companionFetch<T>(
     return { ok: true, data: data as T }
   } catch (e) {
     clearTimeout(timer)
-    return { ok: false, error: (e as Error).message }
+    const msg = (e as Error).message
+    // Replace cryptic abort message with something useful
+    if (msg.includes("aborted") || msg.includes("abort")) {
+      return { ok: false, error: `Request timed out after ${Math.round(timeoutMs / 1000)}s — the engine may still be processing` }
+    }
+    return { ok: false, error: msg }
   }
 }
 
@@ -151,6 +159,77 @@ export function getCoverPreviewUrl(catalogNumber: string, width = 800) {
 export function getCoverFullUrl(catalogNumber: string, width = 1600) {
   const t = Date.now()
   return `${COMPANION_URL}/api/preview/${catalogNumber}/cover/full?width=${width}&t=${t}`
+}
+
+// ── Cover Preview (render before book creation) ──────────────────
+
+export interface CoverPreviewResponse {
+  success: boolean
+  session_id?: string
+  preview_url?: string
+  error?: string
+}
+
+export async function previewCoverDesign(data: {
+  title: string
+  subtitle?: string
+  author_name?: string
+  book_type: string
+  trim_size: string
+  paper_type: string
+  page_count: number
+  variant_id?: string
+  puzzle_count?: number
+}) {
+  return companionFetch<CoverPreviewResponse>(
+    "/api/cover/preview",
+    { method: "POST", body: JSON.stringify(data) },
+    180_000 // 180s timeout — QC loop (Claude Vision + re-renders) can take 60-120s
+  )
+}
+
+export function getCoverPreviewImageUrl(sessionId: string, width = 800) {
+  const t = Date.now()
+  return `${COMPANION_URL}/api/cover/preview/${sessionId}?width=${width}&t=${t}`
+}
+
+// ── Archetypes ───────────────────────────────────────────────────
+
+export interface ArchetypeTheme {
+  [key: string]: string
+}
+
+export interface Archetype {
+  archetype_id: string
+  name: string
+  description: string
+  font_pair: string
+  tags: string[]
+  themes: Record<string, ArchetypeTheme>
+}
+
+export async function getArchetypes(bookType: string) {
+  return companionFetch<{ book_type: string; archetypes: Archetype[] }>(
+    `/api/cover/archetypes/${bookType}`
+  )
+}
+
+export async function uploadCoverArtwork(data: {
+  book_type: string
+  archetype_id: string
+  theme: string
+  image_data: string
+  image_format: string
+}) {
+  return companionFetch<{
+    success: boolean
+    variant_id: string
+    upload_variant_id: string
+    message: string
+  }>("/api/cover/upload-artwork", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
 }
 
 // ── Upload ────────────────────────────────────────────────────────

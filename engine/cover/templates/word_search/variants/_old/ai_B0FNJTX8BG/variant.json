@@ -1,0 +1,13 @@
+{
+  "name": "AI Generated (B0FNJTX8BG)",
+  "reference": "ref_B0FNJTX8BG.jpg",
+  "description": "[Artwork generated] Copied from reference: vintage-style design with retro sunburst background (#F5E6D3, #D4C4A8), red banner elements (#B8342B), nostalgic 1950s illustrations (waitress, classic car, jukebox), decorative badge system for callouts, large bold sans-serif typography with white text on colored banners, bottom decade timeline banner in teal (#4A9B8E)",
+  "inspired_by": "Amazon ASIN: B0FNJTX8BG",
+  "generated": true,
+  "has_artwork": true,
+  "image_prompt": "Vintage nostalgic illustration in retro 1950s style with warm sunburst radiating background in cream and beige tones (#F5E6D3 to #D4C4A8). Central composition features: a smiling 1950s waitress in blue uniform and white cap holding a serving tray on the left side, a classic red 1957 Chevrolet car in the center-left, and a colorful vintage jukebox with yellow/orange/red styling on the right side. Background includes faded word search puzzle grids as texture elements. The overall aesthetic is warm, nostalgic, and cheerful with soft vintage coloring and classic Americana styling. Composition leaves space at top for title text and bottom for timeline banner. Portrait 2:3 aspect ratio book cover format. No text, no words, no letters, no numbers, no writing of any kind.",
+  "quality_checked": true,
+  "quality_score": 4,
+  "quality_issues": 3,
+  "quality_notes": "Critical text occlusion issues with title covering the person's face and car. Multiple text elements positioned over detailed artwork reduce readability. Fixed by moving all text to top where artwork is simpler, reducing clutter from 7 to 5 elements, and using heavy white outlines for readability."
+}

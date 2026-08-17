@@ -56,6 +56,7 @@ DIMENSION_TOLERANCE = 0.005         # inches — Amazon cross-check tolerance
 
 # ── AI API Keys ────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # ── ComfyUI (Local Stable Diffusion) ────────────────────────────
 COMFYUI_URL = "http://127.0.0.1:8188"

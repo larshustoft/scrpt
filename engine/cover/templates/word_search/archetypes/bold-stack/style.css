@@ -1,0 +1,220 @@
+/* ═══════════════════════════════════════════════════════════════
+   BOLD STACK — Stacked sans-serif with color blocking
+   Font Pair C: Montserrat (800) titles / Source Serif 4 (400) body
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Background ── */
+.bleed-fill {
+    background: var(--bg-primary);
+}
+
+/* ── Spine ── */
+.spine {
+    background: var(--bg-secondary);
+}
+.spine-text {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 38px;
+    color: var(--text-primary);
+    letter-spacing: 2px;
+    text-shadow: none;
+}
+
+/* ── Back Cover ── */
+.back-cover {
+    background: var(--bg-primary);
+    padding: 200px 160px 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.back-heading {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 80px;
+    color: var(--accent);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 60px;
+}
+
+.back-description {
+    font-family: 'Source Serif 4', serif;
+    font-size: 48px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+}
+
+.back-features {
+    list-style: none;
+    padding: 0;
+    margin: 60px 0 0;
+}
+
+.back-features li {
+    font-family: 'Source Serif 4', serif;
+    font-size: 44px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    padding: 16px 0;
+    border-bottom: 1px solid var(--divider);
+}
+
+.back-features li::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-right: 24px;
+    vertical-align: middle;
+}
+
+/* ── Front Cover ── */
+.front-cover {
+    background: var(--bg-primary);
+    text-align: center;
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--safe-zone);
+}
+
+/* Subtle texture overlay */
+.front-cover::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+        radial-gradient(circle at 20% 30%, var(--bg-accent) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, var(--bg-accent) 0%, transparent 50%);
+    opacity: 0.4;
+    z-index: 0;
+}
+
+.front-cover > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Top accent bar ── */
+.top-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 24px;
+    background: var(--accent);
+    z-index: 2;
+}
+
+/* ── Category label ── */
+.category-label {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 54px;
+    letter-spacing: 16px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 40px;
+}
+
+/* ── Main title — huge stacked lines ── */
+.title-line {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 320px;
+    line-height: 0.92;
+    color: var(--text-primary);
+    letter-spacing: -4px;
+    text-transform: uppercase;
+}
+
+.title-line-2 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 320px;
+    line-height: 0.92;
+    color: var(--accent);
+    letter-spacing: -4px;
+    text-transform: uppercase;
+    margin-bottom: 50px;
+}
+
+/* ── Divider ── */
+.divider {
+    width: 600px;
+    height: 6px;
+    background: linear-gradient(90deg, transparent, var(--divider), transparent);
+    margin: 20px auto 40px;
+}
+
+/* ── Subtitle ── */
+.subtitle-text {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 400;
+    font-size: 80px;
+    font-style: italic;
+    color: var(--text-secondary);
+    margin-bottom: 60px;
+    max-width: 85%;
+}
+
+/* ── Feature pill ── */
+.feature-pill {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 52px;
+    color: var(--bg-primary);
+    background: var(--accent);
+    padding: 24px 80px;
+    border-radius: 100px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 30px;
+}
+
+/* ── Puzzle count ── */
+.puzzle-count {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 48px;
+    color: var(--accent-secondary);
+    letter-spacing: 4px;
+    margin-bottom: 80px;
+}
+
+/* ── Author ── */
+.bottom-section {
+    width: 100%;
+    text-align: center;
+    margin-top: auto;
+}
+
+.author-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 56px;
+    color: var(--text-secondary);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+/* ── Bottom accent bar ── */
+.bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 24px;
+    background: var(--accent);
+    z-index: 2;
+}

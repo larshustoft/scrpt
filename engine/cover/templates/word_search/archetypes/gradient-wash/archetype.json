@@ -1,0 +1,49 @@
+{
+  "name": "Gradient Wash",
+  "archetype_id": "gradient-wash",
+  "description": "Full-bleed gradient with elegant serif text. Sophisticated and modern.",
+  "font_pair": "A",
+  "tags": ["elegant", "modern", "sophisticated"],
+  "themes": {
+    "dark": {
+      "--grad-start": "#0f0c29",
+      "--grad-mid": "#302b63",
+      "--grad-end": "#24243e",
+      "--text-primary": "#FFFFFF",
+      "--text-secondary": "rgba(255,255,255,0.75)",
+      "--accent": "#C9A96E",
+      "--accent-line": "rgba(201,169,110,0.5)",
+      "--divider": "rgba(255,255,255,0.15)"
+    },
+    "cool": {
+      "--grad-start": "#0D1B2A",
+      "--grad-mid": "#1B2838",
+      "--grad-end": "#1B4332",
+      "--text-primary": "#F0F4FF",
+      "--text-secondary": "rgba(240,244,255,0.7)",
+      "--accent": "#81B29A",
+      "--accent-line": "rgba(129,178,154,0.5)",
+      "--divider": "rgba(255,255,255,0.12)"
+    },
+    "warm": {
+      "--grad-start": "#1A0A00",
+      "--grad-mid": "#3D1C02",
+      "--grad-end": "#2C1810",
+      "--text-primary": "#FFF5E8",
+      "--text-secondary": "rgba(255,245,232,0.7)",
+      "--accent": "#D4A574",
+      "--accent-line": "rgba(212,165,116,0.5)",
+      "--divider": "rgba(255,255,255,0.10)"
+    },
+    "muted": {
+      "--grad-start": "#1C1C28",
+      "--grad-mid": "#2D2B3D",
+      "--grad-end": "#3B3550",
+      "--text-primary": "#E8E6EF",
+      "--text-secondary": "rgba(232,230,239,0.7)",
+      "--accent": "#A89EC9",
+      "--accent-line": "rgba(168,158,201,0.5)",
+      "--divider": "rgba(255,255,255,0.10)"
+    }
+  }
+}

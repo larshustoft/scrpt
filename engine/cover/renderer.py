@@ -28,6 +28,9 @@ COVER_TEMPLATE_HTML = Template("""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&family=Montserrat:wght@300;400;500;600;700;800;900&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,700&family=Merriweather:wght@300;400;700;900&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Raleway:wght@300;400;500;600;700;800&family=Josefin+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ── Injected cover dimensions ── */
 ${cover_css}
@@ -813,7 +816,8 @@ async def render_cover(
                 device_scale_factor=1,  # Already at 300 DPI via pixel sizing
             )
 
-            await page.set_content(html, wait_until="networkidle")
+            # Use file:// URL so Playwright can resolve local artwork references in CSS
+            await page.goto(f"file://{html_path.resolve()}", wait_until="networkidle")
 
             # Export full spread as PNG screenshot (pixel-perfect at 300 DPI)
             full_png_path = output_dir / "cover-full.png"

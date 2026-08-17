@@ -250,6 +250,20 @@ class GenerateDesignRequest(BaseModel):
     niche_keyword: Optional[str] = None
 
 
+class CoverPreviewRequest(BaseModel):
+    """Request to preview a cover design before book creation."""
+    title: str
+    subtitle: str = ""
+    author_name: str = ""
+    book_type: str = "word_search"
+    trim_size: str = "8.5x11"
+    paper_type: str = "white_bw"
+    page_count: int = 120
+    variant_id: Optional[str] = None
+    puzzle_count: int = 55
+    skip_quality_check: bool = False
+
+
 class QualityCheckRequest(BaseModel):
     """Request to run quality checks on a book."""
     book_id: Optional[str] = None

@@ -604,6 +604,15 @@ export default function BookDetailPage() {
     setLoading(false);
   }, [bookId, booksLoading, findBook, fetchFiles]);
 
+  // Poll for file changes while generation is in progress
+  useEffect(() => {
+    if (!book || !files) return;
+    // Stop polling once both interior and cover exist
+    if (files.has_interior && (files.has_cover || files.has_cover_front)) return;
+    const interval = setInterval(() => fetchFiles(), 3000);
+    return () => clearInterval(interval);
+  }, [book, files, fetchFiles]);
+
   const fetchData = fetchFiles;
 
   if (loading) {

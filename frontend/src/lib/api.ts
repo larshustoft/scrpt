@@ -298,6 +298,41 @@ export function getCoverFullUrl(bookId: string, width: number = 1600) {
   return `${API_BASE}/api/preview/${bookId}/cover/full?width=${width}`;
 }
 
+// ── Cover Archetypes ─────────────────────────────────────────
+
+export interface Archetype {
+  archetype_id: string;
+  name: string;
+  description: string;
+  font_pair: string;
+  tags: string[];
+  themes: Record<string, Record<string, string>>;
+}
+
+export async function getArchetypes(bookType: string) {
+  return apiFetch<{ book_type: string; archetypes: Archetype[] }>(
+    `/api/cover/archetypes/${bookType}`
+  );
+}
+
+export async function uploadCoverArtwork(data: {
+  book_type: string;
+  archetype_id: string;
+  theme: string;
+  image_data: string;
+  image_format: string;
+}) {
+  return apiFetch<{
+    success: boolean;
+    variant_id: string;
+    upload_variant_id: string;
+    message: string;
+  }>("/api/cover/upload-artwork", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // ── Cover Design Search & AI Generation ──────────────────────
 
 export interface CoverSearchResult {
@@ -348,4 +383,35 @@ export async function generateDesignFromReference(data: {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+// ── Cover Preview (render before book creation) ──────────────
+
+export interface CoverPreviewResponse {
+  success: boolean;
+  session_id?: string;
+  preview_url?: string;
+  error?: string;
+}
+
+export async function previewCoverDesign(data: {
+  title: string;
+  subtitle?: string;
+  author_name?: string;
+  book_type: string;
+  trim_size: string;
+  paper_type: string;
+  page_count: number;
+  variant_id?: string;
+  puzzle_count?: number;
+}) {
+  return apiFetch<CoverPreviewResponse>("/api/cover/preview", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function getCoverPreviewImageUrl(sessionId: string, width: number = 800) {
+  const t = Date.now();
+  return `${API_BASE}/api/cover/preview/${sessionId}?width=${width}&t=${t}`;
 }

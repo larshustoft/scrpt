@@ -1,0 +1,49 @@
+{
+  "name": "Split Tone",
+  "archetype_id": "split-tone",
+  "description": "Two-tone diagonal split background with contrasting halves. A striking, modern design with bold color contrast.",
+  "font_pair": "D",
+  "tags": ["activity", "puzzle", "word_search", "modern", "contrast"],
+  "themes": {
+    "dark": {
+      "--bg-primary": "#0D0D0D",
+      "--bg-secondary": "#2A2A2A",
+      "--bg-accent": "#1A1A1A",
+      "--text-primary": "#FFFFFF",
+      "--text-secondary": "#C8C8C8",
+      "--accent": "#E63946",
+      "--accent-secondary": "#F4A261",
+      "--divider": "rgba(255,255,255,0.12)"
+    },
+    "cool": {
+      "--bg-primary": "#0A1628",
+      "--bg-secondary": "#1B3A5C",
+      "--bg-accent": "#122844",
+      "--text-primary": "#EDF2F7",
+      "--text-secondary": "#A0BCD4",
+      "--accent": "#48CAE4",
+      "--accent-secondary": "#90E0EF",
+      "--divider": "rgba(255,255,255,0.10)"
+    },
+    "warm": {
+      "--bg-primary": "#1A0A00",
+      "--bg-secondary": "#4A2512",
+      "--bg-accent": "#2E1508",
+      "--text-primary": "#FFF5EB",
+      "--text-secondary": "#DCC4AB",
+      "--accent": "#E85D04",
+      "--accent-secondary": "#FAA307",
+      "--divider": "rgba(255,255,255,0.10)"
+    },
+    "muted": {
+      "--bg-primary": "#2B3A42",
+      "--bg-secondary": "#4A6670",
+      "--bg-accent": "#3A5060",
+      "--text-primary": "#EEF0F2",
+      "--text-secondary": "#B8C4CC",
+      "--accent": "#D4A574",
+      "--accent-secondary": "#E8C9A0",
+      "--divider": "rgba(255,255,255,0.08)"
+    }
+  }
+}

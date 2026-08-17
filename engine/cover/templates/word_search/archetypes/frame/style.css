@@ -1,0 +1,266 @@
+/* ═══════════════════════════════════════════════════════════════
+   CLASSIC FRAME — Ornamental CSS-drawn border, centered text
+   Font Pair E: Libre Baskerville (700) titles / Lora (400) body
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Background ── */
+.bleed-fill {
+    background: var(--bg-primary);
+}
+
+/* ── Spine ── */
+.spine {
+    background: var(--bg-secondary);
+    border-left: 3px solid var(--accent);
+    border-right: 3px solid var(--accent);
+}
+.spine-text {
+    font-family: 'Libre Baskerville', serif;
+    font-weight: 700;
+    font-size: 36px;
+    color: var(--accent);
+    letter-spacing: 2px;
+}
+
+/* ── Back Cover ── */
+.back-cover {
+    background: var(--bg-primary);
+    padding: 200px 160px 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    position: relative;
+}
+
+/* Back cover inner frame */
+.back-frame {
+    border: 3px solid var(--accent);
+    outline: 1px solid var(--divider);
+    outline-offset: 12px;
+    padding: 80px 60px;
+    flex: 1;
+}
+
+.back-heading {
+    font-family: 'Libre Baskerville', serif;
+    font-weight: 700;
+    font-size: 72px;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 50px;
+    letter-spacing: 2px;
+}
+
+.back-divider {
+    width: 200px;
+    height: 2px;
+    background: var(--accent);
+    margin: 0 auto 50px;
+}
+
+.back-description {
+    font-family: 'Lora', serif;
+    font-weight: 400;
+    font-size: 46px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.back-features {
+    list-style: none;
+    padding: 0;
+    margin: 40px 0 0;
+}
+
+.back-features li {
+    font-family: 'Lora', serif;
+    font-weight: 400;
+    font-size: 42px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    padding: 14px 0;
+    text-align: center;
+    border-bottom: 1px solid var(--divider);
+}
+
+.back-features li:last-child {
+    border-bottom: none;
+}
+
+/* ── Front Cover ── */
+.front-cover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--safe-zone);
+}
+
+/* ── Outer frame ── */
+.frame-outer {
+    position: absolute;
+    top: 120px;
+    left: 120px;
+    right: 120px;
+    bottom: 120px;
+    border: 4px solid var(--accent);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ── Inner frame ── */
+.frame-inner {
+    position: absolute;
+    top: 140px;
+    left: 140px;
+    right: 140px;
+    bottom: 140px;
+    border: 1px solid var(--divider);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ── Corner ornaments ── */
+.corner-ornament {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-color: var(--accent);
+    z-index: 2;
+}
+.corner-ornament.top-left {
+    top: 108px;
+    left: 108px;
+    border-top: 6px solid var(--accent);
+    border-left: 6px solid var(--accent);
+}
+.corner-ornament.top-right {
+    top: 108px;
+    right: 108px;
+    border-top: 6px solid var(--accent);
+    border-right: 6px solid var(--accent);
+}
+.corner-ornament.bottom-left {
+    bottom: 108px;
+    left: 108px;
+    border-bottom: 6px solid var(--accent);
+    border-left: 6px solid var(--accent);
+}
+.corner-ornament.bottom-right {
+    bottom: 108px;
+    right: 108px;
+    border-bottom: 6px solid var(--accent);
+    border-right: 6px solid var(--accent);
+}
+
+.front-cover > .content-block {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 80%;
+}
+
+/* ── Category label ── */
+.category-label {
+    font-family: 'Lora', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 50px;
+    letter-spacing: 10px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 40px;
+}
+
+/* ── Ornamental dividers ── */
+.ornament-line {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin: 30px 0;
+}
+
+.ornament-line .line {
+    width: 180px;
+    height: 2px;
+    background: var(--accent);
+}
+
+.ornament-line .diamond {
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+}
+
+/* ── Title ── */
+.title-main {
+    font-family: 'Libre Baskerville', serif;
+    font-weight: 700;
+    font-size: 240px;
+    line-height: 1.0;
+    color: var(--text-primary);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.title-second {
+    font-family: 'Libre Baskerville', serif;
+    font-weight: 700;
+    font-size: 240px;
+    line-height: 1.0;
+    color: var(--accent);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+
+/* ── Subtitle ── */
+.subtitle-text {
+    font-family: 'Lora', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 68px;
+    color: var(--text-secondary);
+    margin-bottom: 40px;
+    max-width: 90%;
+    line-height: 1.4;
+}
+
+/* ── Puzzle count ── */
+.puzzle-count {
+    font-family: 'Lora', serif;
+    font-weight: 400;
+    font-size: 48px;
+    color: var(--accent-secondary);
+    letter-spacing: 4px;
+    margin-bottom: 30px;
+}
+
+/* ── Author ── */
+.bottom-section {
+    width: 100%;
+    text-align: center;
+    margin-top: auto;
+}
+
+.author-name {
+    font-family: 'Lora', serif;
+    font-weight: 400;
+    font-size: 50px;
+    color: var(--text-secondary);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    opacity: 0.7;
+}

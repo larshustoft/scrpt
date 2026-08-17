@@ -1,0 +1,188 @@
+/* ═══════════════════════════════════════════════════════════════
+   EDITORIAL CLEAN — Large serif, generous whitespace, single accent
+   Font Pair B: DM Serif Display (400) titles / Raleway (400) body
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Background ── */
+.bleed-fill {
+    background: var(--bg-primary);
+}
+
+/* ── Spine ── */
+.spine {
+    background: var(--spine-bg);
+}
+.spine-text {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 36px;
+    color: var(--spine-text);
+    letter-spacing: 1px;
+    text-shadow: none;
+}
+
+/* ── Back Cover ── */
+.back-cover {
+    background: var(--bg-secondary);
+    padding: 200px 160px 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.back-heading {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 72px;
+    color: var(--spine-text);
+    margin-bottom: 50px;
+}
+
+.back-description {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 400;
+    font-size: 42px;
+    line-height: 1.7;
+    color: var(--spine-text);
+    opacity: 0.8;
+}
+
+.back-features {
+    list-style: none;
+    padding: 0;
+    margin: 50px 0 0;
+}
+
+.back-features li {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 400;
+    font-size: 40px;
+    line-height: 1.5;
+    color: var(--spine-text);
+    opacity: 0.7;
+    padding: 14px 0;
+}
+
+.back-features li::before {
+    content: '\2022';
+    color: var(--accent);
+    margin-right: 18px;
+}
+
+/* ── Front Cover ── */
+.front-cover {
+    background: var(--bg-primary);
+    text-align: left;
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 300px 160px 200px;
+}
+
+/* ── Accent strip on left edge ── */
+.front-cover::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 20px;
+    height: 100%;
+    background: var(--accent);
+    z-index: 2;
+}
+
+.front-cover > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Category label ── */
+.category-label {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 500;
+    font-size: 44px;
+    letter-spacing: 12px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 50px;
+}
+
+/* ── Main title ── */
+.title-main {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 260px;
+    line-height: 0.95;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+.title-emphasis {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 220px;
+    line-height: 0.95;
+    color: var(--text-primary);
+    margin-bottom: 60px;
+}
+
+/* ── Accent line ── */
+.accent-rule {
+    width: 300px;
+    height: 6px;
+    background: var(--accent);
+    margin-bottom: 60px;
+}
+
+/* ── Subtitle ── */
+.subtitle-text {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 300;
+    font-size: 64px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 50px;
+    max-width: 90%;
+}
+
+/* ── Puzzle info ── */
+.puzzle-info {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 600;
+    font-size: 46px;
+    color: var(--text-secondary);
+    letter-spacing: 3px;
+    padding: 20px 50px;
+    border: 2px solid var(--accent-light);
+    margin-bottom: 30px;
+}
+
+.puzzle-detail {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 300;
+    font-size: 38px;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+    opacity: 0.7;
+}
+
+/* ── Author at bottom ── */
+.bottom-section {
+    width: 100%;
+    margin-top: auto;
+    padding-top: 60px;
+}
+
+.author-name {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 500;
+    font-size: 48px;
+    color: var(--text-secondary);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+}

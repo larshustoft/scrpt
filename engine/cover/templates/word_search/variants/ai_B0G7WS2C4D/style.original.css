@@ -1,0 +1,10 @@
+
+/* ── AI-generated artwork background ── */
+.front-cover {
+    background-image: url('artwork.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.bleed-fill { background: #F4F1E8; } .front-cover { justify-content: flex-start; padding-top: 200px; color: #2C3E2D; font-family: Arial, sans-serif; } .main-title { font-size: 380px; font-weight: 900; letter-spacing: 8px; text-transform: uppercase; text-align: center; margin-bottom: 40px; text-shadow: 2px 2px 0 rgba(255,255,255,0.8), 0 0 30px rgba(255,255,255,0.6); } .puzzle-count { font-size: 140px; font-weight: 700; color: #7A8471; text-align: center; margin-bottom: 60px; letter-spacing: 4px; } .large-print { font-size: 90px; font-weight: 600; color: #B5A7C7; text-align: center; margin-bottom: 100px; letter-spacing: 3px; text-transform: uppercase; } .author { font-size: 80px; font-weight: 600; color: #7A8471; text-align: center; margin-top: auto; margin-bottom: 150px; font-family: Georgia, serif; } .back-cover { background: #F4F1E8; color: #2C3E2D; padding: 150px 120px; font-family: Georgia, serif; } .back-title { font-size: 120px; font-weight: bold; margin-bottom: 80px; color: #7A8471; } .back-content { font-size: 60px; line-height: 1.6; margin-bottom: 60px; } .spine { background: #7A8471; } .spine-text { color: #F4F1E8; font-size: 80px; font-weight: 700; }

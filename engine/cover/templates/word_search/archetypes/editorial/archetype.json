@@ -1,0 +1,49 @@
+{
+  "name": "Editorial Clean",
+  "archetype_id": "editorial",
+  "description": "Large serif title with generous whitespace and a single accent line. Premium minimalist look.",
+  "font_pair": "B",
+  "tags": ["premium", "minimalist", "clean", "elegant"],
+  "themes": {
+    "dark": {
+      "--bg-primary": "#F5F0E8",
+      "--bg-secondary": "#1A1A1A",
+      "--text-primary": "#1A1A1A",
+      "--text-secondary": "#555555",
+      "--accent": "#C0392B",
+      "--accent-light": "rgba(192,57,43,0.15)",
+      "--spine-bg": "#1A1A1A",
+      "--spine-text": "#F5F0E8"
+    },
+    "cool": {
+      "--bg-primary": "#F0F3F7",
+      "--bg-secondary": "#0D2137",
+      "--text-primary": "#0D2137",
+      "--text-secondary": "#4A6580",
+      "--accent": "#2563EB",
+      "--accent-light": "rgba(37,99,235,0.12)",
+      "--spine-bg": "#0D2137",
+      "--spine-text": "#F0F3F7"
+    },
+    "warm": {
+      "--bg-primary": "#FBF7F0",
+      "--bg-secondary": "#2D1B0E",
+      "--text-primary": "#2D1B0E",
+      "--text-secondary": "#6B5340",
+      "--accent": "#B8860B",
+      "--accent-light": "rgba(184,134,11,0.15)",
+      "--spine-bg": "#2D1B0E",
+      "--spine-text": "#FBF7F0"
+    },
+    "muted": {
+      "--bg-primary": "#F2F0ED",
+      "--bg-secondary": "#3C3C3C",
+      "--text-primary": "#3C3C3C",
+      "--text-secondary": "#7A7A7A",
+      "--accent": "#8B7355",
+      "--accent-light": "rgba(139,115,85,0.15)",
+      "--spine-bg": "#3C3C3C",
+      "--spine-text": "#F2F0ED"
+    }
+  }
+}

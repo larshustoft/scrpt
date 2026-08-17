@@ -137,6 +137,23 @@ class TemplateLoader:
         if cache_key in self._cache:
             return self._cache[cache_key]
 
+        # If variant_id is an archetype reference, delegate to load_archetype
+        if variant_id and variant_id.startswith("arch_"):
+            # Format: "arch_{archetype_id}_{theme}" e.g. "arch_bold-stack_dark"
+            parts = variant_id.split("_", 2)  # ["arch", "archetype-id", "theme"]
+            if len(parts) >= 3:
+                archetype_id = parts[1]
+                theme = parts[2]
+            else:
+                archetype_id = parts[1] if len(parts) > 1 else "bold-stack"
+                theme = "dark"
+            try:
+                template = self.load_archetype(niche, archetype_id, theme)
+                self._cache[cache_key] = template
+                return template
+            except FileNotFoundError:
+                pass  # Fall through to normal variant loading
+
         # If a variant_id is specified, try loading from variants/ subdir
         if variant_id:
             variant_dir = self._niche_dir(niche) / "variants" / variant_id
@@ -180,6 +197,13 @@ class TemplateLoader:
         base_css = self.load_base_css()
         if base_css:
             style_css = base_css + "\n" + style_css
+
+        # Resolve artwork.png to absolute file:// URL for Playwright rendering
+        artwork_path = d / "artwork.png"
+        if artwork_path.exists():
+            abs_url = artwork_path.resolve().as_uri()
+            style_css = style_css.replace("url('artwork.png')", f"url('{abs_url}')")
+            style_css = style_css.replace('url("artwork.png")', f'url("{abs_url}")')
 
         spec = {}
         spec_path = d / "variant.json"
@@ -292,6 +316,69 @@ class TemplateLoader:
             except (json.JSONDecodeError, KeyError):
                 continue
 
+        return result
+
+    # ── Archetype support ───────────────────────────────────────
+
+    def load_archetype(self, niche: str, archetype_id: str, theme: str = "dark") -> CoverTemplate:
+        """
+        Load an archetype template with theme color variables injected.
+
+        Archetypes live in templates/{niche}/archetypes/{archetype_id}/.
+        Theme colors are defined in archetype.json and injected as CSS custom properties.
+        """
+        cache_key = (niche, f"arch_{archetype_id}_{theme}")
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
+        arch_dir = self.templates_dir / niche / "archetypes" / archetype_id
+        archetype_json_path = arch_dir / "archetype.json"
+        if not archetype_json_path.exists():
+            raise FileNotFoundError(f"Archetype not found: {niche}/{archetype_id}")
+
+        meta = json.loads(archetype_json_path.read_text(encoding="utf-8"))
+        themes = meta.get("themes", {})
+        theme_vars = themes.get(theme, themes.get("dark", {}))
+
+        # Build CSS: theme variables + base CSS + archetype CSS
+        theme_css = ":root {\n" + "\n".join(f"  {k}: {v};" for k, v in theme_vars.items()) + "\n}\n"
+        base_css = self.load_base_css()
+        arch_css = (arch_dir / "style.css").read_text(encoding="utf-8")
+        full_css = theme_css + "\n" + base_css + "\n" + arch_css
+
+        front = (arch_dir / "front.html").read_text(encoding="utf-8")
+        back = (arch_dir / "back.html").read_text(encoding="utf-8")
+        spine = (arch_dir / "spine.html").read_text(encoding="utf-8")
+
+        template = CoverTemplate(
+            niche=niche,
+            template_css=full_css,
+            front_cover_html=front,
+            back_cover_html=back,
+            spine_html=spine,
+            spec=meta,
+            source="archetype",
+        )
+        self._cache[cache_key] = template
+        return template
+
+    def list_archetypes(self, niche: str) -> list[dict]:
+        """List available archetypes for a book type with their theme data."""
+        arch_dir = self.templates_dir / niche / "archetypes"
+        if not arch_dir.exists():
+            return []
+        result = []
+        for d in sorted(arch_dir.iterdir()):
+            if not d.is_dir():
+                continue
+            json_path = d / "archetype.json"
+            if not json_path.exists():
+                continue
+            try:
+                meta = json.loads(json_path.read_text(encoding="utf-8"))
+                result.append({"archetype_id": d.name, **meta})
+            except (json.JSONDecodeError, KeyError):
+                continue
         return result
 
     def list_niches(self) -> list[dict]:

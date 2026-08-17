@@ -1,0 +1,49 @@
+{
+  "name": "Classic Frame",
+  "archetype_id": "frame",
+  "description": "Ornamental CSS-drawn border with centered text block. Elegant, classic book design with decorative frame elements.",
+  "font_pair": "E",
+  "tags": ["activity", "puzzle", "word_search", "classic", "elegant"],
+  "themes": {
+    "dark": {
+      "--bg-primary": "#121212",
+      "--bg-secondary": "#1E1E1E",
+      "--bg-accent": "#292929",
+      "--text-primary": "#F5F5F5",
+      "--text-secondary": "#BBBBBB",
+      "--accent": "#C9A84C",
+      "--accent-secondary": "#E8D48B",
+      "--divider": "rgba(201,168,76,0.25)"
+    },
+    "cool": {
+      "--bg-primary": "#0E1B2A",
+      "--bg-secondary": "#162D4A",
+      "--bg-accent": "#1A3556",
+      "--text-primary": "#EBF0F7",
+      "--text-secondary": "#94ADC7",
+      "--accent": "#7BA7C9",
+      "--accent-secondary": "#A8CCE4",
+      "--divider": "rgba(123,167,201,0.25)"
+    },
+    "warm": {
+      "--bg-primary": "#1C0F08",
+      "--bg-secondary": "#2E1A0E",
+      "--bg-accent": "#3A2414",
+      "--text-primary": "#FFF3E6",
+      "--text-secondary": "#D4B896",
+      "--accent": "#B87333",
+      "--accent-secondary": "#D4954A",
+      "--divider": "rgba(184,115,51,0.25)"
+    },
+    "muted": {
+      "--bg-primary": "#2E2E2E",
+      "--bg-secondary": "#3E3E3E",
+      "--bg-accent": "#4A4A4A",
+      "--text-primary": "#E8E4DF",
+      "--text-secondary": "#A8A29E",
+      "--accent": "#8B7355",
+      "--accent-secondary": "#B09A7A",
+      "--divider": "rgba(139,115,85,0.25)"
+    }
+  }
+}

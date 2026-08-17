@@ -1,0 +1,189 @@
+/* ═══════════════════════════════════════════════════════════════
+   GRADIENT WASH — Full-bleed gradient with elegant serif text
+   Font Pair A: Playfair Display (700) titles / Montserrat (400) body
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Background ── */
+.bleed-fill {
+    background: linear-gradient(165deg, var(--grad-start) 0%, var(--grad-mid) 45%, var(--grad-end) 100%);
+}
+
+/* ── Spine ── */
+.spine {
+    background: var(--grad-mid);
+}
+.spine-text {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 36px;
+    color: var(--text-primary);
+    letter-spacing: 2px;
+    text-shadow: none;
+}
+
+/* ── Back Cover ── */
+.back-cover {
+    background: transparent;
+    padding: 200px 160px 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.back-heading {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 76px;
+    color: var(--accent);
+    margin-bottom: 50px;
+}
+
+.back-description {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 44px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.back-features {
+    list-style: none;
+    padding: 0;
+    margin: 60px 0 0;
+}
+
+.back-features li {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 42px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    padding: 18px 0;
+    border-bottom: 1px solid var(--divider);
+}
+
+.back-features li::before {
+    content: '\2014';
+    color: var(--accent);
+    margin-right: 20px;
+}
+
+/* ── Front Cover ── */
+.front-cover {
+    background: transparent;
+    text-align: center;
+    color: var(--text-primary);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--safe-zone);
+}
+
+.front-cover > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Accent line top ── */
+.accent-line-top {
+    width: 200px;
+    height: 4px;
+    background: var(--accent);
+    margin-bottom: 60px;
+}
+
+/* ── Category label ── */
+.category-label {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    font-size: 48px;
+    letter-spacing: 14px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 50px;
+}
+
+/* ── Main title ── */
+.title-main {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 260px;
+    line-height: 1.0;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+.title-emphasis {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-style: italic;
+    font-size: 200px;
+    line-height: 1.0;
+    color: var(--accent);
+    margin-bottom: 50px;
+}
+
+/* ── Decorative line ── */
+.accent-line {
+    width: 500px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent-line), transparent);
+    margin: 10px auto 50px;
+}
+
+/* ── Subtitle ── */
+.subtitle-text {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    font-size: 68px;
+    color: var(--text-secondary);
+    letter-spacing: 3px;
+    margin-bottom: 70px;
+    max-width: 85%;
+}
+
+/* ── Puzzle count ── */
+.puzzle-info {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 50px;
+    color: var(--accent);
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+
+.puzzle-detail {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    font-size: 40px;
+    color: var(--text-secondary);
+    letter-spacing: 3px;
+    margin-bottom: 80px;
+}
+
+/* ── Author ── */
+.bottom-section {
+    width: 100%;
+    text-align: center;
+    margin-top: auto;
+}
+
+.accent-line-bottom {
+    width: 200px;
+    height: 3px;
+    background: var(--accent-line);
+    margin: 0 auto 40px;
+}
+
+.author-name {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 50px;
+    color: var(--text-secondary);
+    letter-spacing: 10px;
+    text-transform: uppercase;
+}

@@ -1,0 +1,49 @@
+{
+  "name": "Minimal Modern",
+  "archetype_id": "minimal",
+  "description": "Single word huge, rest tiny, flat color. Extreme typographic contrast for a clean, contemporary look.",
+  "font_pair": "C",
+  "tags": ["activity", "puzzle", "word_search", "minimal", "modern", "clean"],
+  "themes": {
+    "dark": {
+      "--bg-primary": "#111111",
+      "--bg-secondary": "#1A1A1A",
+      "--bg-accent": "#222222",
+      "--text-primary": "#FAFAFA",
+      "--text-secondary": "#888888",
+      "--accent": "#FF3B30",
+      "--accent-secondary": "#FF6B5E",
+      "--divider": "rgba(255,255,255,0.06)"
+    },
+    "cool": {
+      "--bg-primary": "#F0F4F8",
+      "--bg-secondary": "#E2E8F0",
+      "--bg-accent": "#CBD5E1",
+      "--text-primary": "#0F172A",
+      "--text-secondary": "#64748B",
+      "--accent": "#2563EB",
+      "--accent-secondary": "#3B82F6",
+      "--divider": "rgba(0,0,0,0.08)"
+    },
+    "warm": {
+      "--bg-primary": "#FDF6EC",
+      "--bg-secondary": "#F5EBDA",
+      "--bg-accent": "#EDE0C8",
+      "--text-primary": "#1A1008",
+      "--text-secondary": "#8A7560",
+      "--accent": "#C2410C",
+      "--accent-secondary": "#DC5E1A",
+      "--divider": "rgba(0,0,0,0.08)"
+    },
+    "muted": {
+      "--bg-primary": "#F5F5F0",
+      "--bg-secondary": "#E8E8E0",
+      "--bg-accent": "#D4D4CC",
+      "--text-primary": "#2D2D2D",
+      "--text-secondary": "#7A7A72",
+      "--accent": "#5A5A52",
+      "--accent-secondary": "#7A7A72",
+      "--divider": "rgba(0,0,0,0.06)"
+    }
+  }
+}
