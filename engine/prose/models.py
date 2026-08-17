@@ -339,6 +339,7 @@ class Manuscript(BaseModel):
     ai_disclosure: bool = True            # KDP AI-generated content disclosure flag
     word_count: int = 0
     quality_report: dict = Field(default_factory=dict)  # book-level audit
+    arc_map: dict = Field(default_factory=dict)         # story architecture (acts, pinned beats, threads)
 
 
 # ── Typesetting config (shared contract with frontend) ───────────
