@@ -670,13 +670,11 @@ function ScheduleCard({ book }: { book: ScrptBook }) {
   const save = async (field: string, value: string) => {
     setSaved(false);
     try {
-      await fetch(`${scrpt.engineUrl}/api/books/${book.id}`, {
+      await fetch(`${scrpt.engineUrl}/api/scrpt/schedule/${book.catalog_number}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generator_config: undefined, [field]: value }),
-      }).catch(() => {});
-      // persist via the data blob the engine merges
-      await fetch(`${scrpt.engineUrl}/api/scrpt/books/${book.catalog_number}`, { method: "GET" });
+        body: JSON.stringify({ [field]: value }),
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
     } catch { /* offline */ }

@@ -53,6 +53,10 @@ async def develop_idea(kind: str, genre_preset: str, idea: str,
         'commissioning brief: setting made specific, protagonist archetypes, '
         'the emotional promise, the hook that differentiates it", '
         f"{series_fields}"
+        '"pen_name": "ONE genre-credible pen name for this catalog entry — '
+        'reads native to the genre shelf (thriller: punchy Anglo surname; '
+        'romance: warm, feminine, memorable; nonfiction: credible full name). '
+        'Never a real published author\'s name", '
         '"cover_direction": "60-90 words of visual direction for the covers of '
         'this concept: palette, motifs, typography feel, what bestselling '
         'covers in the genre do — written so it can seed artwork prompts", '

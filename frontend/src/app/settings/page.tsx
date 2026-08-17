@@ -84,6 +84,7 @@ export default function SettingsPage() {
                sub="The Claude model that drafts manuscripts. The Anthropic API key lives in the engine's .env file.">
         <Field label="Model" k="writing_model" placeholder="claude-sonnet-5"
                settings={settings} save={save} savedField={savedField} />
+        <CraftPlaybooks />
       </Section>
 
       <Section title="Audiobook narration"
@@ -97,6 +98,68 @@ export default function SettingsPage() {
                placeholder="e.g. Marcus Hale"
                settings={settings} save={save} savedField={savedField} />
       </Section>
+    </div>
+  );
+}
+
+function CraftPlaybooks() {
+  interface Playbook { family: string; exists: boolean; chars: number; regenerated: string }
+  const [books, setBooks] = useState<Playbook[]>([]);
+  const [busy, setBusy] = useState<Record<string, string>>({});
+
+  const reload = () =>
+    fetch(`${scrpt.engineUrl}/api/scrpt/craft`)
+      .then((r) => r.json()).then((d) => setBooks(d.playbooks || []))
+      .catch(() => {});
+  useEffect(() => { reload(); }, []);
+
+  const regenerate = async (family: string) => {
+    setBusy((b) => ({ ...b, [family]: "Re-researching…" }));
+    try {
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/craft/regenerate/${family}`,
+        { method: "POST" });
+      const { job_id } = await res.json();
+      const { pollJob } = await import("@/lib/scrpt");
+      const job = await pollJob(job_id, (j) =>
+        setBusy((b) => ({ ...b, [family]: j.detail || "Working…" })));
+      if (job.status !== "done") {
+        setBusy((b) => ({ ...b, [family]: "Failed — old playbook kept" }));
+        setTimeout(() => setBusy((b) => { const c = { ...b }; delete c[family]; return c; }), 4000);
+        return;
+      }
+      reload();
+      setBusy((b) => { const c = { ...b }; delete c[family]; return c; });
+    } catch {
+      setBusy((b) => { const c = { ...b }; delete c[family]; return c; });
+    }
+  };
+
+  return (
+    <div>
+      <div className="label-scrpt">Craft playbooks</div>
+      <p className="text-[12px] text-text-tertiary leading-relaxed">
+        The house&apos;s genre craft standards, injected into every outline,
+        chapter and revision prompt. After a model upgrade, regenerate them —
+        the new model re-researches the craft and every future book is written
+        to the better standard. The previous version is kept as a backup.
+      </p>
+      <div className="mt-3 space-y-2">
+        {books.map((p) => (
+          <div key={p.family} className="flex items-center gap-3 text-[13px]">
+            <span className="capitalize w-[110px] font-medium">{p.family}</span>
+            <span className="text-[11px] text-text-faint flex-1">
+              {p.regenerated ? `regenerated ${p.regenerated}` : "original research edition"}
+            </span>
+            {busy[p.family] ? (
+              <span className="text-[11px] text-text-tertiary pulse-soft">{busy[p.family]}</span>
+            ) : (
+              <button className="btn-ghost text-[11px]" onClick={() => regenerate(p.family)}>
+                Regenerate with current model
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

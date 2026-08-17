@@ -49,10 +49,14 @@ export default function WorkOrderPage() {
     series_titles?: string[]; series_engine?: string;
     book_ideas?: { title: string; logline: string }[];
     title_suggestions?: { title: string; logline: string }[];
+    pen_name?: string;
     cover_direction?: string;
     recommendations?: { heat_or_tone?: string; target_words?: number; notes?: string };
   }
   const [dev, setDev] = useState<DevPackage | null>(null);
+  // the original rough idea, kept so "research again" re-develops from the
+  // publisher's seed, not from the previous suggestion
+  const [seedIdea, setSeedIdea] = useState("");
   const [nameSuggestions, setNameSuggestions] = useState<{ name: string; rationale: string }[]>([]);
   const [suggestingNames, setSuggestingNames] = useState(false);
   interface HouseAuthor { name: string; books: { catalog_number: string; title: string; series_title: string; status: string }[] }
@@ -81,23 +85,39 @@ export default function WorkOrderPage() {
     }
   };
 
+  // fill the whole form from a commissioning package — the publisher only
+  // re-presses the button if they want a different suggestion
+  const applyPackage = (pkg: DevPackage) => {
+    if (pkg.extended_idea) setIdea(pkg.extended_idea);
+    const firstBook = pkg.book_ideas?.[0] || pkg.title_suggestions?.[0];
+    if (firstBook) setTitle(firstBook.title);
+    if (pkg.series_titles?.length) { setIsSeries(true); setSeriesTitle(pkg.series_titles[0]); }
+    if (pkg.pen_name) setPenName((p) => (p.trim() ? p : pkg.pen_name!));
+    if (pkg.recommendations?.target_words) setTargetWords(pkg.recommendations.target_words);
+  };
+
   const developIdea = async () => {
-    if (!idea.trim()) { setError("Write the rough idea first."); return; }
+    const rough = (seedIdea || idea).trim();
+    if (!rough) { setError("Write the rough idea first."); return; }
+    if (!seedIdea) setSeedIdea(rough);
     setDeveloping(true);
     setError("");
-    setDevMsg("Researching the market and developing the concept…");
+    setDevMsg(dev ? "Dealing a fresh suggestion from your original idea…"
+                  : "Researching the market and developing the concept…");
     try {
       const res = await fetch(`${scrpt.engineUrl}/api/scrpt/workorder/develop`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, genre_preset: genre, idea: idea.trim(),
+        body: JSON.stringify({ kind, genre_preset: genre, idea: rough,
                                series_books: isSeries ? seriesBooks : 0 }),
       });
       const { job_id } = await res.json();
       const { pollJob } = await import("@/lib/scrpt");
       const job = await pollJob(job_id, (j) => setDevMsg(j.detail || j.stage || "Working…"));
       if (job.status === "done") {
-        setDev(job.result as DevPackage);
+        const pkg = job.result as DevPackage;
+        setDev(pkg);
+        applyPackage(pkg);
         setDevMsg("");
       } else {
         setDevMsg(`Failed: ${(job.error || "").split("\n")[0]}`);
@@ -245,11 +265,17 @@ export default function WorkOrderPage() {
           onChange={(e) => setIdea(e.target.value)}
         />
         <div className="flex items-center gap-3 mt-3">
-          <button className="btn-ghost text-[12px]" disabled={developing || !idea.trim()}
+          <button className="btn-ghost text-[12px]" disabled={developing || !(seedIdea || idea).trim()}
                   onClick={developIdea}>
-            {developing ? "Researching…" : "Research & extend the idea"}
+            {developing ? "Researching…"
+              : dev ? "Not happy? Research again" : "Research & extend the idea"}
           </button>
           {devMsg && <span className="text-[11px] text-text-tertiary">{devMsg}</span>}
+          {dev && !developing && !devMsg && (
+            <span className="text-[11px] text-text-faint">
+              The form below is filled from this suggestion — edit anything, or deal again.
+            </span>
+          )}
         </div>
 
         {dev && (
@@ -266,12 +292,8 @@ export default function WorkOrderPage() {
             )}
             {dev.extended_idea && (
               <div>
-                <div className="label-scrpt">Extended idea</div>
+                <div className="label-scrpt">Extended idea — now in the form above</div>
                 <p className="text-[13px] text-text-secondary leading-relaxed">{dev.extended_idea}</p>
-                <button className="btn-brass text-[12px] mt-2"
-                        onClick={() => { setIdea(dev.extended_idea!); }}>
-                  Use this as the idea
-                </button>
               </div>
             )}
             {dev.series_engine && (
@@ -282,7 +304,7 @@ export default function WorkOrderPage() {
             )}
             {(dev.series_titles?.length || 0) > 0 && (
               <div>
-                <div className="label-scrpt">Series title — click to adopt</div>
+                <div className="label-scrpt">Series title — first one adopted, click to swap</div>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {dev.series_titles!.map((t, i) => (
                     <button key={i}
@@ -298,13 +320,13 @@ export default function WorkOrderPage() {
             {((dev.book_ideas || dev.title_suggestions)?.length || 0) > 0 && (
               <div>
                 <div className="label-scrpt">
-                  {dev.book_ideas ? "The books" : "Title suggestions — click to adopt"}
+                  {dev.book_ideas ? "The books — book 1 titled above, click to swap" : "Titles — first one adopted, click to swap"}
                 </div>
                 <div className="space-y-2 mt-1">
                   {(dev.book_ideas || dev.title_suggestions)!.map((b, i) => (
                     <button key={i} className="block text-left w-full rounded-md px-3 py-2 transition-colors hover:bg-accent-subtle"
                             style={{ border: "1px solid var(--border-subtle)" }}
-                            onClick={() => { if (!dev.book_ideas) setTitle(b.title); }}>
+                            onClick={() => setTitle(b.title)}>
                       <span className="text-[13px] font-medium">{i + 1}. {b.title}</span>
                       <span className="text-[12px] text-text-tertiary ml-2 italic">{b.logline}</span>
                     </button>

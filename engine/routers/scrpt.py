@@ -169,6 +169,42 @@ class DevelopIdeaRequest(BaseModel):
     series_books: int = 0
 
 
+# ── craft playbooks ──────────────────────────────────────────────
+
+@router.get("/craft")
+def craft_status():
+    """The house playbooks: family, last regeneration stamp, size."""
+    from ..craft.regenerate import FAMILIES, PLAYBOOK_DIR
+    out = []
+    for fam in FAMILIES:
+        p = Path(PLAYBOOK_DIR) / f"{fam}.md"
+        stamp = ""
+        if p.exists():
+            first = p.read_text().split("\n", 1)[0]
+            if first.startswith("<!--"):
+                stamp = first.strip("<!-> ").replace("regenerated ", "")
+        out.append({"family": fam, "exists": p.exists(),
+                    "chars": p.stat().st_size if p.exists() else 0,
+                    "regenerated": stamp})
+    return {"playbooks": out}
+
+
+@router.post("/craft/regenerate/{family}")
+async def craft_regenerate(family: str):
+    """Have the current writing model re-research and rewrite a playbook."""
+    from ..craft.regenerate import FAMILIES, regenerate_playbook
+    if family not in FAMILIES:
+        raise HTTPException(404, f"Unknown playbook family: {family}")
+
+    async def job(handle):
+        handle.progress(0.2, "research",
+                        f"Re-researching {family} craft with the current model")
+        return await regenerate_playbook(family)
+
+    job_id = start_job("craft_regenerate", job)
+    return {"job_id": job_id}
+
+
 @router.post("/workorder/develop")
 async def develop_workorder_idea(req: DevelopIdeaRequest):
     """Research & extend a rough idea into a commissioning package."""
@@ -361,6 +397,228 @@ async def regenerate_blurb(catalog: str):
 async def _blurb_job(handle, catalog: str) -> dict:
     handle.progress(0.2, "blurb", "Writing listing copy")
     return await wp.generate_blurb(catalog)
+
+
+# ── production & release operations ──────────────────────────────
+
+class ScheduleRequest(BaseModel):
+    upload_date: Optional[str] = None
+    release_date: Optional[str] = None
+
+
+@router.put("/schedule/{catalog}")
+def set_schedule(catalog: str, req: ScheduleRequest):
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    data = dict(book["data"])
+    if req.upload_date is not None:
+        data["upload_date"] = req.upload_date
+    if req.release_date is not None:
+        data["release_date"] = req.release_date
+    db.update_book(book["id"], data)
+    return {"success": True}
+
+
+def _asset_state(book: dict) -> dict:
+    d = book["data"]
+    ms = d.get("manuscript") or {}
+    chapters = ms.get("chapters") or []
+    drafted = bool(chapters) and all(c.get("blocks") for c in chapters)
+    interior = d.get("interior") or {}
+    audio = d.get("audio") or {}
+    return {
+        "manuscript": drafted,
+        "quality": bool(ms.get("quality_report", {}).get("chapters_audited")),
+        "interior_pdf": bool(interior.get("page_count"))
+                        and bool((interior.get("validation") or {}).get("passed")),
+        "epub": bool((d.get("ebook") or {}).get("epub_path")),
+        "cover": bool((d.get("cover") or {}).get("cover_front_png")),
+        "audiobook": audio.get("status") == "mastered",
+    }
+
+
+@router.get("/queue")
+def production_queue():
+    """Everything scheduled or in flight, with asset readiness."""
+    from datetime import date
+    today = date.today().isoformat()
+    books = db.list_books(per_page=200)["books"]
+    rows = []
+    for b in books:
+        if not b["data"].get("manuscript"):
+            continue
+        assets = _asset_state(b)
+        core_ready = all(assets[k] for k in
+                         ("manuscript", "interior_pdf", "epub", "cover"))
+        rows.append({
+            "catalog_number": b["catalog_number"],
+            "title": b["title"],
+            "status": b["status"],
+            "author": b["data"].get("author_name", ""),
+            "series_title": (b["data"].get("series") or {}).get("series_title", ""),
+            "upload_date": b["data"].get("upload_date", ""),
+            "release_date": b["data"].get("release_date", ""),
+            "assets": assets,
+            "ready": core_ready,
+            "due": bool(b["data"].get("upload_date"))
+                   and b["data"]["upload_date"] <= today
+                   and b["status"] not in ("in_review", "live"),
+        })
+    rows.sort(key=lambda r: (r["upload_date"] or "9999", r["catalog_number"]))
+    return {"queue": rows, "today": today}
+
+
+@router.post("/prepare/{catalog}")
+async def prepare_release(catalog: str):
+    """Produce every missing asset: interior PDF, EPUB, audiobook. One job."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    active = [j for j in list_jobs(catalog, active_only=True) if j["kind"] == "prepare"]
+    if active:
+        return {"job_id": active[0]["id"], "already_running": True}
+
+    async def job(handle):
+        from ..interior.print_service import export_interior as run_export
+        from ..interior.epub import build_epub
+        from ..audio.pipeline import audiobook_job
+        from ..routers.assistant import elevenlabs_key
+
+        result = {}
+        b = db.get_book_by_catalog(catalog)
+        assets = _asset_state(b)
+
+        if not assets["interior_pdf"]:
+            handle.progress(0.1, "interior", "Exporting print interior")
+            result["interior"] = await run_export(catalog)
+
+        handle.progress(0.4, "epub", "Building the ebook (EPUB)")
+        result["epub"] = build_epub(catalog)
+
+        b = db.get_book_by_catalog(catalog)
+        assets = _asset_state(b)
+        if (not assets["audiobook"] and elevenlabs_key()
+                and db.get_setting("elevenlabs_voice_id", "")):
+            handle.progress(0.5, "audiobook", "Narrating the audiobook")
+            result["audiobook"] = await audiobook_job(handle, catalog)
+
+        # everything core present -> ready
+        b = db.get_book_by_catalog(catalog)
+        assets = _asset_state(b)
+        if all(assets[k] for k in ("manuscript", "interior_pdf", "epub", "cover")):
+            data = dict(b["data"])
+            db.update_book(b["id"], {"status": "ready", **data})
+        result["assets"] = assets
+        return result
+
+    job_id = start_job("prepare", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.get("/upload-package/{catalog}")
+def upload_package(catalog: str):
+    """Everything needed at the upload desks, staged for copy-paste."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    d = book["data"]
+    ms = d.get("manuscript") or {}
+    fmt = d.get("format") or {}
+    series = d.get("series") or {}
+    audio = d.get("audio") or {}
+    price = d.get("list_price", 12.99)
+    pages = (d.get("interior") or {}).get("page_count", 0)
+
+    audio_files = [{"title": c.get("title", ""),
+                    "file": (c.get("audio_path") or "").split("/")[-1]}
+                   for c in (audio.get("chapters") or [])]
+
+    return {
+        "catalog_number": catalog,
+        "metadata": {
+            "title": book["title"],
+            "subtitle": "",
+            "series_title": series.get("series_title", ""),
+            "series_number": series.get("book_number"),
+            "author": d.get("author_name", ""),
+            "description": d.get("description", ms.get("blurb", "")),
+            "keywords": d.get("keywords", []),
+            "categories": d.get("categories", []),
+            "language": "English",
+            "ai_disclosure": (
+                "Answer YES to AI-generated content. Text: AI-generated with "
+                "extensive human editing and review. Cover: AI-generated with "
+                "human review."
+            ),
+        },
+        "print": {
+            "trim_size": fmt.get("trim_size", d.get("trim_size")),
+            "paper": fmt.get("paper_type", d.get("paper_type")),
+            "pages": pages,
+            "price_usd": price,
+            "interior_pdf": f"/api/scrpt/interior/pdf/{catalog}",
+            "cover_note": "Print wrap via designer package (front art as reference)",
+        },
+        "ebook": {
+            "epub": f"/api/files/{catalog}/ebook.epub",
+            "cover_jpg": f"/api/files/{catalog}/ebook-cover.jpg",
+            "price_usd": min(9.99, max(2.99, round(price * 0.5, 2))),
+            "royalty_note": "Price 2.99-9.99 for the 70% tier",
+        },
+        "audiobook": {
+            "mastered": audio.get("status") == "mastered",
+            "cover_square": f"/api/files/{catalog}/audiobook-cover.jpg",
+            "chapters": audio_files,
+            "narrator_credit": "Digital voice (ElevenLabs) — use each "
+                               "platform's synthesized-voice flag; never a "
+                               "human pseudonym",
+            "portals": {
+                "spotify": "https://authors.spotify.com",
+                "google_play": "https://play.google.com/books/publish",
+                "kobo": "https://writinglife.kobobooks.com",
+                "kdp_virtual_voice": "https://kdp.amazon.com",
+                "inaudio": "https://www.inaudio.com",
+            },
+            "uploaded_to": audio.get("platforms", {}),
+        },
+        "kdp_portal": "https://kdp.amazon.com/en_US/title-setup/paperback",
+    }
+
+
+class MarkStatusRequest(BaseModel):
+    status: str          # "in_review" (uploaded) | "live"
+    platform: str = ""   # for audiobook platform tracking
+
+
+@router.post("/mark/{catalog}")
+def mark_status(catalog: str, req: MarkStatusRequest):
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    data = dict(book["data"])
+    if req.platform:
+        audio = data.get("audio") or {}
+        platforms = audio.get("platforms") or {}
+        from datetime import date
+        platforms[req.platform] = date.today().isoformat()
+        audio["platforms"] = platforms
+        data["audio"] = audio
+        db.update_book(book["id"], data)
+        return {"success": True, "platforms": platforms}
+    if req.status not in ("in_review", "live", "ready", "draft"):
+        raise HTTPException(400, "Bad status")
+    db.update_book(book["id"], {"status": req.status, **data})
+    return {"success": True}
+
+
+@router.post("/epub/{catalog}")
+def make_epub(catalog: str):
+    from ..interior.epub import build_epub
+    try:
+        return build_epub(catalog)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
 
 
 # ── jobs ─────────────────────────────────────────────────────────
