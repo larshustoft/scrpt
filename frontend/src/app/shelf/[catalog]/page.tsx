@@ -323,25 +323,13 @@ function CoverTab({ book, reload }: { book: ScrptBook; reload: () => void }) {
         </div>
       )}
 
+      <AICoverCard book={book} reload={reload} />
+
       {hasPages && (
         <>
           <CoverSpecCard catalog={catalog} pageCount={interior.page_count!} />
 
           <div className="grid md:grid-cols-2 gap-5">
-            {/* Path A: AI */}
-            <div className="card">
-              <div className="serif-display text-[17px] font-semibold">AI cover</div>
-              <p className="text-[12px] text-text-tertiary mt-1 leading-relaxed">
-                SCRPT designs the full wrap — artwork by image model, typography
-                rendered as a crisp overlay, sized exactly for {interior.page_count} pages.
-              </p>
-              <div className="text-[12px] text-text-faint mt-3">
-                The AI cover designer for fiction is being trained on the new
-                genre templates — coming in the next update. Until then, use the
-                designer package on the right.
-              </div>
-            </div>
-
             {/* Path B: upload */}
             <div className="card">
               <div className="serif-display text-[17px] font-semibold">
@@ -413,6 +401,77 @@ function CoverTab({ book, reload }: { book: ScrptBook; reload: () => void }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) {
+  const catalog = book.catalog_number;
+  const cover = book.data.cover || {};
+  const hasArt = Boolean(cover.cover_front_png);
+  const [direction, setDirection] = useState("");
+  const [running, setRunning] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [imgKey, setImgKey] = useState(0);
+
+  const generate = async () => {
+    setRunning(true);
+    setMsg("Art-directing from the book's bible…");
+    try {
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/cover/generate-front/${catalog}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction }),
+      });
+      const { job_id } = await res.json();
+      const job = await pollJob(job_id, (j) => setMsg(j.detail || j.stage || "Painting…"));
+      if (job.status === "done") {
+        setMsg("Front cover ready.");
+        setImgKey((k) => k + 1);
+        reload();
+      } else {
+        setMsg(`Failed: ${(job.error || "").split("\n")[0]}`);
+      }
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="card">
+      <div className="serif-display text-[17px] font-semibold">AI front cover</div>
+      <p className="text-[12px] text-text-tertiary mt-1 leading-relaxed">
+        Claude art-directs from the genre, plot and pen name; the image model
+        paints title and author into the artwork. Output meets Amazon&apos;s
+        ebook cover spec (1600×2560) and doubles as the print designer&apos;s
+        reference.
+      </p>
+
+      {hasArt && (
+        <div className="mt-4 w-[150px] rounded-[5px] overflow-hidden"
+             style={{ boxShadow: "var(--shadow-page)" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img key={imgKey}
+               src={`${scrpt.engineUrl}/api/files/${catalog}/cover-front.png?v=${imgKey}`}
+               alt="Front cover" className="w-full block" />
+        </div>
+      )}
+
+      <div className="mt-4">
+        <div className="label-scrpt">Art direction (optional)</div>
+        <textarea className="input-scrpt min-h-[54px] text-[12px]"
+                  placeholder="e.g. an avalanche tearing through the title, lone rescuer in red, dam far below"
+                  value={direction}
+                  onChange={(e) => setDirection(e.target.value)} />
+      </div>
+      <div className="flex items-center gap-3 mt-3">
+        <button className="btn-brass text-[12px]" disabled={running} onClick={generate}>
+          {running ? "Painting…" : hasArt ? "Regenerate cover" : "Generate front cover"}
+        </button>
+        {msg && <span className="text-[11px] text-text-tertiary truncate max-w-[200px]">{msg}</span>}
+      </div>
     </div>
   );
 }

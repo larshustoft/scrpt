@@ -98,17 +98,26 @@ export default function HQPage() {
                     "0 2px 6px rgba(0,0,0,0.6), 0 24px 60px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(236,229,218,0.09)",
                 }}
               >
-                {/* spine shadow fold */}
-                <div className="absolute inset-y-0 left-0 w-[10px]"
-                     style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.5), transparent)" }} />
-                <div className="absolute inset-0 flex flex-col items-center text-center px-6">
-                  <div className="mt-[26%] serif-display text-[20px] leading-snug text-[#e8dfd0]">
-                    {current.title}
-                  </div>
-                  <div className="mt-auto mb-7 text-[10px] tracking-[0.22em] uppercase text-[#a6987f]">
-                    {(current.data.author_name as string) || "—"}
-                  </div>
-                </div>
+                {current.data.cover?.cover_front_png ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`${scrpt.engineUrl}/api/files/${current.catalog_number}/cover-front.png`}
+                       alt={current.title}
+                       className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <>
+                    {/* spine shadow fold */}
+                    <div className="absolute inset-y-0 left-0 w-[10px]"
+                         style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.5), transparent)" }} />
+                    <div className="absolute inset-0 flex flex-col items-center text-center px-6">
+                      <div className="mt-[26%] serif-display text-[20px] leading-snug text-[#e8dfd0]">
+                        {current.title}
+                      </div>
+                      <div className="mt-auto mb-7 text-[10px] tracking-[0.22em] uppercase text-[#a6987f]">
+                        {(current.data.author_name as string) || "—"}
+                      </div>
+                    </div>
+                  </>
+                )}
                 {drafting && (
                   <div className="absolute bottom-0 inset-x-0 h-[3px]" style={{ background: "rgba(0,0,0,0.55)" }}>
                     <div

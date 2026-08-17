@@ -416,10 +416,22 @@ async def full_draft_job(handle: JobHandle, catalog: str, chosen_plot: int = 0,
         )
         await draft_chapter(catalog, idx)
 
-    handle.progress(0.96, "blurb", "Writing the listing copy")
+    handle.progress(0.94, "blurb", "Writing the listing copy")
     await generate_blurb(catalog)
+
+    # automatic front cover — a failure here must not fail the manuscript
+    handle.progress(0.97, "cover", "Painting the front cover")
+    cover_error = ""
+    try:
+        from ..cover.front_cover import generate_front_cover
+        await generate_front_cover(catalog)
+    except Exception as e:
+        cover_error = str(e)[:300]
 
     book, ms = _load(catalog)
     ms.status = ManuscriptStatus.DRAFTED
     _save(book, ms, status="draft")
-    return {"chapters": len(ms.chapters), "words": ms.word_count}
+    result = {"chapters": len(ms.chapters), "words": ms.word_count}
+    if cover_error:
+        result["cover_error"] = cover_error
+    return result

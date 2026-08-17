@@ -5,6 +5,8 @@ Audiobook tab and Analytics pages talk to.
 """
 
 import uuid
+
+from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional
 
@@ -320,6 +322,29 @@ async def upload_cover(catalog: str, file: UploadFile = File(...)):
     data["cover"] = cover
     db.update_book(book["id"], data)
     return report
+
+
+class FrontCoverRequest(BaseModel):
+    direction: str = ""
+
+
+@router.post("/cover/generate-front/{catalog}")
+async def generate_front(catalog: str, req: FrontCoverRequest = None):
+    """AI front cover: Claude art direction -> image model -> ebook cover files."""
+    from ..cover.front_cover import generate_front_cover
+    direction = req.direction if req else ""
+    active = [j for j in list_jobs(catalog, active_only=True) if j["kind"] == "front_cover"]
+    if active:
+        return {"job_id": active[0]["id"], "already_running": True}
+
+    async def job(handle):
+        handle.progress(0.1, "brief", "Art-directing the cover")
+        result = await generate_front_cover(catalog, direction)
+        handle.progress(0.95, "files", "Preparing ebook cover files")
+        return result
+
+    job_id = start_job("front_cover", job, book_catalog=catalog)
+    return {"job_id": job_id}
 
 
 # ── audiobook ────────────────────────────────────────────────────
