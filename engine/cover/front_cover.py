@@ -80,8 +80,11 @@ async def build_cover_brief(book: dict, ms: Manuscript) -> str:
     premise = str(extract_json(raw)["premise"])
 
     label = preset.get("label", "book").lower()
+    trim = (book["data"].get("format") or {}).get("trim_size") \
+        or book["data"].get("trim_size") or "5.5x8.5"
+    trim_label = trim.replace("x", '\" × ') + '\"'
     parts = [
-        f"I need a book cover for a paperback {label} called {book['title']}.",
+        f"I need a book cover for a {trim_label} paperback {label} called {book['title']}.",
         premise,
         f"The author is called {author}." if author else "",
         f'If a tagline fits the design, use exactly: "{ms.tagline}"' if ms.tagline else "",
@@ -131,11 +134,37 @@ def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
 
     from PIL import Image
     import io
+
+    def crop_to_ratio(im, target_w_over_h):
+        w, h = im.size
+        cur = w / h
+        if abs(cur - target_w_over_h) < 0.005:
+            return im
+        if cur > target_w_over_h:   # too wide: trim sides
+            new_w = int(h * target_w_over_h)
+            x = (w - new_w) // 2
+            return im.crop((x, 0, x + new_w, h))
+        new_h = int(w / target_w_over_h)  # too tall: trim top/bottom evenly
+        y = (h - new_h) // 2
+        return im.crop((0, y, w, y + new_h))
+
+    trim = (data_trim := (get_book_by_catalog(catalog)["data"])) and (
+        (data_trim.get("format") or {}).get("trim_size")
+        or data_trim.get("trim_size") or "5.5x8.5")
+    try:
+        tw, th = (float(x) for x in trim.split("x"))
+    except ValueError:
+        tw, th = 5.5, 8.5
+
     img = Image.open(io.BytesIO(raw_png)).convert("RGB")
-    ebook = img.resize((1600, 2560), Image.LANCZOS)
+    # ebook cover: Amazon's 1600x2560 (0.625) — crop, never stretch
+    ebook = crop_to_ratio(img, 1600 / 2560).resize((1600, 2560), Image.LANCZOS)
     ebook_path = out_dir / "ebook-cover.jpg"
     ebook.save(ebook_path, quality=92, optimize=True)
-    preview = img.resize((800, 1280), Image.LANCZOS)
+    # preview / print reference: the book's actual trim proportions
+    pv = crop_to_ratio(img, tw / th)
+    pw = 800
+    preview = pv.resize((pw, int(pw * th / tw)), Image.LANCZOS)
     preview_path = out_dir / "cover-front.png"
     preview.save(preview_path, optimize=True)
 

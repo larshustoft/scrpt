@@ -6,6 +6,23 @@ import {
   scrpt, type BookKind, type GenrePreset, type WorkOrderPayload,
 } from "@/lib/scrpt";
 
+// Amazon KDP paperback trim sizes (docs/KDP_INTERIOR_SPEC.md)
+const KDP_TRIMS: { key: string; hint?: string }[] = [
+  { key: "5x8", hint: "compact fiction" },
+  { key: "5.06x7.81" },
+  { key: "5.25x8", hint: "fiction / romance" },
+  { key: "5.5x8.5", hint: "fiction workhorse" },
+  { key: "6x9", hint: "trade standard / non-fiction" },
+  { key: "6.14x9.21", hint: "large trade" },
+  { key: "6.69x9.61" },
+  { key: "7x10", hint: "workbooks" },
+  { key: "7.44x9.69" },
+  { key: "7.5x9.25" },
+  { key: "8x10" },
+  { key: "8.5x8.5", hint: "square" },
+  { key: "8.5x11", hint: "large format" },
+];
+
 export default function WorkOrderPage() {
   const router = useRouter();
   const [genres, setGenres] = useState<Record<string, GenrePreset>>({});
@@ -209,9 +226,11 @@ export default function WorkOrderPage() {
           <div>
             <div className="label-scrpt">Trim size</div>
             <select className="input-scrpt" value={trim} onChange={(e) => setTrim(e.target.value)}>
-              <option value="">{preset ? `${preset.trim} (genre default)` : "Default"}</option>
-              {["5x8", "5.25x8", "5.5x8.5", "6x9", "6.14x9.21", "7x10"].map((t) => (
-                <option key={t} value={t}>{t.replace("x", '" × ')}&quot;</option>
+              <option value="">{preset ? `${preset.trim.replace("x", '\u2033 × ')}\u2033 (genre default)` : "Default"}</option>
+              {KDP_TRIMS.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.key.replace("x", '\u2033 × ')}\u2033{t.hint ? ` — ${t.hint}` : ""}
+                </option>
               ))}
             </select>
           </div>
