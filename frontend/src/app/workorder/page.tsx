@@ -270,7 +270,7 @@ export default function WorkOrderPage() {
             {developing ? "Researching…"
               : dev ? "Not happy? Research again" : "Research & extend the idea"}
           </button>
-          {devMsg && <span className="text-[11px] text-text-tertiary">{devMsg}</span>}
+          {!developing && devMsg && <span className="text-[11px] text-text-tertiary">{devMsg}</span>}
           {dev && !developing && !devMsg && (
             <span className="text-[11px] text-text-faint">
               The form below is filled from this suggestion — edit anything, or deal again.
@@ -278,7 +278,12 @@ export default function WorkOrderPage() {
           )}
         </div>
 
-        {dev && (
+        {developing && (
+          <ResearchingPanel genreLabel={preset?.label || "the genre"}
+                            series={isSeries} redeal={Boolean(dev)} />
+        )}
+
+        {dev && !developing && (
           <div className="mt-5 rounded-[10px] p-5 space-y-4"
                style={{ background: "var(--surface-elevated)", border: "1px solid var(--accent-deep)" }}>
             {dev.positioning && (
@@ -518,6 +523,63 @@ export default function WorkOrderPage() {
             ? "Drafting a full book takes roughly 30–60 minutes."
             : "Plot directions arrive in about a minute."}
         </span>
+      </div>
+    </div>
+  );
+}
+
+/** The acquisitions desk at work — visible motion while research runs. */
+function ResearchingPanel({ genreLabel, series, redeal }: {
+  genreLabel: string; series: boolean; redeal: boolean;
+}) {
+  const lines = [
+    redeal ? "Setting the last suggestion aside — starting fresh from your idea…"
+           : "Opening the acquisitions file…",
+    `Reading the ${genreLabel} market — what readers are buying right now…`,
+    "Weighing comparable authors and titles…",
+    "Testing the hook against proven demand…",
+    series ? "Shaping the series engine — what generates every next book…"
+           : "Sharpening the premise into a commissioning brief…",
+    series ? "Titling the series and the first books…" : "Drafting title options…",
+    "Choosing a pen name for the shelf…",
+    "Sketching the cover direction…",
+    "Weighing it all — the package is almost on your desk…",
+  ];
+  const [step, setStep] = useState(0);
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const stepTimer = setInterval(() => setStep((v) => v + 1), 4000);
+    const clock = setInterval(() => setSeconds((v) => v + 1), 1000);
+    return () => { clearInterval(stepTimer); clearInterval(clock); };
+  }, []);
+
+  const line = lines[Math.min(step, lines.length - 1)];
+
+  return (
+    <div className="mt-5 rounded-[10px] p-5"
+         style={{ background: "var(--surface-elevated)", border: "1px solid var(--accent-deep)" }}>
+      <div className="flex items-center gap-3">
+        <span className="work-beacon shrink-0" />
+        <span className="serif-display text-[15px] font-semibold">
+          The acquisitions desk is working
+        </span>
+        <span className="flex-1" />
+        <span className="text-[11px] text-text-faint tabular-nums">
+          {Math.floor(seconds / 60) > 0 ? `${Math.floor(seconds / 60)}m ` : ""}{seconds % 60}s
+        </span>
+      </div>
+      <div key={step} className="status-rise text-[13px] text-text-secondary mt-3">
+        {line}
+      </div>
+      <div className="mt-4 space-y-2.5">
+        <div className="shimmer-line h-[11px] w-[88%]" />
+        <div className="shimmer-line h-[11px] w-[72%]" style={{ animationDelay: "0.25s" }} />
+        <div className="shimmer-line h-[11px] w-[80%]" style={{ animationDelay: "0.5s" }} />
+      </div>
+      <div className="text-[11px] text-text-faint mt-4">
+        Deep market research takes about a minute — the package lands here, and
+        the form fills itself.
       </div>
     </div>
   );
