@@ -134,6 +134,9 @@ async def generate_plot_options(catalog: str) -> list[dict]:
             f"{p['label'].lower()}. Make them genuinely different in engine (what drives "
             "the story), not cosmetic variations. Each must have a complete arc with a "
             "satisfying ending.\n\n"
+            "TITLES: short, punchy, ownable — one to three words for thrillers "
+            "(think of the great franchise one-worders); never generic, never "
+            "explanatory.\n"
             "Return JSON only:\n"
             '[{"title": "...", "logline": "one sentence", '
             '"synopsis": "400-600 words, full arc including the ending"}]'
@@ -145,6 +148,9 @@ async def generate_plot_options(catalog: str) -> list[dict]:
             f"Develop THREE distinct angles for this {p['label'].lower()} book. Each needs "
             "a sharp thesis, a named original framework (an ownable mental model like the "
             "great franchise non-fiction books have), and a clear reader transformation.\n\n"
+            "TITLES: a two-to-four word concept the reader can own, plus the "
+            "subtitle doing the promising (the modern bestseller pattern: short "
+            "evocative title, benefit-rich subtitle).\n"
             "Return JSON only:\n"
             '[{"title": "...", "logline": "the promise in one sentence", '
             '"synopsis": "400-600 words: thesis, the named framework and its steps, '
@@ -365,7 +371,7 @@ async def generate_blurb(catalog: str) -> dict:
         "hook in the first line (it shows above the fold), tease without spoiling, and "
         "end with a call to action. 150-200 words, short paragraphs.\n"
         "Return JSON only:\n"
-        '{"tagline": "one punchy line for the cover", '
+        '{"tagline": "cover type, not a summary: maximum 8 words, staccato fragments in the genre register — the shape of \'Five days. One truth. No way down.\' — never an explanatory sentence", '
         '"description": "the Amazon book description", '
         '"keywords": ["7 KDP backend search phrases, 2-4 words each"], '
         f'"categories": ["3 specific Amazon browse category paths"]{teaser_field}}}'
