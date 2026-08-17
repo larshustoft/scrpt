@@ -21,11 +21,14 @@ function isPublic(pathname: string) {
  * Auth gate — redirects unauthenticated users to /login.
  * Public paths are exempt.
  */
+/** Local-dev auth bypass — set NEXT_PUBLIC_DEV_NO_AUTH=1 in .env.local only. */
+const DEV_NO_AUTH = process.env.NEXT_PUBLIC_DEV_NO_AUTH === "1"
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, configured } = useAuthContext()
   const pathname = usePathname()
   const router = useRouter()
-  const isPublicPage = isPublic(pathname)
+  const isPublicPage = isPublic(pathname) || DEV_NO_AUTH
   const isLoginPage = pathname === "/login"
 
   useEffect(() => {

@@ -55,10 +55,11 @@ async def complete(
 
 
 def extract_json(text: str):
-    """Pull the first JSON object/array out of a response, tolerating fences and prose."""
+    """Pull the first JSON object/array out of a response, tolerating fences,
+    prose, and truncation (salvages complete items from a cut-off array)."""
     fence = re.search(r"```(?:json)?\s*([\[{].*?[\]}])\s*```", text, re.DOTALL)
     candidates = [fence.group(1)] if fence else []
-    # fallback: widest brace/bracket span
+    # widest brace/bracket span
     for open_c, close_c in (("{", "}"), ("[", "]")):
         start, end = text.find(open_c), text.rfind(close_c)
         if start != -1 and end > start:
@@ -68,4 +69,26 @@ def extract_json(text: str):
             return json.loads(cand)
         except ValueError:
             continue
+    # salvage a truncated response: from the first bracket, cut back to the
+    # last complete object and close the array/object
+    start = min((i for i in (text.find("["), text.find("{")) if i != -1), default=-1)
+    if start != -1:
+        frag = text[start:]
+        for cut in range(len(frag), max(len(frag) - 20000, 0), -1):
+            piece = frag[:cut].rstrip().rstrip(",")
+            if not piece.endswith("}"):
+                continue
+            for closer in ("]", "}", "]}", "}]"):
+                try:
+                    return json.loads(piece + closer if piece[0] in "[{" else piece)
+                except ValueError:
+                    continue
+        # last resort: progressively truncate at object boundaries
+        ends = [m.end() for m in re.finditer(r"\}", frag)]
+        for e in reversed(ends):
+            piece = frag[:e].rstrip().rstrip(",")
+            try:
+                return json.loads(piece + ("]" if frag[0] == "[" else ""))
+            except ValueError:
+                continue
     raise ValueError(f"No parseable JSON in response: {text[:300]}")

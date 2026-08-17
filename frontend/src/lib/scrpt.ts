@@ -276,7 +276,7 @@ export const scrpt = {
 
   // legacy book list endpoint (works for all books incl. prose)
   listBooks: () =>
-    call<{ books: ScrptBook[]; total: number }>("/api/books?per_page=200"),
+    call<{ books: ScrptBook[]; total: number }>("/api/books?per_page=100"),
 
   regeneratePlots: (catalog: string) =>
     call<{ job_id: string }>(`/api/scrpt/plot-options/${catalog}`, { method: "POST" }),

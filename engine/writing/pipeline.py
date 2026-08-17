@@ -152,7 +152,7 @@ async def generate_plot_options(catalog: str) -> list[dict]:
         )
         system = _nonfiction_system(ms)
 
-    raw = await complete(system, prompt, max_tokens=6000)
+    raw = await complete(system, prompt, max_tokens=16000)
     options = extract_json(raw)
     ms.plot_options = options[:3]
     ms.status = ManuscriptStatus.PLOTTING
@@ -184,7 +184,7 @@ async def build_bible(catalog: str, chosen: int = 0, edits: str = "") -> None:
             '"style_notes": "sentence rhythm, chapter endings, violence/romance heat level", '
             '"ending": "precisely where the book must land"}'
         )
-        raw = await complete(_fiction_system(ms), prompt, max_tokens=6000)
+        raw = await complete(_fiction_system(ms), prompt, max_tokens=10000)
         data = extract_json(raw)
         data["genre"] = p["label"]
         ms.story_bible = StoryBible.model_validate(data)
@@ -198,7 +198,7 @@ async def build_bible(catalog: str, chosen: int = 0, edits: str = "") -> None:
             '"terminology": {"term": "definition"}, "tone": "...", '
             '"style_notes": "chapter formula, story/example policy, exercise style"}'
         )
-        raw = await complete(_nonfiction_system(ms), prompt, max_tokens=6000)
+        raw = await complete(_nonfiction_system(ms), prompt, max_tokens=10000)
         ms.concept_bible = ConceptBible.model_validate(extract_json(raw))
 
     ms.status = ManuscriptStatus.BIBLE
@@ -241,7 +241,7 @@ async def build_outline(catalog: str) -> None:
         '[{"title": "...", "summary": "120-200 words on what happens / what it teaches", '
         '"beats": ["beat 1", "beat 2", "beat 3", "beat 4", "beat 5"]}]'
     )
-    raw = await complete(system, prompt, max_tokens=8000)
+    raw = await complete(system, prompt, max_tokens=16000)
     chapters = extract_json(raw)
 
     ms.chapters = [
@@ -313,7 +313,7 @@ async def draft_chapter(catalog: str, index: int) -> None:
         "established in this chapter\"]}"
     )
 
-    raw = await complete(system, prompt, max_tokens=10000)
+    raw = await complete(system, prompt, max_tokens=14000)
 
     meta = {"rolling_summary": "", "new_facts": []}
     text = raw
