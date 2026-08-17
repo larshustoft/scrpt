@@ -326,10 +326,31 @@ async def build_outline(catalog: str) -> None:
         '"setups_payoffs": [{"setup_chapter": N, "payoff_chapter": N, '
         '"element": "what is planted and how it pays off"}], '
         '"set_pieces": [{"chapter": N, "scene": "a vivid, cinematic, '
-        'memorable scene"}]}'
+        'memorable scene"}]}\n'
+        "BE TERSE so the whole blueprint fits: purpose ≤40 words, "
+        "what_happens ≤25 words, arc ≤40 words, scene ≤20 words. Every key "
+        "is REQUIRED — an architecture without pinned_beats, threads and "
+        "set_pieces is invalid."
     )
-    ms.arc_map = extract_json(await complete(system, arch_prompt,
-                                             max_tokens=8000))
+
+    def _arc_ok(am: dict) -> bool:
+        if not (am.get("acts") and am.get("pinned_beats") and am.get("threads")):
+            return False
+        pinned = [b.get("chapter") or 0 for b in am["pinned_beats"]]
+        # beats must reach deep into the book — a truncated blueprint stops early
+        return max(pinned, default=0) >= int(n_chapters * 0.85)
+
+    ms.arc_map = {}
+    for attempt in range(2):
+        candidate = extract_json(await complete(system, arch_prompt,
+                                                max_tokens=12000))
+        if _arc_ok(candidate):
+            ms.arc_map = candidate
+            break
+    if not ms.arc_map:
+        raise RuntimeError(
+            "Story architecture came back incomplete twice (missing beats/"
+            "threads or truncated) — refusing to outline without a spine")
     _save(book, ms)
 
     arc_for_waves = json.dumps({
