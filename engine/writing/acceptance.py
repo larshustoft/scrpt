@@ -119,6 +119,13 @@ async def editorial_review(catalog: str) -> dict:
         "revision orders are concrete enough to execute.",
         prompt, max_tokens=6000)
     out = extract_json(raw)
+    # models occasionally emit the object wrapped in a list, or lead with the
+    # issues array — normalize to the review dict or fail informatively
+    if isinstance(out, list):
+        out = next((x for x in out if isinstance(x, dict) and "verdict" in x),
+                   next((x for x in out if isinstance(x, dict)), None))
+    if not isinstance(out, dict) or "verdict" not in out:
+        raise RuntimeError(f"Editor returned an unparseable review: {str(out)[:200]}")
     out["keystones_read"] = sorted(k for k in keystones if k)
     return out
 
@@ -160,6 +167,8 @@ async def acceptance_job(handle, catalog: str) -> dict:
     if review.get("verdict") == "revise" and review.get("issues"):
         orders = review["issues"][:MAX_REVISE_ORDERS]
         for i, issue in enumerate(orders):
+            if not isinstance(issue, dict):
+                continue
             idx = issue.get("chapter")
             if not idx:
                 continue
