@@ -1,0 +1,12 @@
+{
+  "name": "scrpt-desktop",
+  "productName": "SCRPT",
+  "version": "1.0.0",
+  "description": "SCRPT — Write. Publish. Sell.",
+  "main": "main.js",
+  "author": "SCRPT",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

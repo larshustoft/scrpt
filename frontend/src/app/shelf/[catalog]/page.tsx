@@ -543,6 +543,16 @@ function PublishingTab({ book, ms }: { book: ScrptBook; ms: Manuscript }) {
   const cover = book.data.cover || {};
   const pages = interior.page_count || 0;
   const [price, setPrice] = useState<number>((book.data.list_price as number) || 12.99);
+  const [genreNorm, setGenreNorm] = useState<{ min: number; target: number } | null>(null);
+
+  useEffect(() => {
+    scrpt.presets().then((p) => {
+      const g = p.genres[ms.genre_preset] as unknown as { min_words?: number; target_words?: number };
+      if (g?.target_words) {
+        setGenreNorm({ min: g.min_words || 0, target: g.target_words });
+      }
+    }).catch(() => {});
+  }, [ms.genre_preset]);
 
   // KDP US paperback B&W economics (docs/KDP_INTERIOR_SPEC.md)
   const printCost = pages > 0
@@ -554,6 +564,13 @@ function PublishingTab({ book, ms }: { book: ScrptBook; ms: Manuscript }) {
 
   const checklist: { label: string; done: boolean; note?: string }[] = [
     { label: "Manuscript drafted", done: ms.status === "drafted" || ms.status === "editing" || ms.status === "locked" },
+    ...(genreNorm ? [{
+      label: "Length within genre norms",
+      done: ms.word_count >= genreNorm.min,
+      note: ms.word_count >= genreNorm.min
+        ? `${ms.word_count.toLocaleString()} words (genre floor ${genreNorm.min.toLocaleString()}, market target ${genreNorm.target.toLocaleString()})`
+        : `${ms.word_count.toLocaleString()} words is BELOW the ${genreNorm.min.toLocaleString()}-word genre floor — readers will punish a thin book at full price. Market target: ${genreNorm.target.toLocaleString()}.`,
+    }] : []),
     { label: "Interior exported and KDP-validated",
       done: Boolean(interior.validation && (interior.validation as ValidationReport).passed),
       note: pages ? `${pages} pages` : undefined },

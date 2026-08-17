@@ -131,8 +131,10 @@ export default function WorkOrderPage() {
         </div>
         {preset && (
           <div className="text-[12px] text-text-faint mt-3">
-            Defaults: {preset.trim.replace("x", '" × ')}&quot; ·{" "}
-            {preset.target_words.toLocaleString()} words ·{" "}
+            Market norm: {preset.target_words.toLocaleString()} words ≈{" "}
+            {Math.round(((targetWords || preset.target_words) as number) /
+              ((preset as { wpp?: number }).wpp || 275) + 12)}{" "}
+            printed pages at {preset.trim.replace("x", '" × ')}&quot; ·{" "}
             {preset.paper === "cream_bw" ? "cream paper" : "white paper"} · {preset.pov}
           </div>
         )}

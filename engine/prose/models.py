@@ -21,56 +21,85 @@ class BookKind(str, Enum):
 
 
 # Genre presets drive prompts, typography defaults, and pricing defaults.
+# Lengths calibrated against market norms — see docs/BOOK_LENGTH_NORMS.md.
+# min_words = genre credibility floor (Publishing checklist warns below it);
+# wpp = words-per-printed-page divisor for page estimates at the preset trim.
 GENRE_PRESETS = {
     # fiction
     "action_thriller": {
         "kind": "fiction", "label": "Action Thriller",
         "comps": "propulsive international action-thriller in the tradition of the great espionage franchises",
-        "trim": "5.5x8.5", "paper": "cream_bw", "target_words": 85000,
-        "chapter_words": 2200, "pov": "third limited, alternating", "font": "garamond",
+        "trim": "5.5x8.5", "paper": "cream_bw",
+        "target_words": 95000, "min_words": 70000, "chapter_words": 2300, "wpp": 265,
+        "pov": "third limited, alternating hero/antagonist",
+        "structure": "short scene-chapters (3-5 pages), every chapter ends on a hook",
+        "font": "garamond",
     },
     "legal_thriller": {
         "kind": "fiction", "label": "Legal Thriller",
         "comps": "courtroom-driven legal thriller with procedural authenticity and moral stakes",
-        "trim": "5.5x8.5", "paper": "cream_bw", "target_words": 90000,
-        "chapter_words": 2600, "pov": "third limited", "font": "garamond",
+        "trim": "5.5x8.5", "paper": "cream_bw",
+        "target_words": 100000, "min_words": 80000, "chapter_words": 3800, "wpp": 265,
+        "pov": "third limited",
+        "structure": "longer procedural chapters, escalating stakes, minimal POV-hopping",
+        "font": "garamond",
     },
     "conspiracy_thriller": {
         "kind": "fiction", "label": "Conspiracy Thriller",
         "comps": "puzzle-driven conspiracy thriller weaving history, symbols and chase sequences",
-        "trim": "5.5x8.5", "paper": "cream_bw", "target_words": 95000,
-        "chapter_words": 2000, "pov": "third limited, alternating", "font": "garamond",
+        "trim": "5.5x8.5", "paper": "cream_bw",
+        "target_words": 105000, "min_words": 90000, "chapter_words": 1300, "wpp": 265,
+        "pov": "third limited, 3+ rotating POV threads",
+        "structure": "very short 2-5 page chapters, ~90-110 of them, each ending on a "
+                     "micro-reveal or cliffhanger; 24-48 hour story clock",
+        "font": "garamond",
     },
     "romance": {
         "kind": "fiction", "label": "Romance",
         "comps": "emotionally rich contemporary romance with a guaranteed happily-ever-after",
-        "trim": "5.25x8", "paper": "cream_bw", "target_words": 75000,
-        "chapter_words": 2400, "pov": "first person, dual POV", "font": "crimson",
+        "trim": "5.25x8", "paper": "cream_bw",
+        "target_words": 62000, "min_words": 45000, "chapter_words": 3000, "wpp": 245,
+        "pov": "first person, dual POV alternating",
+        "structure": "alternating hero/heroine chapters, HEA mandatory, epilogue expected",
+        "font": "crimson",
     },
     "historical_romance": {
         "kind": "fiction", "label": "Historical Romance",
         "comps": "sweeping historical romance with period-authentic texture and slow-burn tension",
-        "trim": "5.25x8", "paper": "cream_bw", "target_words": 80000,
-        "chapter_words": 2600, "pov": "third limited, dual POV", "font": "crimson",
+        "trim": "5.25x8", "paper": "cream_bw",
+        "target_words": 90000, "min_words": 75000, "chapter_words": 3000, "wpp": 245,
+        "pov": "third limited, dual POV",
+        "structure": "alternating POV, period world-building woven through, HEA mandatory",
+        "font": "crimson",
     },
     # non-fiction
     "self_help": {
         "kind": "nonfiction", "label": "Self-Help / Personal Development",
         "comps": "practical, framework-driven personal development in the tradition of modern habit and mindset bestsellers",
-        "trim": "6x9", "paper": "white_bw", "target_words": 55000,
-        "chapter_words": 4000, "pov": "second person, direct address", "font": "literata",
+        "trim": "6x9", "paper": "white_bw",
+        "target_words": 52000, "min_words": 35000, "chapter_words": 3500, "wpp": 285,
+        "pov": "second person, direct address",
+        "structure": "numbered framework in parts, one tactic per chapter, "
+                     "chapter-end summary box",
+        "font": "literata",
     },
     "business": {
         "kind": "nonfiction", "label": "Business / Productivity",
         "comps": "actionable business book built around one ownable framework, written for operators",
-        "trim": "6x9", "paper": "white_bw", "target_words": 50000,
-        "chapter_words": 3800, "pov": "second person, direct address", "font": "sourceserif",
+        "trim": "6x9", "paper": "white_bw",
+        "target_words": 60000, "min_words": 45000, "chapter_words": 4000, "wpp": 285,
+        "pov": "second person, direct address",
+        "structure": "case study + principle + action step rhythm per chapter",
+        "font": "sourceserif",
     },
     "mindfulness": {
         "kind": "nonfiction", "label": "Mindfulness / Spirituality",
         "comps": "calm, present-tense spiritual guide that turns one deep idea over patiently",
-        "trim": "5.5x8.5", "paper": "cream_bw", "target_words": 45000,
-        "chapter_words": 3200, "pov": "second person, gentle direct address", "font": "ebgaramond_lg",
+        "trim": "5.5x8.5", "paper": "cream_bw",
+        "target_words": 45000, "min_words": 30000, "chapter_words": 3800, "wpp": 260,
+        "pov": "second person, gentle direct address",
+        "structure": "one deep idea per chapter, practice section closing each",
+        "font": "ebgaramond_lg",
     },
 }
 

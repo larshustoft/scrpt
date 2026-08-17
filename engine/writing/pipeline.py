@@ -233,10 +233,12 @@ async def build_outline(catalog: str) -> None:
             "application, a closing exercise."
         )
 
+    genre_structure = p.get("structure", "")
     prompt = (
         f"BIBLE:\n{_bible_digest(ms)}\n\n"
         f"Create the chapter outline: exactly {n_chapters} chapters, total length "
-        f"{ms.target_words} words (≈{p['chapter_words']} words per chapter). {shape}\n\n"
+        f"{ms.target_words} words (≈{p['chapter_words']} words per chapter). {shape}\n"
+        f"GENRE STRUCTURE (non-negotiable): {genre_structure}\n\n"
         "Return JSON only:\n"
         '[{"title": "...", "summary": "120-200 words on what happens / what it teaches", '
         '"beats": ["beat 1", "beat 2", "beat 3", "beat 4", "beat 5"]}]'
