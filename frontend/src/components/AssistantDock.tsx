@@ -236,27 +236,15 @@ export function AssistantDock() {
         </div>
       )}
 
-      {/* the orb */}
+      {/* the orb — a living presence, motion per state */}
       <div className="flex flex-col items-center gap-2">
         <button
           aria-label="Assistant"
           onClick={() => setOpen(!open)}
-          className="relative h-[64px] w-[64px] rounded-full transition-transform hover:scale-105"
-          style={{
-            background:
-              "radial-gradient(circle at 35% 30%, rgba(218,184,111,0.95), rgba(138,109,53,0.9) 55%, rgba(23,18,5,0.95))",
-            boxShadow: `${orbGlow}, 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.35)`,
-          }}
+          className="relative h-[64px] w-[64px] rounded-full transition-transform hover:scale-105 overflow-hidden"
+          style={{ boxShadow: `${orbGlow}, 0 8px 24px rgba(0,0,0,0.6)` }}
         >
-          <span
-            className={`absolute inset-[-10px] rounded-full ${state !== "idle" ? "" : "pulse-soft"}`}
-            style={{
-              boxShadow: orbGlow,
-              animation: state === "speaking" ? "pulseSoft 0.6s ease-in-out infinite"
-                : state === "thinking" ? "pulseSoft 1s ease-in-out infinite"
-                : undefined,
-            }}
-          />
+          <OrbCanvas state={state} />
         </button>
         <span className="text-[10px] tracking-[0.26em] uppercase text-text-secondary select-none"
               style={{ textShadow: "0 1px 8px rgba(0,0,0,0.9)" }}>
@@ -264,6 +252,110 @@ export function AssistantDock() {
         </span>
       </div>
     </div>
+  );
+}
+
+/** The presence inside the orb — canvas animation keyed to the state. */
+function OrbCanvas({ state }: { state: OrbState }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stateRef = useRef<OrbState>(state);
+  stateRef.current = state;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const size = 64;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(dpr, dpr);
+    const cx = size / 2, cy = size / 2;
+    let raf = 0;
+
+    const draw = (tMs: number) => {
+      const t = tMs / 1000;
+      const s = stateRef.current;
+      ctx.clearRect(0, 0, size, size);
+
+      // sphere base
+      const base = ctx.createRadialGradient(cx * 0.7, cy * 0.6, 4, cx, cy, size * 0.55);
+      base.addColorStop(0, "rgba(218,184,111,0.95)");
+      base.addColorStop(0.55, "rgba(138,109,53,0.9)");
+      base.addColorStop(1, "rgba(23,18,5,0.98)");
+      ctx.fillStyle = base;
+      ctx.beginPath();
+      ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // breathing core (always, stronger when engaged)
+      const breathe = 0.5 + 0.5 * Math.sin(t * (s === "idle" ? 1.4 : 3));
+      const coreR = s === "speaking"
+        ? 9 + 7 * (0.4 + 0.6 * Math.abs(Math.sin(t * 7.3) * Math.sin(t * 4.1)))
+        : 8 + 5 * breathe;
+      const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 1.9);
+      core.addColorStop(0, "rgba(255,244,220,0.95)");
+      core.addColorStop(0.45, "rgba(230,196,130,0.55)");
+      core.addColorStop(1, "rgba(230,196,130,0)");
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(cx, cy, coreR * 1.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (s === "listening") {
+        // sonar rings drifting outward
+        for (let i = 0; i < 3; i++) {
+          const phase = (t * 0.9 + i / 3) % 1;
+          ctx.strokeStyle = `rgba(240,220,180,${0.5 * (1 - phase)})`;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 6 + phase * 24, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      } else if (s === "thinking") {
+        // a spark orbiting the core
+        for (let i = 0; i < 2; i++) {
+          const a = t * 2.6 + i * Math.PI;
+          const r = 18;
+          const x = cx + r * Math.cos(a), y = cy + r * 0.55 * Math.sin(a);
+          const g = ctx.createRadialGradient(x, y, 0, x, y, 5);
+          g.addColorStop(0, "rgba(255,244,220,0.9)");
+          g.addColorStop(1, "rgba(255,244,220,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (s === "speaking") {
+        // voice rings shimmering with pseudo-amplitude
+        for (let i = 0; i < 2; i++) {
+          const amp = Math.abs(Math.sin(t * (6 + i * 2.4) + i));
+          ctx.strokeStyle = `rgba(245,228,190,${0.28 + 0.32 * amp})`;
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 13 + i * 7 + amp * 3.5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // glass highlight
+      const gloss = ctx.createRadialGradient(cx * 0.68, cy * 0.5, 1, cx * 0.68, cy * 0.5, 16);
+      gloss.addColorStop(0, "rgba(255,255,255,0.34)");
+      gloss.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = gloss;
+      ctx.beginPath();
+      ctx.arc(cx * 0.68, cy * 0.5, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <canvas ref={canvasRef}
+            style={{ width: 64, height: 64, display: "block", borderRadius: "50%" }} />
   );
 }
 
