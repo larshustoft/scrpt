@@ -132,6 +132,8 @@ export interface ScrptBook {
       uploaded_path?: string;
       cover_pdf?: string;
       cover_front_png?: string;
+      variants?: { index: number; preview: string }[];
+      selected_variant?: number;
       validation?: ValidationReport;
     };
     audio?: {
@@ -355,6 +357,19 @@ export const scrpt = {
       by_marketplace: { marketplace: string; units: number; royalty: number; currency: string }[];
       totals: { titles: number; units: number; kenp_pages: number; royalty: number };
     }>("/api/scrpt/reports/summary"),
+
+  reportsSeries: () =>
+    call<{
+      series: {
+        series_id: string; series_title: string; proven: boolean;
+        books: { catalog_number: string; title: string; book_number: number; units: number; kenp_pages: number; royalty: number }[];
+        readthrough: (number | null)[];
+        value_per_first_sale: number | null;
+        royalty_total: number; royalty_recent_60d: number;
+        suggested_ad_share: number;
+      }[];
+      notes: { min_units_proven: number; explore_pool: number };
+    }>("/api/scrpt/reports/series"),
 
   reportsByBook: () =>
     call<{ books: { title: string; asin: string; format: string; units: number; kenp_pages: number; royalty: number; currency: string; catalog_number: string | null }[] }>(

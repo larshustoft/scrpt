@@ -350,6 +350,14 @@ async def generate_blurb(catalog: str) -> dict:
     if ms.chapters and ms.chapters[0].blocks:
         opening = " ".join(b.text for b in ms.chapters[0].blocks[:6])[:1500]
 
+    series = book["data"].get("series") or {}
+    in_series = bool(series.get("series_title"))
+    wants_teaser = in_series and series.get("book_number", 1) < series.get("total_planned", 1)
+    teaser_field = (
+        ', "next_in_series_teaser": "60-90 words for the back of THIS book: a teaser '
+        f"pointing the reader to book {series.get('book_number', 1) + 1} of "
+        f"{series.get('series_title', '')} — hook them without spoiling, end with an "
+        'invitation to continue the series"' if wants_teaser else "")
     prompt = (
         f"BIBLE:\n{_bible_digest(ms)}\n\nOUTLINE:\n{_outline_digest(ms)}\n\n"
         f"OPENING OF THE BOOK:\n{opening}\n\n"
@@ -360,7 +368,7 @@ async def generate_blurb(catalog: str) -> dict:
         '{"tagline": "one punchy line for the cover", '
         '"description": "the Amazon book description", '
         '"keywords": ["7 KDP backend search phrases, 2-4 words each"], '
-        '"categories": ["3 specific Amazon browse category paths"]}'
+        f'"categories": ["3 specific Amazon browse category paths"]{teaser_field}}}'
     )
     raw = await complete(system, prompt, max_tokens=2500)
     pkg = extract_json(raw)
@@ -368,6 +376,8 @@ async def generate_blurb(catalog: str) -> dict:
     book, ms = _load(catalog)
     ms.blurb = str(pkg.get("description", ""))
     ms.tagline = str(pkg.get("tagline", ""))
+    if pkg.get("next_in_series_teaser"):
+        ms.back_matter.next_in_series_cta = str(pkg["next_in_series_teaser"])
     _save(book, ms)
     update_book(book["id"], {
         "description": ms.blurb,

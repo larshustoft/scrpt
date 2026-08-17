@@ -236,3 +236,98 @@ def by_book() -> list[dict]:
         return rows
     finally:
         conn.close()
+
+
+def series_readthrough() -> dict:
+    """
+    Per-series read-through funnel + ad-allocation recommendation.
+
+    Read-through proxy: unit ratio book_n / book_(n-1) (KDP has no
+    customer-level chains). value_per_first_sale = total series royalty per
+    book-1 unit sold — the number that tells you what a book-1 ad click is
+    actually worth. Allocation: proportional to value x recent velocity, with
+    an exploration floor so unproven series keep getting discovery budget.
+    """
+    init_reports_table()
+    conn = get_connection()
+    try:
+        books = conn.execute("SELECT catalog_number, title, data FROM books").fetchall()
+        rows = conn.execute(
+            """SELECT title, SUM(units) AS units, SUM(kenp_pages) AS kenp,
+                      SUM(royalty) AS royalty,
+                      SUM(CASE WHEN date >= date('now','-60 days')
+                          THEN royalty ELSE 0 END) AS royalty_recent
+               FROM royalty_rows GROUP BY LOWER(TRIM(title))""").fetchall()
+    finally:
+        conn.close()
+
+    sales = {(r["title"] or "").strip().lower(): dict(r) for r in rows}
+
+    series_map: dict[str, dict] = {}
+    for b in books:
+        data = json.loads(b["data"]) if isinstance(b["data"], str) else (b["data"] or {})
+        ser = (data.get("series") or {})
+        if not ser.get("series_id") or not data.get("manuscript"):
+            continue
+        sid = ser["series_id"]
+        entry = series_map.setdefault(sid, {
+            "series_title": ser.get("series_title", ""), "books": []})
+        srow = sales.get((b["title"] or "").strip().lower(), {})
+        entry["books"].append({
+            "catalog_number": b["catalog_number"],
+            "title": b["title"],
+            "book_number": ser.get("book_number", 1),
+            "units": float(srow.get("units") or 0),
+            "kenp_pages": float(srow.get("kenp") or 0),
+            "royalty": float(srow.get("royalty") or 0),
+            "royalty_recent": float(srow.get("royalty_recent") or 0),
+        })
+
+    MIN_UNITS_PROVEN = 20   # below this, read-through is noise
+    EXPLORE_POOL = 0.10     # share of budget reserved for unproven series
+
+    out = []
+    for sid, entry in series_map.items():
+        bks = sorted(entry["books"], key=lambda x: x["book_number"])
+        b1_units = bks[0]["units"] if bks else 0
+        readthrough = []
+        for i in range(1, len(bks)):
+            prev, cur = bks[i - 1]["units"], bks[i]["units"]
+            readthrough.append(round(cur / prev, 3) if prev >= 5 else None)
+        total_royalty = sum(b["royalty"] for b in bks)
+        value_per_first_sale = round(total_royalty / b1_units, 2) if b1_units >= 1 else None
+        recent = sum(b["royalty_recent"] for b in bks)
+        proven = b1_units >= MIN_UNITS_PROVEN
+        out.append({
+            "series_id": sid,
+            "series_title": entry["series_title"],
+            "books": bks,
+            "readthrough": readthrough,
+            "value_per_first_sale": value_per_first_sale,
+            "royalty_total": round(total_royalty, 2),
+            "royalty_recent_60d": round(recent, 2),
+            "proven": proven,
+        })
+
+    # allocation: proven series split ~90% by value x velocity; explorers split the floor
+    proven_series = [s for s in out if s["proven"] and s["value_per_first_sale"]]
+    explorers = [s for s in out if not s["proven"]]
+    scores = {
+        s["series_id"]: max(0.01, (s["value_per_first_sale"] or 0))
+        * max(1.0, s["royalty_recent_60d"])
+        for s in proven_series
+    }
+    score_sum = sum(scores.values()) or 1
+    main_pool = 1.0 - (EXPLORE_POOL if explorers else 0)
+    for s in out:
+        if s["series_id"] in scores:
+            s["suggested_ad_share"] = round(main_pool * scores[s["series_id"]] / score_sum, 3)
+        elif explorers:
+            s["suggested_ad_share"] = round(EXPLORE_POOL / len(explorers), 3)
+        else:
+            s["suggested_ad_share"] = 0.0
+
+    out.sort(key=lambda s: -(s["suggested_ad_share"] or 0))
+    return {"series": out,
+            "notes": {"min_units_proven": MIN_UNITS_PROVEN,
+                      "explore_pool": EXPLORE_POOL}}

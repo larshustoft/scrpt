@@ -347,6 +347,44 @@ async def generate_front(catalog: str, req: FrontCoverRequest = None):
     return {"job_id": job_id}
 
 
+class VariantsRequest(BaseModel):
+    direction: str = ""
+    count: int = 4
+
+
+@router.post("/cover/generate-variants/{catalog}")
+async def generate_variants(catalog: str, req: VariantsRequest = None):
+    from ..cover.front_cover import generate_cover_variants
+    direction = req.direction if req else ""
+    count = req.count if req else 4
+    active = [j for j in list_jobs(catalog, active_only=True)
+              if j["kind"] in ("front_cover", "cover_variants")]
+    if active:
+        return {"job_id": active[0]["id"], "already_running": True}
+
+    async def job(handle):
+        handle.progress(0.08, "brief", "Art-directing from the bible")
+        return await generate_cover_variants(
+            catalog, count, direction,
+            on_progress=lambda f, d: handle.progress(f, "painting", d))
+
+    job_id = start_job("cover_variants", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+class SelectVariantRequest(BaseModel):
+    index: int
+
+
+@router.post("/cover/select-variant/{catalog}")
+def select_variant(catalog: str, req: SelectVariantRequest):
+    from ..cover.front_cover import select_cover_variant
+    try:
+        return select_cover_variant(catalog, req.index)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
 # ── audiobook ────────────────────────────────────────────────────
 
 @router.post("/audio/{catalog}")
@@ -392,3 +430,9 @@ def reports_summary():
 def reports_books():
     from ..reports.importer import by_book
     return {"books": by_book()}
+
+
+@router.get("/reports/series")
+def reports_series():
+    from ..reports.importer import series_readthrough
+    return series_readthrough()

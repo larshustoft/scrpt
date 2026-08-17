@@ -414,19 +414,22 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
   const [msg, setMsg] = useState("");
   const [imgKey, setImgKey] = useState(0);
 
+  const [selecting, setSelecting] = useState<number | null>(null);
+  const variants = cover.variants || [];
+
   const generate = async () => {
     setRunning(true);
     setMsg("Art-directing from the book's bible…");
     try {
-      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/cover/generate-front/${catalog}`, {
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/cover/generate-variants/${catalog}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ direction }),
+        body: JSON.stringify({ direction, count: 4 }),
       });
       const { job_id } = await res.json();
       const job = await pollJob(job_id, (j) => setMsg(j.detail || j.stage || "Painting…"));
       if (job.status === "done") {
-        setMsg("Front cover ready.");
+        setMsg("Four covers ready — pick one.");
         setImgKey((k) => k + 1);
         reload();
       } else {
@@ -436,6 +439,25 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
       setMsg(e instanceof Error ? e.message : "Generation failed");
     } finally {
       setRunning(false);
+    }
+  };
+
+  const choose = async (index: number) => {
+    setSelecting(index);
+    try {
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/cover/select-variant/${catalog}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index }),
+      });
+      if (!res.ok) throw new Error("Could not select variant");
+      setImgKey((k) => k + 1);
+      setMsg(`Variant ${index} is now the cover.`);
+      reload();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Selection failed");
+    } finally {
+      setSelecting(null);
     }
   };
 
@@ -449,15 +471,49 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
         reference.
       </p>
 
-      {hasArt && (
-        <div className="mt-4 w-[150px] rounded-[5px] overflow-hidden"
-             style={{ boxShadow: "var(--shadow-page)" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img key={imgKey}
-               src={`${scrpt.engineUrl}/api/files/${catalog}/cover-front.png?v=${imgKey}`}
-               alt="Front cover" className="w-full block" />
-        </div>
-      )}
+      <div className="mt-4 flex gap-5 flex-wrap items-start">
+        {hasArt && (
+          <div className="w-[150px] shrink-0">
+            <div className="rounded-[5px] overflow-hidden" style={{ boxShadow: "var(--shadow-page)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img key={imgKey}
+                   src={`${scrpt.engineUrl}/api/files/${catalog}/cover-front.png?v=${imgKey}`}
+                   alt="Front cover" className="w-full block" />
+            </div>
+            <div className="text-[10px] tracking-[0.12em] uppercase text-text-faint text-center mt-2">
+              Current cover
+            </div>
+          </div>
+        )}
+        {variants.length > 0 && (
+          <div className="flex-1 min-w-[300px]">
+            <div className="label-scrpt">Alternatives — click to make it the cover</div>
+            <div className="grid grid-cols-4 gap-3 mt-1">
+              {variants.map((v) => (
+                <button key={v.index} onClick={() => choose(v.index)}
+                        disabled={selecting !== null}
+                        className="relative rounded-[5px] overflow-hidden transition-transform hover:scale-[1.04]"
+                        style={{
+                          boxShadow: cover.selected_variant === v.index
+                            ? "0 0 0 2px var(--accent), var(--shadow-page)"
+                            : "var(--shadow-page)",
+                          opacity: selecting !== null && selecting !== v.index ? 0.5 : 1,
+                        }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`${scrpt.engineUrl}/api/files/${catalog}/${v.preview}?v=${imgKey}`}
+                       alt={`Variant ${v.index}`} className="w-full block" />
+                  {selecting === v.index && (
+                    <span className="absolute inset-0 flex items-center justify-center text-[11px]"
+                          style={{ background: "rgba(14,12,9,0.6)" }}>
+                      Installing…
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="mt-4">
         <div className="label-scrpt">Art direction (optional)</div>
@@ -468,7 +524,7 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
       </div>
       <div className="flex items-center gap-3 mt-3">
         <button className="btn-brass text-[12px]" disabled={running} onClick={generate}>
-          {running ? "Painting…" : hasArt ? "Regenerate cover" : "Generate front cover"}
+          {running ? "Painting…" : "Generate 4 covers"}
         </button>
         {msg && <span className="text-[11px] text-text-tertiary truncate max-w-[200px]">{msg}</span>}
       </div>

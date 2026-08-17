@@ -66,27 +66,30 @@ async def build_cover_brief(book: dict, ms: Manuscript) -> str:
         c = ms.concept_bible
         bible = f"Thesis: {c.thesis}\nFramework: {c.framework_name}\nAudience: {c.audience}"
 
+    # Premise-first briefing (Lars-validated): tell the model the story and the
+    # names, then let it do its own cover-design thinking. Over-specified art
+    # direction produces flatter covers than a vivid premise does.
     prompt = (
-        f"Design the front cover art direction for this {preset.get('label', 'book')}:\n"
-        f"TITLE: {book['title']}\nAUTHOR: {author}\nTAGLINE: {ms.tagline or '(none)'}\n"
-        f"{bible}\nBLURB: {ms.blurb[:600]}\n\n"
-        f"Genre cover convention: {style}.\n\n"
-        "Write ONE image-generation prompt (150-220 words) for a professional book "
-        "cover in portrait 2:3. It must:\n"
-        "- describe the scene, composition, lighting and palette concretely\n"
-        "- specify the title text rendered LARGE as the dominant element, with a "
-        "treatment that interacts with the artwork (texture, weathering, or overlap)\n"
-        "- specify the author name in smaller capitals near the bottom\n"
-        "- include the tagline only if one was given\n"
-        "- state the exact strings to spell, character for character\n"
-        "- forbid any other text, logos or watermarks\n"
-        'Return JSON only: {"image_prompt": "..."}'
+        f"Summarize this book's premise in 2-4 vivid sentences for a cover "
+        f"designer — concrete stakes, setting, and hook, no spoilers past the "
+        f"setup:\n{bible}\nBLURB: {ms.blurb[:600]}\n"
+        'Return JSON only: {"premise": "..."}'
     )
     raw = await complete(
-        "You are an award-winning book cover art director for commercial bestsellers. "
-        "You brief image models with precise, vivid, production-ready prompts.",
-        prompt, max_tokens=1500)
-    return str(extract_json(raw)["image_prompt"])
+        "You distill books into vivid, concrete premises.", prompt, max_tokens=800)
+    premise = str(extract_json(raw)["premise"])
+
+    label = preset.get("label", "book").lower()
+    parts = [
+        f"I need a book cover for a paperback {label} called {book['title']}.",
+        premise,
+        f"The author is called {author}." if author else "",
+        f'If a tagline fits the design, use exactly: "{ms.tagline}"' if ms.tagline else "",
+        "Portrait book cover. No text other than the title"
+        + (", author name" if author else "")
+        + (" and tagline." if ms.tagline else "."),
+    ]
+    return " ".join(p for p in parts if p)
 
 
 async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
@@ -114,12 +117,18 @@ async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
     b64 = r.json()["data"][0]["b64_json"]
     raw_png = base64.b64decode(b64)
 
+    return _install_cover(catalog, raw_png, brief)
+
+
+def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
+                   mode: str = "ai") -> dict:
+    """Write cover-art/ebook/preview files and update the book record."""
+    book = get_book_by_catalog(catalog)
     out_dir = Path(OUTPUT_DIR) / catalog
     out_dir.mkdir(parents=True, exist_ok=True)
     art_path = out_dir / "cover-art.png"
     art_path.write_bytes(raw_png)
 
-    # ebook cover (Amazon: 1600x2560 recommended) + shelf preview
     from PIL import Image
     import io
     img = Image.open(io.BytesIO(raw_png)).convert("RGB")
@@ -133,14 +142,95 @@ async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
     data = dict(book["data"])
     cover = data.get("cover") or {}
     cover.update({
-        "mode": "ai",
+        "mode": mode,
         "status": "draft",
         "artwork_path": str(art_path),
         "ebook_cover_path": str(ebook_path),
         "cover_front_png": str(preview_path),
-        "art_brief": brief,
     })
+    if brief:
+        cover["art_brief"] = brief
     data["cover"] = cover
     update_book(book["id"], data)
     return {"artwork": str(art_path), "ebook_cover": str(ebook_path),
             "preview": str(preview_path), "brief": brief}
+
+
+async def _generate_one(client: httpx.AsyncClient, brief: str) -> bytes:
+    r = await client.post(
+        "https://api.openai.com/v1/images/generations",
+        headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+        json={"model": IMAGE_MODEL, "prompt": brief, "size": IMAGE_SIZE,
+              "quality": "high", "n": 1},
+        timeout=300,
+    )
+    if r.status_code != 200:
+        raise RuntimeError(f"Image generation failed ({r.status_code}): {r.text[:200]}")
+    return base64.b64decode(r.json()["data"][0]["b64_json"])
+
+
+async def generate_cover_variants(catalog: str, count: int = 4,
+                                  extra_direction: str = "",
+                                  on_progress=None) -> dict:
+    """Generate N cover alternatives in parallel; user picks one to install."""
+    import asyncio
+
+    book = get_book_by_catalog(catalog)
+    if not book:
+        raise ValueError(f"Book {catalog} not found")
+    ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not configured in the engine .env")
+
+    brief = await build_cover_brief(book, ms)
+    if extra_direction.strip():
+        brief = f"{brief} Additional direction from the publisher: {extra_direction.strip()}"
+    if on_progress:
+        on_progress(0.15, f"Painting {count} covers in parallel")
+
+    count = max(2, min(6, count))
+    async with httpx.AsyncClient() as client:
+        results = await asyncio.gather(
+            *[_generate_one(client, brief) for _ in range(count)],
+            return_exceptions=True)
+
+    out_dir = Path(OUTPUT_DIR) / catalog
+    out_dir.mkdir(parents=True, exist_ok=True)
+    from PIL import Image
+    import io
+    variants = []
+    for i, res in enumerate(results):
+        if isinstance(res, Exception):
+            continue
+        vpath = out_dir / f"cover-variant-{i + 1}.png"
+        vpath.write_bytes(res)
+        img = Image.open(io.BytesIO(res)).convert("RGB")
+        img.resize((400, 640), Image.LANCZOS).save(
+            out_dir / f"cover-variant-{i + 1}-preview.png", optimize=True)
+        variants.append({"index": i + 1,
+                         "preview": f"cover-variant-{i + 1}-preview.png"})
+    if not variants:
+        first_err = next((r for r in results if isinstance(r, Exception)), None)
+        raise RuntimeError(f"All variants failed: {first_err}")
+
+    data = dict(get_book_by_catalog(catalog)["data"])
+    cover = data.get("cover") or {}
+    cover["variants"] = variants
+    cover["art_brief"] = brief
+    data["cover"] = cover
+    update_book(book["id"], data)
+    return {"variants": variants, "brief": brief}
+
+
+def select_cover_variant(catalog: str, index: int) -> dict:
+    """Promote a generated variant to the book's official front cover."""
+    vpath = Path(OUTPUT_DIR) / catalog / f"cover-variant-{index}.png"
+    if not vpath.exists():
+        raise ValueError(f"Variant {index} not found")
+    book = get_book_by_catalog(catalog)
+    brief = ((book["data"].get("cover") or {}).get("art_brief")) or ""
+    result = _install_cover(catalog, vpath.read_bytes(), brief)
+    data = dict(get_book_by_catalog(catalog)["data"])
+    data["cover"]["selected_variant"] = index
+    update_book(book["id"], data)
+    return result

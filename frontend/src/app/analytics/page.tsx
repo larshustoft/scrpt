@@ -5,10 +5,13 @@ import { scrpt } from "@/lib/scrpt";
 
 type Summary = Awaited<ReturnType<typeof scrpt.reportsSummary>>;
 type BookRows = Awaited<ReturnType<typeof scrpt.reportsByBook>>["books"];
+type SeriesData = Awaited<ReturnType<typeof scrpt.reportsSeries>>;
 
 export default function AnalyticsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [books, setBooks] = useState<BookRows>([]);
+  const [seriesData, setSeriesData] = useState<SeriesData | null>(null);
+  const [adBudget, setAdBudget] = useState(1000);
   const [importMsg, setImportMsg] = useState("");
   const [importing, setImporting] = useState(false);
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
@@ -19,9 +22,13 @@ export default function AnalyticsPage() {
     setEngineOnline(online);
     if (!online) return;
     try {
-      const [s, b] = await Promise.all([scrpt.reportsSummary(), scrpt.reportsByBook()]);
+      const [s, b, sr] = await Promise.all([
+        scrpt.reportsSummary(), scrpt.reportsByBook(),
+        scrpt.reportsSeries().catch(() => null),
+      ]);
       setSummary(s);
       setBooks(b.books);
+      setSeriesData(sr);
     } catch { /* not imported yet */ }
   }, []);
 
@@ -127,6 +134,81 @@ export default function AnalyticsPage() {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* series read-through + ad allocation */}
+          {seriesData && seriesData.series.length > 0 && (
+            <div className="card mt-6">
+              <div className="flex items-baseline justify-between flex-wrap gap-3">
+                <div>
+                  <div className="serif-display text-[18px] font-semibold">Series performance</div>
+                  <div className="text-[11px] text-text-faint mt-1 max-w-[520px]">
+                    Read-through = units of each book per unit of the one before it.
+                    Value per first sale = total series royalty earned per copy of
+                    book one — what a book-one ad click is worth.
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-text-tertiary">Monthly ad budget $</span>
+                  <input type="number" className="input-scrpt w-24 py-1"
+                         value={adBudget}
+                         onChange={(e) => setAdBudget(Number(e.target.value) || 0)} />
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-6">
+                {seriesData.series.map((sr) => {
+                  const maxUnits = Math.max(1, ...sr.books.map((b) => b.units));
+                  return (
+                    <div key={sr.series_id} className="rounded-[10px] p-4"
+                         style={{ background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)" }}>
+                      <div className="flex items-baseline justify-between flex-wrap gap-2">
+                        <div className="text-[14px] font-semibold">
+                          {sr.series_title}
+                          {!sr.proven && (
+                            <span className="text-[10px] uppercase tracking-[0.1em] ml-2"
+                                  style={{ color: "var(--status-amber)" }}>exploring</span>
+                          )}
+                        </div>
+                        <div className="text-[12px] text-text-secondary">
+                          {sr.value_per_first_sale != null && (
+                            <span className="mr-4">${sr.value_per_first_sale.toFixed(2)} / first sale</span>
+                          )}
+                          <span className="text-accent font-semibold">
+                            ${Math.round(adBudget * sr.suggested_ad_share)} suggested
+                          </span>
+                          <span className="text-text-faint ml-1">
+                            ({Math.round(sr.suggested_ad_share * 100)}%)
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-1.5">
+                        {sr.books.map((b, i) => (
+                          <div key={b.catalog_number} className="flex items-center gap-3">
+                            <span className="text-[11px] text-text-faint w-4 shrink-0">{b.book_number}</span>
+                            <span className="text-[12px] text-text-secondary w-44 truncate shrink-0">{b.title}</span>
+                            <div className="flex-1 h-[14px] rounded overflow-hidden"
+                                 style={{ background: "rgba(236,229,218,0.05)" }}>
+                              <div className="h-full rounded"
+                                   style={{ width: `${Math.max(2, (b.units / maxUnits) * 100)}%`,
+                                            background: "linear-gradient(90deg, var(--accent-deep), var(--accent))" }} />
+                            </div>
+                            <span className="text-[11px] text-text-secondary w-16 text-right shrink-0">
+                              {b.units.toLocaleString()} units
+                            </span>
+                            <span className="text-[11px] text-text-faint w-14 text-right shrink-0">
+                              {i > 0 && sr.readthrough[i - 1] != null
+                                ? `${Math.round((sr.readthrough[i - 1] as number) * 100)}%`
+                                : ""}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
