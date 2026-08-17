@@ -88,7 +88,7 @@ export function Navbar() {
       className="sticky top-0 z-50 h-[64px] px-16 flex items-center gap-6 border-b border-border-subtle"
       style={{ background: "var(--nav-bg)", backdropFilter: "blur(16px)" }}
     >
-      <Link href="/front" className="text-accent hover:opacity-80 transition-opacity">
+      <Link href="/front" className="text-text-primary hover:opacity-80 transition-opacity">
         <ScrptLogo size={24} />
       </Link>
 

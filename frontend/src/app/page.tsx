@@ -15,7 +15,7 @@ export default function SalesPage() {
     <div className="min-h-screen">
       {/* top bar */}
       <header className="absolute top-0 inset-x-0 z-20 h-[72px] px-8 flex items-center justify-between">
-        <span className="text-accent"><ScrptLogo size={26} /></span>
+        <span className="text-text-primary"><ScrptLogo size={26} /></span>
         <nav className="flex items-center gap-6">
           <a href="#how" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
             How it works
