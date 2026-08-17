@@ -298,18 +298,47 @@ async def build_outline(catalog: str) -> None:
         )
 
     genre_structure = p.get("structure", "")
-    prompt = (
-        f"BIBLE:\n{_bible_digest(ms)}\n\n"
-        f"Create the chapter outline: exactly {n_chapters} chapters, total length "
-        f"{ms.target_words} words (≈{p['chapter_words']} words per chapter). {shape}\n"
-        f"GENRE STRUCTURE (non-negotiable): {genre_structure}\n"
-        f"{craft(ms.genre_preset, 'OUTLINE')}\n"
-        "Return JSON only:\n"
-        '[{"title": "...", "summary": "120-200 words on what happens / what it teaches", '
-        '"beats": ["beat 1", "beat 2", "beat 3", "beat 4", "beat 5"]}]'
-    )
-    raw = await complete(system, prompt, max_tokens=16000)
-    chapters = extract_json(raw)
+    craft_txt = craft(ms.genre_preset, "OUTLINE")
+
+    # Outline in enforced waves. A single request for 25-30 chapters gets
+    # silently shortened by the model (observed: 12 returned of 30 asked —
+    # a 90k-word book heading for 36k). Waves of ≤10 keep each response
+    # honest, and the loop guarantees the full count.
+    chapters: list = []
+    wave = 10
+    while len(chapters) < n_chapters:
+        start = len(chapters) + 1
+        end = min(n_chapters, len(chapters) + wave)
+        so_far = ""
+        if chapters:
+            done = "\n".join(
+                f"{i + 1}. {c.get('title', '')}: {str(c.get('summary', ''))[:160]}"
+                for i, c in enumerate(chapters))
+            so_far = ("CHAPTERS ALREADY OUTLINED (continue the arc, never "
+                      f"repeat):\n{done}\n\n")
+        prompt = (
+            f"BIBLE:\n{_bible_digest(ms)}\n\n{so_far}"
+            f"The complete book has exactly {n_chapters} chapters totalling "
+            f"{ms.target_words} words (≈{p['chapter_words']} words per "
+            f"chapter). {shape}\n"
+            f"GENRE STRUCTURE (non-negotiable): {genre_structure}\n"
+            f"{craft_txt}\n"
+            f"Outline chapters {start} through {end} ONLY — exactly "
+            f"{end - start + 1} chapters, sitting at "
+            f"{round(100 * start / n_chapters)}%–{round(100 * end / n_chapters)}% "
+            "of the whole story, paced so the structure beats land at their "
+            "percentages of the FULL book.\n"
+            "Return JSON only:\n"
+            '[{"title": "...", "summary": "120-200 words on what happens / what it teaches", '
+            '"beats": ["beat 1", "beat 2", "beat 3", "beat 4", "beat 5"]}]'
+        )
+        raw = await complete(system, prompt, max_tokens=12000)
+        got = extract_json(raw)
+        if not isinstance(got, list) or not got:
+            raise RuntimeError(
+                f"Outline wave {start}-{end} returned no chapters")
+        chapters.extend(got[:end - start + 1])
+    chapters = chapters[:n_chapters]
 
     ms.chapters = [
         Chapter(
