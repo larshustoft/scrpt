@@ -50,8 +50,11 @@ export default function WorkOrderPage() {
     book_ideas?: { title: string; logline: string }[];
     title_suggestions?: { title: string; logline: string }[];
     pen_name?: string;
+    is_series?: boolean;
+    recommended_books?: number;
     cover_direction?: string;
-    recommendations?: { heat_or_tone?: string; target_words?: number; notes?: string };
+    recommendations?: { heat_or_tone?: string; target_words?: number;
+      trim_size?: string; notes?: string };
   }
   const [dev, setDev] = useState<DevPackage | null>(null);
   // the original rough idea, kept so "research again" re-develops from the
@@ -90,13 +93,23 @@ export default function WorkOrderPage() {
   // fill the whole form from a commissioning package — the publisher only
   // re-presses the button if they want a different suggestion
   const applyPackage = (pkg: DevPackage) => {
-    const seriesAdopted = Boolean(pkg.series_titles?.length);
+    // the research decides series vs standalone from the idea itself
+    const wantsSeries = pkg.is_series || Boolean(pkg.series_titles?.length);
+    const nBooks = wantsSeries
+      ? (pkg.recommended_books || pkg.book_ideas?.length || seriesBooks || 3)
+      : 1;
+    if (wantsSeries) {
+      setIsSeries(true);
+      setSeriesBooks(nBooks);
+      if (pkg.series_titles?.length) setSeriesTitle(pkg.series_titles[0]);
+    }
+
     // The idea field becomes the full commissioning brief: what the book is
     // (genre, standalone or series), then the storyline. This same text later
     // feeds the cover generator's premise when no story bible exists yet.
     const label = preset?.label || "book";
-    const shape = seriesAdopted || isSeries
-      ? `a series of ${seriesBooks} ${label} books`
+    const shape = wantsSeries
+      ? `a series of ${nBooks} ${label} books`
       : `a standalone ${label}`;
     const brief = [
       `This is ${shape}${pkg.series_titles?.length ? ` — “${pkg.series_titles[0]}”` : ""}.`,
@@ -109,9 +122,11 @@ export default function WorkOrderPage() {
 
     const firstBook = pkg.book_ideas?.[0] || pkg.title_suggestions?.[0];
     if (firstBook) setTitle(firstBook.title);
-    if (seriesAdopted) { setIsSeries(true); setSeriesTitle(pkg.series_titles![0]); }
     if (pkg.pen_name) setPenName((p) => (p.trim() ? p : pkg.pen_name!));
+    // format comes from the research too — length and trim
     if (pkg.recommendations?.target_words) setTargetWords(pkg.recommendations.target_words);
+    const recTrim = (pkg.recommendations?.trim_size || "").replace(/[″"\s]/g, "");
+    if (KDP_TRIMS.some((t) => t.key === recTrim)) setTrim(recTrim);
     setCoverDirection(pkg.cover_direction || "");
   };
 
@@ -493,7 +508,7 @@ export default function WorkOrderPage() {
               <option value="">{preset ? `${preset.trim.replace("x", '\u2033 × ')}\u2033 (genre default)` : "Default"}</option>
               {KDP_TRIMS.map((t) => (
                 <option key={t.key} value={t.key}>
-                  {t.key.replace("x", '\u2033 × ')}\u2033{t.hint ? ` — ${t.hint}` : ""}
+                  {`${t.key.replace("x", "″ × ")}″${t.hint ? ` — ${t.hint}` : ""}`}
                 </option>
               ))}
             </select>
