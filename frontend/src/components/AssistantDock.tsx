@@ -422,8 +422,9 @@ function OrbCanvas({ state, size = 64 }: { state: OrbState; size?: number }) {
       ctx.arc(cx, cy, coreR * 1.9, 0, Math.PI * 2);
       ctx.fill();
 
-      // circling presence — always in motion, faster when engaged
-      const orbitSpeed = s === "idle" ? 0.7 : s === "thinking" ? 2.6 : 1.6;
+      // circling presence — only when the assistant is live
+      if (s !== "idle") {
+      const orbitSpeed = s === "thinking" ? 2.6 : 1.6;
       for (let i = 0; i < 3; i++) {
         const a = t * orbitSpeed + (i * Math.PI * 2) / 3;
         const rx = 20, ry = 12;
@@ -443,6 +444,7 @@ function OrbCanvas({ state, size = 64 }: { state: OrbState; size?: number }) {
       ctx.beginPath();
       ctx.arc(cx, cy, 24, t * orbitSpeed * 0.9, t * orbitSpeed * 0.9 + Math.PI * 0.7);
       ctx.stroke();
+      }
 
       if (s === "listening") {
         // sonar rings drifting outward
