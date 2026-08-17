@@ -44,7 +44,10 @@ export default function SalesPage() {
               "linear-gradient(180deg, rgba(14,12,9,0.55) 0%, rgba(14,12,9,0.35) 45%, var(--bg) 100%)",
           }}
         />
-        <div className="relative max-w-[1100px] mx-auto px-8 pt-44 pb-28 text-center">
+        <div className="relative max-w-[1100px] mx-auto px-8 pt-40 pb-28 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-transparent.png" alt="SCRPT" className="w-[190px] mx-auto mb-6"
+               style={{ filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.7))" }} />
           <h1
             className="serif-display text-[52px] leading-[1.1] font-semibold text-text-primary max-w-[750px] mx-auto"
             style={{ textShadow: "0 2px 30px rgba(0,0,0,0.85)" }}

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useAuthContext } from "@/components/AuthProvider";
-import { ScrptLogo } from "@/components/Logo";
 
 type Mode = "signin" | "signup" | "magic";
 
@@ -45,8 +44,11 @@ export default function LoginPage() {
       <div className="absolute inset-0" style={{ background: "rgba(14,12,9,0.72)" }} />
 
       <div className="relative w-full max-w-[400px]">
-        <div className="flex justify-center mb-8 text-accent">
-          <ScrptLogo size={30} tagline />
+        <div className="flex justify-center">
+          {/* the PNG carries internal padding — negative margins rebalance it */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-transparent.png" alt="SCRPT" className="w-[260px] -mt-14 -mb-10"
+               style={{ filter: "drop-shadow(0 2px 18px rgba(0,0,0,0.6))" }} />
         </div>
 
         <div className="card">
