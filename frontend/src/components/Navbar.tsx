@@ -47,7 +47,13 @@ function FullscreenToggle() {
 
   useEffect(() => {
     if (window.scrptDesktop) {
-      window.scrptDesktop.isFullscreen().then(setIsFull);
+      // The native green button / Escape also toggle fullscreen, so poll the
+      // real window state and re-check on every resize.
+      const sync = () => window.scrptDesktop!.isFullscreen().then(setIsFull).catch(() => {});
+      sync();
+      const interval = setInterval(sync, 2000);
+      window.addEventListener("resize", sync);
+      return () => { clearInterval(interval); window.removeEventListener("resize", sync); };
     } else {
       const sync = () => setIsFull(Boolean(document.fullscreenElement));
       document.addEventListener("fullscreenchange", sync);
