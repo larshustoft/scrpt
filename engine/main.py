@@ -80,6 +80,10 @@ def _cleanup_preview_dirs():
 async def lifespan(app: FastAPI):
     """Initialize database on startup."""
     init_database()
+    from .jobs import init_jobs_table
+    from .reports.importer import init_reports_table
+    init_jobs_table()
+    init_reports_table()
     _cleanup_preview_dirs()
     print("━" * 60)
     print("  SCRPT Engine v1.0")
@@ -95,6 +99,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# ── SCRPT prose-book API ────────────────────────────────────────
+from .routers.scrpt import router as scrpt_router  # noqa: E402
+app.include_router(scrpt_router)
 
 # ── CORS ─────────────────────────────────────────────────────────
 app.add_middleware(

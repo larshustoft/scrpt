@@ -1,0 +1,361 @@
+"""
+SCRPT prose-book API.
+Everything the Work Order page, Bookshelf, Formatting Studio, Cover tab,
+Audiobook tab and Analytics pages talk to.
+"""
+
+import uuid
+from pathlib import Path
+from typing import Optional
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+
+from .. import database as db
+from ..config import OUTPUT_DIR
+from ..jobs import cancel_job, get_job, list_jobs, start_job
+from ..prose.models import (
+    BookKind, FONT_PRESETS, FormatConfig, GENRE_PRESETS, Manuscript,
+    ManuscriptStatus, PlotChoiceRequest, ChapterEditRequest, WorkOrderRequest,
+)
+from ..writing import pipeline as wp
+from ..writing.parsing import count_words
+
+router = APIRouter(prefix="/api/scrpt", tags=["scrpt"])
+
+
+# ── presets ──────────────────────────────────────────────────────
+
+@router.get("/presets")
+def presets():
+    return {"genres": GENRE_PRESETS, "fonts": FONT_PRESETS}
+
+
+# ── work orders ──────────────────────────────────────────────────
+
+@router.post("/workorder")
+async def create_workorder(req: WorkOrderRequest):
+    preset = GENRE_PRESETS.get(req.genre_preset)
+    if not preset:
+        raise HTTPException(400, f"Unknown genre preset: {req.genre_preset}")
+    if preset["kind"] != req.kind.value:
+        raise HTTPException(400, "Genre preset does not match book kind")
+
+    n_books = max(1, req.series_books if req.series_title else 1)
+    series_id = uuid.uuid4().hex[:8] if req.series_title else ""
+    created = []
+
+    for book_no in range(1, n_books + 1):
+        ms = Manuscript(
+            kind=req.kind,
+            genre_preset=req.genre_preset,
+            idea=req.idea,
+            target_words=req.target_words or preset["target_words"],
+            status=ManuscriptStatus.IDEA,
+        )
+        fmt = FormatConfig(
+            trim_size=req.trim_size or preset["trim"],
+            paper_type=req.paper_type or preset["paper"],
+            font_preset=req.font_preset or preset["font"],
+            paragraph_style="indent" if req.kind == BookKind.FICTION else "spaced",
+        )
+        title = req.title if (n_books == 1 and req.title) else (
+            f"Untitled ({req.series_title} #{book_no})" if req.series_title
+            else req.title or "Untitled"
+        )
+        data = {
+            "kind": req.kind.value,
+            "book_type": req.kind.value,          # legacy field compatibility
+            "genre_preset": req.genre_preset,
+            "author_name": req.pen_name,
+            "trim_size": fmt.trim_size,
+            "paper_type": fmt.paper_type,
+            "page_count": 0,
+            "list_price": 14.99 if req.kind == BookKind.NONFICTION else 12.99,
+            "manuscript": ms.model_dump(mode="json"),
+            "format": fmt.model_dump(mode="json"),
+            "interior": {}, "cover": {}, "audio": {},
+            "series": {
+                "series_id": series_id,
+                "series_title": req.series_title,
+                "book_number": book_no,
+                "total_planned": n_books,
+                "series_bible": "",
+            } if series_id else {},
+        }
+        created.append(db.create_book(title, data))
+
+    first = created[0]
+    job_id = None
+    if req.auto_draft:
+        catalog = first["catalog_number"]
+        job_id = start_job("full_draft",
+                           lambda h, c=catalog: wp.full_draft_job(h, c),
+                           book_catalog=catalog)
+    elif req.generate_plot_options:
+        catalog = first["catalog_number"]
+        job_id = start_job(
+            "plot_options",
+            lambda h, c=catalog: _plot_options_job(h, c),
+            book_catalog=catalog,
+        )
+    return {"books": created, "job_id": job_id}
+
+
+async def _plot_options_job(handle, catalog: str) -> dict:
+    handle.progress(0.1, "plotting", "Developing three directions")
+    options = await wp.generate_plot_options(catalog)
+    return {"options": options}
+
+
+# ── manuscript flow ──────────────────────────────────────────────
+
+@router.get("/books/{catalog}")
+def get_book(catalog: str):
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    return book
+
+
+@router.post("/plot-options/{catalog}")
+async def regenerate_plot_options(catalog: str):
+    job_id = start_job("plot_options",
+                       lambda h: _plot_options_job(h, catalog),
+                       book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.post("/choose-plot")
+async def choose_plot(req: PlotChoiceRequest):
+    book = db.get_book_by_catalog(req.catalog_number)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    job_id = start_job(
+        "full_draft",
+        lambda h: wp.full_draft_job(h, req.catalog_number, req.chosen_plot, req.edits),
+        book_catalog=req.catalog_number,
+    )
+    return {"job_id": job_id}
+
+
+@router.post("/draft/{catalog}")
+async def resume_draft(catalog: str):
+    """(Re)start drafting for whatever chapters aren't finished."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    active = [j for j in list_jobs(catalog, active_only=True) if j["kind"] == "full_draft"]
+    if active:
+        return {"job_id": active[0]["id"], "already_running": True}
+    ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
+    chosen = ms.chosen_plot or 0
+    job_id = start_job("full_draft",
+                       lambda h: wp.full_draft_job(h, catalog, chosen),
+                       book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.put("/chapter")
+def save_chapter(req: ChapterEditRequest):
+    """Persist studio edits to one chapter (full block replacement)."""
+    book = db.get_book_by_catalog(req.catalog_number)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
+    ch = next((c for c in ms.chapters if c.id == req.chapter_id), None)
+    if not ch:
+        raise HTTPException(404, "Chapter not found")
+    ch.blocks = req.blocks
+    ch.word_count = count_words(ch.blocks)
+    if ch.status.value in ("outlined", "drafting"):
+        ch.status = "drafted"
+    ms.word_count = sum(c.word_count for c in ms.chapters)
+    data = dict(book["data"])
+    data["manuscript"] = ms.model_dump(mode="json")
+    db.update_book(book["id"], data)
+    return {"success": True, "chapter_words": ch.word_count,
+            "book_words": ms.word_count}
+
+
+@router.post("/blurb/{catalog}")
+async def regenerate_blurb(catalog: str):
+    job_id = start_job("blurb",
+                       lambda h: _blurb_job(h, catalog), book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+async def _blurb_job(handle, catalog: str) -> dict:
+    handle.progress(0.2, "blurb", "Writing listing copy")
+    return await wp.generate_blurb(catalog)
+
+
+# ── jobs ─────────────────────────────────────────────────────────
+
+@router.get("/jobs/{job_id}")
+def job_status(job_id: str):
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    return job
+
+
+@router.get("/jobs")
+def jobs_for_book(catalog: Optional[str] = None, active: bool = False):
+    return {"jobs": list_jobs(catalog, active_only=active)}
+
+
+@router.post("/jobs/{job_id}/cancel")
+def job_cancel(job_id: str):
+    return {"cancelled": cancel_job(job_id)}
+
+
+# ── interior export ──────────────────────────────────────────────
+
+@router.post("/interior/export/{catalog}")
+async def export_interior(catalog: str):
+    from ..interior.print_service import export_interior as run_export
+
+    async def job(handle):
+        handle.progress(0.1, "render", "Rendering pages in print engine")
+        result = await run_export(catalog)
+        handle.progress(0.9, "validate", "Validating against KDP rules")
+        return result
+
+    job_id = start_job("interior_export", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.get("/interior/pdf/{catalog}")
+def interior_pdf(catalog: str):
+    path = Path(OUTPUT_DIR) / catalog / "interior.pdf"
+    if not path.exists():
+        raise HTTPException(404, "No interior PDF exported yet")
+    return FileResponse(str(path), media_type="application/pdf",
+                        filename=f"{catalog}-interior.pdf")
+
+
+# ── cover ────────────────────────────────────────────────────────
+
+def _book_cover_inputs(catalog: str):
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    interior = book["data"].get("interior") or {}
+    page_count = interior.get("page_count") or 0
+    if not page_count:
+        raise HTTPException(
+            409, "Interior not exported yet — the cover spine width depends on "
+                 "the final page count. Export the interior first.")
+    fmt = book["data"].get("format") or {}
+    trim = fmt.get("trim_size") or book["data"].get("trim_size", "5.5x8.5")
+    paper = fmt.get("paper_type") or book["data"].get("paper_type", "cream_bw")
+    return book, page_count, trim, paper
+
+
+@router.get("/cover/spec/{catalog}")
+def cover_spec(catalog: str):
+    from ..cover.designer_package import cover_spec_dict
+    book, pages, trim, paper = _book_cover_inputs(catalog)
+    return cover_spec_dict(pages, trim, paper)
+
+
+@router.post("/cover/designer-package/{catalog}")
+def designer_package(catalog: str):
+    from ..cover.designer_package import write_designer_package
+    book, pages, trim, paper = _book_cover_inputs(catalog)
+    result = write_designer_package(catalog, book["title"], pages, trim, paper)
+    data = dict(book["data"])
+    cover = data.get("cover") or {}
+    cover.update({"spec": result["spec"], "spec_page_count": pages})
+    data["cover"] = cover
+    db.update_book(book["id"], data)
+    return result
+
+
+@router.get("/cover/designer-package/{catalog}/{file}")
+def designer_package_file(catalog: str, file: str):
+    safe = {"spec": ("COVER_SPEC.txt", "text/plain"),
+            "template": ("cover_template.pdf", "application/pdf")}
+    if file not in safe:
+        raise HTTPException(404, "Unknown file")
+    name, mime = safe[file]
+    path = Path(OUTPUT_DIR) / catalog / "designer_package" / name
+    if not path.exists():
+        raise HTTPException(404, "Package not generated yet")
+    return FileResponse(str(path), media_type=mime, filename=f"{catalog}-{name}")
+
+
+@router.post("/cover/upload/{catalog}")
+async def upload_cover(catalog: str, file: UploadFile = File(...)):
+    from ..cover.designer_package import validate_uploaded_cover
+    book, pages, trim, paper = _book_cover_inputs(catalog)
+    content = await file.read()
+    report = validate_uploaded_cover(content, file.filename or "cover", pages, trim, paper)
+
+    data = dict(book["data"])
+    cover = data.get("cover") or {}
+    if report["passed"]:
+        dest_dir = Path(OUTPUT_DIR) / catalog
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        ext = Path(file.filename or "cover.pdf").suffix or ".pdf"
+        dest = dest_dir / f"cover_uploaded{ext}"
+        dest.write_bytes(content)
+        cover.update({
+            "mode": "upload", "status": "final", "uploaded_path": str(dest),
+            "spec_page_count": pages, "validation": report,
+        })
+        if ext == ".pdf":
+            cover["cover_pdf"] = str(dest)
+    else:
+        cover.update({"mode": "upload", "status": "draft", "validation": report})
+    data["cover"] = cover
+    db.update_book(book["id"], data)
+    return report
+
+
+# ── audiobook ────────────────────────────────────────────────────
+
+@router.post("/audio/{catalog}")
+async def start_audiobook(catalog: str):
+    from ..audio.pipeline import audiobook_job
+    active = [j for j in list_jobs(catalog, active_only=True) if j["kind"] == "audiobook"]
+    if active:
+        return {"job_id": active[0]["id"], "already_running": True}
+    job_id = start_job("audiobook",
+                       lambda h: audiobook_job(h, catalog), book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.get("/audio/file/{catalog}/{name}")
+def audio_file(catalog: str, name: str):
+    if "/" in name or ".." in name:
+        raise HTTPException(400, "Bad file name")
+    path = Path(OUTPUT_DIR) / catalog / "audiobook" / name
+    if not path.exists():
+        raise HTTPException(404, "Audio file not found")
+    return FileResponse(str(path), media_type="audio/mpeg", filename=name)
+
+
+# ── royalties / reports ──────────────────────────────────────────
+
+@router.post("/reports/import")
+async def import_report(file: UploadFile = File(...)):
+    from ..reports.importer import import_report as run_import
+    content = await file.read()
+    try:
+        return run_import(file.filename or "report.xlsx", content)
+    except Exception as e:
+        raise HTTPException(422, f"Could not parse report: {e}")
+
+
+@router.get("/reports/summary")
+def reports_summary():
+    from ..reports.importer import summary
+    return summary()
+
+
+@router.get("/reports/books")
+def reports_books():
+    from ..reports.importer import by_book
+    return {"books": by_book()}

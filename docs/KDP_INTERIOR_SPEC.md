@@ -1,6 +1,6 @@
 # KDP Interior Formatting & Platform Reference (verified August 2026)
 
-Engineering spec for the SCRPTR interior builder. Numbers verified against official KDP help pages August 2026; source links at the bottom.
+Engineering spec for the SCRPT interior builder. Numbers verified against official KDP help pages August 2026; source links at the bottom.
 
 ## 1. Trim sizes
 
@@ -70,7 +70,7 @@ Cream is the fiction convention; white for nonfiction/anything with images.
   - Premium color: pages × **0.002347"** (0.0596 mm)
   - Standard color: pages × 0.002252"
   - Spine text allowed only at 79+ pages (needs ≥0.0625"/1.6 mm clearance from spine edges; fold-line variance 0.0625").
-- Hardcover spine is **not** a simple multiplier: stepped internal table (page block + ~0.189" board allowance); case-wrap covers extend **0.51" (15 mm)** past board edges, **0.4" (10 mm)** hinge gap between spine and cover safe area. Use KDP's official calculator table: https://kdp.amazon.com/cover-calculator. For SCRPTR: compute paperback spines ourselves; replicate KDP's table for hardcover.
+- Hardcover spine is **not** a simple multiplier: stepped internal table (page block + ~0.189" board allowance); case-wrap covers extend **0.51" (15 mm)** past board edges, **0.4" (10 mm)** hinge gap between spine and cover safe area. Use KDP's official calculator table: https://kdp.amazon.com/cover-calculator. For SCRPT: compute paperback spines ourselves; replicate KDP's table for hardcover.
 
 ## 4. Interior PDF requirements
 
@@ -123,7 +123,7 @@ Professional conventions (Chicago Manual of Style / Bringhurst) — KDP only enf
 ## 8. Platform/back-office data
 
 - **KDP Reports** (kdpreports.amazon.com): Dashboard, Combined Sales, per-format Royalty tabs, Orders, **KENP Read** (~$0.004–0.0045/page from monthly fund), Month-to-Date, Prior Months, Payments. Columns: Royalty Date, Title, ASIN/ISBN, Marketplace, Royalty Type, Transaction Type, Units/Net Units, Avg List Price. **XLSX/CSV export.**
-- **No public KDP API — confirmed (Aug 2026).** SP-API has no KDP data. Third-party tools scrape the logged-in dashboard or import report files. **SCRPTR: build on report XLSX/CSV import** — matches the DistroKid statement-import pattern, no login-automation risk.
+- **No public KDP API — confirmed (Aug 2026).** SP-API has no KDP data. Third-party tools scrape the logged-in dashboard or import report files. **SCRPT: build on report XLSX/CSV import** — matches the DistroKid statement-import pattern, no login-automation risk.
 - **Print royalty** (since June 10, 2025): royalty = rate × list price − printing cost. **60%** at/above threshold ($9.99 US / £7.99 / €9.99 / $13.99 CAD/AUD / ¥1,000), **50%** below. Expanded Distribution 40% − printing cost.
 - **Printing cost (US):** paperback B&W: 24–110 pp flat **$2.30**; 110–828 pp = **$1.00 + $0.012/page**. Premium color: 24–40 pp flat $3.60; 42+ = $1.00 + **$0.065/page**. Standard color (72–600 pp): $1.00 + **$0.0255/page**. Large trim ~20–30% higher; groundwood ~5% cheaper. Hardcover B&W: **$5.65 + $0.012/page** (75–108 pp flat $5.65). Max list price $250.
 - **eBook royalty:** 70% requires $2.99–$9.99 US list minus delivery fee (**$0.15/MB**); 35% otherwise. (One unverified 2026 report says the 70% band expands to $12.99 on July 7, 2026 — check https://kdp.amazon.com/en_US/help/topic/G200634500 before hardcoding.)
