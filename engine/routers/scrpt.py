@@ -901,7 +901,10 @@ async def voice_library(search: str = "", gender: str = "", accent: str = "",
         "popularity": v.get("cloned_by_count") or 0,
         "free_ok": bool(v.get("free_users_allowed", True)),
     } for v in data.get("voices", [])
-        if (v.get("language") or "en").lower().startswith("en")]
+        if (v.get("language") or "en").lower().startswith("en")
+        # house rule: American and British narrators only
+        and any(a in (v.get("accent") or "").lower()
+                for a in ("american", "british", "english"))]
     return {"configured": True, "voices": voices,
             "has_more": bool(data.get("has_more"))}
 

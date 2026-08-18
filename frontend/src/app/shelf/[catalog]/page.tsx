@@ -734,6 +734,9 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
   const filtered = voices.filter((v) => {
     if (v.id === audio.voice_id) return true; // the cast narrator always shows
     const L = v.labels || {};
+    // house rule: American and British narrators only
+    const acc = (L.accent || "").toLowerCase();
+    if (acc && !["american", "british", "english"].some((a) => acc.includes(a))) return false;
     if (!showAll) {
       // house standard: English-language voices labeled for narration
       if ((L.language || "en").toLowerCase() !== "en") return false;
