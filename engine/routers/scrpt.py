@@ -386,7 +386,8 @@ async def create_series_from(catalog: str):
             "with the same central character(s). Return JSON only:\n"
             '{"series_title": "short, ownable, brandable — the shelf name '
             'readers collect", "series_engine": "what generates every next '
-            "book: who returns, what changes per installment, the repeatable "
+            "book: who returns, what changes per installment - every installment "
+            "a self-contained story a newcomer can start with - the repeatable "
             'shape (max 60 words)"}',
             max_tokens=2000)
         naming = extract_json(raw)
@@ -399,7 +400,9 @@ async def create_series_from(catalog: str):
             f"Write the SERIES BIBLE for \"{naming.get('series_title')}\" — "
             "the canon document every later book must honor. 250-350 words: "
             "the recurring protagonist(s) as the series brand, recurring "
-            "supporting cast, world rules and tone, the per-book formula, and "
+            "supporting cast, world rules and tone, the per-book formula (each "
+            "book SELF-CONTAINED: complete arc, real ending, no required prior "
+            "reading - film-adaptable on its own), and "
             "long arcs that grow across books. Plain text.",
             max_tokens=3000)
 

@@ -64,6 +64,15 @@ def _series_context(book: dict) -> str:
         f"{series.get('total_planned', 1)} in the series \"{series['series_title']}\".\n"
         f"Series bible (canon across all books — never contradict it):\n"
         f"{series.get('series_bible', '(not yet written)')}\n"
+        "SERIES DOCTRINE (non-negotiable): every book stands alone. Same "
+        "main character(s), same universe - but the current book is a "
+        "complete story in itself: a reader who starts here follows "
+        "everything and gets a full arc with a real ending, strong enough "
+        "to be adapted as its own film. Weave needed background in "
+        "organically through scene and dialogue - never recap-dump, never "
+        "make this plot depend on events of other books, never end the "
+        "main plot on a cliffhanger. Series-long threads simmer in the "
+        "background only.\n"
     )
 
 
@@ -229,7 +238,9 @@ async def build_bible(catalog: str, chosen: int = 0, edits: str = "") -> None:
                 "document every later book must honor. 250-350 words covering: "
                 "the recurring protagonist(s) as the series brand (who returns "
                 "every book), recurring supporting cast, world rules and tone, "
-                "the per-book formula (what a new entry looks like), and any "
+                "the per-book formula (each entry a SELF-CONTAINED story a newcomer "
+                "can start with - recurring cast and world are the connective "
+                "tissue, never required prior reading), and any "
                 "long arcs that grow across books. Plain text."
             )
             series_bible = await complete(_fiction_system(ms), sb_prompt,
