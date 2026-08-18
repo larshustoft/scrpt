@@ -666,6 +666,66 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
   const [showAll, setShowAll] = useState(false);
   const toggleChip = (k: string) => setChips((c) => ({ ...c, [k]: !c[k] }));
 
+  // ── the full ElevenLabs Voice Library ────────────────────────
+  interface LibraryVoice {
+    id: string; owner: string; name: string; gender: string; accent: string;
+    age: string; descriptive: string; preview_url: string; popularity: number;
+    free_ok: boolean;
+  }
+  const [source, setSource] = useState<"mine" | "library">("library");
+  const [libVoices, setLibVoices] = useState<LibraryVoice[]>([]);
+  const [libPage, setLibPage] = useState(0);
+  const [libHasMore, setLibHasMore] = useState(false);
+  const [libLoading, setLibLoading] = useState(false);
+  const [adding, setAdding] = useState("");
+
+  const loadLibrary = useCallback(async (page: number, append: boolean) => {
+    setLibLoading(true);
+    try {
+      const gender = chips.female !== chips.male ? (chips.female ? "female" : "male") : "";
+      const accent = chips.american !== chips.english ? (chips.american ? "american" : "british") : "";
+      const qs = new URLSearchParams({ search, gender, accent, page: String(page),
+                                       narration: String(!showAll) });
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/audio/library?${qs}`);
+      const d = await res.json();
+      setLibVoices((prev) => append ? [...prev, ...(d.voices || [])] : (d.voices || []));
+      setLibHasMore(!!d.has_more);
+      setLibPage(page);
+    } catch { /* offline */ } finally {
+      setLibLoading(false);
+    }
+  }, [search, chips, showAll]);
+
+  useEffect(() => {
+    if (source !== "library") return;
+    const t = setTimeout(() => loadLibrary(0, false), 350); // debounce typing
+    return () => clearTimeout(t);
+  }, [source, loadLibrary]);
+
+  const addAndCast = async (v: LibraryVoice) => {
+    setAdding(v.id);
+    setErr("");
+    try {
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/audio/library/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner: v.owner, voice_id: v.id, name: v.name }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setErr(d.detail || "Could not add the voice"); return; }
+      await fetch(`${scrpt.engineUrl}/api/scrpt/audio/voice/${book.catalog_number}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice_id: d.voice_id, voice_name: v.name, set_as_default: false }),
+      });
+      reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not add the voice");
+    } finally {
+      setAdding("");
+    }
+  };
+
   const isNarration = (v: CastingVoice) => {
     const uc = (v.labels?.use_case || "").toLowerCase();
     return uc.includes("audiobook") || uc.includes("narrat");
@@ -721,8 +781,17 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
       {err && <div className="text-[12px] mt-3" style={{ color: "var(--status-red)" }}>{err}</div>}
 
       <div className="flex items-center gap-2 flex-wrap mt-4">
-        <input className="input-scrpt w-[220px] text-[12.5px] py-[6px]"
-               placeholder="Search voices…"
+        <div className="flex rounded-md overflow-hidden" style={{ border: "1px solid var(--border-subtle)" }}>
+          {([["library", "ElevenLabs library"], ["mine", "My voices"]] as const).map(([k, lbl]) => (
+            <button key={k} onClick={() => setSource(k)}
+                    className={`px-3 py-[5px] text-[12px] transition-all ${
+                      source === k ? "bg-accent-subtle text-accent" : "text-text-tertiary hover:text-text-primary"}`}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+        <input className="input-scrpt w-[200px] text-[12.5px] py-[6px]"
+               placeholder="Search narrators…"
                value={search} onChange={(e) => setSearch(e.target.value)} />
         {(["female", "male", "american", "english"] as const).map((k) => (
           <button key={k}
@@ -737,15 +806,62 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
         ))}
         <span className="flex-1" />
         <span className="text-[11px] text-text-faint">
-          {filtered.length} narration {filtered.length === 1 ? "voice" : "voices"}
+          {source === "library"
+            ? `${libVoices.length}${libHasMore ? "+" : ""} narrators`
+            : `${filtered.length} narration ${filtered.length === 1 ? "voice" : "voices"}`}
         </span>
         <button className="text-[11px] text-text-tertiary hover:text-text-primary transition-colors underline"
                 onClick={() => setShowAll((s) => !s)}>
-          {showAll ? "Narration voices only" : "Show all voices"}
+          {showAll ? "Narration voices only" : "All English voices"}
         </button>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-3 mt-3">
+      {source === "library" && (
+        <>
+          <div className="grid md:grid-cols-2 gap-3 mt-3">
+            {libVoices.map((v) => (
+              <div key={v.id} className="rounded-[9px] p-4"
+                   style={{ background: "var(--surface-elevated)", border: "1px solid var(--border-subtle)" }}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[13.5px] font-semibold truncate">{v.name}</span>
+                  {v.popularity > 0 && (
+                    <span className="text-[10px] text-text-faint shrink-0"
+                          title="How many publishers use this narrator">
+                      {v.popularity.toLocaleString()} in use
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-text-tertiary mt-0.5 capitalize">
+                  {[v.gender, v.age, v.accent, v.descriptive].filter(Boolean).join(" · ")}
+                </div>
+                {v.preview_url && (
+                  <audio controls preload="none" className="h-8 w-full mt-3" src={v.preview_url} />
+                )}
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="flex-1" />
+                  <button className="btn-brass text-[11px]" disabled={adding !== ""}
+                          onClick={() => addAndCast(v)}>
+                    {adding === v.id ? "Adding…" : "Add & cast"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 mt-3">
+            {libLoading && <span className="text-[11px] text-text-tertiary pulse-soft">Searching the library…</span>}
+            {!libLoading && libHasMore && (
+              <button className="btn-ghost text-[11px]" onClick={() => loadLibrary(libPage + 1, true)}>
+                More narrators
+              </button>
+            )}
+            {!libLoading && libVoices.length === 0 && (
+              <span className="text-[11px] text-text-faint">No narrators match — loosen the search.</span>
+            )}
+          </div>
+        </>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-3 mt-3" style={source === "library" ? { display: "none" } : {}}>
         {filtered.map((v) => {
           const isCast = audio.voice_id === v.id;
           return (

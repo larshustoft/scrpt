@@ -862,6 +862,82 @@ async def casting_voices():
             "default_voice_id": db.get_setting("elevenlabs_voice_id", "") or ""}
 
 
+@router.get("/audio/library")
+async def voice_library(search: str = "", gender: str = "", accent: str = "",
+                        page: int = 0, narration: bool = True):
+    """Search the FULL ElevenLabs Voice Library (thousands of voices).
+    English always; narration-labeled by default, every English voice when
+    narration=false — the real casting pool."""
+    import httpx as _httpx
+    from ..routers.assistant import elevenlabs_key
+    key = elevenlabs_key()
+    if not key:
+        return {"configured": False, "voices": [], "has_more": False}
+    params = {"page_size": 24, "page": page, "language": "en"}
+    if narration:
+        params["use_cases"] = "narrative_story"
+    if search.strip():
+        params["search"] = search.strip()
+    if gender in ("male", "female"):
+        params["gender"] = gender
+    if accent.strip():
+        params["accent"] = accent.strip()
+    async with _httpx.AsyncClient() as client:
+        r = await client.get("https://api.elevenlabs.io/v1/shared-voices",
+                             headers={"xi-api-key": key}, params=params,
+                             timeout=25)
+    if r.status_code != 200:
+        raise HTTPException(502, f"Voice library failed ({r.status_code}): {r.text[:200]}")
+    data = r.json()
+    voices = [{
+        "id": v.get("voice_id"),
+        "owner": v.get("public_owner_id"),
+        "name": v.get("name"),
+        "gender": v.get("gender") or "",
+        "accent": v.get("accent") or "",
+        "age": v.get("age") or "",
+        "descriptive": v.get("descriptive") or "",
+        "preview_url": v.get("preview_url") or "",
+        "popularity": v.get("cloned_by_count") or 0,
+        "free_ok": bool(v.get("free_users_allowed", True)),
+    } for v in data.get("voices", [])
+        if (v.get("language") or "en").lower().startswith("en")]
+    return {"configured": True, "voices": voices,
+            "has_more": bool(data.get("has_more"))}
+
+
+class LibraryAddRequest(BaseModel):
+    owner: str
+    voice_id: str
+    name: str
+
+
+@router.post("/audio/library/add")
+async def add_library_voice(req: LibraryAddRequest):
+    """Add a Voice Library narrator into the account so it can be cast."""
+    import httpx as _httpx
+    from ..routers.assistant import elevenlabs_key
+    key = elevenlabs_key()
+    if not key:
+        raise HTTPException(400, "ElevenLabs is not configured")
+    async with _httpx.AsyncClient() as client:
+        r = await client.post(
+            f"https://api.elevenlabs.io/v1/voices/add/{req.owner}/{req.voice_id}",
+            headers={"xi-api-key": key},
+            json={"new_name": req.name[:100]},
+            timeout=25,
+        )
+    if r.status_code != 200:
+        detail = r.text[:300]
+        if "voice_limit" in detail or "maximum" in detail.lower():
+            raise HTTPException(422, "Your ElevenLabs voice slots are full — "
+                                     "remove an unused voice in ElevenLabs or "
+                                     "upgrade the plan, then add again.")
+        raise HTTPException(502, f"Could not add the voice ({r.status_code}): {detail}")
+    new_id = (r.json() or {}).get("voice_id") or req.voice_id
+    return {"success": True, "voice_id": new_id}
+
+
 class CastVoiceRequest(BaseModel):
     voice_id: str
     voice_name: str = ""
