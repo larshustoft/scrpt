@@ -216,6 +216,11 @@ function ManuscriptTab({ book, ms, reload, busy }: {
         </div>
       )}
 
+      {/* promote a standalone into a series */}
+      {ms.kind === "fiction" && ms.story_bible && !book.data.series?.series_id && !busy && (
+        <CreateSeriesCard book={book} />
+      )}
+
       {/* plot options awaiting choice */}
       {ms.status === "plotting" && ms.plot_options.length > 0 && (
         <div className="card" style={{ borderLeft: "3px solid var(--accent)" }}>
@@ -1046,6 +1051,57 @@ function AudioRow({ label, src, meta }: { label: string; src: string; meta?: str
         {meta && <div className="text-[11px] text-text-faint">{meta}</div>}
       </div>
       <audio controls preload="none" src={src} className="h-8" style={{ maxWidth: 280 }} />
+    </div>
+  );
+}
+
+/** Promote a standalone into Book 1 of a new series. */
+function CreateSeriesCard({ book }: { book: ScrptBook }) {
+  const [running, setRunning] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const create = async () => {
+    setRunning(true);
+    setMsg("Naming the series and writing its bible…");
+    try {
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/series/create-from/${book.catalog_number}`,
+        { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setMsg(d.detail || "Could not create the series");
+        return;
+      }
+      const { job_id } = await res.json();
+      const job = await pollJob(job_id, (j) => setMsg(j.detail || j.stage || "Working…"));
+      if (job.status === "done") {
+        const sid = (job.result as { series_id?: string })?.series_id;
+        window.location.href = sid ? `/shelf/series/${sid}` : `/shelf/${book.catalog_number}`;
+      } else {
+        setMsg(`Failed: ${(job.error || "").split("\n")[0]}`);
+      }
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="card flex items-center justify-between gap-5 flex-wrap">
+      <div className="min-w-[260px] flex-1">
+        <div className="serif-display text-[15px] font-semibold">Create a series from this book</div>
+        <p className="text-[12px] text-text-tertiary mt-1 leading-relaxed">
+          Same characters, same universe — this becomes Book 1. SCRPT names the
+          series, writes the series bible from this book, and opens the series
+          page where you commission the next installments.
+        </p>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        {msg && <span className="text-[11px] text-text-tertiary pulse-soft max-w-[200px]">{msg}</span>}
+        <button className="btn-brass text-[12px]" disabled={running} onClick={create}>
+          {running ? "Creating…" : "Create series"}
+        </button>
+      </div>
     </div>
   );
 }

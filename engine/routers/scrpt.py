@@ -356,6 +356,70 @@ async def run_acceptance(catalog: str):
     return {"job_id": job_id}
 
 
+@router.post("/series/create-from/{catalog}")
+async def create_series_from(catalog: str):
+    """Promote a standalone book into Book 1 of a new series — same
+    characters, same universe. Titles the series, writes the series bible
+    from the finished book, and opens the series for commissioning more."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    if (book["data"].get("series") or {}).get("series_id"):
+        raise HTTPException(409, "This book is already part of a series")
+    ms = book["data"].get("manuscript") or {}
+    if not ms.get("story_bible"):
+        raise HTTPException(409, "The book needs its story bible first — "
+                                 "series grow from a finished world")
+
+    async def job(handle):
+        from ..writing.client import complete, extract_json
+        from ..writing.pipeline import _bible_digest
+        from ..prose.models import Manuscript as _M
+        m = _M.model_validate(ms)
+        digest = _bible_digest(m)
+
+        handle.progress(0.2, "series", "Naming the series")
+        raw = await complete(
+            "You build commercial book franchises from standalone successes.",
+            f"THE BOOK: \"{book['title']}\"\nBIBLE:\n{digest}\n\n"
+            "This standalone becomes Book 1 of a series in the same universe "
+            "with the same central character(s). Return JSON only:\n"
+            '{"series_title": "short, ownable, brandable — the shelf name '
+            'readers collect", "series_engine": "what generates every next '
+            "book: who returns, what changes per installment, the repeatable "
+            'shape (max 60 words)"}',
+            max_tokens=2000)
+        naming = extract_json(raw)
+
+        handle.progress(0.6, "series", "Writing the series bible")
+        sb_raw = await complete(
+            "You write series bibles for commercial publishing houses.",
+            f"STORY BIBLE OF BOOK 1 (\"{book['title']}\"):\n{digest}\n\n"
+            f"SERIES ENGINE: {naming.get('series_engine', '')}\n\n"
+            f"Write the SERIES BIBLE for \"{naming.get('series_title')}\" — "
+            "the canon document every later book must honor. 250-350 words: "
+            "the recurring protagonist(s) as the series brand, recurring "
+            "supporting cast, world rules and tone, the per-book formula, and "
+            "long arcs that grow across books. Plain text.",
+            max_tokens=3000)
+
+        sid = uuid.uuid4().hex[:8]
+        data = dict(db.get_book_by_catalog(catalog)["data"])
+        data["series"] = {
+            "series_id": sid,
+            "series_title": str(naming.get("series_title", book["title"]))[:120],
+            "book_number": 1,
+            "total_planned": 1,   # grows as books are commissioned
+            "series_bible": sb_raw.strip()[:4000],
+        }
+        db.update_book(book["id"], data)
+        return {"series_id": sid,
+                "series_title": data["series"]["series_title"]}
+
+    job_id = start_job("create_series", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
 @router.post("/rewrite/{catalog}")
 async def rewrite_book(catalog: str):
     """Rewrite the book from scratch through the CURRENT pipeline — keeps the
