@@ -658,6 +658,44 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
     [v.labels?.gender, v.labels?.age, v.labels?.accent, v.labels?.descriptive || v.labels?.description]
       .filter(Boolean).join(" · ");
 
+  // ── the search desk ──────────────────────────────────────────
+  const [search, setSearch] = useState("");
+  const [chips, setChips] = useState<Record<string, boolean>>({
+    female: false, male: false, american: false, english: false,
+  });
+  const [showAll, setShowAll] = useState(false);
+  const toggleChip = (k: string) => setChips((c) => ({ ...c, [k]: !c[k] }));
+
+  const isNarration = (v: CastingVoice) => {
+    const uc = (v.labels?.use_case || "").toLowerCase();
+    return uc.includes("audiobook") || uc.includes("narrat");
+  };
+
+  const filtered = voices.filter((v) => {
+    if (v.id === audio.voice_id) return true; // the cast narrator always shows
+    const L = v.labels || {};
+    if (!showAll) {
+      // house standard: English-language voices labeled for narration
+      if ((L.language || "en").toLowerCase() !== "en") return false;
+      if (!isNarration(v)) return false;
+    }
+    const gender = (L.gender || "").toLowerCase();
+    if (chips.female !== chips.male) {
+      if (chips.female && gender !== "female") return false;
+      if (chips.male && gender !== "male") return false;
+    }
+    const accent = (L.accent || "").toLowerCase();
+    if (chips.american !== chips.english) {
+      if (chips.american && !accent.includes("american")) return false;
+      if (chips.english && !(accent.includes("british") || accent.includes("english"))) return false;
+    }
+    if (search.trim()) {
+      const hay = `${v.name} ${v.description} ${Object.values(L).join(" ")}`.toLowerCase();
+      if (!search.toLowerCase().split(/\s+/).every((t) => hay.includes(t))) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="card">
       <div className="flex items-baseline justify-between flex-wrap gap-2">
@@ -669,9 +707,10 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
         )}
       </div>
       <p className="text-[12px] text-text-tertiary mt-1 leading-relaxed max-w-[560px]">
-        Preview plays the voice&apos;s stock sample; Audition has the candidate
-        read this book&apos;s actual opening. Cast the winner — it narrates the
-        whole book. Voices come from your ElevenLabs voice library.
+        English voices labeled for narration, from your ElevenLabs library —
+        the house standard for audiobooks. Preview plays the stock sample;
+        Audition has the candidate read this book&apos;s actual opening. Cast
+        the winner and it narrates the whole book.
       </p>
       {configured === false && (
         <div className="text-[12px] mt-3" style={{ color: "var(--status-amber)" }}>
@@ -680,8 +719,34 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
         </div>
       )}
       {err && <div className="text-[12px] mt-3" style={{ color: "var(--status-red)" }}>{err}</div>}
-      <div className="grid md:grid-cols-2 gap-3 mt-4">
-        {voices.map((v) => {
+
+      <div className="flex items-center gap-2 flex-wrap mt-4">
+        <input className="input-scrpt w-[220px] text-[12.5px] py-[6px]"
+               placeholder="Search voices…"
+               value={search} onChange={(e) => setSearch(e.target.value)} />
+        {(["female", "male", "american", "english"] as const).map((k) => (
+          <button key={k}
+                  onClick={() => toggleChip(k)}
+                  className={`px-3 py-[5px] rounded-md text-[12px] capitalize transition-all ${
+                    chips[k] ? "bg-accent-subtle text-accent"
+                             : "border border-border-subtle text-text-tertiary hover:text-text-primary"}`}
+                  style={chips[k] ? { border: "1px solid var(--accent-deep)" } : {}}
+                  title={k === "english" ? "British accent" : k === "american" ? "American accent" : ""}>
+            {k}
+          </button>
+        ))}
+        <span className="flex-1" />
+        <span className="text-[11px] text-text-faint">
+          {filtered.length} narration {filtered.length === 1 ? "voice" : "voices"}
+        </span>
+        <button className="text-[11px] text-text-tertiary hover:text-text-primary transition-colors underline"
+                onClick={() => setShowAll((s) => !s)}>
+          {showAll ? "Narration voices only" : "Show all voices"}
+        </button>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-3 mt-3">
+        {filtered.map((v) => {
           const isCast = audio.voice_id === v.id;
           return (
             <div key={v.id} className="rounded-[9px] p-4"
