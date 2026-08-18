@@ -22,7 +22,7 @@ from pathlib import Path
 import httpx
 
 from ..config import OPENAI_API_KEY, OUTPUT_DIR
-from ..database import get_book_by_catalog, update_book
+from ..database import get_book_by_catalog, list_books, update_book
 from ..prose.models import GENRE_PRESETS, Manuscript
 from ..writing.client import complete, extract_json
 
@@ -63,6 +63,23 @@ def _merged_direction(book: dict, extra_direction: str) -> str:
     stored = (book["data"].get("cover_direction") or "").strip()
     extra = extra_direction.strip()
     return " ".join(p for p in (stored, extra) if p)
+
+
+def _series_reference_cover(book: dict):
+    """For Book 2+ of a series: Book 1's cover art (bytes) as the design
+    reference, so every installment keeps the same style, fonts and text
+    placement. Returns (png_bytes, series_title) or (None, "")."""
+    series = book["data"].get("series") or {}
+    if not series.get("series_id") or (series.get("book_number") or 1) <= 1:
+        return None, ""
+    for member in list_books(per_page=300)["books"]:
+        ms = member["data"].get("series") or {}
+        if (ms.get("series_id") == series["series_id"]
+                and (ms.get("book_number") or 0) == 1):
+            art = Path(OUTPUT_DIR) / member["catalog_number"] / "cover-art.png"
+            if art.exists():
+                return art.read_bytes(), series.get("series_title", "")
+    return None, ""
 
 
 def _ensure_real_title(book: dict) -> str:
@@ -123,7 +140,7 @@ async def build_cover_brief(book: dict, ms: Manuscript) -> str:
 
 
 async def build_variant_briefs(book: dict, ms: Manuscript, count: int,
-                               direction: str) -> list:
+                               direction: str, series_locked: bool = False) -> list:
     """Claude art-directs N GENUINELY DIFFERENT covers for one book.
 
     One call: check what the genre's current bestselling covers look like
@@ -166,7 +183,13 @@ async def build_variant_briefs(book: dict, ms: Manuscript, count: int,
         "idea repeated (e.g. an intimate character moment; a scene where the "
         "setting is the star; a symbolic/object composition; a type-led "
         "design).\n\n"
-        "HOUSE RULE — the publisher's proven brief shape (do not exceed it): "
+        + ("SERIES LOCK: this is a later installment — Book 1's cover rides "
+           "along as the attached reference image. Every prompt must open by "
+           "saying the attached image is Book 1's cover and that this cover "
+           "must match its design exactly: same art style, same fonts, same "
+           "title/author/tagline placement, same framing. The prompts differ "
+           "ONLY in the scene depicted.\n\n" if series_locked else "")
+        + "HOUSE RULE — the publisher's proven brief shape (do not exceed it): "
         "the essentials, ONE famous comp anchor, and at most one sentence of "
         "visual angle to make this variant distinct. The comp anchor does "
         "the heavy lifting — name one famous title or universe every shelf "
@@ -212,6 +235,12 @@ async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
     direction = _merged_direction(book, extra_direction)
     if direction:
         brief = f"{brief}\n\nAdditional direction from the publisher: {direction}"
+    reference, ref_series = _series_reference_cover(book)
+    if reference:
+        brief = (f"The attached image is the cover of Book 1 of \"{ref_series}\". "
+                 f"{brief} Match the reference cover's design exactly — same "
+                 "art style, same fonts, same text placement, same framing — "
+                 "with a new scene for this installment.")
 
     async with httpx.AsyncClient() as client:
         r = await client.post(
@@ -298,14 +327,27 @@ def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
             "preview": str(preview_path), "brief": brief}
 
 
-async def _generate_one(client: httpx.AsyncClient, brief: str) -> bytes:
-    r = await client.post(
-        "https://api.openai.com/v1/images/generations",
-        headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-        json={"model": IMAGE_MODEL, "prompt": brief, "size": IMAGE_SIZE,
-              "quality": "high", "n": 1},
-        timeout=300,
-    )
+async def _generate_one(client: httpx.AsyncClient, brief: str,
+                        reference_png: bytes = None) -> bytes:
+    if reference_png:
+        # series installment: Book 1's cover rides along as the design
+        # reference (image + prompt via the edits endpoint)
+        r = await client.post(
+            "https://api.openai.com/v1/images/edits",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+            files={"image[]": ("book1-cover.png", reference_png, "image/png")},
+            data={"model": IMAGE_MODEL, "prompt": brief, "size": IMAGE_SIZE,
+                  "quality": "high", "n": "1"},
+            timeout=300,
+        )
+    else:
+        r = await client.post(
+            "https://api.openai.com/v1/images/generations",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+            json={"model": IMAGE_MODEL, "prompt": brief, "size": IMAGE_SIZE,
+                  "quality": "high", "n": 1},
+            timeout=300,
+        )
     if r.status_code != 200:
         raise RuntimeError(f"Image generation failed ({r.status_code}): {r.text[:200]}")
     return base64.b64decode(r.json()["data"][0]["b64_json"])
@@ -327,15 +369,19 @@ async def generate_cover_variants(catalog: str, count: int = 4,
 
     count = max(2, min(6, count))
     direction = _merged_direction(book, extra_direction)
+    reference, ref_series = _series_reference_cover(book)
     if on_progress:
-        on_progress(0.1, "Art-directing against the live market")
-    briefs = await build_variant_briefs(book, ms, count, direction)
+        on_progress(0.1, "Art-directing against the live market"
+                    if not reference else "Matching Book 1's cover design")
+    briefs = await build_variant_briefs(book, ms, count, direction,
+                                        series_locked=bool(reference))
     if on_progress:
         on_progress(0.3, f"Creating {len(briefs)} covers")
 
     async with httpx.AsyncClient() as client:
         results = await asyncio.gather(
-            *[_generate_one(client, b["prompt"]) for b in briefs],
+            *[_generate_one(client, b["prompt"], reference_png=reference)
+              for b in briefs],
             return_exceptions=True)
 
     out_dir = Path(OUTPUT_DIR) / catalog
