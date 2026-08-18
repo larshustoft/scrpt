@@ -435,11 +435,14 @@ async def rewrite_book(catalog: str):
     data = dict(book["data"])
     old_ms = data.get("manuscript") or {}
     preset = GENRE_PRESETS.get(old_ms.get("genre_preset"), {})
+    # A rewrite is held to TODAY'S standard: the genre's researched target,
+    # never the old book's (early test books carried tiny targets). The live
+    # market check then verifies it per book as usual.
     fresh = Manuscript(
         kind=BookKind(old_ms.get("kind", data.get("kind", "fiction"))),
         genre_preset=old_ms.get("genre_preset", "action_thriller"),
         idea=old_ms.get("idea", ""),
-        target_words=old_ms.get("target_words") or preset.get("target_words", 90000),
+        target_words=preset.get("target_words") or old_ms.get("target_words") or 90000,
         status=ManuscriptStatus.IDEA,
     )
     data["manuscript"] = fresh.model_dump(mode="json")
