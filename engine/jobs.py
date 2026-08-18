@@ -19,6 +19,20 @@ from .database import get_connection
 
 _running_tasks: dict[str, asyncio.Task] = {}
 
+# The production line writes at most 4 books at once; further commissions
+# queue and start automatically when a slot frees. Other job kinds
+# (covers, audio, exports) are quick and unlimited.
+MAX_PARALLEL_BOOKS = 4
+_semaphores: dict[str, asyncio.Semaphore] = {}
+
+
+def _kind_semaphore(kind: str) -> Optional[asyncio.Semaphore]:
+    if kind != "full_draft":
+        return None
+    if kind not in _semaphores:
+        _semaphores[kind] = asyncio.Semaphore(MAX_PARALLEL_BOOKS)
+    return _semaphores[kind]
+
 
 def init_jobs_table():
     conn = get_connection()
@@ -90,11 +104,13 @@ def start_job(
 ) -> str:
     """Create a job row and schedule the coroutine on the event loop."""
     job_id = str(uuid.uuid4())[:8]
+    sem = _kind_semaphore(kind)
+    initial_status = "queued" if sem and sem.locked() else "running"
     conn = get_connection()
     try:
         conn.execute(
-            "INSERT INTO jobs (id, kind, book_catalog, status) VALUES (?, ?, ?, 'running')",
-            (job_id, kind, book_catalog),
+            "INSERT INTO jobs (id, kind, book_catalog, status) VALUES (?, ?, ?, ?)",
+            (job_id, kind, book_catalog, initial_status),
         )
         conn.commit()
     finally:
@@ -104,7 +120,17 @@ def start_job(
 
     async def runner():
         try:
-            result = await coro_factory(handle)
+            if sem:
+                if sem.locked():
+                    _update(job_id, status="queued",
+                            detail=f"Waiting for a free slot (max {MAX_PARALLEL_BOOKS} books at once)")
+                async with sem:
+                    if handle.cancelled():
+                        return
+                    _update(job_id, status="running", detail="")
+                    result = await coro_factory(handle)
+            else:
+                result = await coro_factory(handle)
             if handle.cancelled():
                 return
             _update(job_id, status="done", progress=1.0, result=result or {})
