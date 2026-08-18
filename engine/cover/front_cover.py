@@ -66,11 +66,11 @@ def _merged_direction(book: dict, extra_direction: str) -> str:
 
 
 def _ensure_real_title(book: dict) -> str:
-    """The title is baked into the art — refuse to paint a placeholder."""
+    """The title is baked into the art — refuse to render a placeholder."""
     t = (book["title"] or "").strip()
     if not t or t.lower().startswith("untitled") or len(t) > 120 or "\n" in t:
         raise ValueError(
-            "This book doesn't have its real title yet — the title is painted "
+            "This book doesn't have its real title yet — the title is rendered "
             "into the artwork, so covers would say the placeholder. Title the "
             "book first (drafting sets it at the bible stage), then generate "
             "covers.")
@@ -331,7 +331,7 @@ async def generate_cover_variants(catalog: str, count: int = 4,
         on_progress(0.1, "Art-directing against the live market")
     briefs = await build_variant_briefs(book, ms, count, direction)
     if on_progress:
-        on_progress(0.3, f"Painting {len(briefs)} distinct covers in parallel")
+        on_progress(0.3, f"Creating {len(briefs)} covers")
 
     async with httpx.AsyncClient() as client:
         results = await asyncio.gather(

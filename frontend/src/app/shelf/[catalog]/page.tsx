@@ -111,7 +111,7 @@ export default function BookWorkspace({ params }: { params: Promise<{ catalog: s
           <div className="flex-1 min-w-0">
             <div className="text-[13px] font-semibold">
               {{ full_draft: "Writing the manuscript", plot_options: "Developing plot directions",
-                 cover_variants: "Painting four cover alternatives", front_cover: "Painting the front cover",
+                 cover_variants: "Creating 4 covers", front_cover: "Creating the front cover",
                  acceptance: "The acceptance desk is reading", audition: "Narrator audition",
                  interior_export: "Exporting the print interior", audiobook: "Narrating the audiobook",
                  blurb: "Writing listing copy" }[job.kind] || job.kind}
@@ -440,7 +440,7 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
         body: JSON.stringify({ direction, count: 4 }),
       });
       const { job_id } = await res.json();
-      const job = await pollJob(job_id, (j) => setMsg(j.detail || j.stage || "Painting…"));
+      const job = await pollJob(job_id, (j) => setMsg(j.detail || j.stage || "Creating…"));
       if (job.status === "done") {
         setMsg("Four covers ready — pick one.");
         setImgKey((k) => k + 1);
@@ -479,7 +479,7 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
       <div className="serif-display text-[17px] font-semibold">AI front cover</div>
       <p className="text-[12px] text-text-tertiary mt-1 leading-relaxed">
         Claude art-directs from the genre, plot and pen name; the image model
-        paints title and author into the artwork. Output meets Amazon&apos;s
+        renders title and author into the artwork. Output meets Amazon&apos;s
         ebook cover spec (1600×2560) and doubles as the print designer&apos;s
         reference.
       </p>
@@ -534,7 +534,7 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
             {variants.some((v: { brief?: string }) => v.brief) && (
               <details className="mt-3">
                 <summary className="text-[11px] text-text-tertiary cursor-pointer hover:text-text-primary transition-colors">
-                  Show the painter&apos;s briefs
+                  Show the cover briefs
                 </summary>
                 <div className="mt-2 space-y-3">
                   {variants.filter((v: { brief?: string }) => v.brief).map((v: { index: number; concept?: string; brief?: string }) => (
@@ -562,7 +562,7 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
       </div>
       <div className="flex items-center gap-3 mt-3">
         <button className="btn-brass text-[12px]" disabled={running} onClick={generate}>
-          {running ? "Painting…" : "Generate 4 covers"}
+          {running ? "Creating…" : "Generate 4 covers"}
         </button>
         {msg && <span className="text-[11px] text-text-tertiary truncate max-w-[200px]">{msg}</span>}
       </div>

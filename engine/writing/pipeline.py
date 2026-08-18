@@ -670,7 +670,7 @@ async def full_draft_job(handle: JobHandle, catalog: str, chosen_plot: int = 0,
             or existing_cover.get("variants")):
         handle.progress(0.97, "cover", "Cover already in hand — keeping it")
     else:
-        handle.progress(0.97, "cover", "Painting the front cover")
+        handle.progress(0.97, "cover", "Creating the front cover")
         try:
             from ..cover.front_cover import generate_front_cover
             await generate_front_cover(catalog)
