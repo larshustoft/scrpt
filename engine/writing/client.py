@@ -50,13 +50,16 @@ async def complete(
                             "max_uses": web_search}]
     for attempt in range(retries):
         try:
-            resp = await client().messages.create(
+            # always stream: long generations (thinking-heavy models, big
+            # budgets) exceed the SDK's non-streaming 10-minute guard
+            async with client().messages.stream(
                 model=writing_model(),
                 max_tokens=max_tokens,
                 system=system,
                 messages=[{"role": "user", "content": user}],
                 **kwargs,
-            )
+            ) as stream:
+                resp = await stream.get_final_message()
             text = "".join(b.text for b in resp.content if b.type == "text")
             stop = getattr(resp, "stop_reason", None)
             # On always-thinking models the reasoning counts against
