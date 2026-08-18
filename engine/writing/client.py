@@ -66,16 +66,16 @@ async def complete(
             # max_tokens: a response can come back truncated mid-output
             # (stop_reason max_tokens) or empty (budget consumed before any
             # output). Both get a doubled budget and a retry.
-            if stop == "max_tokens" and max_tokens < 32000:
+            if stop == "max_tokens" and max_tokens < 64000:
                 last_err = RuntimeError(
                     f"response truncated at max_tokens={max_tokens}")
-                max_tokens = min(max_tokens * 2, 32000)
+                max_tokens = min(max_tokens * 2, 64000)
                 continue
             if text.strip():
                 return text
             last_err = RuntimeError(
                 f"empty response (stop_reason={stop}, max_tokens={max_tokens})")
-            max_tokens = min(max_tokens * 2, 32000)
+            max_tokens = min(max_tokens * 2, 64000)
             continue
         except Exception as e:  # transient API errors: back off and retry
             last_err = e
