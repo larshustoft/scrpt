@@ -9,7 +9,7 @@ import { ScrptLogo } from "@/components/Logo";
 
 const NAV_ITEMS = [
   { href: "/front", label: "Front Office" },
-  { href: "/office", label: "Back Office" },
+  { href: "/shelf", label: "Back Office" },
 ];
 
 declare global {
@@ -124,8 +124,8 @@ export function Navbar() {
       <nav className="flex items-center gap-1">
         {NAV_ITEMS.map((item) => {
           const isActive =
-            item.href === "/office"
-              ? ["/office", "/shelf", "/analytics", "/settings"].some((p) => pathname.startsWith(p))
+            item.href === "/shelf"
+              ? ["/office", "/shelf", "/queue", "/analytics", "/settings"].some((p) => pathname.startsWith(p))
               : pathname.startsWith(item.href);
           return (
             <Link

@@ -7,7 +7,7 @@ import { Navbar } from "@/components/Navbar"
 import { BackOfficeNav } from "@/components/BackOfficeNav"
 
 /** Route prefixes that live in the Back Office and share its tool menu. */
-const BACK_OFFICE_PREFIXES = ["/office", "/shelf", "/analytics", "/settings"]
+const BACK_OFFICE_PREFIXES = ["/office", "/shelf", "/queue", "/analytics", "/settings"]
 
 /** Routes that don't require authentication */
 const PUBLIC_PATHS = ["/", "/login"]

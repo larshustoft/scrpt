@@ -11,6 +11,7 @@ const SPINE_COLORS = [
 export default function ShelfPage() {
   const [books, setBooks] = useState<ScrptBook[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [royalties, setRoyalties] = useState<number | null>(null);
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -22,6 +23,10 @@ export default function ShelfPage() {
           const list = await scrpt.listBooks();
           setBooks(list.books.filter((b) => b.data.manuscript));
         } catch { /* ignore */ }
+        try {
+          const r = await scrpt.reportsSummary();
+          setRoyalties(r.totals.royalty || 0);
+        } catch { /* no reports yet */ }
       }
       setLoaded(true);
     })();
@@ -54,12 +59,36 @@ export default function ShelfPage() {
         <div>
           <h1 className="serif-display text-[32px] font-semibold">The Bookshelf</h1>
           <p className="text-[13px] text-text-secondary mt-1">
-            {books.length} {books.length === 1 ? "title" : "titles"} in the catalog.
-            Open any book to edit and preview it.
+            The catalog, spine out. Open any book to write, format, and prepare
+            it for publication.
           </p>
         </div>
         <Link href="/workorder" className="btn-brass">New Work Order</Link>
       </div>
+
+      {(() => {
+        const words = books.reduce((sum, b) => sum + (b.data.manuscript?.word_count || 0), 0);
+        const ready = books.filter((b) => b.status === "ready").length;
+        const live = books.filter((b) => b.status === "live").length;
+        const seriesCount = new Set(books.map((b) => b.data.series?.series_id).filter(Boolean)).size;
+        const Stat = ({ label, value, accent = false }: { label: string; value: string | number; accent?: boolean }) => (
+          <div className="card py-4">
+            <div className="text-[10.5px] tracking-[0.14em] uppercase text-text-faint">{label}</div>
+            <div className={`serif-display text-[22px] font-semibold mt-1 ${accent ? "text-accent" : ""}`}>{value}</div>
+          </div>
+        );
+        return loaded && books.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-7">
+            <Stat label="Titles" value={books.length} />
+            <Stat label="Series" value={seriesCount} />
+            <Stat label="Words in catalog" value={words.toLocaleString()} />
+            <Stat label="Ready / Live" value={`${ready} / ${live}`} />
+            <Stat label="Lifetime royalties"
+                  value={royalties === null ? "—" : `$${royalties.toFixed(0)}`}
+                  accent={Boolean(royalties)} />
+          </div>
+        ) : null;
+      })()}
 
       {loaded && engineOnline === false && (
         <div className="card mt-8" style={{ borderLeft: "3px solid var(--status-amber)" }}>
