@@ -932,6 +932,12 @@ async def add_library_voice(req: LibraryAddRequest):
         )
     if r.status_code != 200:
         detail = r.text[:300]
+        if "missing_permissions" in detail or "add_voice_from_voice_library" in detail:
+            raise HTTPException(422,
+                "Your ElevenLabs API key lacks the 'add voices from the Voice "
+                "Library' permission. In ElevenLabs: Developers → API Keys → "
+                "edit the key SCRPT uses → enable the Voices permission (or "
+                "issue an unrestricted key), then try again.")
         if "voice_limit" in detail or "maximum" in detail.lower():
             raise HTTPException(422, "Your ElevenLabs voice slots are full — "
                                      "remove an unused voice in ElevenLabs or "
