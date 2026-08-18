@@ -18,9 +18,7 @@ function getGreeting(): string {
  * Everything operational lives in the Back Office.
  */
 export default function HQPage() {
-  const [current, setCurrent] = useState<ScrptBook | null>(null);
-  const [job, setJob] = useState<Job | null>(null);
-  const [alsoWriting, setAlsoWriting] = useState<{ book: ScrptBook; job: Job }[]>([]);
+  const [desk, setDesk] = useState<{ book: ScrptBook; job: Job | null }[]>([]);
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
 
 
@@ -40,14 +38,16 @@ export default function HQPage() {
           const prose = list.books
             .filter((b) => b.data.manuscript)
             .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
-          // every book being written right now, each wearing its cover
+          // every book being written right now (max 4), all the same size;
+          // when nothing is writing, the most recent title sits on the desk
           const writing = jobs.jobs
             .filter((j) => j.kind === "full_draft" && j.book_catalog)
-            .map((j) => ({ job: j, book: prose.find((b) => b.catalog_number === j.book_catalog) }))
-            .filter((w): w is { job: Job; book: ScrptBook } => Boolean(w.book));
-          setCurrent(writing[0]?.book || prose[0] || null);
-          setJob(writing[0]?.job || jobs.jobs[0] || null);
-          setAlsoWriting(writing.slice(1));
+            .map((j) => ({ job: j as Job | null, book: prose.find((b) => b.catalog_number === j.book_catalog) }))
+            .filter((w): w is { job: Job; book: ScrptBook } => Boolean(w.book))
+            .slice(0, 4);
+          setDesk(writing.length > 0
+            ? writing
+            : prose[0] ? [{ book: prose[0], job: null }] : []);
         } catch { /* engine flaked */ }
       }
     };
@@ -56,8 +56,10 @@ export default function HQPage() {
     return () => { alive = false; clearInterval(interval); };
   }, []);
 
+  const current = desk[0]?.book || null;
+  const job = desk[0]?.job || null;
   const ms = current?.data.manuscript;
-  const drafting = job && current && job.book_catalog === current.catalog_number;
+  const drafting = Boolean(desk.some((d) => d.job));
 
   const coverSrc = (b: ScrptBook) => {
     if (b.data.cover?.cover_front_png)
@@ -99,12 +101,10 @@ export default function HQPage() {
             </div>
           )}
           <div className="flex items-end gap-7 flex-wrap">
-          {current && (
-            <Link
-              href={`/shelf/${current.catalog_number}`}
-              className="group relative block"
-              style={{ width: "clamp(190px, 34vh, 310px)" }}
-            >
+          {desk.map(({ book: b, job: j }) => (
+            <Link key={b.catalog_number} href={`/shelf/${b.catalog_number}`}
+                  className="group relative block"
+                  style={{ width: desk.length > 2 ? "clamp(140px, 21vh, 200px)" : "clamp(170px, 27vh, 250px)" }}>
               <div
                 className="relative rounded-[5px] overflow-hidden transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-[0.6deg]"
                 style={{
@@ -114,79 +114,39 @@ export default function HQPage() {
                     "0 2px 6px rgba(0,0,0,0.6), 0 24px 60px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(236,229,218,0.09)",
                 }}
               >
-                {coverSrc(current) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={coverSrc(current)!}
-                       alt={current.title}
-                       className="absolute inset-0 w-full h-full object-cover" />
-                ) : (
-                  <>
-                    {/* spine shadow fold */}
-                    <div className="absolute inset-y-0 left-0 w-[10px]"
-                         style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.5), transparent)" }} />
-                    <div className="absolute inset-0 flex flex-col items-center text-center px-6">
-                      <div className="mt-[26%] serif-display text-[20px] leading-snug text-[#e8dfd0]">
-                        {current.title}
-                      </div>
-                      <div className="mt-auto mb-7 text-[10px] tracking-[0.22em] uppercase text-[#a6987f]">
-                        {(current.data.author_name as string) || "—"}
-                      </div>
-                    </div>
-                  </>
-                )}
-                {drafting && (
-                  <div className="absolute bottom-0 inset-x-0 h-[3px]" style={{ background: "rgba(0,0,0,0.55)" }}>
-                    <div
-                      className="h-full transition-all duration-700"
-                      style={{ width: `${Math.round(job!.progress * 100)}%`,
-                               background: "linear-gradient(90deg, var(--accent-deep), var(--accent))" }}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="mt-4 text-[12px] text-text-secondary"
-                   style={{ textShadow: "0 1px 10px rgba(0,0,0,0.9)" }}>
-                {(() => {
-                  const isBook = Boolean(current.data.interior?.page_count);
-                  const kindLabel = isBook ? "Book" : "Manuscript";
-                  if (drafting) return `${kindLabel} — writing ${Math.round(job!.progress * 100)}%`;
-                  return `${kindLabel}${ms?.word_count ? " · " + ms.word_count.toLocaleString() + " words" : ""} · ${current.status}`;
-                })()}
-                <span className="text-accent ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Open →
-                </span>
-              </div>
-            </Link>
-          )}
-
-          {/* the other books on the desk — also being written right now */}
-          {alsoWriting.map(({ book: b, job: j }) => (
-            <Link key={b.catalog_number} href={`/shelf/${b.catalog_number}`}
-                  className="group relative block" style={{ width: "clamp(110px, 18vh, 170px)" }}>
-              <div className="relative rounded-[4px] overflow-hidden transition-transform duration-300 group-hover:-translate-y-1.5"
-                   style={{
-                     aspectRatio: "5.5 / 8.5",
-                     background: "linear-gradient(155deg, #33291f, #171310 88%)",
-                     boxShadow: "0 2px 5px rgba(0,0,0,0.55), 0 16px 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(236,229,218,0.09)",
-                   }}>
                 {coverSrc(b) ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={coverSrc(b)!} alt={b.title}
                        className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center px-3 text-center serif-display text-[13px] leading-snug text-[#e8dfd0]">
-                    {b.title}
+                  <>
+                    <div className="absolute inset-y-0 left-0 w-[10px]"
+                         style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.5), transparent)" }} />
+                    <div className="absolute inset-0 flex flex-col items-center text-center px-5">
+                      <div className="mt-[26%] serif-display text-[17px] leading-snug text-[#e8dfd0]">
+                        {b.title}
+                      </div>
+                      <div className="mt-auto mb-6 text-[10px] tracking-[0.22em] uppercase text-[#a6987f]">
+                        {(b.data.author_name as string) || "—"}
+                      </div>
+                    </div>
+                  </>
+                )}
+                {j && (
+                  <div className="absolute bottom-0 inset-x-0 h-[3px]" style={{ background: "rgba(0,0,0,0.55)" }}>
+                    <div className="h-full transition-all duration-700"
+                         style={{ width: `${Math.round(j.progress * 100)}%`,
+                                  background: "linear-gradient(90deg, var(--accent-deep), var(--accent))" }} />
                   </div>
                 )}
-                <div className="absolute bottom-0 inset-x-0 h-[3px]" style={{ background: "rgba(0,0,0,0.55)" }}>
-                  <div className="h-full transition-all duration-700"
-                       style={{ width: `${Math.round(j.progress * 100)}%`,
-                                background: "linear-gradient(90deg, var(--accent-deep), var(--accent))" }} />
-                </div>
               </div>
-              <div className="mt-2.5 text-[11px] text-text-secondary truncate"
+              <div className="mt-3 text-[11.5px] text-text-secondary truncate"
                    style={{ textShadow: "0 1px 10px rgba(0,0,0,0.9)" }}>
-                {Math.round(j.progress * 100)}%
+                {j ? `Writing ${Math.round(j.progress * 100)}%`
+                   : `${b.data.manuscript?.word_count ? b.data.manuscript.word_count.toLocaleString() + " words · " : ""}${b.status}`}
+                <span className="text-accent ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Open →
+                </span>
               </div>
             </Link>
           ))}
