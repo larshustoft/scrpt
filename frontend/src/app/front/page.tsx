@@ -20,6 +20,7 @@ function getGreeting(): string {
 export default function HQPage() {
   const [current, setCurrent] = useState<ScrptBook | null>(null);
   const [job, setJob] = useState<Job | null>(null);
+  const [alsoWriting, setAlsoWriting] = useState<{ book: ScrptBook; job: Job }[]>([]);
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
 
 
@@ -39,8 +40,14 @@ export default function HQPage() {
           const prose = list.books
             .filter((b) => b.data.manuscript)
             .sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
-          setCurrent(prose[0] || null);
-          setJob(jobs.jobs[0] || null);
+          // every book being written right now, each wearing its cover
+          const writing = jobs.jobs
+            .filter((j) => j.kind === "full_draft" && j.book_catalog)
+            .map((j) => ({ job: j, book: prose.find((b) => b.catalog_number === j.book_catalog) }))
+            .filter((w): w is { job: Job; book: ScrptBook } => Boolean(w.book));
+          setCurrent(writing[0]?.book || prose[0] || null);
+          setJob(writing[0]?.job || jobs.jobs[0] || null);
+          setAlsoWriting(writing.slice(1));
         } catch { /* engine flaked */ }
       }
     };
@@ -51,6 +58,14 @@ export default function HQPage() {
 
   const ms = current?.data.manuscript;
   const drafting = job && current && job.book_catalog === current.catalog_number;
+
+  const coverSrc = (b: ScrptBook) => {
+    if (b.data.cover?.cover_front_png)
+      return `${scrpt.engineUrl}/api/files/${b.catalog_number}/cover-front.png`;
+    const v = b.data.cover?.variants;
+    if (v?.length) return `${scrpt.engineUrl}/api/files/${b.catalog_number}/${v[0].preview}`;
+    return null;
+  };
 
   return (
     <div className="relative overflow-hidden" style={{ height: "calc(100vh - 64px)" }}>
@@ -83,6 +98,7 @@ export default function HQPage() {
               </span>
             </div>
           )}
+          <div className="flex items-end gap-7 flex-wrap">
           {current && (
             <Link
               href={`/shelf/${current.catalog_number}`}
@@ -98,9 +114,9 @@ export default function HQPage() {
                     "0 2px 6px rgba(0,0,0,0.6), 0 24px 60px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(236,229,218,0.09)",
                 }}
               >
-                {current.data.cover?.cover_front_png ? (
+                {coverSrc(current) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={`${scrpt.engineUrl}/api/files/${current.catalog_number}/cover-front.png`}
+                  <img src={coverSrc(current)!}
                        alt={current.title}
                        className="absolute inset-0 w-full h-full object-cover" />
                 ) : (
@@ -142,6 +158,39 @@ export default function HQPage() {
               </div>
             </Link>
           )}
+
+          {/* the other books on the desk — also being written right now */}
+          {alsoWriting.map(({ book: b, job: j }) => (
+            <Link key={b.catalog_number} href={`/shelf/${b.catalog_number}`}
+                  className="group relative block" style={{ width: "clamp(110px, 18vh, 170px)" }}>
+              <div className="relative rounded-[4px] overflow-hidden transition-transform duration-300 group-hover:-translate-y-1.5"
+                   style={{
+                     aspectRatio: "5.5 / 8.5",
+                     background: "linear-gradient(155deg, #33291f, #171310 88%)",
+                     boxShadow: "0 2px 5px rgba(0,0,0,0.55), 0 16px 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(236,229,218,0.09)",
+                   }}>
+                {coverSrc(b) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={coverSrc(b)!} alt={b.title}
+                       className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center px-3 text-center serif-display text-[13px] leading-snug text-[#e8dfd0]">
+                    {b.title}
+                  </div>
+                )}
+                <div className="absolute bottom-0 inset-x-0 h-[3px]" style={{ background: "rgba(0,0,0,0.55)" }}>
+                  <div className="h-full transition-all duration-700"
+                       style={{ width: `${Math.round(j.progress * 100)}%`,
+                                background: "linear-gradient(90deg, var(--accent-deep), var(--accent))" }} />
+                </div>
+              </div>
+              <div className="mt-2.5 text-[11px] text-text-secondary truncate"
+                   style={{ textShadow: "0 1px 10px rgba(0,0,0,0.9)" }}>
+                {Math.round(j.progress * 100)}%
+              </div>
+            </Link>
+          ))}
+          </div>
 
           {!current && engineOnline && (
             <Link href="/workorder" className="btn-brass mt-10 inline-flex">

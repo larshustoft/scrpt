@@ -175,6 +175,22 @@ function ManuscriptTab({ book, ms, reload, busy }: {
     }
   };
 
+  const rewrite = async () => {
+    const ok = window.confirm(
+      `Rewrite "${book.title}" from scratch?\n\nKeeps: title, pen name, cover artwork, the idea, and series membership.\nDiscards: the current manuscript, outline and audio — the whole book is written again through the current line (market check, architecture, quality gates, acceptance desk).`
+    );
+    if (!ok) return;
+    try {
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/rewrite/${catalog}`, { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.detail || "Could not start the rewrite");
+        return;
+      }
+      reload();
+    } catch { /* offline */ }
+  };
+
   return (
     <div className="mt-6 space-y-5">
       {/* idea */}
@@ -182,6 +198,23 @@ function ManuscriptTab({ book, ms, reload, busy }: {
         <div className="label-scrpt">The idea</div>
         <p className="text-[13px] text-text-secondary leading-relaxed">{ms.idea}</p>
       </div>
+
+      {/* rewrite from scratch */}
+      {ms.chapters.some((c) => c.blocks.length > 0) && !busy && (
+        <div className="card flex items-center justify-between gap-5 flex-wrap">
+          <div className="min-w-[260px] flex-1">
+            <div className="serif-display text-[15px] font-semibold">Rewrite from scratch</div>
+            <p className="text-[12px] text-text-tertiary mt-1 leading-relaxed">
+              Keeps the title, pen name, cover artwork and idea — discards the
+              manuscript and writes the whole book again through the current
+              line. Made for books produced before the line was at full strength.
+            </p>
+          </div>
+          <button className="btn-ghost text-[12px] shrink-0" onClick={rewrite}>
+            Rewrite this book
+          </button>
+        </div>
+      )}
 
       {/* plot options awaiting choice */}
       {ms.status === "plotting" && ms.plot_options.length > 0 && (

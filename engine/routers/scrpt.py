@@ -356,6 +356,42 @@ async def run_acceptance(catalog: str):
     return {"job_id": job_id}
 
 
+@router.post("/rewrite/{catalog}")
+async def rewrite_book(catalog: str):
+    """Rewrite the book from scratch through the CURRENT pipeline — keeps the
+    identity (title, author, cover artwork, idea, series) and discards the old
+    manuscript, then runs the full line: market check, architecture, chapters,
+    gates, acceptance. The existing cover is never touched."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    if [j for j in list_jobs(catalog, active_only=True) if j["kind"] == "full_draft"]:
+        raise HTTPException(409, "This book is already being written")
+
+    data = dict(book["data"])
+    old_ms = data.get("manuscript") or {}
+    preset = GENRE_PRESETS.get(old_ms.get("genre_preset"), {})
+    fresh = Manuscript(
+        kind=BookKind(old_ms.get("kind", data.get("kind", "fiction"))),
+        genre_preset=old_ms.get("genre_preset", "action_thriller"),
+        idea=old_ms.get("idea", ""),
+        target_words=old_ms.get("target_words") or preset.get("target_words", 90000),
+        status=ManuscriptStatus.IDEA,
+    )
+    data["manuscript"] = fresh.model_dump(mode="json")
+    # stale derivatives of the old text go; identity and artwork stay
+    data["interior"] = {}
+    data["audio"] = {}
+    data.pop("acceptance", None)
+    data.pop("market_check", None)
+    db.update_book(book["id"], data)
+
+    job_id = start_job("full_draft",
+                       lambda h: wp.full_draft_job(h, catalog),
+                       book_catalog=catalog)
+    return {"job_id": job_id}
+
+
 @router.post("/draft/{catalog}")
 async def resume_draft(catalog: str):
     """(Re)start drafting for whatever chapters aren't finished."""
