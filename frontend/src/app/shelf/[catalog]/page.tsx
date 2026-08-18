@@ -661,7 +661,7 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
   // ── the search desk ──────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [chips, setChips] = useState<Record<string, boolean>>({
-    female: false, male: false, american: false, english: false,
+    female: false, male: false, american: false, british: false,
   });
   const [showAll, setShowAll] = useState(false);
   const toggleChip = (k: string) => setChips((c) => ({ ...c, [k]: !c[k] }));
@@ -683,7 +683,7 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
     setLibLoading(true);
     try {
       const gender = chips.female !== chips.male ? (chips.female ? "female" : "male") : "";
-      const accent = chips.american !== chips.english ? (chips.american ? "american" : "british") : "";
+      const accent = chips.american !== chips.british ? (chips.american ? "american" : "british") : "";
       const qs = new URLSearchParams({ search, gender, accent, page: String(page),
                                        narration: String(!showAll) });
       const res = await fetch(`${scrpt.engineUrl}/api/scrpt/audio/library?${qs}`);
@@ -745,9 +745,9 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
       if (chips.male && gender !== "male") return false;
     }
     const accent = (L.accent || "").toLowerCase();
-    if (chips.american !== chips.english) {
+    if (chips.american !== chips.british) {
       if (chips.american && !accent.includes("american")) return false;
-      if (chips.english && !(accent.includes("british") || accent.includes("english"))) return false;
+      if (chips.british && !(accent.includes("british") || accent.includes("english"))) return false;
     }
     if (search.trim()) {
       const hay = `${v.name} ${v.description} ${Object.values(L).join(" ")}`.toLowerCase();
@@ -793,14 +793,14 @@ function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void })
         <input className="input-scrpt w-[200px] text-[12.5px] py-[6px]"
                placeholder="Search narrators…"
                value={search} onChange={(e) => setSearch(e.target.value)} />
-        {(["female", "male", "american", "english"] as const).map((k) => (
+        {(["female", "male", "american", "british"] as const).map((k) => (
           <button key={k}
                   onClick={() => toggleChip(k)}
                   className={`px-3 py-[5px] rounded-md text-[12px] capitalize transition-all ${
                     chips[k] ? "bg-accent-subtle text-accent"
                              : "border border-border-subtle text-text-tertiary hover:text-text-primary"}`}
                   style={chips[k] ? { border: "1px solid var(--accent-deep)" } : {}}
-                  title={k === "english" ? "British accent" : k === "american" ? "American accent" : ""}>
+                  title={k === "british" ? "British accent" : k === "american" ? "American accent" : ""}>
             {k}
           </button>
         ))}
