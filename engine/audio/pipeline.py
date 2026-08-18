@@ -98,27 +98,41 @@ def _split_chunks(text: str) -> list[str]:
     return chunks
 
 
+# best output format the account's tier allows — learned on first 403 and
+# remembered for the session. SCRPT's ffmpeg mastering re-encodes to the
+# retail 192kbps CBR spec regardless, so a lower source rate still ships.
+_TTS_FORMATS = ["mp3_44100_192", "mp3_44100_128"]
+_tts_format_index = 0
+
+
 async def _tts_chunk(client: httpx.AsyncClient, api_key: str, voice_id: str,
                      model_id: str, text: str, out_path: Path,
                      prev_text: str = "", next_text: str = ""):
-    resp = await client.post(
-        f"{ELEVEN_BASE}/text-to-speech/{voice_id}",
-        headers={"xi-api-key": api_key},
-        json={
-            "text": text,
-            "model_id": model_id,
-            # request continuity context so chunk seams are inaudible
-            "previous_text": prev_text[-600:] if prev_text else None,
-            "next_text": next_text[:600] if next_text else None,
-            "voice_settings": {"stability": 0.55, "similarity_boost": 0.75,
-                               "style": 0.25, "use_speaker_boost": True},
-        },
-        params={"output_format": "mp3_44100_192"},
-        timeout=300,
-    )
-    if resp.status_code != 200:
-        raise RuntimeError(f"ElevenLabs TTS failed ({resp.status_code}): {resp.text[:300]}")
-    out_path.write_bytes(resp.content)
+    global _tts_format_index
+    while True:
+        resp = await client.post(
+            f"{ELEVEN_BASE}/text-to-speech/{voice_id}",
+            headers={"xi-api-key": api_key},
+            json={
+                "text": text,
+                "model_id": model_id,
+                # request continuity context so chunk seams are inaudible
+                "previous_text": prev_text[-600:] if prev_text else None,
+                "next_text": next_text[:600] if next_text else None,
+                "voice_settings": {"stability": 0.55, "similarity_boost": 0.75,
+                                   "style": 0.25, "use_speaker_boost": True},
+            },
+            params={"output_format": _TTS_FORMATS[_tts_format_index]},
+            timeout=300,
+        )
+        if (resp.status_code == 403 and "subscription_required" in resp.text
+                and _tts_format_index < len(_TTS_FORMATS) - 1):
+            _tts_format_index += 1  # drop to the tier's best format and retry
+            continue
+        if resp.status_code != 200:
+            raise RuntimeError(f"ElevenLabs TTS failed ({resp.status_code}): {resp.text[:300]}")
+        out_path.write_bytes(resp.content)
+        return
 
 
 async def _run_ffmpeg(*args: str):
@@ -162,6 +176,39 @@ async def _duration_s(path: Path) -> float:
 
 # ── orchestrated job ─────────────────────────────────────────────
 
+async def audition_sample(catalog: str, voice_id: str, voice_name: str = "") -> dict:
+    """Narrate the book's actual opening (~2 paragraphs) in a candidate voice
+    so the publisher casts on real material, not a stock preview."""
+    book = get_book_by_catalog(catalog)
+    if not book:
+        raise ValueError(f"Book {catalog} not found")
+    ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
+    ch1 = next((c for c in ms.chapters if c.blocks), None)
+    if not ch1:
+        raise ValueError("Nothing drafted yet to audition with")
+
+    from ..routers.assistant import elevenlabs_key
+    api_key = elevenlabs_key()
+    if not api_key:
+        raise ValueError("ElevenLabs API key is not configured")
+    model_id = get_setting("elevenlabs_model_id", "eleven_multilingual_v2")
+
+    paras = []
+    for b in ch1.blocks:
+        if getattr(b, "text", ""):
+            paras.append(b.text)
+        if sum(len(p) for p in paras) > 700:
+            break
+    text = _clean_for_narration("\n\n".join(paras)[:900], {})
+
+    audio_dir = Path(OUTPUT_DIR) / catalog / "audiobook"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    out = audio_dir / f"audition-{_slug(voice_id)}.mp3"
+    async with httpx.AsyncClient() as client:
+        await _tts_chunk(client, api_key, voice_id, model_id, text, out)
+    return {"file": out.name, "voice_id": voice_id, "voice_name": voice_name}
+
+
 async def audiobook_job(handle: JobHandle, catalog: str) -> dict:
     book = get_book_by_catalog(catalog)
     if not book:
@@ -172,13 +219,16 @@ async def audiobook_job(handle: JobHandle, catalog: str) -> dict:
 
     from ..routers.assistant import elevenlabs_key
     api_key = elevenlabs_key()
-    voice_id = get_setting("elevenlabs_voice_id", "")
-    voice_name = get_setting("elevenlabs_voice_name", "an AI voice")
+    # the voice cast on the BOOK wins; the Settings voice is the house default
+    cast = book["data"].get("audio") or {}
+    voice_id = cast.get("voice_id") or get_setting("elevenlabs_voice_id", "")
+    voice_name = (cast.get("voice_name")
+                  or get_setting("elevenlabs_voice_name", "an AI voice"))
     model_id = get_setting("elevenlabs_model_id", "eleven_multilingual_v2")
     if not api_key or not voice_id:
         raise ValueError(
-            "ElevenLabs is not configured. Add elevenlabs_api_key and "
-            "elevenlabs_voice_id in Settings."
+            "No narrator cast. Pick a voice in the book's Audiobook tab "
+            "(or set a house default in Settings)."
         )
 
     audio_dir = Path(OUTPUT_DIR) / catalog / "audiobook"

@@ -142,6 +142,7 @@ export interface ScrptBook {
     };
     audio?: {
       status?: string;
+      voice_id?: string;
       voice_name?: string;
       chapters?: { index: number; title: string; audio_path: string; duration_s: number }[];
       sample_path?: string;

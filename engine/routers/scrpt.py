@@ -836,6 +836,70 @@ def select_variant(catalog: str, req: SelectVariantRequest):
 
 # ── audiobook ────────────────────────────────────────────────────
 
+@router.get("/audio/voices")
+async def casting_voices():
+    """The casting board: every voice on the ElevenLabs account, with the
+    stock preview URL and labels so the publisher can audition and cast."""
+    import httpx as _httpx
+    from ..routers.assistant import elevenlabs_key
+    key = elevenlabs_key()
+    if not key:
+        return {"configured": False, "voices": [], "default_voice_id": ""}
+    async with _httpx.AsyncClient() as client:
+        r = await client.get("https://api.elevenlabs.io/v1/voices",
+                             headers={"xi-api-key": key}, timeout=20)
+    if r.status_code != 200:
+        raise HTTPException(502, f"ElevenLabs voices failed ({r.status_code})")
+    voices = [{
+        "id": v["voice_id"],
+        "name": v["name"],
+        "category": v.get("category", ""),
+        "preview_url": v.get("preview_url", ""),
+        "labels": v.get("labels") or {},
+        "description": (v.get("description") or "")[:200],
+    } for v in r.json().get("voices", [])]
+    return {"configured": True, "voices": voices,
+            "default_voice_id": db.get_setting("elevenlabs_voice_id", "") or ""}
+
+
+class CastVoiceRequest(BaseModel):
+    voice_id: str
+    voice_name: str = ""
+    set_as_default: bool = False
+
+
+@router.put("/audio/voice/{catalog}")
+def cast_voice(catalog: str, req: CastVoiceRequest):
+    """Cast the narrator for this book (optionally as the house default)."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    data = dict(book["data"])
+    audio = data.get("audio") or {}
+    audio["voice_id"] = req.voice_id
+    audio["voice_name"] = req.voice_name
+    data["audio"] = audio
+    db.update_book(book["id"], data)
+    if req.set_as_default:
+        db.set_setting("elevenlabs_voice_id", req.voice_id)
+        db.set_setting("elevenlabs_voice_name", req.voice_name)
+    return {"success": True}
+
+
+@router.post("/audio/audition/{catalog}")
+async def audition_voice(catalog: str, req: CastVoiceRequest):
+    """Narrate the book's real opening in a candidate voice (~15s render)."""
+    from ..audio.pipeline import audition_sample
+
+    async def job(handle):
+        handle.progress(0.3, "audition",
+                        f"{req.voice_name or 'The candidate'} reads the opening")
+        return await audition_sample(catalog, req.voice_id, req.voice_name)
+
+    job_id = start_job("audition", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
 @router.post("/audio/{catalog}")
 async def start_audiobook(catalog: str):
     from ..audio.pipeline import audiobook_job

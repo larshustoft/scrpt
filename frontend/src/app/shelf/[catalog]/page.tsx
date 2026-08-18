@@ -594,15 +594,154 @@ function SpecItem({ label, value }: { label: string; value: string }) {
 
 // ── Audiobook ────────────────────────────────────────────────────
 
+interface CastingVoice {
+  id: string; name: string; category: string; preview_url: string;
+  labels: Record<string, string>; description: string;
+}
+
+function CastingBoard({ book, reload }: { book: ScrptBook; reload: () => void }) {
+  const audio = book.data.audio || {};
+  const [voices, setVoices] = useState<CastingVoice[]>([]);
+  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [defaultId, setDefaultId] = useState("");
+  const [auditioning, setAuditioning] = useState("");
+  const [auditions, setAuditions] = useState<Record<string, string>>({});
+  const [casting, setCasting] = useState("");
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    fetch(`${scrpt.engineUrl}/api/scrpt/audio/voices`)
+      .then((r) => r.json())
+      .then((d) => { setConfigured(!!d.configured); setVoices(d.voices || []); setDefaultId(d.default_voice_id || ""); })
+      .catch(() => setConfigured(false));
+  }, []);
+
+  const audition = async (v: CastingVoice) => {
+    setAuditioning(v.id);
+    setErr("");
+    try {
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/audio/audition/${book.catalog_number}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice_id: v.id, voice_name: v.name }),
+      });
+      const { job_id } = await res.json();
+      const job = await pollJob(job_id, () => {});
+      if (job.status === "done" && (job.result as { file?: string })?.file) {
+        setAuditions((a) => ({ ...a, [v.id]: (job.result as { file: string }).file }));
+      } else {
+        setErr((job.error || "Audition failed").split("\n")[0]);
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Audition failed");
+    } finally {
+      setAuditioning("");
+    }
+  };
+
+  const cast = async (v: CastingVoice, asDefault: boolean) => {
+    setCasting(v.id);
+    try {
+      await fetch(`${scrpt.engineUrl}/api/scrpt/audio/voice/${book.catalog_number}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice_id: v.id, voice_name: v.name, set_as_default: asDefault }),
+      });
+      if (asDefault) setDefaultId(v.id);
+      reload();
+    } finally {
+      setCasting("");
+    }
+  };
+
+  const labelLine = (v: CastingVoice) =>
+    [v.labels?.gender, v.labels?.age, v.labels?.accent, v.labels?.descriptive || v.labels?.description]
+      .filter(Boolean).join(" · ");
+
+  return (
+    <div className="card">
+      <div className="flex items-baseline justify-between flex-wrap gap-2">
+        <div className="serif-display text-[17px] font-semibold">Casting — the narrator</div>
+        {audio.voice_name && (
+          <span className="text-[12px]" style={{ color: "var(--status-green)" }}>
+            Cast: {audio.voice_name}
+          </span>
+        )}
+      </div>
+      <p className="text-[12px] text-text-tertiary mt-1 leading-relaxed max-w-[560px]">
+        Preview plays the voice&apos;s stock sample; Audition has the candidate
+        read this book&apos;s actual opening. Cast the winner — it narrates the
+        whole book. Voices come from your ElevenLabs voice library.
+      </p>
+      {configured === false && (
+        <div className="text-[12px] mt-3" style={{ color: "var(--status-amber)" }}>
+          ElevenLabs is not configured — add your API key in{" "}
+          <Link className="underline" href="/settings">Settings</Link>.
+        </div>
+      )}
+      {err && <div className="text-[12px] mt-3" style={{ color: "var(--status-red)" }}>{err}</div>}
+      <div className="grid md:grid-cols-2 gap-3 mt-4">
+        {voices.map((v) => {
+          const isCast = audio.voice_id === v.id;
+          return (
+            <div key={v.id} className="rounded-[9px] p-4"
+                 style={{
+                   background: "var(--surface-elevated)",
+                   border: isCast ? "1px solid var(--accent-deep)" : "1px solid var(--border-subtle)",
+                 }}>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[13.5px] font-semibold">{v.name}</span>
+                <span className="text-[10px] uppercase tracking-[0.08em] text-text-faint">
+                  {v.id === defaultId ? "house default" : v.category}
+                </span>
+              </div>
+              {labelLine(v) && (
+                <div className="text-[11px] text-text-tertiary mt-0.5 capitalize">{labelLine(v)}</div>
+              )}
+              {auditions[v.id] ? (
+                <audio controls preload="none" className="h-8 w-full mt-3"
+                       src={`${scrpt.engineUrl}/api/scrpt/audio/file/${book.catalog_number}/${auditions[v.id]}`} />
+              ) : v.preview_url ? (
+                <audio controls preload="none" className="h-8 w-full mt-3" src={v.preview_url} />
+              ) : null}
+              <div className="flex items-center gap-2 mt-3">
+                <button className="btn-ghost text-[11px]"
+                        disabled={auditioning !== ""}
+                        onClick={() => audition(v)}>
+                  {auditioning === v.id ? "Reading…" : auditions[v.id] ? "Audition again" : "Audition with this book"}
+                </button>
+                <span className="flex-1" />
+                {!isCast && (
+                  <button className="btn-brass text-[11px]" disabled={casting !== ""}
+                          onClick={() => cast(v, false)}>
+                    {casting === v.id ? "Casting…" : "Cast"}
+                  </button>
+                )}
+                {isCast && v.id !== defaultId && (
+                  <button className="btn-ghost text-[11px]" onClick={() => cast(v, true)}>
+                    Make house default
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AudiobookTab({ book, reload, busy }: { book: ScrptBook; reload: () => void; busy: boolean }) {
   const audio = book.data.audio || {};
   const ms = book.data.manuscript as Manuscript;
   const drafted = ms.chapters.some((c) => c.blocks.length > 0);
+  const hasNarrator = Boolean(audio.voice_id);
   const [starting, setStarting] = useState(false);
   const [err, setErr] = useState("");
 
   return (
     <div className="mt-6 space-y-5">
+      <CastingBoard book={book} reload={reload} />
       <div className="card">
         <div className="flex items-start justify-between gap-6">
           <div>
@@ -615,7 +754,7 @@ function AudiobookTab({ book, reload, busy }: { book: ScrptBook; reload: () => v
             </p>
           </div>
           {audio.status !== "mastered" && (
-            <button className="btn-brass shrink-0" disabled={!drafted || busy || starting}
+            <button className="btn-brass shrink-0" disabled={!drafted || !hasNarrator || busy || starting}
                     onClick={async () => {
                       setStarting(true);
                       setErr("");
@@ -635,6 +774,11 @@ function AudiobookTab({ book, reload, busy }: { book: ScrptBook; reload: () => v
         {!drafted && (
           <div className="text-[12px] text-text-faint mt-3">
             The manuscript must be drafted before narration.
+          </div>
+        )}
+        {drafted && !hasNarrator && (
+          <div className="text-[12px] text-text-faint mt-3">
+            Cast a narrator above — the button unlocks once a voice is cast.
           </div>
         )}
         {err && (
