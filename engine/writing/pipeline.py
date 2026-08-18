@@ -20,7 +20,6 @@ from ..prose.models import (
     BookKind, Chapter, ChapterStatus, Character, ConceptBible, GENRE_PRESETS,
     Manuscript, ManuscriptStatus, StoryBible,
 )
-from ..craft import craft
 from .client import complete, extract_json
 from .parsing import parse_chapter_text, count_words
 
@@ -299,7 +298,7 @@ async def build_outline(catalog: str) -> None:
         )
 
     genre_structure = p.get("structure", "")
-    craft_txt = craft(ms.genre_preset, "OUTLINE")
+    craft_txt = ("Apply the current bestselling craft standards of this genre — structure beats at their proven percentages, retention mechanics, and the language norms of its top authors.")
 
     # Stage 1 — STORY ARCHITECTURE. At 25-30 chapters a book lives or dies
     # on its spine, so the whole arc is designed before a single chapter is
@@ -490,7 +489,6 @@ async def draft_chapter(catalog: str, index: int) -> None:
         f"Chapter brief: {ch.outline_summary}\nBeats to hit:\n{beats}\n\n"
         f"{arc_note}"
         f"Length: {p['chapter_words']}-{int(p['chapter_words']*1.25)} words. {dialect}\n"
-        f"{craft(ms.genre_preset, 'CHAPTER')}"
         "Write the chapter text only — no chapter number/title header, no commentary.\n"
         "Then, after the chapter, output exactly one line starting with '@@META@@ ' "
         "followed by JSON: {\"rolling_summary\": \"150-250 words: everything a future "

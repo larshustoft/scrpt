@@ -20,7 +20,6 @@ can be re-checked later with POST /api/scrpt/acceptance/{catalog}.
 
 import json
 
-from ..craft import craft
 from ..database import get_book_by_catalog
 from ..prose.models import GENRE_PRESETS, Manuscript
 from .client import complete, extract_json
@@ -105,7 +104,6 @@ async def editorial_review(catalog: str) -> dict:
         "hold across the whole length, do the pinned beats actually land, "
         "does the middle sag, are setups paid off, is the voice consistent, "
         "would the target reader finish it and buy the next one?\n"
-        f"{craft(ms.get('genre_preset', ''), 'REVISION')}\n"
         "Return JSON only:\n"
         '{"verdict": "accept" | "revise", "score": 0-10 one decimal, '
         '"strengths": ["..."], '

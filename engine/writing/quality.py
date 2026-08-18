@@ -12,7 +12,6 @@ kills long AI drafts (chapters 15-30 going flat) is caught chapter by
 chapter, at the moment it happens.
 """
 
-from ..craft import craft
 from ..database import get_book_by_catalog
 from ..prose.models import ChapterStatus, Manuscript
 from .client import complete, extract_json
@@ -48,7 +47,7 @@ async def audit_chapter(catalog: str, index: int) -> dict:
     ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
     ch = next(c for c in ms.chapters if c.index == index)
     text = blocks_to_text(ch.blocks)
-    playbook = craft(ms.genre_preset, "REVISION") + craft(ms.genre_preset, "CHAPTER")
+    playbook = ""
 
     prompt = (
         f"{playbook}\n"
@@ -89,7 +88,6 @@ async def revise_chapter(catalog: str, index: int, issues: list[str],
     prompt = (
         f"BIBLE:\n{_bible_digest(ms)}\n\n"
         f"{'PREVIOUS CHAPTER SUMMARY: ' + prev.rolling_summary if prev else ''}\n"
-        f"{craft(ms.genre_preset, 'CHAPTER')}\n"
         f"REWRITE chapter {index} (\"{ch.title}\") to fix these editorial "
         f"issues, in priority order:\n"
         + "\n".join(f"  {i+1}. {iss}" for i, iss in enumerate(issues[:6]))

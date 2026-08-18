@@ -176,42 +176,6 @@ class DevelopIdeaRequest(BaseModel):
     series_books: int = 0
 
 
-# ── craft playbooks ──────────────────────────────────────────────
-
-@router.get("/craft")
-def craft_status():
-    """The house playbooks: family, last regeneration stamp, size."""
-    from ..craft.regenerate import FAMILIES, PLAYBOOK_DIR
-    out = []
-    for fam in FAMILIES:
-        p = Path(PLAYBOOK_DIR) / f"{fam}.md"
-        stamp = ""
-        if p.exists():
-            first = p.read_text().split("\n", 1)[0]
-            if first.startswith("<!--"):
-                stamp = first.strip("<!-> ").replace("regenerated ", "")
-        out.append({"family": fam, "exists": p.exists(),
-                    "chars": p.stat().st_size if p.exists() else 0,
-                    "regenerated": stamp})
-    return {"playbooks": out}
-
-
-@router.post("/craft/regenerate/{family}")
-async def craft_regenerate(family: str):
-    """Have the current writing model re-research and rewrite a playbook."""
-    from ..craft.regenerate import FAMILIES, regenerate_playbook
-    if family not in FAMILIES:
-        raise HTTPException(404, f"Unknown playbook family: {family}")
-
-    async def job(handle):
-        handle.progress(0.2, "research",
-                        f"Re-researching {family} craft with the current model")
-        return await regenerate_playbook(family)
-
-    job_id = start_job("craft_regenerate", job)
-    return {"job_id": job_id}
-
-
 @router.post("/workorder/develop")
 async def develop_workorder_idea(req: DevelopIdeaRequest):
     """Research & extend a rough idea into a commissioning package."""

@@ -249,6 +249,7 @@ async def review_cover(
 
     try:
         import anthropic
+from ..writing.client import writing_model
 
         # Resize image to fit Claude Vision's 5MB limit
         review_bytes = _resize_png_for_review(cover_png_bytes)
@@ -264,7 +265,7 @@ async def review_cover(
 
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=writing_model(),
             max_tokens=8000,
             messages=[
                 {

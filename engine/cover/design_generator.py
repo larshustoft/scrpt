@@ -476,11 +476,12 @@ async def generate_design_from_reference(
 
     try:
         import anthropic
+from ..writing.client import writing_model
 
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=writing_model(),
             max_tokens=8000,
             messages=[
                 {

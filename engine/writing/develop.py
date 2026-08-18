@@ -7,7 +7,6 @@ market positioning, the extended idea, series engine, and title suggestions —
 grounded in the house's genre playbooks and market norms.
 """
 
-from ..craft import craft
 from ..prose.models import GENRE_PRESETS
 from .client import complete, extract_json
 
@@ -16,7 +15,7 @@ async def develop_idea(kind: str, genre_preset: str, idea: str,
                        series_books: int = 0) -> dict:
     preset = GENRE_PRESETS.get(genre_preset, {})
     is_series = series_books and series_books > 1
-    playbook = craft(genre_preset, "OUTLINE")
+    playbook = ""
 
     if is_series:
         series_decision = (
