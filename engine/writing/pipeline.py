@@ -277,7 +277,7 @@ async def build_bible(catalog: str, chosen: int = 0, edits: str = "") -> None:
 
 # ── stage 3: outline ─────────────────────────────────────────────
 
-async def build_outline(catalog: str) -> None:
+async def build_outline(catalog: str, on_progress=None) -> None:
     book, ms = _load(catalog)
     p = _preset(ms)
     n_chapters = max(6, round(ms.target_words / p["chapter_words"]))
@@ -341,6 +341,8 @@ async def build_outline(catalog: str) -> None:
         # beats must reach deep into the book — a truncated blueprint stops early
         return max(pinned, default=0) >= int(n_chapters * 0.85)
 
+    if on_progress:
+        on_progress("Designing the story architecture — acts, beats, threads")
     ms.arc_map = {}
     for attempt in range(2):
         candidate = extract_json(await complete(system, arch_prompt,
@@ -367,9 +369,12 @@ async def build_outline(catalog: str) -> None:
     # honest, and the loop guarantees the full count.
     chapters: list = []
     wave = 10
+    total_waves = -(-n_chapters // wave)
     while len(chapters) < n_chapters:
         start = len(chapters) + 1
         end = min(n_chapters, len(chapters) + wave)
+        if on_progress:
+            on_progress(f"Outline wave {(start - 1) // wave + 1} of {total_waves} — chapters {0}–{1} of {2}".format(start, end, n_chapters))
         so_far = ""
         if chapters:
             done = "\n".join(
@@ -603,7 +608,9 @@ async def full_draft_job(handle: JobHandle, catalog: str, chosen_plot: int = 0,
     _, ms = _load(catalog)
     if not ms.chapters:
         handle.progress(0.06, "outline", "Designing the chapter outline")
-        await build_outline(catalog)
+        await build_outline(
+            catalog,
+            on_progress=lambda d: handle.progress(0.06, "outline", d))
     if handle.cancelled():
         return {}
 
