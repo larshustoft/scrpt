@@ -220,7 +220,10 @@ export default function WorkOrderPage() {
         auto_draft: flow === "auto",
       };
       const result = await scrpt.createWorkOrder(payload);
-      router.push(`/shelf/${result.books[0].catalog_number}`);
+      // covers start painting the moment the book is commissioned — land the
+      // publisher on the Cover tab to pick from the four alternatives
+      const coverStarted = (result as { cover_job_id?: string }).cover_job_id;
+      router.push(`/shelf/${result.books[0].catalog_number}${coverStarted ? "?tab=cover" : ""}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
       setSubmitting(false);
@@ -542,7 +545,7 @@ export default function WorkOrderPage() {
           <KindCard
             active={flow === "auto"}
             onClick={() => setFlow("auto")}
-            title="Draft immediately"
+            title="Write immediately"
             body="Skip approval — SCRPT chooses the strongest direction and writes the whole book."
           />
         </div>
@@ -559,7 +562,7 @@ export default function WorkOrderPage() {
         </button>
         <span className="text-[12px] text-text-faint">
           {flow === "auto"
-            ? "Drafting a full book takes roughly 30–60 minutes."
+            ? "Writing a full book takes roughly 30–60 minutes."
             : "Plot directions arrive in about a minute."}
         </span>
       </div>
@@ -579,7 +582,7 @@ function ResearchingPanel({ genreLabel, series, redeal }: {
     "Testing the hook against proven demand…",
     series ? "Shaping the series engine — what generates every next book…"
            : "Sharpening the premise into a commissioning brief…",
-    series ? "Titling the series and the first books…" : "Drafting title options…",
+    series ? "Titling the series and the first books…" : "Writing title options…",
     "Choosing a pen name for the shelf…",
     "Sketching the cover direction…",
     "Weighing it all — the package is almost on your desk…",

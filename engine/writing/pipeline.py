@@ -38,11 +38,13 @@ def _load(catalog: str) -> tuple[dict, Manuscript]:
 
 
 def _save(book: dict, ms: Manuscript, status: Optional[str] = None):
-    data = dict(book["data"])
+    # Re-read before writing: cover variants (and other jobs) run in PARALLEL
+    # with drafting, and a stale snapshot here would wipe their writes.
+    fresh = get_book_by_catalog(book["catalog_number"])
+    data = dict(fresh["data"]) if fresh else dict(book["data"])
     data["manuscript"] = ms.model_dump(mode="json")
     if status:
-        data["status"] = status  # popped out below
-        update_book(book["id"], {"status": status, **{k: v for k, v in data.items() if k != "status"}})
+        update_book(book["id"], {"status": status, **data})
     else:
         update_book(book["id"], data)
 
@@ -658,11 +660,15 @@ async def full_draft_job(handle: JobHandle, catalog: str, chosen_plot: int = 0,
     await generate_blurb(catalog)
 
     # automatic front cover — a failure here must not fail the manuscript.
-    # A publisher-uploaded cover is the official artwork: never paint over it.
+    # Never paint over an existing cover: publisher uploads, a chosen variant,
+    # or the commission-time variants (the publisher picks from those).
     cover_error = ""
     existing_cover = (get_book_by_catalog(catalog)["data"].get("cover") or {})
-    if existing_cover.get("mode") == "upload":
-        handle.progress(0.97, "cover", "Publisher cover installed — keeping it")
+    if (existing_cover.get("mode") == "upload"
+            or existing_cover.get("selected_variant")
+            or existing_cover.get("cover_front_png")
+            or existing_cover.get("variants")):
+        handle.progress(0.97, "cover", "Cover already in hand — keeping it")
     else:
         handle.progress(0.97, "cover", "Painting the front cover")
         try:

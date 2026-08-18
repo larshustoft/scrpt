@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   pollJob, scrpt, type Job, type Manuscript, type ScrptBook, type ValidationReport,
 } from "@/lib/scrpt";
@@ -10,8 +11,11 @@ type Tab = "manuscript" | "cover" | "audiobook" | "publishing";
 
 export default function BookWorkspace({ params }: { params: Promise<{ catalog: string }> }) {
   const { catalog } = use(params);
+  const searchParams = useSearchParams();
+  const initialTab = (["manuscript", "cover", "audiobook", "publishing"] as Tab[])
+    .includes(searchParams.get("tab") as Tab) ? (searchParams.get("tab") as Tab) : "manuscript";
   const [book, setBook] = useState<ScrptBook | null>(null);
-  const [tab, setTab] = useState<Tab>("manuscript");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [activeJobs, setActiveJobs] = useState<Job[]>([]);
   const [error, setError] = useState("");
   const pollRef = useRef(false);
@@ -107,6 +111,8 @@ export default function BookWorkspace({ params }: { params: Promise<{ catalog: s
           <div className="flex-1 min-w-0">
             <div className="text-[13px] font-semibold">
               {{ full_draft: "Writing the manuscript", plot_options: "Developing plot directions",
+                 cover_variants: "Painting four cover alternatives", front_cover: "Painting the front cover",
+                 acceptance: "The acceptance desk is reading", audition: "Narrator audition",
                  interior_export: "Exporting the print interior", audiobook: "Narrating the audiobook",
                  blurb: "Writing listing copy" }[job.kind] || job.kind}
             </div>
@@ -184,7 +190,7 @@ function ManuscriptTab({ book, ms, reload, busy }: {
             Three directions — pick one
           </div>
           <p className="text-[12px] text-text-tertiary mt-1">
-            SCRPT drafts the full book from the direction you choose. Add notes
+            SCRPT writes the full book from the direction you choose. Add notes
             below to bend it before drafting begins.
           </p>
           <div className="space-y-4 mt-5">
@@ -239,7 +245,7 @@ function ManuscriptTab({ book, ms, reload, busy }: {
           <div className="flex items-baseline justify-between">
             <div className="serif-display text-[18px] font-semibold">Chapters</div>
             <div className="text-[12px] text-text-tertiary">
-              {ms.chapters.filter((c) => c.blocks.length > 0).length} of {ms.chapters.length} drafted
+              {ms.chapters.filter((c) => c.blocks.length > 0).length} of {ms.chapters.length} written
             </div>
           </div>
           <div className="mt-4 divide-y" style={{ borderColor: "var(--border-subtle)" }}>
@@ -957,7 +963,7 @@ function AudiobookTab({ book, reload, busy }: { book: ScrptBook; reload: () => v
         </div>
         {!drafted && (
           <div className="text-[12px] text-text-faint mt-3">
-            The manuscript must be drafted before narration.
+            The manuscript must be written before narration.
           </div>
         )}
         {drafted && !hasNarrator && (

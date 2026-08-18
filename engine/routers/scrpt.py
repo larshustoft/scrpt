@@ -108,7 +108,27 @@ async def create_workorder(req: WorkOrderRequest):
             lambda h, c=catalog: _plot_options_job(h, c),
             book_catalog=catalog,
         )
-    return {"books": created, "job_id": job_id}
+
+    # Covers start the moment the book is commissioned — painted from the
+    # researched commissioning brief + cover direction, in parallel with the
+    # writing. Needs a real title (it is baked into the art); the research
+    # flow always provides one.
+    cover_job_id = None
+    title_ok = (first["title"] and not first["title"].lower().startswith("untitled")
+                and len(first["title"]) <= 120)
+    if title_ok:
+        from ..cover.front_cover import generate_cover_variants
+        catalog = first["catalog_number"]
+
+        async def cover_job(handle, c=catalog):
+            handle.progress(0.08, "brief", "Art-directing from the commissioning brief")
+            return await generate_cover_variants(
+                c, 4, "",
+                on_progress=lambda f, d: handle.progress(f, "painting", d))
+
+        cover_job_id = start_job("cover_variants", cover_job, book_catalog=catalog)
+
+    return {"books": created, "job_id": job_id, "cover_job_id": cover_job_id}
 
 
 async def _plot_options_job(handle, catalog: str) -> dict:

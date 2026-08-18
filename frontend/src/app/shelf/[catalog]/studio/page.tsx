@@ -261,7 +261,7 @@ export default function StudioPage({ params }: { params: Promise<{ catalog: stri
           <div className="card mt-20 max-w-[420px] text-center py-12">
             <div className="serif-display text-[20px] font-semibold">Nothing to typeset yet</div>
             <p className="text-[13px] text-text-secondary mt-2">
-              The manuscript hasn&apos;t been drafted. Once chapters exist, the
+              The manuscript hasn&apos;t been written yet. Once chapters exist, the
               studio lays them out exactly as they will print.
             </p>
           </div>

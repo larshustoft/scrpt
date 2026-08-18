@@ -90,7 +90,7 @@ export default function SeriesPage({ params }: { params: Promise<{ sid: string }
           </h1>
           <div className="text-[13px] text-text-secondary mt-2">
             {series.books.length} of {series.total_planned} planned ·{" "}
-            {drafted} drafted · {words.toLocaleString()} words
+            {drafted} written · {words.toLocaleString()} words
           </div>
         </div>
         <button className="btn-brass shrink-0" disabled={extending}
