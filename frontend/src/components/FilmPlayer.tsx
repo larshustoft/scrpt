@@ -3,93 +3,85 @@
 import { useRef, useState } from "react";
 
 /**
- * The brand film on the sales page.
+ * The brand film, edge to edge.
  *
- * A bare <video controls> shows a browser's default chrome and, on some
- * browsers, a black rectangle until it decides to fetch a frame. A visitor
- * deciding whether to spend eighty seconds should see a still from the film
- * and one obvious way in — so this holds a poster and a play button, and
- * hands over to the native controls only once playing.
+ * Two earlier attempts got this wrong in opposite directions: a full-bleed
+ * 16:9 film is taller than a laptop viewport, and capping its height left
+ * bars down the sides that read as a bug. A modern product-film section does
+ * neither — it runs the film at full width in its own shape and lets the
+ * page scroll to it.
+ *
+ * It also plays. Muted and looping from the moment it loads, so the section
+ * is alive rather than a frozen poster; one press brings the sound, starts
+ * it from the top and hands over the native controls.
  */
-export function FilmPlayer({ src, poster, caption, fullBleed = false }: {
-  src: string; poster: string; caption?: string; fullBleed?: boolean;
+export function FilmPlayer({ src, poster, caption }: {
+  src: string; poster: string; caption?: string;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
-  // Driven by the ELEMENT, not by a flag we set ourselves. Tracking it
-  // separately meant one stray play event left the overlay hidden for good
-  // and the film sat there with no visible way in.
-  const [playing, setPlaying] = useState(false);
+  const [withSound, setWithSound] = useState(false);
 
-  const start = () => {
+  const play = () => {
     const v = ref.current;
     if (!v) return;
-    v.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+    v.muted = false;
+    v.loop = false;
+    v.currentTime = 0;
+    v.play().then(() => setWithSound(true)).catch(() => setWithSound(false));
   };
 
   return (
-    <figure className="m-0">
-      <div
-        className={`relative overflow-hidden group flex items-center justify-center
-                    ${fullBleed ? "" : "rounded-[10px]"}`}
-        style={fullBleed
-          ? { background: "var(--bg)" }
-          : { boxShadow: "var(--shadow-page)",
-              border: "1px solid var(--border-subtle)",
-              background: "#0b0907" }}
-      >
-        <video
-          ref={ref}
-          src={src}
-          poster={poster}
-          controls={playing}
-          playsInline
-          preload="metadata"
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(!(ref.current?.paused ?? true))}
-          onEnded={() => setPlaying(false)}
-          className="w-full block"
-          // A full-bleed 16:9 film is taller than a wide screen: at 2560 across
-          // it wants 1440 of height and the top and bottom fall off. Cap the
-          // height against the viewport and let it letterbox into the dark band
-          // rather than crop the picture.
-          style={{ aspectRatio: "16 / 9",
-                   maxHeight: "53vh",
-                   objectFit: "contain",
-                   margin: fullBleed ? "0 auto" : undefined,
-                   borderRadius: fullBleed ? 10 : undefined,
-                   boxShadow: fullBleed
-                     ? "0 24px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(236,229,218,0.08)"
-                     : undefined }}
-        />
+    <figure className="m-0 relative w-full" style={{ background: "var(--bg)" }}>
+      <video
+        ref={ref}
+        src={src}
+        poster={poster}
+        /* muted + playsInline + autoPlay is the only combination a browser
+           will start unprompted; sound waits for a real press */
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        controls={withSound}
+        onEnded={() => setWithSound(false)}
+        className="w-full block"
+        style={{ aspectRatio: "16 / 9" }}
+      />
 
-        {!playing && (
-          <button
-            onClick={start}
-            aria-label="Play the film"
-            className="absolute inset-0 flex items-center justify-center cursor-pointer"
-            style={{ background:
-              "linear-gradient(180deg, rgba(10,8,6,0.10) 0%, rgba(10,8,6,0.42) 100%)" }}
+      {!withSound && (
+        <button
+          onClick={play}
+          aria-label="Play the film with sound"
+          className="absolute inset-0 flex items-center justify-center group cursor-pointer"
+          style={{ background:
+            "linear-gradient(180deg, rgba(10,8,6,0.06) 0%, rgba(10,8,6,0.34) 100%)" }}
+        >
+          <span
+            className="flex items-center justify-center rounded-full transition-transform
+                       duration-300 group-hover:scale-[1.07]"
+            style={{
+              width: "clamp(64px, 6vw, 104px)",
+              height: "clamp(64px, 6vw, 104px)",
+              background: "rgba(14,12,9,0.5)",
+              border: "1px solid rgba(236,229,218,0.5)",
+              backdropFilter: "blur(6px)",
+              boxShadow: "0 8px 44px rgba(0,0,0,0.55)",
+            }}
           >
-            <span
-              className="flex items-center justify-center rounded-full transition-transform
-                         duration-300 group-hover:scale-[1.06]"
-              style={{
-                width: fullBleed ? 104 : 82, height: fullBleed ? 104 : 82,
-                background: "rgba(14,12,9,0.55)",
-                border: "1px solid rgba(236,229,218,0.55)",
-                backdropFilter: "blur(6px)",
-                boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
-              }}
-            >
-              {/* a triangle, optically centred — a centred glyph looks left-heavy */}
-              <svg width={fullBleed ? 32 : 26} height={fullBleed ? 37 : 30} viewBox="0 0 26 30" aria-hidden
-                   style={{ marginLeft: 5 }}>
-                <path d="M0 0 L26 15 L0 30 Z" fill="#f2ece1" />
-              </svg>
-            </span>
-          </button>
-        )}
-      </div>
+            {/* optically centred — a mathematically centred triangle reads left-heavy */}
+            <svg viewBox="0 0 26 30" aria-hidden
+                 style={{ width: "clamp(20px, 1.9vw, 32px)", marginLeft: "0.18em" }}>
+              <path d="M0 0 L26 15 L0 30 Z" fill="#f2ece1" />
+            </svg>
+          </span>
+          <span className="absolute text-[11.5px] tracking-[0.2em] uppercase"
+                style={{ bottom: "clamp(1.25rem, 4vh, 3rem)",
+                         color: "rgba(236,229,218,0.72)" }}>
+            Play with sound
+          </span>
+        </button>
+      )}
       {caption && (
         <figcaption className="text-[12.5px] text-text-faint text-center mt-4">
           {caption}

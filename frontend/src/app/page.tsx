@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useAuthContext } from "@/components/AuthProvider";
 import { ScrptLogo } from "@/components/Logo";
-import { FilmPlayer } from "@/components/FilmPlayer";
+import { FilmHero } from "@/components/FilmHero";
 import { InterestForm } from "@/components/InterestForm";
 
 /**
@@ -35,83 +35,40 @@ export default function SalesPage() {
         </nav>
       </header>
 
-      {/* hero */}
-      <section className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover"
-          style={{ backgroundImage: "url(/hq-background.png)", backgroundPosition: "center 26%" }}
-        />
-        {/* A single top-to-bottom wash left the right-hand side of the room —
-            shelves, frames, the lamp — competing with the headline. Two
-            passes: one for depth down the frame, and a soft vignette that
-            settles the edges so the words sit on something calm. */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(14,12,9,0.72) 0%, rgba(14,12,9,0.55) 42%, var(--bg) 97%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 62% 70% at 50% 42%, rgba(14,12,9,0) 0%,"
-              + " rgba(14,12,9,0.30) 58%, rgba(14,12,9,0.68) 100%)",
-          }}
-        />
-        {/* pt-36 was a fixed 9rem: fine on a laptop, far too low on a big
-            iMac where the hero grows with the viewport. Scale the padding
-            with the screen and give the section a sensible height range so
-            the headline sits in the same place everywhere. */}
-        <div className="relative max-w-[1150px] mx-auto px-8 text-center
-                        flex flex-col justify-center"
-             style={{ paddingTop: "clamp(3.25rem, 6.5vh, 5.5rem)",
-                      paddingBottom: "clamp(1.75rem, 4vh, 3.5rem)",
-                      minHeight: "clamp(300px, 40vh, 480px)" }}>
-          <h1
-            className="serif-display text-[44px] md:text-[58px] leading-[1.06] font-semibold text-text-primary max-w-[820px] mx-auto"
-            style={{ textShadow: "0 2px 30px rgba(0,0,0,0.85)" }}
-          >
-            From writer
-            <br />
-            to <span className="text-accent">publishing house.</span>
-          </h1>
-          <p
-            className="text-[16.5px] text-text-secondary mt-7 max-w-[640px] mx-auto leading-relaxed"
-            style={{ textShadow: "0 1px 16px rgba(0,0,0,0.9)" }}
-          >
-            SCRPT writes and typesets the book, designs the cover, produces the
-            audiobook, cuts the trailer — and when the story earns it, the film.
-            It keeps your catalogue, tracks what every title earns, runs the
-            marketing, and reports to you each morning through your own
-            publishing assistant.
-          </p>
-          <div className="flex items-center justify-center gap-4 mt-9">
-            <Link href="/login" className="btn-brass text-[14px] px-7 py-3">
-              Start your catalog
-            </Link>
-            <a href="#studio" className="btn-ghost"
-               style={{ background: "rgba(14,12,9,0.5)", backdropFilter: "blur(8px)" }}>
-              See it working
-            </a>
-          </div>
+      {/* the film IS the hero — a full-width 16:9 film is nearly as tall as
+          the window on its own, so a headline above it always pushed it off
+          the screen. Now the two share the same space. */}
+      <FilmHero
+        ambient="/film/scrpt-ambient.mp4"
+        film="/film/scrpt.mp4"
+        poster="/film/poster.jpg"
+      >
+        <h1 className="serif-display font-semibold text-text-primary max-w-[820px]"
+            style={{ fontSize: "clamp(2.2rem, 4.2vw, 3.6rem)", lineHeight: 1.06,
+                     textShadow: "0 2px 34px rgba(0,0,0,0.9)" }}>
+          From writer
+          <br />
+          to <span className="text-accent">publishing house.</span>
+        </h1>
+        <p className="text-text-secondary mt-6 max-w-[620px] leading-relaxed"
+           style={{ fontSize: "clamp(0.95rem, 1.1vw, 1.05rem)",
+                    textShadow: "0 1px 18px rgba(0,0,0,0.95)" }}>
+          SCRPT writes and typesets the book, designs the cover, produces the
+          audiobook, cuts the trailer — and when the story earns it, the film.
+          It keeps your catalogue, tracks what every title earns, runs the
+          marketing, and reports to you each morning through your own
+          publishing assistant.
+        </p>
+        <div className="flex items-center justify-center gap-4 mt-8">
+          <Link href="/login" className="btn-brass text-[14px] px-7 py-3">
+            Start your catalog
+          </Link>
+          <a href="#access" className="btn-ghost"
+             style={{ background: "rgba(14,12,9,0.5)", backdropFilter: "blur(8px)" }}>
+            Get early access
+          </a>
         </div>
-      </section>
-
-      {/* the film, directly under the hero.
-          Edge-to-edge and "fits on screen" pull against each other: a 16:9
-          film at full width is taller than the viewport, and capping its
-          height leaves bars at the sides that read as broken. So it is a
-          contained element — as large as the screen allows, with the page
-          itself around it. */}
-      <section className="relative w-full"
-               style={{ paddingBottom: "clamp(2rem, 5vh, 4rem)" }}>
-        <div className="mx-auto px-4 sm:px-8"
-             style={{ maxWidth: "min(1400px, calc(53vh * 16 / 9 + 4rem))" }}>
-          <FilmPlayer src="/film/scrpt.mp4" poster="/film/poster.jpg" />
-        </div>
-      </section>
+      </FilmHero>
 
       {/* the proof — a real typeset spread */}
       <section className="border-t border-border-subtle">

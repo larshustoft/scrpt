@@ -2848,7 +2848,13 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     # 3. the real cover, the title read, the score, the mix — as the work order does
     if handle:
         handle.progress(0.82, "end screen", "adding the book's actual cover")
-    tagline = ((book["data"].get("manuscript") or {}).get("tagline") or book["data"].get("tagline") or "").strip()
+    # The end card had been reusing the COVER subtitle, so the last thing on
+    # screen repeated what the cover already says. A trailer's closing line is
+    # its own piece of copy — the storyboard carries one when it has been
+    # written, and the cover subtitle is only the fallback.
+    tagline = (str(board.get("end_card_text") or "").strip()
+               or (book["data"].get("manuscript") or {}).get("tagline")
+               or book["data"].get("tagline") or "").strip()
     card = build_end_card(catalog, tagline, "Available on Amazon", size=(W, H))
     card_clip = tdir / f"sb-card-{W}x{H}.mp4"
     tag_vo = await _record_line(catalog, f"{book['title']} — Available on Amazon.", genre, "vo-wo-tag2", "vo-wo-tag2.mp3", speed=0.8)
