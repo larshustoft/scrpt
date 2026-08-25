@@ -12,8 +12,13 @@ from .client import complete, extract_json
 
 
 async def develop_idea(kind: str, genre_preset: str, idea: str,
-                       series_books: int = 0) -> dict:
+                       series_books: int = 0, working_title: str = "") -> dict:
     preset = GENRE_PRESETS.get(genre_preset, {})
+    # a title the publisher typed is FIXED: develop around it, never replace it
+    title_rule = (f'\nTITLE (fixed by the publisher, do not change or improve it): "{working_title}". '
+                  'Every title field for this book must be exactly that string.\n'
+                  if working_title else "")
+    idea = idea + title_rule
     is_series = series_books and series_books > 1
     playbook = ""
 
@@ -79,9 +84,7 @@ async def develop_idea(kind: str, genre_preset: str, idea: str,
         'reads native to the genre shelf (thriller: punchy Anglo surname; '
         'romance: warm, feminine, memorable; nonfiction: credible full name). '
         'Never a real published author\'s name", '
-        '"cover_direction": "60-90 words of visual direction for the covers of '
-        'this concept: palette, motifs, typography feel, what bestselling '
-        'covers in the genre do — written so it can seed artwork prompts", '
+        '"cover_direction": "", '
         '"recommendations": {"heat_or_tone": "...", '
         '"target_words": the market-right length for THIS concept (never 0), '
         '"trim_size": the KDP trim for this genre shelf as WxH like "5.25x8" '
@@ -94,5 +97,5 @@ async def develop_idea(kind: str, genre_preset: str, idea: str,
         "equal parts market analyst and story editor. You verify the market "
         "with live web searches before you write; you name actual authors, "
         "titles and tropes, and you flag honestly when demand is thin.",
-        prompt, max_tokens=8000, web_search=6)
+        prompt, max_tokens=8000, web_search=6, mechanical=True)
     return extract_json(raw)

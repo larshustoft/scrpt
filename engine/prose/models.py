@@ -18,7 +18,67 @@ from pydantic import BaseModel, Field
 class BookKind(str, Enum):
     FICTION = "fiction"
     NONFICTION = "nonfiction"
+    CHILDRENS = "childrens"
 
+
+# Children's books are measured in SPREADS and reading age, not chapters.
+# A picture book is 32 pages by printing convention (a multiple of 8), of
+# which ~14 are story spreads. Word counts are the ones the market expects —
+# going long is the commonest mistake in the category.
+CHILDRENS_PRESETS = {
+    "picture_book": {
+        "kind": "childrens", "label": "Picture book",
+        "age": "3-5", "reading": "read aloud by an adult",
+        "spreads": 14, "words_per_spread": 40, "target_words": 560,
+        # Print reality: a picture book is folded from sheets, so the page
+        # count MUST be divisible by 8 — 24, 32 or 40. 32 is the industry
+        # standard: 4 pages of front matter + 14 story spreads (28 pages).
+        "pages": 32, "trim": "8.5x8.5", "bleed": 0.125, "safe_margin": 0.25,
+        "gutter": 0.375, "paper": "premium_color", "font": "quicksand",
+        "voice": "warm, playful, musical — written to be read aloud",
+                "describe": "A big square full-colour book an adult reads aloud at bedtime. "
+                    "Few words, one picture per page turn.",
+        "physical": "32 pages · 8.5 × 8.5 in square · full colour throughout · full-bleed art",
+        "example_text": "Pip loved light. Pip did not love dark. Not one single bit.",
+        "example_note": "~40 words a spread — the picture carries half the story.",
+        "rules": ("Short sentences. Strong rhythm and repetition a child can join in with. "
+                  "Concrete nouns and active verbs. One idea per spread. No abstraction, no "
+                  "irony, no adult jokes over the child's head. Every spread must give the "
+                  "illustrator something new to draw."),
+    },
+    "early_reader": {
+        "kind": "childrens", "label": "Early reader",
+        "age": "5-7", "reading": "read by the child, with help",
+        "spreads": 16, "words_per_spread": 110, "target_words": 1760,
+        "pages": 40, "trim": "6x9", "bleed": 0.125, "safe_margin": 0.25,
+        "gutter": 0.375, "paper": "premium_color", "font": "quicksand",
+        "voice": "simple, confident, encouraging — the child is the reader now",
+                "describe": "The child reads it themselves, with a little help. Short sentences, "
+                    "big type, a picture on every page to keep them going.",
+        "physical": "40 pages · 6 × 9 in · full colour · larger type, shorter lines",
+        "example_text": "Ben opened the door. The wind was loud. \"Come on,\" he said. \"We can do this.\"",
+        "example_note": "~110 words a spread — sentences a new reader can decode alone.",
+        "rules": ("Simple sentences, mostly common words, sparing use of anything longer than "
+                  "two syllables. Dialogue is welcome and helps. Repetition supports decoding. "
+                  "Every page turn should reward the effort of getting there."),
+    },
+    "chapter_book": {
+        "kind": "childrens", "label": "Chapter book",
+        "age": "7-10", "reading": "read independently",
+        "spreads": 10, "words_per_spread": 900, "target_words": 9000,
+        "pages": 96, "trim": "5.5x8.5", "bleed": 0.0, "safe_margin": 0.25,
+        "gutter": 0.375, "paper": "cream_bw", "font": "crimson",
+        "voice": "funny, fast, full of character — never talks down",
+                "describe": "Their first proper novel. Short chapters, black-and-white line art, "
+                    "read alone under the covers.",
+        "physical": "96 pages · 5.5 × 8.5 in · black and white · ~10 short chapters",
+        "example_text": "There are three rules about the attic, and Mabel had already broken two of them.",
+        "example_note": "~900 words a chapter — every chapter ends on a reason to keep going.",
+        "rules": ("Short chapters that each end on a reason to keep going. Real jeopardy at "
+                  "a child's scale. Humour and heart. Vocabulary can stretch a little, but "
+                  "never at the cost of pace."),
+    },
+}
 
 # Genre presets drive prompts, typography defaults, and pricing defaults.
 # Lengths calibrated against market norms — see docs/BOOK_LENGTH_NORMS.md.
@@ -224,6 +284,10 @@ class Chapter(BaseModel):
     blocks: list[Block] = Field(default_factory=list)
     status: ChapterStatus = ChapterStatus.OUTLINED
     outline_summary: str = ""             # what this chapter should do (from outline)
+    story_event: str = ""                 # Story Grid: what happens + which value shifts
+    crisis: str = ""                      # Story Grid: the dilemma this chapter turns on
+    value_shift: str = ""                 # what the editor found actually shifted
+    audited_crisis: str = ""              # the dilemma the editor found on the page
     beats: list[str] = Field(default_factory=list)
     rolling_summary: str = ""             # what actually happened (for continuity)
     word_count: int = 0

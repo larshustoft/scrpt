@@ -18,7 +18,12 @@ const OPENERS = [
   "Ready when you are.",
 ];
 
-export function AssistantDock() {
+/** PUSH_TO_TALK: hold this key anywhere in SCRPT to speak to the assistant.
+ *  F19 sits above the keypad on extended Mac keyboards and does nothing
+ *  else in the OS, so holding it is safe on every page. */
+const PUSH_TO_TALK = "F19";
+
+export function AssistantDock({ fixed = false }: { fixed?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<OrbState>("idle");
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -29,6 +34,42 @@ export function AssistantDock() {
   const chunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
+
+  /** Speaks sentences in the order they arrive, overlapping synthesis with
+   *  playback: sentence 2 is being rendered by ElevenLabs while sentence 1
+   *  is still being heard, so there is no gap between them. */
+  const speakQueue = useRef({
+    chain: Promise.resolve(),
+    cancelled: false,
+    reset() { this.cancelled = false; this.chain = Promise.resolve(); },
+    stop() { this.cancelled = true; },
+    push(sentence: string) {
+      // synthesis starts NOW, playback waits its turn in the chain
+      const audioP = (async () => {
+        const res = await fetch(`${scrpt.engineUrl}/api/scrpt/assistant/speak`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: sentence }),
+        });
+        if (!res.ok) throw new Error("tts");
+        return URL.createObjectURL(await res.blob());
+      })().catch(() => null);
+      this.chain = this.chain.then(async () => {
+        const url = await audioP;
+        if (!url || this.cancelled) { if (url) URL.revokeObjectURL(url); return; }
+        await new Promise<void>((resolve) => {
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          const finish = () => { URL.revokeObjectURL(url); resolve(); };
+          audio.onended = finish;
+          audio.onerror = finish;
+          audio.play().catch(finish);
+        });
+      });
+      return this.chain;
+    },
+    drain() { return this.chain; },
+  });
 
   useEffect(() => {
     threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
@@ -85,18 +126,55 @@ export function AssistantDock() {
     setMessages(nextMessages);
     setState("thinking");
     try {
-      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/assistant/chat`, {
+      // Stream the reply: the text appears as it is written and each finished
+      // sentence is spoken while the rest is still being thought, so the
+      // assistant starts answering in well under a second.
+      const res = await fetch(`${scrpt.engineUrl}/api/scrpt/assistant/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: nextMessages }),
       });
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.detail || "The assistant is unavailable");
       }
-      const { reply } = await res.json();
-      setMessages((m) => [...m, { role: "assistant", content: reply }]);
-      await speakReply(reply);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "", shown = "", finalReply = "", opened = false, streamErr = "";
+      speakQueue.current.reset();
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop() || "";
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data:")) continue;
+          let ev: { delta?: string; sentence?: string; done?: string; error?: string };
+          try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+          if (ev.error) { streamErr = ev.error; continue; }
+          if (ev.delta) {
+            shown += ev.delta;
+            if (!opened) {
+              opened = true;
+              setMessages((m) => [...m, { role: "assistant", content: shown }]);
+            } else {
+              setMessages((m) => [...m.slice(0, -1), { role: "assistant", content: shown }]);
+            }
+          }
+          if (ev.sentence && voiceOn) { setState("speaking"); void speakQueue.current.push(ev.sentence); }
+          if (ev.done) finalReply = ev.done;
+        }
+      }
+      if (streamErr) throw new Error(streamErr);
+      if (finalReply) {
+        setMessages((m) => (opened
+          ? [...m.slice(0, -1), { role: "assistant", content: finalReply }]
+          : [...m, { role: "assistant", content: finalReply }]));
+      }
+      await speakQueue.current.drain();
+      setState("idle");
     } catch (e) {
       setMessages((m) => [...m, {
         role: "assistant",
@@ -106,7 +184,7 @@ export function AssistantDock() {
       }]);
       setState("idle");
     }
-  }, [messages, speakReply, state]);
+  }, [messages, voiceOn, state]);
 
   // ── microphone (push-to-talk toggle) ──
   const stopRecording = useCallback(() => {
@@ -152,6 +230,51 @@ export function AssistantDock() {
     }
   }, [send]);
 
+  // ── F19: TAP to open and start listening (tap again to send),
+  //         HOLD to talk (release sends). ──
+  // A tap is a press shorter than TAP_MS: the assistant opens, starts
+  // listening and KEEPS listening, so the publisher can speak with their
+  // hands free. A hold is the classic walkie-talkie.
+  const TAP_MS = 350;
+  const recordingRef = useRef(false);
+  recordingRef.current = recording;
+  const pressedAt = useRef(0);
+  const latchedRef = useRef(false);   // true while a tap is holding the mic open
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key !== PUSH_TO_TALK || e.repeat) return;
+      e.preventDefault();
+      // already listening from a previous tap → this press sends it
+      if (latchedRef.current && recordingRef.current) {
+        latchedRef.current = false;
+        stopRecording();
+        pressedAt.current = 0;
+        return;
+      }
+      if (recordingRef.current) return;
+      pressedAt.current = Date.now();
+      audioRef.current?.pause();          // interrupt the assistant if it is speaking
+      speakQueue.current.stop();
+      setOpen(true);
+      void startRecording();
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key !== PUSH_TO_TALK) return;
+      e.preventDefault();
+      if (!pressedAt.current) return;
+      const held = Date.now() - pressedAt.current;
+      pressedAt.current = 0;
+      if (held < TAP_MS) {
+        latchedRef.current = true;        // a tap: stay open and keep listening
+        return;
+      }
+      if (recordingRef.current) stopRecording();
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, [startRecording, stopRecording]);
+
   const orbGlow = {
     idle: "0 0 40px rgba(201,164,92,0.35)",
     listening: "0 0 55px rgba(93,161,115,0.55)",
@@ -160,7 +283,7 @@ export function AssistantDock() {
   }[state];
 
   return (
-    <div className="absolute bottom-16 right-16 flex flex-col items-end gap-4 z-40">
+    <div className={`${fixed ? "fixed bottom-8 right-8" : "absolute bottom-16 right-16"} flex flex-col items-end gap-4 z-40`}>
       {/* conversation panel */}
       {open && (
         <div className="card fade-up flex flex-col"
@@ -169,7 +292,7 @@ export function AssistantDock() {
             <div className="text-[13px] font-semibold">Assistant</div>
             <div className="flex items-center gap-3">
               <button title={voiceOn ? "Voice on" : "Voice off"}
-                      onClick={() => { setVoiceOn(!voiceOn); audioRef.current?.pause(); }}
+                      onClick={() => { setVoiceOn(!voiceOn); audioRef.current?.pause(); speakQueue.current.stop(); }}
                       className={`text-[11px] transition-colors ${voiceOn ? "text-accent" : "text-text-faint"}`}>
                 {voiceOn ? "VOICE ON" : "VOICE OFF"}
               </button>
@@ -225,7 +348,7 @@ export function AssistantDock() {
                style={{ borderTop: "1px solid var(--border-subtle)" }}>
             <button
               onClick={recording ? stopRecording : startRecording}
-              title={recording ? "Stop and send" : "Speak"}
+              title={recording ? "Stop and send" : `Speak (or hold ${PUSH_TO_TALK} anywhere in SCRPT)`}
               className="shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all"
               style={{
                 background: recording ? "var(--status-red)" : "var(--surface-elevated)",

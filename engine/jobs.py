@@ -119,6 +119,10 @@ def start_job(
     handle = JobHandle(job_id)
 
     async def runner():
+
+        from .writing.ledger import current_catalog as _cc, current_job as _cj
+
+        _cc.set(book_catalog); _cj.set(job_id)
         try:
             if sem:
                 if sem.locked():
@@ -162,9 +166,36 @@ def get_job(job_id: str) -> Optional[dict]:
         conn.close()
 
 
+def _reap_dead(conn) -> None:
+    """A job whose task is gone but whose row still says 'running' will sit at
+    its last percentage for ever, and looks exactly like slow work. Nothing
+    detected that, so a dead job simply hung the UI until someone noticed.
+    Sweep them on every read: no live task, and no progress for two minutes,
+    means it died."""
+    rows = conn.execute(
+        "SELECT id, updated_at FROM jobs WHERE status IN ('queued','running')"
+    ).fetchall()
+    for r in rows:
+        jid = r["id"]
+        task = _running_tasks.get(jid)
+        if task is not None and not task.done():
+            continue                      # genuinely working
+        stale = conn.execute(
+            "SELECT (julianday('now') - julianday(updated_at)) * 86400 AS age "
+            "FROM jobs WHERE id = ?", (jid,)).fetchone()
+        if stale and (stale["age"] or 0) > 120:
+            conn.execute(
+                "UPDATE jobs SET status='error', "
+                "error='The job stopped without finishing (no progress for two "
+                "minutes and no live task). Start it again.', "
+                "updated_at=datetime('now') WHERE id = ?", (jid,))
+    conn.commit()
+
+
 def list_jobs(book_catalog: Optional[str] = None, active_only: bool = False) -> list[dict]:
     conn = get_connection()
     try:
+        _reap_dead(conn)
         conditions, params = [], []
         if book_catalog:
             conditions.append("book_catalog = ?")

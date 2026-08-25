@@ -105,6 +105,8 @@ async def lifespan(app: FastAPI):
                 ms = (b.get("data") or {}).get("manuscript") or {}
                 if ms.get("status") != "drafting":
                     continue
+                if (b.get("data") or {}).get("draft_paused"):
+                    continue  # explicitly parked (e.g. awaiting a model decision)
                 catalog = b["catalog_number"]
                 if any(j["kind"] == "full_draft"
                        for j in list_jobs(catalog, active_only=True)):
@@ -119,6 +121,10 @@ async def lifespan(app: FastAPI):
 
     import asyncio as _aio
     _aio.get_event_loop().create_task(_resume_interrupted())
+
+    # the growth engine runs the business on a daily cycle when enabled
+    from .market.autopilot import scheduler as _autopilot
+    _aio.get_event_loop().create_task(_autopilot())
     yield
 
 
@@ -132,10 +138,12 @@ app = FastAPI(
 # ── SCRPT prose-book API ────────────────────────────────────────
 from .routers.scrpt import router as scrpt_router  # noqa: E402
 from .routers.assistant import router as assistant_router  # noqa: E402
-from .routers.auth_local import router as auth_local_router  # noqa: E402
+from .routers.auth_local import router as auth_local_router
+from .routers.market import router as market_router  # noqa: E402
 app.include_router(scrpt_router)
 app.include_router(assistant_router)
 app.include_router(auth_local_router)
+app.include_router(market_router)
 
 # ── CORS ─────────────────────────────────────────────────────────
 app.add_middleware(
@@ -546,15 +554,19 @@ async def submit_to_kdp(request: UploadRequest):
 # FILE SERVING (generated PDFs and images)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@app.get("/api/files/{identifier}/{filename}")
-async def serve_file(identifier: str, filename: str):
-    """Serve generated files (PDFs, images) for a book.
+@app.get("/api/files/{identifier}/{filename:path}")
+async def serve_file(identifier: str, filename: str, download: int = 0, name: str = ""):
+    """Serve generated files (PDFs, images, media) for a book — including
+    one level of sub-folder (audio-preview/ready-00.mp3).
     Identifier can be a catalog_number (SC-001) or legacy book_id (UUID).
     """
     catalog_number = _resolve_catalog_number(identifier)
 
     # Files are stored in output/{catalog_number}/
-    file_path = OUTPUT_DIR / catalog_number / filename
+    base = (OUTPUT_DIR / catalog_number).resolve()
+    file_path = (base / filename).resolve()
+    if base not in file_path.parents or ".." in filename:
+        raise HTTPException(status_code=404, detail="File not found")
 
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
@@ -566,14 +578,24 @@ async def serve_file(identifier: str, filename: str):
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
         ".json": "application/json",
+        ".mp4": "video/mp4",
+        ".mp3": "audio/mpeg",
+        ".epub": "application/epub+zip",
     }
     suffix = file_path.suffix.lower()
     content_type = content_types.get(suffix, "application/octet-stream")
 
+    # media plays inline in the app's players; only documents download —
+    # unless ?download=1 asks for a save, optionally under a titled name
+    inline = suffix in (".mp4", ".mp3", ".jpg", ".jpeg", ".png") and not download
+    safe_name = "".join(ch for ch in (name or "") if ch.isalnum() or ch in "-_. ").strip() or filename
+    if not safe_name.lower().endswith(suffix):
+        safe_name += suffix
     return FileResponse(
         path=str(file_path),
         media_type=content_type,
-        filename=filename,
+        filename=safe_name,
+        content_disposition_type="inline" if inline else "attachment",
     )
 
 

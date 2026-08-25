@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useCoverLightbox } from "@/components/CoverLightbox";
 import { scrpt, type Job, type ScrptBook } from "@/lib/scrpt";
-import { AssistantDock } from "@/components/AssistantDock";
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -19,6 +19,8 @@ function getGreeting(): string {
  */
 export default function HQPage() {
   const [desk, setDesk] = useState<{ book: ScrptBook; job: Job | null }[]>([]);
+  const [waiting, setWaiting] = useState<string[]>([]);
+  const openCover = useCoverLightbox();
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
 
 
@@ -44,10 +46,23 @@ export default function HQPage() {
             .filter((j) => j.kind === "full_draft" && j.book_catalog)
             .map((j) => ({ job: j as Job | null, book: prose.find((b) => b.catalog_number === j.book_catalog) }))
             .filter((w): w is { job: Job; book: ScrptBook } => Boolean(w.book))
+            // books actually being written outrank queued ones, oldest job
+            // first, so the desk never drops a book mid-write for a newcomer
+            .sort((a, b) => {
+              const run = (s?: string) => (s === "running" ? 0 : 1);
+              const d = run(a.job?.status) - run(b.job?.status);
+              return d !== 0 ? d : (a.job?.created_at || "").localeCompare(b.job?.created_at || "");
+            })
             .slice(0, 4);
           setDesk(writing.length > 0
             ? writing
             : prose[0] ? [{ book: prose[0], job: null }] : []);
+          setWaiting(
+            jobs.jobs
+              .filter((j) => j.kind === "full_draft" && j.status === "queued" && j.book_catalog
+                && !writing.some((w) => w.book.catalog_number === j.book_catalog))
+              .map((j) => prose.find((b) => b.catalog_number === j.book_catalog)?.title || "")
+              .filter(Boolean));
         } catch { /* engine flaked */ }
       }
     };
@@ -60,6 +75,16 @@ export default function HQPage() {
   const job = desk[0]?.job || null;
   const ms = current?.data.manuscript;
   const drafting = Boolean(desk.some((d) => d.job));
+
+  // The desk was drawing every book at 5.5 x 8.5, so a square picture book
+  // appeared as a cropped portrait. Take the shape from the book itself.
+  const trimOf = (b: ScrptBook): [number, number] => {
+    const t = String(
+      (b.data?.format as { trim_size?: string } | undefined)?.trim_size
+      || (b.data?.trim_size as string | undefined) || "5.5x8.5");
+    const m = t.toLowerCase().split("x").map((n) => parseFloat(n));
+    return m.length === 2 && m.every((n) => n > 0) ? [m[0], m[1]] : [5.5, 8.5];
+  };
 
   const coverSrc = (b: ScrptBook) => {
     if (b.data.cover?.cover_front_png)
@@ -108,16 +133,27 @@ export default function HQPage() {
               <div
                 className="relative rounded-[5px] overflow-hidden transition-transform duration-300 group-hover:-translate-y-2 group-hover:rotate-[0.6deg]"
                 style={{
-                  aspectRatio: "5.5 / 8.5",
+                  aspectRatio: `${trimOf(b)[0]} / ${trimOf(b)[1]}`,
                   background: "linear-gradient(155deg, #33291f, #171310 88%)",
                   boxShadow:
                     "0 2px 6px rgba(0,0,0,0.6), 0 24px 60px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(236,229,218,0.09)",
                 }}
               >
                 {coverSrc(b) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                  <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={coverSrc(b)!} alt={b.title}
-                       className="absolute inset-0 w-full h-full object-cover" />
+                       className="absolute inset-0 w-full h-full object-contain" />
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation();
+                      openCover(coverSrc(b)!, b.title); }}
+                    title="View cover fullscreen"
+                    className="absolute top-2 left-2 z-10 h-7 w-7 rounded-full flex items-center justify-center
+                               opacity-0 group-hover:opacity-100 transition-opacity text-[13px] cursor-zoom-in"
+                    style={{ background: "rgba(8,7,5,0.6)", color: "#ece5da", backdropFilter: "blur(3px)" }}>
+                    ⛶
+                  </button>
+                  </>
                 ) : (
                   <>
                     <div className="absolute inset-y-0 left-0 w-[10px]"
@@ -152,6 +188,13 @@ export default function HQPage() {
           ))}
           </div>
 
+          {waiting.length > 0 && (
+            <div className="mt-4 text-[11px] tracking-[0.14em] uppercase text-text-tertiary"
+                 style={{ textShadow: "0 1px 10px rgba(0,0,0,0.9)" }}>
+              Next in line: {waiting.join(" · ")}
+            </div>
+          )}
+
           {!current && engineOnline && (
             <Link href="/workorder" className="btn-brass mt-10 inline-flex">
               Commission the first book
@@ -182,8 +225,8 @@ export default function HQPage() {
         </div>
       </div>
 
-      {/* the assistant — bottom right */}
-      <AssistantDock />
+      {/* the assistant lives in the app shell (Providers) so it survives
+          navigation — no second instance here */}
     </div>
   );
 }

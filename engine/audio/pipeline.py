@@ -16,6 +16,7 @@ of AI narration is required on most platforms.
 
 import asyncio
 import json
+import shutil
 import re
 from pathlib import Path
 
@@ -28,6 +29,7 @@ from ..prose.models import AudioChapter, AudioState, Manuscript
 from ..writing.parsing import blocks_to_text
 
 ELEVEN_BASE = "https://api.elevenlabs.io/v1"
+_RNNOISE = str(Path(__file__).resolve().parent / "models" / "std.rnnn")
 MAX_CHUNK_CHARS = 4200          # per TTS request, split at paragraph boundaries
 TARGET_LUFS = -19.0             # lands RMS comfortably inside -23..-18
 TRUE_PEAK = -3.5
@@ -61,20 +63,29 @@ def build_narration_script(book: dict, ms: Manuscript, voice_name: str) -> list[
     title = book["title"]
     pron = (book["data"].get("audio") or {}).get("pronunciation", {})
 
+    # track 001 is the TigerWorks ident (copied in, not narrated); the book's
+    # own opening credits are 002 and every chapter shifts up by two.
     segments = [{
-        "index": 0,
+        "index": 2,
         "title": "Opening credits",
         "text": f"{title}. Written by {author}.",
     }]
+    written = 0
     for ch in ms.chapters:
+        # an outlined-but-unwritten chapter has no text: narrating it would
+        # produce a track that announces a chapter title and then stops
+        if not ch.blocks:
+            continue
+        written += 1
         body = _clean_for_narration(blocks_to_text(ch.blocks), pron)
         announce = f"Chapter {ch.index}."
         if ch.title and ch.title.lower() != f"chapter {ch.index}":
             announce = f"Chapter {ch.index}. {ch.title}."
-        segments.append({"index": ch.index, "title": ch.title,
-                         "text": f"{announce}\n\n{body}"})
+        segments.append({"index": ch.index + 2, "title": ch.title,
+                         "text": f"{announce}\n\n{body}",
+                         "first_chapter": written == 1})
     segments.append({
-        "index": len(ms.chapters) + 1,
+        "index": (segments[-1]["index"] if len(segments) > 1 else 1) + 1,
         "title": "Closing credits",
         "text": (f"This has been {title}, written by {author}. "
                  f"Narrated by {voice_name}. Thank you for listening."),
@@ -154,7 +165,8 @@ async def _concat_and_master(chunk_paths: list[Path], out_path: Path, tmp_dir: P
                       "-c", "copy", str(raw))
     await _run_ffmpeg(
         "-i", str(raw),
-        "-af", f"loudnorm=I={TARGET_LUFS}:TP={TRUE_PEAK}:LRA=11",
+        "-af", (f"highpass=f=70,arnndn=m={_RNNOISE}:mix=0.8,"
+                f"loudnorm=I={TARGET_LUFS}:TP={TRUE_PEAK}:LRA=11"),
         "-ar", "44100", "-b:a", "192k", "-codec:a", "libmp3lame",
         str(out_path),
     )
@@ -248,7 +260,22 @@ async def audiobook_job(handle: JobHandle, catalog: str) -> dict:
     state.chapters = []
     _persist(book, state)
 
+    # ── the house ident ──────────────────────────────────────────
+    # Every TigerWorks audiobook opens on the same short audio logo. It is a
+    # brand asset, not narration: rendered once, in the house voice, and
+    # copied in front of every book so the sound is identical every time.
     done_files: list[AudioChapter] = []
+    from .ident import ensure_ident
+    ident_src = await ensure_ident() or Path.home() / ".scrpt" / "house" / "audiobook-intro.mp3"
+    if ident_src and ident_src.exists() and ident_src.stat().st_size > 10_000:
+        ident = audio_dir / "001_tigerworks.mp3"
+        shutil.copy2(ident_src, ident)
+        done_files.append(AudioChapter(
+            index=1, title="TigerWorks", audio_path=str(ident),
+            duration_s=await _duration_s(ident), chars=0))
+        state.chapters = list(done_files)
+        _persist(book, state)
+
     async with httpx.AsyncClient() as client:
         for n, seg in enumerate(segments):
             if handle.cancelled():
@@ -281,7 +308,8 @@ async def audiobook_job(handle: JobHandle, catalog: str) -> dict:
 
     # retail sample: first chapters file (index 1), capped under 5 minutes
     handle.progress(0.92, "sample", "Cutting retail sample")
-    first = next((c for c in done_files if c.index == 1), None)
+    first_idx = next((sg["index"] for sg in segments if sg.get("first_chapter")), None)
+    first = next((c for c in done_files if c.index == first_idx), None)
     if first:
         sample = audio_dir / "retail_sample.mp3"
         await _run_ffmpeg("-i", first.audio_path, "-t", str(SAMPLE_MAX_S),

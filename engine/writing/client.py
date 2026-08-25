@@ -15,6 +15,18 @@ from ..database import get_setting
 
 DEFAULT_MODEL = "claude-sonnet-5"
 
+_FICTION_FRAME = (
+    "This is a commercial NOVEL manuscript for a publishing house. Every "
+    "agency, technology, code and event in it is invented for drama - write "
+    "the scene as literary fiction (interiority, atmosphere, character), "
+    "with invented jargon standing in for any technical detail, and no "
+    "real-world operational instruction of any kind.\n\n")
+
+class ContentRefused(RuntimeError):
+    """The model declined this content repeatedly — a brief/model problem,
+    not a transient API error, so it must not be retried blindly."""
+
+
 _client: Optional[AsyncAnthropic] = None
 
 
@@ -25,8 +37,44 @@ def client() -> AsyncAnthropic:
     return _client
 
 
+import contextvars
+
+# a book may pin its own writing model (data.writing_model_override) — set per
+# draft task so parallel books on different models never interfere
+_model_override: contextvars.ContextVar = contextvars.ContextVar(
+    "scrpt_model_override", default=None)
+
+
+def set_model_override(model: Optional[str]):
+    _model_override.set((model or "").strip() or None)
+
+
 def writing_model() -> str:
-    return get_setting("writing_model", DEFAULT_MODEL) or DEFAULT_MODEL
+    return (_model_override.get()
+            or get_setting("writing_model", DEFAULT_MODEL) or DEFAULT_MODEL)
+
+
+# Mechanical stages (research, titles, taglines, outlines, quality gates,
+# blurbs, hooks) run on a cheaper model — the words readers actually read
+# (chapters, story bible, architecture, the acceptance editor) stay on the
+# writing model. Configurable via settings key mechanical_model.
+MECHANICAL_MODEL_DEFAULT = "claude-sonnet-5"
+
+
+def mechanical_model() -> str:
+    return get_setting("mechanical_model", MECHANICAL_MODEL_DEFAULT) \
+        or MECHANICAL_MODEL_DEFAULT
+
+
+# Reader of last resort: when the writing model declines to READ a manuscript
+# (large mixed-content prompts can trip its safeguards), judging stages escalate
+# here rather than leaving a finished book with no verdict.
+FALLBACK_MODEL_DEFAULT = "claude-opus-5"
+
+
+def fallback_model() -> str:
+    return get_setting("fallback_model", FALLBACK_MODEL_DEFAULT) \
+        or FALLBACK_MODEL_DEFAULT
 
 
 async def complete(
@@ -35,6 +83,10 @@ async def complete(
     max_tokens: int = 8000,
     retries: int = 3,
     web_search: int = 0,
+    mechanical: bool = False,
+    cached_context: str = None,
+    model: str = None,
+    allow_fallback: bool = False,
 ) -> str:
     """One-shot completion with retry on transient errors.
 
@@ -42,26 +94,67 @@ async def complete(
     searches allowed — used by research stages so market claims are checked
     against the live web, not just training knowledge. Falls back to a plain
     completion if the API rejects the tool (older models / no access).
+
+    mechanical=True routes the call to the cheaper mechanical-stage model.
+    allow_fallback=True lets a judging stage finish on the fallback model when
+    the primary is refusing or congested — never used for chapter prose, where
+    a mid-book model switch would break the voice.
+    cached_context is a large stable block (e.g. bible + outline) appended
+    to the system prompt with prompt caching, so repeated calls over the
+    same book re-read it at ~10% of the input price.
     """
     last_err = None
+    refusals = 0
     kwargs = {}
     if web_search:
         kwargs["tools"] = [{"type": "web_search_20250305", "name": "web_search",
                             "max_uses": web_search}]
-    for attempt in range(retries):
+    for attempt in range(retries + 4):   # +4: room for refusal re-rolls
         try:
+            if cached_context:
+                sys_payload = [
+                    {"type": "text", "text": system},
+                    {"type": "text", "text": cached_context,
+                     "cache_control": {"type": "ephemeral"}},
+                ]
+            else:
+                sys_payload = system
             # always stream: long generations (thinking-heavy models, big
             # budgets) exceed the SDK's non-streaming 10-minute guard
             async with client().messages.stream(
-                model=writing_model(),
+                model=model or (mechanical_model() if mechanical
+                                else writing_model()),
                 max_tokens=max_tokens,
-                system=system,
+                system=sys_payload,
                 messages=[{"role": "user", "content": user}],
                 **kwargs,
             ) as stream:
                 resp = await stream.get_final_message()
             text = "".join(b.text for b in resp.content if b.type == "text")
             stop = getattr(resp, "stop_reason", None)
+            try:
+                from .ledger import record as _record
+                _record(getattr(resp, "model", None) or (model or (mechanical_model() if mechanical else writing_model())),
+                        getattr(resp, "usage", None), kind=(system or "")[:40])
+            except Exception:
+                pass
+            if stop == "refusal":
+                # Refusals are partly stochastic: the same prompt often
+                # succeeds on a re-roll, and large prompts raise the odds.
+                # Re-roll (asserting the fictional frame from the second
+                # attempt on) and only fail loudly once the budget is spent.
+                refusals += 1
+                last_err = RuntimeError(
+                    f"model declined ({refusals}x, stop_reason=refusal)")
+                if _FICTION_FRAME not in system:
+                    system = _FICTION_FRAME + system
+                if refusals >= max(3, retries):
+                    raise ContentRefused(
+                        f"model declined this content {refusals} times "
+                        "(stop_reason=refusal) — rework the brief or run this "
+                        "book on another model")
+                await asyncio.sleep(1.5 * refusals)
+                continue
             # On always-thinking models the reasoning counts against
             # max_tokens: a response can come back truncated mid-output
             # (stop_reason max_tokens) or empty (budget consumed before any
@@ -77,6 +170,8 @@ async def complete(
                 f"empty response (stop_reason={stop}, max_tokens={max_tokens})")
             max_tokens = min(max_tokens * 2, 64000)
             continue
+        except ContentRefused:
+            raise                      # a real content problem: surface it
         except Exception as e:  # transient API errors: back off and retry
             last_err = e
             msg = str(e).lower()
@@ -84,8 +179,61 @@ async def complete(
                     and "rate" not in msg:
                 kwargs.pop("tools", None)  # tool unsupported — retry without
                 continue
+            # API capacity pushback clears on the order of tens of seconds —
+            # a 2s backoff just burns the retry budget for nothing
+            if "overloaded" in msg or "rate_limit" in msg or "529" in msg:
+                await asyncio.sleep(min(90, 20 * (attempt + 1)))
+                continue
             await asyncio.sleep(2 ** attempt * 2)
+    if allow_fallback and not model:
+        primary = mechanical_model() if mechanical else writing_model()
+        # readers of last resort, in order — any capable model beats leaving a
+        # finished book unjudged when the primary is congested
+        for fb in (fallback_model(), MECHANICAL_MODEL_DEFAULT):
+            if not fb or fb == primary:
+                continue
+            try:
+                return await complete(system, user, max_tokens=max_tokens,
+                                      retries=retries, web_search=web_search,
+                                      cached_context=cached_context, model=fb)
+            except Exception as e:
+                last_err = e
     raise RuntimeError(f"Claude request failed after {retries} attempts: {last_err}")
+
+
+async def complete_vision(
+    system: str,
+    user: str,
+    image_png: bytes,
+    max_tokens: int = 2000,
+    retries: int = 3,
+) -> str:
+    """One-shot completion with an image attached (e.g. describing cover art)."""
+    import base64
+    last_err = None
+    content = [
+        {"type": "image", "source": {"type": "base64", "media_type": "image/png",
+                                     "data": base64.b64encode(image_png).decode()}},
+        {"type": "text", "text": user},
+    ]
+    for attempt in range(retries):
+        try:
+            async with client().messages.stream(
+                model=writing_model(),
+                max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": content}],
+            ) as stream:
+                resp = await stream.get_final_message()
+            text = "".join(b.text for b in resp.content if b.type == "text")
+            if text.strip():
+                return text
+            last_err = RuntimeError(f"empty response (stop_reason={getattr(resp, 'stop_reason', None)})")
+            max_tokens = min(max_tokens * 2, 16000)
+        except Exception as e:
+            last_err = e
+            await asyncio.sleep(2 ** attempt * 2)
+    raise RuntimeError(f"Claude vision request failed after {retries} attempts: {last_err}")
 
 
 async def complete_chat(

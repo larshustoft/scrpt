@@ -8,7 +8,7 @@ const ENGINE_URL =
 
 // ── types ────────────────────────────────────────────────────────
 
-export type BookKind = "fiction" | "nonfiction";
+export type BookKind = "fiction" | "nonfiction" | "childrens";
 
 export type BlockType =
   | "paragraph" | "heading" | "scene_break" | "blockquote"
@@ -346,6 +346,23 @@ export const scrpt = {
     }
     return res.json();
   },
+
+  uploadStoryboard: async (catalog: string, file: File): Promise<{ job_id: string }> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${ENGINE_URL}/api/scrpt/trailer/storyboard/upload/${catalog}`, {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || res.statusText);
+    }
+    return res.json();
+  },
+
+  shootStoryboard: (catalog: string, format: string) =>
+    call<{ job_id: string }>(`/api/scrpt/trailer/storyboard/shoot/${catalog}`, json({ format })),
 
   startAudiobook: (catalog: string) =>
     call<{ job_id: string }>(`/api/scrpt/audio/${catalog}`, { method: "POST" }),

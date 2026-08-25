@@ -46,19 +46,29 @@ function FullscreenToggle() {
   const [isFull, setIsFull] = useState(false);
 
   useEffect(() => {
-    if (window.scrptDesktop) {
-      // The native green button / Escape also toggle fullscreen, so poll the
-      // real window state and re-check on every resize.
-      const sync = () => window.scrptDesktop!.isFullscreen().then(setIsFull).catch(() => {});
-      sync();
-      const interval = setInterval(sync, 2000);
-      window.addEventListener("resize", sync);
-      return () => { clearInterval(interval); window.removeEventListener("resize", sync); };
-    } else {
-      const sync = () => setIsFull(Boolean(document.fullscreenElement));
-      document.addEventListener("fullscreenchange", sync);
-      return () => document.removeEventListener("fullscreenchange", sync);
-    }
+    // OS-level fullscreen (the macOS green button) sets neither
+    // document.fullscreenElement nor always a working bridge — the viewport
+    // filling the physical screen is the one signal that never lies.
+    const osFull = () =>
+      window.innerWidth >= screen.width - 2 && window.innerHeight >= screen.height - 2;
+    const sync = () => {
+      if (window.scrptDesktop) {
+        window.scrptDesktop.isFullscreen()
+          .then((v) => setIsFull(v || osFull()))
+          .catch(() => setIsFull(Boolean(document.fullscreenElement) || osFull()));
+      } else {
+        setIsFull(Boolean(document.fullscreenElement) || osFull());
+      }
+    };
+    sync();
+    const interval = setInterval(sync, 2000);
+    window.addEventListener("resize", sync);
+    document.addEventListener("fullscreenchange", sync);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("resize", sync);
+      document.removeEventListener("fullscreenchange", sync);
+    };
   }, []);
 
   const toggle = async () => {
@@ -81,16 +91,16 @@ function FullscreenToggle() {
       aria-label="Toggle full screen"
     >
       {isFull ? (
-        // in fullscreen: click to return to a window
+        // in fullscreen: arrows point inward — click to return to a window
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-          <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
+          <path d="M2 6h4V2M14 6h-4V2M2 10h4v4M14 10h-4v4"
                 stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
                 strokeLinejoin="round" />
         </svg>
       ) : (
-        // windowed: click to go fullscreen
+        // windowed: arrows point outward — click to go fullscreen
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-          <path d="M2 6h4V2M14 6h-4V2M2 10h4v4M14 10h-4v4"
+          <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4"
                 stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
                 strokeLinejoin="round" />
         </svg>

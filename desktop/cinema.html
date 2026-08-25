@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8" />
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  video { width: 100vw; height: 100vh; object-fit: contain; background: #000; display: none; }
+  #idle { position: absolute; inset: 0; display: flex; align-items: center;
+          justify-content: center; color: #2e3340; font: 500 13px/1 system-ui, sans-serif;
+          letter-spacing: 0.25em; text-transform: uppercase; }
+</style></head>
+<body>
+  <div id="idle">SCRPT — the big screen</div>
+  <video id="v" playsinline></video>
+<script>
+  const { ipcRenderer } = require("electron");
+  const v = document.getElementById("v");
+  const idle = document.getElementById("idle");
+  const show = (on) => { v.style.display = on ? "block" : "none"; idle.style.display = on ? "none" : "flex"; };
+
+  ipcRenderer.on("cinema:play", (_e, { src, time }) => {
+    if (v.src !== src) v.src = src;
+    show(true);
+    if (typeof time === "number" && Math.abs(v.currentTime - time) > 0.4) v.currentTime = time;
+    v.play().catch(() => {});
+  });
+  ipcRenderer.on("cinema:pause", () => v.pause());
+  ipcRenderer.on("cinema:seek", (_e, { time }) => {
+    if (typeof time === "number" && Math.abs(v.currentTime - time) > 0.4) v.currentTime = time;
+  });
+  ipcRenderer.on("cinema:volume", (_e, { volume, muted }) => {
+    if (typeof volume === "number") v.volume = volume;
+    v.muted = !!muted;
+  });
+  ipcRenderer.on("cinema:stop", () => { v.pause(); v.removeAttribute("src"); v.load(); show(false); });
+</script>
+</body></html>

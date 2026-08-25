@@ -5,7 +5,7 @@
  * the engine is a companion service, not a child of the window.
  */
 
-const { app, BrowserWindow, ipcMain, powerSaveBlocker, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, powerSaveBlocker, screen, shell } = require("electron");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const http = require("http");
@@ -78,6 +78,77 @@ const SPLASH = `data:text/html;charset=utf-8,${encodeURIComponent(`
   text-transform:uppercase;margin-top:-72px;font-family:system-ui,sans-serif;">Warming the presses…</div>
   </body></html>`)}`;
 
+
+// ── the big screen ───────────────────────────────────────────────
+// Plug a monitor into the iMac and it becomes SCRPT's cinema: every clip the
+// app plays — trailers today, films when the movie engine ships — opens
+// fullscreen on that screen while the app itself stays on the iMac as the
+// remote. Unplug it and playback falls back inline. Nothing to configure.
+
+let cinemaWin = null;
+
+function externalDisplay() {
+  const primary = screen.getPrimaryDisplay();
+  return screen.getAllDisplays().find((d) => d.id !== primary.id) || null;
+}
+
+function openCinema() {
+  const display = externalDisplay();
+  if (!display) return null;
+  if (cinemaWin && !cinemaWin.isDestroyed()) return cinemaWin;
+  const { x, y, width, height } = display.bounds;
+  cinemaWin = new BrowserWindow({
+    x, y, width, height,
+    backgroundColor: "#000000",
+    frame: false,
+    fullscreen: true,
+    autoHideMenuBar: true,
+    skipTaskbar: true,
+    title: "SCRPT — Big screen",
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
+  });
+  cinemaWin.loadFile(path.join(__dirname, "cinema.html"));
+  cinemaWin.on("closed", () => { cinemaWin = null; });
+  return cinemaWin;
+}
+
+function closeCinema() {
+  if (cinemaWin && !cinemaWin.isDestroyed()) cinemaWin.close();
+  cinemaWin = null;
+}
+
+function toCinema(channel, payload) {
+  const w = openCinema();
+  if (!w) return false;
+  const send = () => w.webContents.send(channel, payload || {});
+  if (w.webContents.isLoading()) w.webContents.once("did-finish-load", send);
+  else send();
+  return true;
+}
+
+function registerCinemaIpc(mainWin) {
+  for (const c of ["cinema-available", "cinema-play", "cinema-pause",
+                   "cinema-seek", "cinema-volume", "cinema-stop"]) {
+    ipcMain.removeHandler(c);
+  }
+  ipcMain.handle("cinema-available", () => Boolean(externalDisplay()));
+  ipcMain.handle("cinema-play", (_e, payload) => toCinema("cinema:play", payload));
+  ipcMain.handle("cinema-pause", () => toCinema("cinema:pause", {}));
+  ipcMain.handle("cinema-seek", (_e, payload) => toCinema("cinema:seek", payload));
+  ipcMain.handle("cinema-volume", (_e, payload) => toCinema("cinema:volume", payload));
+  ipcMain.handle("cinema-stop", () => { closeCinema(); return true; });
+
+  const tellRenderer = () => {
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send("cinema:availability", Boolean(externalDisplay()));
+    }
+  };
+  screen.removeAllListeners("display-added");
+  screen.removeAllListeners("display-removed");
+  screen.on("display-added", tellRenderer);
+  screen.on("display-removed", () => { closeCinema(); tellRenderer(); });
+}
+
 async function createWindow() {
   const win = new BrowserWindow({
     width: 1500,
@@ -92,6 +163,8 @@ async function createWindow() {
       preload: path.join(__dirname, "preload.js"),
     },
   });
+
+  registerCinemaIpc(win);
 
   ipcMain.removeHandler("toggle-fullscreen");
   ipcMain.removeHandler("is-fullscreen");

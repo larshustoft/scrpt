@@ -1,13 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { CoverLightboxProvider } from "./CoverLightbox"
 import { usePathname, useRouter } from "next/navigation"
 import { AuthProvider, useAuthContext } from "@/components/AuthProvider"
 import { Navbar } from "@/components/Navbar"
 import { BackOfficeNav } from "@/components/BackOfficeNav"
+import { AssistantDock } from "@/components/AssistantDock"
+import { BigScreen } from "@/components/BigScreen"
 
 /** Route prefixes that live in the Back Office and share its tool menu. */
-const BACK_OFFICE_PREFIXES = ["/office", "/shelf", "/queue", "/analytics", "/settings"]
+const BACK_OFFICE_PREFIXES = ["/office", "/shelf", "/queue", "/growth", "/analytics", "/settings"]
 
 /** Routes that don't require authentication */
 const PUBLIC_PATHS = ["/", "/login"]
@@ -134,6 +137,7 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
   const inBackOffice = BACK_OFFICE_PREFIXES.some((p) => pathname.startsWith(p))
 
   return (
+    <CoverLightboxProvider>
     <div className="min-h-screen flex flex-col">
       <Navbar />
       {inBackOffice && <BackOfficeNav />}
@@ -146,7 +150,14 @@ function LayoutShell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
+      {/* The assistant follows the publisher everywhere and is never
+          unmounted by navigation: one instance lives here in the shell, so
+          the conversation, the recording and the speaking all survive a
+          page change. */}
+      <AssistantDock fixed />
+      <BigScreen />
     </div>
+    </CoverLightboxProvider>
   )
 }
 

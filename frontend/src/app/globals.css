@@ -328,3 +328,10 @@ body {
 .status-rise {
   animation: statusRise 400ms ease both;
 }
+
+
+/* The trailer desk's recording lamp */
+@keyframes recPulse {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(224, 62, 54, 0.65); opacity: 1; }
+  50%      { box-shadow: 0 0 16px 4px rgba(224, 62, 54, 0.95); opacity: 0.75; }
+}

@@ -12,10 +12,17 @@ from typing import Literal
 
 # ── Paper thickness per page (inches) ─────────────────────────
 PAPER_THICKNESS = {
+    # Verified 2026-08-20 against Amazon's own help page (KDP topic G201953020):
+    #   "White paper: page count x 0.002252"   "Cream paper: ... x 0.0025"
+    #   "Premium Color paper: ... x 0.002347"  "Standard Color paper: ... x 0.002252"
+    # KDP adds NO extra allowance to the spine: the cover is simply
+    #   bleed + trim + spine + trim + bleed. (Third-party calculators claiming a
+    #   +0.06" cover allowance are wrong for KDP paperbacks.)
     "white_bw":       0.002252,   # White paper, black & white ink
-    "cream_bw":       0.002500,   # Cream paper, black & white ink
-    "standard_color": 0.002347,   # White paper, standard color ink
-    "premium_color":  0.002602,   # White paper, premium color ink
+    "cream_bw":       0.002500,   # Cream paper, black & white ink — fiction standard
+    "groundwood":     0.002252,   # Groundwood (KDP's economy stock)
+    "standard_color": 0.002252,   # Standard colour on white
+    "premium_color":  0.002347,   # Premium colour on white
 }
 
 # ── Common trim sizes (width × height in inches) ─────────────

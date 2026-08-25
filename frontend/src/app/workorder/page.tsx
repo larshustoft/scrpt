@@ -23,6 +23,18 @@ const KDP_TRIMS: { key: string; hint?: string }[] = [
   { key: "8.5x11", hint: "large format" },
 ];
 
+// the children's presets carry a fixed extent instead of novel page maths
+interface ChildrensPreset {
+  pages: number; spreads: number; words_per_spread: number; reading: string;
+}
+
+// house names are listed per shelf, so the label names the shelf
+const KIND_AUTHOR_LABEL: Record<BookKind, string> = {
+  fiction: "Fiction house authors",
+  nonfiction: "Non-fiction house authors",
+  childrens: "Children's house authors",
+};
+
 export default function WorkOrderPage() {
   const router = useRouter();
   const [genres, setGenres] = useState<Record<string, GenrePreset>>({});
@@ -66,8 +78,11 @@ export default function WorkOrderPage() {
   const [bookTitles, setBookTitles] = useState<string[]>([]);
   const [nameSuggestions, setNameSuggestions] = useState<{ name: string; rationale: string }[]>([]);
   const [suggestingNames, setSuggestingNames] = useState(false);
-  interface HouseAuthor { name: string; books: { catalog_number: string; title: string; series_title: string; status: string }[] }
+  interface HouseAuthor { name: string; kinds?: string[]; books: { catalog_number: string; title: string; series_title: string; status: string }[] }
   const [houseAuthors, setHouseAuthors] = useState<HouseAuthor[]>([]);
+  // a pen name belongs to the shelf it writes for — a thriller author has no
+  // business turning up on a picture book, and vice versa
+  const kindAuthors = houseAuthors.filter((a) => !a.kinds?.length || a.kinds.includes(kind));
   const selectedAuthor = houseAuthors.find((a) => a.name === penName) || null;
 
   useEffect(() => {
@@ -76,6 +91,14 @@ export default function WorkOrderPage() {
       .then((d) => setHouseAuthors(d.authors || []))
       .catch(() => {});
   }, []);
+
+  // switching kind drops a house name that doesn't write for that shelf; a
+  // name typed by hand is the publisher's own and is left alone
+  useEffect(() => {
+    if (!penName) return;
+    const a = houseAuthors.find((x) => x.name === penName);
+    if (a && a.kinds?.length && !a.kinds.includes(kind)) setPenName("");
+  }, [kind, houseAuthors, penName]);
 
   const suggestPenNames = async () => {
     setSuggestingNames(true);
@@ -123,7 +146,8 @@ export default function WorkOrderPage() {
     if (brief) setIdea(brief);
 
     const firstBook = pkg.book_ideas?.[0] || pkg.title_suggestions?.[0];
-    if (firstBook) setTitle(firstBook.title);
+    // a title the publisher typed is the title — suggestions never overwrite it
+    if (firstBook) setTitle((t) => (t.trim() ? t : firstBook.title));
     setBookTitles((pkg.book_ideas || []).map((b) => b.title));
     if (pkg.pen_name) setPenName((p) => (p.trim() ? p : pkg.pen_name!));
     // format comes from the research too — length and trim
@@ -145,7 +169,7 @@ export default function WorkOrderPage() {
       const res = await fetch(`${scrpt.engineUrl}/api/scrpt/workorder/develop`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, genre_preset: genre, idea: rough,
+        body: JSON.stringify({ working_title: title.trim(), kind, genre_preset: genre, idea: rough,
                                series_books: isSeries ? seriesBooks : 0 }),
       });
       const { job_id } = await res.json();
@@ -250,7 +274,7 @@ export default function WorkOrderPage() {
       {/* Kind */}
       <section className="card mt-8">
         <div className="label-scrpt">What kind of book</div>
-        <div className="grid grid-cols-2 gap-3 mt-2">
+        <div className="grid grid-cols-3 gap-3 mt-2">
           <KindCard
             active={kind === "fiction"}
             onClick={() => setKind("fiction")}
@@ -263,8 +287,79 @@ export default function WorkOrderPage() {
             title="Non-fiction"
             body="Self-help and business books built around one ownable framework."
           />
+          <KindCard
+            active={kind === "childrens"}
+            onClick={() => setKind("childrens")}
+            title="Children's book"
+            body="Illustrated picture books, early readers and chapter books — written in spreads."
+          />
         </div>
 
+        {kind === "childrens" ? (
+          <>
+            <div className="label-scrpt mt-6">Format</div>
+            <p className="text-[12px] text-text-tertiary mt-1 mb-2 max-w-[620px]">
+              Three real formats, with the trim drawn to scale. The age band decides
+              everything downstream: length, type size, how many pictures, and how the
+              words are written.
+            </p>
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(3, minmax(0,1fr))" }}>
+              {genreEntries.map(([key, g]) => {
+                const gg = g as unknown as {
+                  label: string; age: string; physical?: string; describe?: string;
+                  example_text?: string; example_note?: string; trim: string;
+                };
+                const [tw, th] = (gg.trim || "6x9").split("x").map(Number);
+                // ONE scale across all three cards, so the covers show their real
+                // relative size. Drawing each to the same height hid the point —
+                // a picture book is a much bigger object than a chapter book.
+                const tallest = Math.max(...genreEntries.map(([, e]) =>
+                  Number(((e as unknown as { trim: string }).trim || "6x9").split("x")[1]) || 9));
+                const PPI = 132 / tallest;
+                const boxH = Math.round(th * PPI);
+                const boxW = Math.round(tw * PPI);
+                const on = genre === key;
+                // a real cover in the real trim — the shape and the look of the
+                // format in one glance, instead of an empty rectangle
+                const cover = `/childrens/${key.replace(/_/g, "-")}.png`;
+                return (
+                  <button key={key} onClick={() => setGenre(key)}
+                          className="text-left rounded-[10px] p-4 transition-all"
+                          style={{
+                            border: `1px solid ${on ? "var(--accent)" : "var(--border-subtle)"}`,
+                            background: on ? "var(--surface-elevated)" : "transparent",
+                          }}>
+                    <div className="flex items-start gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={cover} alt={`${gg.label} cover`}
+                           className="shrink-0 rounded-[3px] object-cover"
+                           style={{ width: boxW, height: boxH,
+                                    background: "var(--surface)",
+                                    border: "1px solid var(--border-subtle)",
+                                    boxShadow: "var(--shadow-card)" }} />
+                      <div className="min-w-0">
+                        <div className="text-[14px] font-semibold text-text-primary">{gg.label}</div>
+                        <div className="text-[11.5px] text-accent mt-[2px]">Ages {gg.age}</div>
+                        <div className="text-[11px] text-text-faint mt-2 leading-snug">{gg.physical}</div>
+                      </div>
+                    </div>
+                    <div className="text-[12px] text-text-tertiary mt-3 leading-relaxed">{gg.describe}</div>
+                    {gg.example_text && (
+                      <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                        <div className="text-[10.5px] uppercase tracking-[0.12em] text-text-faint">How it reads</div>
+                        <div className="serif-display text-[13.5px] text-text-primary mt-1 leading-relaxed">
+                          &ldquo;{gg.example_text}&rdquo;
+                        </div>
+                        <div className="text-[11px] text-text-faint mt-1.5">{gg.example_note}</div>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+        <>
         <div className="label-scrpt mt-6">Genre</div>
         <div className="flex flex-wrap gap-2 mt-1">
           {genreEntries.map(([key, g]) => (
@@ -282,7 +377,24 @@ export default function WorkOrderPage() {
             </button>
           ))}
         </div>
-        {preset && (
+        </>
+        )}
+        {preset && (kind === "childrens" ? (() => {
+          // a children's book's extent is fixed by convention (a signature is
+          // 8 pages), so the word count follows the format — never the reverse
+          const cp = preset as unknown as ChildrensPreset;
+          // a chapter book is counted in chapters; the two younger formats in
+          // spreads — calling a chapter a "spread" would misdescribe the book
+          const unit = genre === "chapter_book" ? ["chapters", "chapter"] : ["spreads", "spread"];
+          return (
+          <div className="text-[12px] text-text-faint mt-3">
+            Market norm: {cp.pages} pages · {cp.spreads} {unit[0]} ·{" "}
+            {preset.target_words.toLocaleString()} words
+            {" "}(~{cp.words_per_spread} a {unit[1]}) ·{" "}
+            {preset.trim.replace("x", '" × ')}&quot; · {cp.reading}
+          </div>
+          );
+        })() : (
           <div className="text-[12px] text-text-faint mt-3">
             Market norm: {preset.target_words.toLocaleString()} words ≈{" "}
             {Math.round(((targetWords || preset.target_words) as number) /
@@ -290,7 +402,7 @@ export default function WorkOrderPage() {
             printed pages at {preset.trim.replace("x", '" × ')}&quot; ·{" "}
             {preset.paper === "cream_bw" ? "cream paper" : "white paper"} · {preset.pov}
           </div>
-        )}
+        ))}
       </section>
 
       {/* The idea */}
@@ -434,11 +546,11 @@ export default function WorkOrderPage() {
           </div>
         </div>
 
-        {houseAuthors.length > 0 && (
+        {kindAuthors.length > 0 && (
           <div className="mt-4">
-            <div className="label-scrpt">House authors — click to reuse</div>
+            <div className="label-scrpt">{KIND_AUTHOR_LABEL[kind]} — click to reuse</div>
             <div className="flex flex-wrap gap-2 mt-1">
-              {houseAuthors.map((a) => (
+              {kindAuthors.map((a) => (
                 <button key={a.name}
                         className={`px-2.5 py-[5px] rounded-md text-[12px] transition-all ${
                           penName === a.name ? "bg-accent-subtle text-accent" : "border border-border-subtle text-text-secondary hover:text-text-primary"}`}

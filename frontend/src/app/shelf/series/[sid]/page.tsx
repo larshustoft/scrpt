@@ -132,11 +132,18 @@ export default function SeriesPage({ params }: { params: Promise<{ sid: string }
         {series.books.map((book) => {
           const ms = book.data.manuscript;
           const no = book.data.series?.book_number;
+          // each book at its own trim, so a square picture book is not cropped
+          const [tw, th] = (() => {
+            const t = String((book.data?.format as { trim_size?: string } | undefined)?.trim_size
+              || (book.data?.trim_size as string | undefined) || "5.5x8.5");
+            const m = t.toLowerCase().split("x").map((n) => parseFloat(n));
+            return m.length === 2 && m.every((n) => n > 0) ? m : [5.5, 8.5];
+          })();
           return (
             <Link key={book.id} href={`/shelf/${book.catalog_number}`} className="group block">
               <div className="relative rounded-[6px] overflow-hidden transition-transform duration-200 group-hover:-translate-y-2"
                    style={{
-                     aspectRatio: "5.5 / 8.5",
+                     aspectRatio: `${tw} / ${th}`,
                      background: "linear-gradient(160deg, #2b2320, #14100d 90%)",
                      boxShadow: "var(--shadow-page)",
                      border: "1px solid rgba(236,229,218,0.08)",
@@ -144,7 +151,7 @@ export default function SeriesPage({ params }: { params: Promise<{ sid: string }
                 {book.data.cover?.cover_front_png ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={`${scrpt.engineUrl}/api/files/${book.catalog_number}/cover-front.png`}
-                       alt={book.title} className="absolute inset-0 w-full h-full object-cover" />
+                       alt={book.title} className="absolute inset-0 w-full h-full object-contain" />
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center text-center p-4">
                     <div className="mt-[22%] serif-display text-[15px] leading-snug text-[#e8dfd0]">

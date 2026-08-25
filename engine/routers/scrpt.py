@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Body, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from .. import database as db
@@ -30,14 +30,27 @@ router = APIRouter(prefix="/api/scrpt", tags=["scrpt"])
 
 @router.get("/presets")
 def presets():
-    return {"genres": GENRE_PRESETS, "fonts": FONT_PRESETS}
+    """All three kinds the house writes: fiction, non-fiction, children's."""
+    from ..prose.models import CHILDRENS_PRESETS
+    return {"genres": {**GENRE_PRESETS, **CHILDRENS_PRESETS},
+            "childrens": CHILDRENS_PRESETS,
+            "kinds": [
+                {"value": "fiction", "label": "Fiction",
+                 "hint": "Novels — thrillers, romance, mystery, fantasy"},
+                {"value": "nonfiction", "label": "Non-fiction",
+                 "hint": "Self-help, business, health, personal finance"},
+                {"value": "childrens", "label": "Children's book",
+                 "hint": "Picture books, early readers and chapter books — illustrated"},
+            ],
+            "fonts": FONT_PRESETS}
 
 
 # ── work orders ──────────────────────────────────────────────────
 
 @router.post("/workorder")
 async def create_workorder(req: WorkOrderRequest):
-    preset = GENRE_PRESETS.get(req.genre_preset)
+    from ..prose.models import CHILDRENS_PRESETS
+    preset = GENRE_PRESETS.get(req.genre_preset) or CHILDRENS_PRESETS.get(req.genre_preset)
     if not preset:
         raise HTTPException(400, f"Unknown genre preset: {req.genre_preset}")
     if preset["kind"] != req.kind.value:
@@ -98,9 +111,15 @@ async def create_workorder(req: WorkOrderRequest):
     job_id = None
     if req.auto_draft:
         catalog = first["catalog_number"]
-        job_id = start_job("full_draft",
-                           lambda h, c=catalog: wp.full_draft_job(h, c),
-                           book_catalog=catalog)
+        if req.kind == BookKind.CHILDRENS:
+            from ..writing.childrens import write_childrens_book
+            job_id = start_job("childrens_book",
+                               lambda h, c=catalog: write_childrens_book(c, h),
+                               book_catalog=catalog)
+        else:
+            job_id = start_job("full_draft",
+                               lambda h, c=catalog: wp.full_draft_job(h, c),
+                               book_catalog=catalog)
     elif req.generate_plot_options:
         catalog = first["catalog_number"]
         job_id = start_job(
@@ -109,7 +128,7 @@ async def create_workorder(req: WorkOrderRequest):
             book_catalog=catalog,
         )
 
-    # Covers start the moment the book is commissioned — painted from the
+    # Covers start the moment the book is commissioned — created from the
     # researched commissioning brief + cover direction, in parallel with the
     # writing. Needs a real title (it is baked into the art); the research
     # flow always provides one.
@@ -124,7 +143,7 @@ async def create_workorder(req: WorkOrderRequest):
             handle.progress(0.08, "brief", "Art-directing from the commissioning brief")
             return await generate_cover_variants(
                 c, 4, "",
-                on_progress=lambda f, d: handle.progress(f, "painting", d))
+                on_progress=lambda f, d: handle.progress(f, "creating", d))
 
         cover_job_id = start_job("cover_variants", cover_job, book_catalog=catalog)
 
@@ -152,12 +171,19 @@ def pen_names():
             "catalog_number": b["catalog_number"],
             "title": b["title"],
             "genre_preset": b["data"].get("genre_preset", ""),
+            # a pen name belongs to the kind it writes: a thriller author has
+            # no business appearing on a picture book
+            "kind": (b["data"].get("kind")
+                     or (b["data"].get("manuscript") or {}).get("kind") or "fiction"),
             "status": b["status"],
             "series_title": (b["data"].get("series") or {}).get("series_title", ""),
             "words": (b["data"].get("manuscript") or {}).get("word_count", 0),
         })
-    return {"authors": [{"name": n, "books": bs} for n, bs in
-                        sorted(authors.items(), key=lambda kv: -len(kv[1]))]}
+    out = []
+    for n, bs in sorted(authors.items(), key=lambda kv: -len(kv[1])):
+        kinds = sorted({b["kind"] for b in bs if b.get("kind")})
+        out.append({"name": n, "books": bs, "kinds": kinds})
+    return {"authors": out}
 
 
 class PenNameSuggestRequest(BaseModel):
@@ -194,6 +220,7 @@ class DevelopIdeaRequest(BaseModel):
     genre_preset: str
     idea: str
     series_books: int = 0
+    working_title: str = ""
 
 
 @router.post("/workorder/develop")
@@ -206,7 +233,8 @@ async def develop_workorder_idea(req: DevelopIdeaRequest):
     async def job(handle):
         handle.progress(0.15, "research", "Researching the market and developing the concept")
         return await develop_idea(req.kind.value, req.genre_preset,
-                                  req.idea.strip(), req.series_books)
+                                  req.idea.strip(), req.series_books,
+                                  working_title=req.working_title.strip())
 
     job_id = start_job("develop_idea", job)
     return {"job_id": job_id}
@@ -307,6 +335,13 @@ def list_prose_books():
     """All books with full (unfiltered) data — the legacy /api/books endpoint
     strips unknown keys through its response model."""
     result = db.list_books(per_page=500)
+    try:
+        from ..writing.ledger import all_costs
+        costs = all_costs()
+        for b in result["books"]:
+            b["production_cost_usd"] = costs.get(b.get("catalog_number"))
+    except Exception:
+        pass
     return {"books": result["books"], "total": result["total"]}
 
 
@@ -337,6 +372,19 @@ async def choose_plot(req: PlotChoiceRequest):
         book_catalog=req.catalog_number,
     )
     return {"job_id": job_id}
+
+
+@router.post("/acceptance/rulings/{catalog}")
+async def run_rulings(catalog: str, body: dict = Body(default={})):
+    """Publisher's rulings enforced manuscript-wide, then the editor re-reads.
+    body: {rulings: [{chapters: [..], ruling: "..."}]}"""
+    rulings = [r for r in (body.get("rulings") or []) if r.get("chapters") and r.get("ruling")]
+    if not rulings:
+        raise HTTPException(status_code=400, detail="No rulings")
+    async def job(handle):
+        from ..writing.acceptance import rulings_job
+        return await rulings_job(handle, catalog, rulings)
+    return {"job_id": start_job("acceptance", job, book_catalog=catalog)}
 
 
 @router.post("/acceptance/{catalog}")
@@ -402,7 +450,9 @@ async def create_series_from(catalog: str):
             "the recurring protagonist(s) as the series brand, recurring "
             "supporting cast, world rules and tone, the per-book formula (each "
             "book SELF-CONTAINED: complete arc, real ending, no required prior "
-            "reading - film-adaptable on its own), and "
+            "reading - film-adaptable on its own), the timeline rule (the "
+            "series moves forward in time: each book takes place after the "
+            "previous one), and "
             "long arcs that grow across books. Plain text.",
             max_tokens=3000)
 
@@ -659,6 +709,13 @@ def upload_package(catalog: str):
             "subtitle": "",
             "series_title": series.get("series_title", ""),
             "series_number": series.get("book_number"),
+            "series_note": (
+                f"Register in KDP Series Manager: series \"{series.get('series_title')}\", "
+                f"book {series.get('book_number')}. Same series name on every installment - "
+                "Amazon then builds the series page, shows 'Book "
+                f"{series.get('book_number')} of {series.get('total_planned')}' on the "
+                "listing, and cross-links all books with a whole-series buy option."
+            ) if series.get("series_id") else "",
             "author": d.get("author_name", ""),
             "description": d.get("description", ms.get("blurb", "")),
             "keywords": d.get("keywords", []),
@@ -768,7 +825,30 @@ async def export_interior(catalog: str):
     async def job(handle):
         handle.progress(0.1, "render", "Rendering pages in print engine")
         result = await run_export(catalog)
-        handle.progress(0.9, "validate", "Validating against KDP rules")
+        handle.progress(0.75, "validate", "Validating against KDP rules")
+
+        # The print wrap depends on the final page count, so it is built here,
+        # automatically, in the house style: type matched to the front cover,
+        # then the full back+spine+front wrap. Never leaves a book with a
+        # stale spine width.
+        try:
+            from ..cover.typography import match_fonts
+            handle.progress(0.85, "cover", "Matching cover typography")
+            await match_fonts(catalog)
+        except Exception as e:
+            result["font_match_error"] = str(e)[:200]
+        try:
+            handle.progress(0.92, "cover", "Composing the print wrap")
+            result["print_wrap"] = build_print_wrap(catalog)
+        except Exception as e:
+            result["wrap_error"] = str(e)[:200]
+        # titled delivery copies: "<Title>-interior.pdf", "<Title>-cover.pdf"
+        try:
+            from ..config import write_delivery_copies
+            bk = db.get_book_by_catalog(catalog)
+            result["delivery_files"] = write_delivery_copies(catalog, bk["title"] if bk else catalog)
+        except Exception as e:
+            result["delivery_error"] = str(e)[:200]
         return result
 
     job_id = start_job("interior_export", job, book_catalog=catalog)
@@ -863,6 +943,228 @@ async def upload_cover(catalog: str, file: UploadFile = File(...)):
     return report
 
 
+@router.post("/cover/print-wrap/{catalog}")
+def build_print_wrap(catalog: str):
+    """Compose the final KDP print file: back + spine + front with bleed."""
+    from ..cover.designer_package import compose_print_wrap
+    from ..cover.front_cover import _series_line
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    d = book["data"]
+    ms = d.get("manuscript") or {}
+    rec = d.get("childrens") or {}
+    words = sum(c.get("word_count", 0) for c in ms.get("chapters") or [])
+    # A picture book has no chapters, so the words-per-page estimate produced
+    # a ten-page book and a spine to match. Its extent is fixed by the format.
+    if rec.get("spreads"):
+        from ..prose.models import CHILDRENS_PRESETS
+        cp = CHILDRENS_PRESETS.get(rec.get("preset") or "") or CHILDRENS_PRESETS["picture_book"]
+        pages = (d.get("interior") or {}).get("page_count") or int(cp.get("pages") or 32)
+    else:
+        pages = (d.get("interior") or {}).get("page_count") or int(words / 280) + 10
+    if pages % 2 == 1:
+        # an odd export: add the final blank verso to the PDF itself, then carry on
+        from ..interior.print_service import _pad_even
+        pdf = OUTPUT_DIR / catalog / "interior.pdf"
+        if pdf.exists():
+            pages = _pad_even(str(pdf))
+            interior = dict(d.get("interior") or {})
+            interior["page_count"] = pages
+            d["interior"] = interior
+            db.update_book(book["id"], {**d})
+        else:
+            pages += 1
+    label = GENRE_PRESETS.get(d.get("genre_preset", ""), {}).get("label", "")
+    try:
+        res = compose_print_wrap(
+            catalog, book["title"], d.get("author_name") or "",
+            d.get("back_cover_blurb") or d.get("description") or ms.get("blurb") or "",
+            ms.get("tagline") or "", _series_line(book),
+            (("An " if label[:1].upper() in "AEIOU" else "A ") + label)
+            if label else "", pages,
+            (d.get("format") or {}).get("trim_size") or d.get("trim_size") or "5.5x8.5",
+            ((d.get("format") or {}).get("paper_type") or d.get("paper_type")
+             or (((__import__("engine.prose.models", fromlist=["CHILDRENS_PRESETS"])
+                   .CHILDRENS_PRESETS.get(rec.get("preset") or "")
+                   or {}).get("paper")) if rec.get("spreads") else None)
+             or "cream_bw"),
+            genre_preset=d.get("genre_preset") or "")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    data = dict(db.get_book_by_catalog(catalog)["data"])
+    cover = data.get("cover") or {}
+    cover["print_wrap"] = {"path": res["path"], "pages_used": pages,
+                           "estimated_pages": not bool((d.get("interior") or {}).get("page_count")),
+                           "spec": res["spec"], "validation": res["validation"]}
+    data["cover"] = cover
+    db.update_book(book["id"], data)
+    return cover["print_wrap"]
+
+
+@router.post("/cover/print-wrap-preview/{catalog}")
+def build_print_wrap_preview(catalog: str):
+    """A proof copy of the wrap WITH a sample barcode drawn in, so the back
+    can be judged as a real object. Written to cover-wrap-preview.pdf — the
+    upload file (cover-wrap.pdf) is never touched, because Amazon prints its
+    own barcode and a baked-in one would be rejected."""
+    from ..cover.designer_package import compose_print_wrap
+    from ..cover.front_cover import _series_line
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    d = book["data"]
+    ms = d.get("manuscript") or {}
+    words = sum(c.get("word_count", 0) for c in ms.get("chapters") or [])
+    pages = (d.get("interior") or {}).get("page_count") or int(words / 280) + 10
+    try:
+        res = compose_print_wrap(
+            catalog, book["title"], d.get("author_name") or "",
+            d.get("back_cover_blurb") or d.get("description") or ms.get("blurb") or "",
+            ms.get("tagline") or "", _series_line(book), "", pages,
+            (d.get("format") or {}).get("trim_size") or d.get("trim_size") or "5.5x8.5",
+            (d.get("format") or {}).get("paper_type") or d.get("paper_type") or "cream_bw",
+            genre_preset=d.get("genre_preset") or "", preview_barcode=True,
+            list_price=float(d.get("list_price") or 0),
+            isbn=str((d.get("publishing") or {}).get("isbn") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"file": "cover-wrap-preview.pdf",
+            "url": f"/api/files/{catalog}/cover-wrap-preview.pdf",
+            "spec": res["spec"], "validation": res["validation"],
+            "note": "Preview only — the upload file has no barcode."}
+
+
+@router.get("/cover/wrap-image/{catalog}")
+def cover_wrap_image(catalog: str, dpi: int = 220):
+    """A PNG of the FULL wrap (with the preview barcode) for on-screen review.
+    Rebuilt whenever the wrap PDF is newer than the cached image."""
+    import fitz
+    base = Path(OUTPUT_DIR) / catalog
+    src = base / "cover-wrap-preview.pdf"
+    if not src.exists():
+        # fall back to building the preview, so the card always has something
+        try:
+            build_print_wrap_preview(catalog)
+        except Exception:
+            src = base / "cover-wrap.pdf"
+    if not src.exists():
+        raise HTTPException(404, "No print wrap yet")
+    # render at the requested resolution; the viewer asks for a high dpi so the
+    # full-size view is sharp, and each dpi is cached separately
+    dpi = max(72, min(400, int(dpi)))
+    png = base / f"cover-wrap-preview-{dpi}.png"
+    if not png.exists() or png.stat().st_mtime < src.stat().st_mtime:
+        doc = fitz.open(str(src))
+        doc[0].get_pixmap(dpi=dpi).save(str(png))
+        doc.close()
+    return FileResponse(str(png), media_type="image/png")
+
+
+@router.get("/cover/fact-sheet/{catalog}")
+async def cover_fact_sheet(catalog: str):
+    """The exact cover prompt — the six facts, nothing else — ready to paste
+    into the publisher's own ChatGPT conversation."""
+    from ..cover.front_cover import _cover_summary, _fact_brief
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
+    summary = await _cover_summary(book, ms)
+    return {"prompt": _fact_brief(book, ms, summary)}
+
+
+@router.post("/cover/install-art/{catalog}")
+async def install_cover_art(catalog: str, file: UploadFile = File(...)):
+    """Install a finished cover image (publisher-created, e.g. in ChatGPT)
+    as the book's official front cover. Keeps the previous art on disk."""
+    from ..cover.front_cover import _install_cover
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    content = await file.read()
+    if not content or len(content) < 10_000:
+        raise HTTPException(400, "That file does not look like a cover image")
+    prev = Path(OUTPUT_DIR) / catalog / "cover-art.png"
+    if prev.exists():
+        (Path(OUTPUT_DIR) / catalog / "cover-art-previous.png").write_bytes(prev.read_bytes())
+    result = _install_cover(catalog, content,
+                            brief="Publisher-supplied artwork", mode="upload")
+    return {"installed": True, "preview": result["preview"]}
+
+
+@router.post("/cover/install-full/{catalog}")
+async def install_full_cover(catalog: str, file: UploadFile = File(...)):
+    """Install a finished FULL cover (back + spine + front), publisher-made or
+    from the print-wrap composer, validated against KDP's computed spec.
+
+    Kept as a separate file from the front cover: the front feeds ads and the
+    ebook listing, the full wrap is what KDP's paperback upload needs.
+    """
+    from ..cover.designer_package import validate_uploaded_cover
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    content = await file.read()
+    if not content or len(content) < 20_000:
+        raise HTTPException(400, "That file does not look like a full cover")
+    d = book["data"]
+    ms = d.get("manuscript") or {}
+    words = sum(c.get("word_count", 0) for c in ms.get("chapters") or [])
+    pages = (d.get("interior") or {}).get("page_count") or int(words / 280) + 10
+    trim = (d.get("format") or {}).get("trim_size") or d.get("trim_size") or "5.5x8.5"
+    paper = (d.get("format") or {}).get("paper_type") or d.get("paper_type") or "cream_bw"
+    fname = (file.filename or "cover-full.pdf").lower()
+    ext = ".pdf" if fname.endswith(".pdf") else (".png" if fname.endswith(".png") else ".jpg")
+    report = validate_uploaded_cover(content, fname, pages, trim, paper)
+    dest = Path(OUTPUT_DIR) / catalog / f"cover-full{ext}"
+    dest.write_bytes(content)
+    data = dict(d)
+    cover = dict(data.get("cover") or {})
+    cover["full_cover"] = {"path": str(dest), "file": dest.name,
+                           "mode": "upload", "validation": report,
+                           "spec_pages": pages}
+    data["cover"] = cover
+    db.update_book(book["id"], data)
+    return {"installed": True, "file": dest.name, "validation": report}
+
+
+@router.get("/cover/files/{catalog}")
+def cover_files(catalog: str):
+    """The two cover deliverables a book carries: the front (ebook + ads) and
+    the full wrap (KDP paperback)."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    base = Path(OUTPUT_DIR) / catalog
+    cover = book["data"].get("cover") or {}
+
+    def present(name):
+        return (base / name).exists()
+
+    front = None
+    for n in ("cover-front.png", "cover-art.png"):
+        if present(n):
+            front = n
+            break
+    ebook = "ebook-cover.jpg" if present("ebook-cover.jpg") else None
+    full = None
+    fc = cover.get("full_cover") or {}
+    if fc.get("file") and present(fc["file"]):
+        full = fc["file"]
+    elif present("cover-wrap.pdf"):
+        full = "cover-wrap.pdf"
+    return {
+        "front": {"file": front, "ebook_jpg": ebook,
+                  "url": f"/api/files/{catalog}/{front}" if front else None,
+                  "ebook_url": f"/api/files/{catalog}/{ebook}" if ebook else None},
+        "full": {"file": full,
+                 "url": f"/api/files/{catalog}/{full}" if full else None,
+                 "validation": fc.get("validation"),
+                 "source": fc.get("mode") or ("composed" if full == "cover-wrap.pdf" else None)},
+    }
+
+
 class FrontCoverRequest(BaseModel):
     direction: str = ""
 
@@ -905,10 +1207,31 @@ async def generate_variants(catalog: str, req: VariantsRequest = None):
         handle.progress(0.08, "brief", "Art-directing from the bible")
         return await generate_cover_variants(
             catalog, count, direction,
-            on_progress=lambda f, d: handle.progress(f, "painting", d))
+            on_progress=lambda f, d: handle.progress(f, "creating", d))
 
     job_id = start_job("cover_variants", job, book_catalog=catalog)
     return {"job_id": job_id}
+
+
+@router.post("/cover/series-suite/{catalog}")
+async def series_cover_suite(catalog: str):
+    """Create every missing cover in this book's series in one go — one
+    design conversation, oldest first, each cover seeing all before it."""
+    from ..cover.front_cover import generate_series_suite
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    if not (book["data"].get("series") or {}).get("series_id"):
+        raise HTTPException(400, "This book is not part of a series")
+    active = [j for j in list_jobs(active_only=True) if j["kind"] == "series_covers"]
+    if active:
+        return {"job_id": active[0]["id"], "already_running": True}
+
+    async def job(handle):
+        return await generate_series_suite(
+            catalog, on_progress=lambda f, d: handle.progress(f, "creating", d))
+
+    return {"job_id": start_job("series_covers", job, book_catalog=catalog)}
 
 
 class SelectVariantRequest(BaseModel):
@@ -1045,20 +1368,43 @@ class CastVoiceRequest(BaseModel):
 
 @router.put("/audio/voice/{catalog}")
 def cast_voice(catalog: str, req: CastVoiceRequest):
-    """Cast the narrator for this book (optionally as the house default)."""
+    """Cast the narrator for this book (optionally as the house default).
+
+    A series shares a narrator: one voice across the whole run is what makes
+    it sound like one series, so casting a book casts every other book in it
+    too. Books whose audiobook is already recorded keep their audio until
+    they are re-recorded — only the casting changes."""
     book = db.get_book_by_catalog(catalog)
     if not book:
         raise HTTPException(404, "Book not found")
-    data = dict(book["data"])
-    audio = data.get("audio") or {}
-    audio["voice_id"] = req.voice_id
-    audio["voice_name"] = req.voice_name
-    data["audio"] = audio
-    db.update_book(book["id"], data)
+
+    def _cast(b) -> None:
+        d = dict(b["data"])
+        audio = dict(d.get("audio") or {})
+        audio["voice_id"] = req.voice_id
+        audio["voice_name"] = req.voice_name
+        d["audio"] = audio
+        db.update_book(b["id"], d)
+
+    _cast(book)
+
+    siblings = []
+    series = (book["data"].get("series") or {})
+    sid = series.get("series_id")
+    if sid:
+        for other in db.list_books(per_page=500)["books"]:
+            if other["catalog_number"] == catalog:
+                continue
+            if ((other["data"].get("series") or {}).get("series_id")) != sid:
+                continue
+            _cast(other)
+            siblings.append(other["catalog_number"])
+
     if req.set_as_default:
         db.set_setting("elevenlabs_voice_id", req.voice_id)
         db.set_setting("elevenlabs_voice_name", req.voice_name)
-    return {"success": True}
+    return {"success": True, "series": series.get("series_title") or "",
+            "also_cast": siblings}
 
 
 @router.post("/audio/audition/{catalog}")
@@ -1108,6 +1454,58 @@ async def import_report(file: UploadFile = File(...)):
         raise HTTPException(422, f"Could not parse report: {e}")
 
 
+@router.get("/reports/overview")
+def reports_overview(months: int = 24):
+    from ..reports.importer import overview
+    return overview(months)
+
+
+@router.post("/reports/link")
+def reports_link(body: dict = Body(default={})):
+    """Tie a sold title/ASIN to a catalogue book by hand (or untie with catalog=null)."""
+    from ..reports.importer import link_sale
+    key = (body.get("key") or "").strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="key (title or ASIN) is required")
+    return link_sale(key, body.get("catalog") or None)
+
+
+@router.post("/reports/fx")
+def reports_fx(body: dict = Body(default={})):
+    """Base currency and the rates table (units per 1 USD)."""
+    from ..reports.importer import set_fx
+    return set_fx(body.get("base"), body.get("rates"))
+
+
+@router.get("/reports/sync")
+def reports_sync_status():
+    from ..reports.sync import settings as sync_settings
+    return sync_settings()
+
+
+@router.post("/reports/sync")
+async def reports_sync_run(body: dict = Body(default={})):
+    """Run the KDP report sync now (never signs in). body: {backfill?: bool}"""
+    from ..reports.sync import run_sync
+    async def job(handle):
+        handle.progress(0.1, "sync", "opening the KDP reports in your signed-in session")
+        return await run_sync(body.get("backfill"))
+    return {"job_id": start_job("kdp_sync", job)}
+
+
+@router.post("/reports/sync/settings")
+def reports_sync_configure(body: dict = Body(default={})):
+    from ..reports.sync import configure
+    return configure(body)
+
+
+@router.post("/reports/sync/login")
+async def reports_sync_login():
+    """Open a visible browser at KDP so the publisher signs in by hand."""
+    from ..market.kdp import open_login
+    return await open_login()
+
+
 @router.get("/reports/summary")
 def reports_summary():
     from ..reports.importer import summary
@@ -1124,3 +1522,1345 @@ def reports_books():
 def reports_series():
     from ..reports.importer import series_readthrough
     return series_readthrough()
+
+
+@router.post("/simplify/{catalog}")
+async def simplify_book_endpoint(catalog: str):
+    """Book-wide readability pass — every dense chapter rewritten for an
+    effortless read, story untouched."""
+    from ..writing.quality import simplify_book
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+
+    async def job(handle):
+        handle.progress(0.02, "simplify", "Measuring every chapter")
+        return await simplify_book(catalog, handle)
+
+    return {"job_id": start_job("simplify", job, book_catalog=catalog)}
+
+
+# ── book trailers ────────────────────────────────────────────────
+# Two productions: "full" (veo3.1_fast, native audio) and "voiceover"
+# (gen4_turbo silent shots carried by the trailer voice + score). Both end
+# on the cover card with the call to action.
+
+@router.get("/trailer/{catalog}")
+async def trailer_status(catalog: str):
+    from ..trailer import runway as _runway
+    from ..trailer.producer import MODES, OUTPUT_DIR as _OUT
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    t = book["data"].get("trailer") or {}
+    out = _OUT / catalog
+    conn = await _runway.check_connection()
+    tr_ = t.get("treatment") or {}
+    shots = tr_.get("plates") or tr_.get("shots") or []
+    n_pl = len(shots) or 6
+    n_ins = len(tr_.get("inserts") or []) or 6
+    cuts_ = tr_.get("cuts") or []
+    secs = sum(float(c.get("seconds") or 2.5) for c in cuts_) or 30
+    total_secs = int(secs) + 6                # the edit + end card
+    estimates = {
+        # master: 8 s veo3.1 plates w/ audio (40 cr/s), ~2 inspected stills each, cheap inserts,
+        # two portrait plates, two cues — plus one reshoot round on average
+        "full": int(n_pl * (8 * 40 + 16) * 1.25 + n_ins * 12 + 60),
+        "draft": int(n_pl * (8 * 10 + 10) * 1.25 + n_ins * 12 + 40),   # silent veo_fast 720p
+        "voiceover": int(secs * 5 + 20),
+        "finish_4k": int(total_secs * 24 * 0.012 / 0.01) + 2,   # per-frame lab bill
+    }
+    prod = t.get("production") or {}
+    latest_file = prod.get("file") or "trailer.mp4"
+    latest_poster = prod.get("poster") or "trailer-poster.jpg"
+    versions = []
+    for v in (t.get("versions") or []):
+        f = out / f"trailer-v{v['n']}.mp4"
+        if f.exists():
+            versions.append({**v,
+                "url": f"/api/files/{catalog}/trailer-v{v['n']}.mp4",
+                "poster_url": f"/api/files/{catalog}/trailer-v{v['n']}.jpg"
+                              if (out / f"trailer-v{v['n']}.jpg").exists() else None})
+    return {
+        "treatment": t.get("treatment"),
+        "world_style": t.get("world_style"),
+        "production": t.get("production"),
+        "approved": bool(t.get("approved")),
+        "finish": t.get("finish"),
+        "direction": t.get("direction"),
+        "review": t.get("review"),
+        "workorder_prompt": t.get("workorder_prompt"),
+        "voice": t.get("voice"),
+        "reference": ({k: v for k, v in (t.get("reference") or {}).items() if k != "transcript"}
+                      if t.get("reference") else None),
+        "storyboard_pending": ({"panels": len((t.get("storyboard_pending") or {}).get("panels") or []),
+                                "source": t.get("storyboard_pending_source") or ""}
+                               if t.get("storyboard_pending") else None),
+        "storyboard": ({"panels": len((t.get("storyboard") or {}).get("panels") or [])}
+                       if t.get("storyboard") else None),
+        "versions": versions,
+        "has_video": (out / latest_file).exists(),
+        # the latest reel is a mutable file: stamp its address with the
+        # cut's mtime so a browser can never replay a stale cached copy
+        "video_url": (f"/api/files/{catalog}/{latest_file}"
+                      f"?v={int((out / latest_file).stat().st_mtime)}")
+                     if (out / latest_file).exists() else None,
+        "poster_url": (f"/api/files/{catalog}/{latest_poster}"
+                       f"?v={int((out / latest_poster).stat().st_mtime)}")
+                      if (out / latest_poster).exists() else None,
+        "runway": {"connected": conn.get("connected"),
+                   "credits": conn.get("credits")},
+        "estimates": estimates,
+        "modes": list(MODES.keys()),
+    }
+
+
+@router.post("/trailer/treatment/{catalog}")
+async def trailer_treatment(catalog: str, body: dict = Body(default={})):
+    """(Re)write the treatment — reviewable before any credits are spent.
+    An optional `brief` is the publisher's own description of the trailer
+    they want; the director follows it over everything else."""
+    from ..trailer.director import write_treatment
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    brief = (body.get("brief") or "").strip()
+
+    async def job(handle):
+        result = await write_treatment(catalog, brief=brief)
+        fresh = db.get_book_by_catalog(catalog)
+        data = dict(fresh["data"])
+        tr = dict(data.get("trailer") or {})
+        tr["approved"] = False          # new words need a new okay
+        if brief:
+            tr["brief"] = brief
+        data["trailer"] = tr
+        db.update_book(fresh["id"], data)
+        return result
+
+    job_id = start_job("trailer_treatment", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.post("/trailer/edit/{catalog}")
+async def trailer_edit(catalog: str, body: dict = Body(default={})):
+    """Save the publisher's edits to the screenplay: voice-over lines and
+    the tagline. `approved: true` marks the script okayed for production;
+    any content change clears a previous approval unless it is re-given
+    in the same call."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    data = dict(book["data"])
+    tr = dict(data.get("trailer") or {})
+    treatment = dict(tr.get("treatment") or {})
+    if not treatment:
+        raise HTTPException(status_code=400, detail="No treatment to edit")
+
+    changed = False
+    if isinstance(body.get("shots"), list):
+        by_n = {s.get("n"): s for s in body["shots"] if isinstance(s, dict)}
+        shots = [dict(s) for s in (treatment.get("shots") or [])]
+        for shot in shots:
+            edit = by_n.get(shot.get("n"))
+            if not edit:
+                continue
+            for f in ("voiceover", "prompt", "sound", "camera"):
+                if f in edit and edit[f] != shot.get(f):
+                    shot[f] = edit[f]
+                    changed = True
+        treatment["shots"] = shots
+    for field in ("end_card_text", "concept", "music"):
+        if field in body and body[field] != treatment.get(field):
+            treatment[field] = body[field]
+            changed = True
+
+    tr["treatment"] = treatment
+    tr["approved"] = bool(body.get("approved")) if ("approved" in body or changed)         else tr.get("approved", False)
+    data["trailer"] = tr
+    db.update_book(book["id"], data)
+    return {"saved": True, "approved": tr["approved"]}
+
+
+@router.post("/trailer/produce/{catalog}")
+async def trailer_produce(catalog: str, body: dict = Body(default={})):
+    """Shoot, record and cut the trailer. Long job; polls like any other."""
+    from ..trailer import runway as _runway
+    from ..trailer.producer import produce, MODES, FORMATS
+    mode = (body.get("mode") or "full").strip()
+    fmt = (body.get("format") or "wide").strip()
+    if mode not in MODES:
+        raise HTTPException(status_code=400, detail=f"mode must be one of {list(MODES)}")
+    if fmt not in FORMATS:
+        raise HTTPException(status_code=400, detail=f"format must be one of {list(FORMATS)}")
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    if not _runway.configured():
+        raise HTTPException(status_code=400, detail="Runway is not connected")
+    tr = book["data"].get("trailer") or {}
+    if tr.get("treatment") and not tr.get("approved") and not body.get("force"):
+        raise HTTPException(status_code=400,
+                            detail="The script is not approved yet — okay the "
+                                   "voice-over and tagline in the screenplay "
+                                   "first (or pass force).")
+
+    fresh = bool(body.get("fresh"))
+
+    async def job(handle):
+        return await produce(catalog, mode, format_name=fmt, fresh=fresh,
+                             handle=handle)
+
+    job_id = start_job("trailer_produce", job, book_catalog=catalog)
+    return {"job_id": job_id, "mode": mode, "format": fmt}
+
+
+# ── the automatic trailer ────────────────────────────────────────
+# The publisher's order, run end to end: book + cover -> character bibles ->
+# storyboard -> trailer. Each stage is skipped if the house already has it, so
+# a re-run costs nothing for work already done and an edited board is never
+# overwritten.
+
+@router.post("/trailer/auto/{catalog}")
+async def trailer_auto(catalog: str, body: dict = Body(default={})):
+    """One button: bibles, board, trailer. body: {format?, rebuild_board?, panels?}"""
+    from ..trailer.bible import auto_storyboard, ensure_bibles
+    from ..trailer.producer import produce_storyboard
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    fmt = (body.get("format") or "wide").strip()
+    rebuild = bool(body.get("rebuild_board"))
+    panels = int(body.get("panels") or 9)
+
+    async def job(handle):
+        class _Sub:
+            """Scale a stage's own progress into a slice of the whole run."""
+            def __init__(self, lo, hi): self.lo, self.hi = lo, hi
+            def progress(self, f, stage="", detail=""):
+                handle.progress(self.lo + (self.hi - self.lo) * min(1.0, max(0.0, f)), stage, detail)
+            def cancelled(self): return handle.cancelled()
+
+        handle.progress(0.02, "bible", "checking the cast sheet")
+        await ensure_bibles(catalog, _Sub(0.02, 0.20))
+
+        fresh = db.get_book_by_catalog(catalog)
+        board = ((fresh["data"].get("trailer") or {}).get("storyboard"))
+        if rebuild or not board:
+            board = await auto_storyboard(catalog, panels=panels, handle=_Sub(0.20, 0.35))
+        else:
+            handle.progress(0.35, "board", "using the storyboard already on the book")
+
+        return await produce_storyboard(catalog, board, format_name=fmt, handle=_Sub(0.35, 1.0))
+
+    return {"job_id": start_job("trailer_produce", job, book_catalog=catalog)}
+
+
+@router.post("/trailer/storyboard/auto/{catalog}")
+async def trailer_board_auto(catalog: str, body: dict = Body(default={})):
+    """Write (or rewrite) just the storyboard, so it can be read and edited
+    before a single credit is spent on filming it."""
+    from ..trailer.bible import auto_storyboard, ensure_bibles
+    if not db.get_book_by_catalog(catalog):
+        raise HTTPException(404, "Book not found")
+    panels = int(body.get("panels") or 9)
+
+    async def job(handle):
+        await ensure_bibles(catalog, handle)
+        return await auto_storyboard(catalog, panels=panels, handle=handle)
+
+    return {"job_id": start_job("trailer_board", job, book_catalog=catalog)}
+
+
+# ── children's books ─────────────────────────────────────────────
+
+@router.get("/childrens/{catalog}")
+def childrens_get(catalog: str):
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    return book["data"].get("childrens") or {}
+
+
+@router.post("/childrens/{catalog}")
+async def childrens_write(catalog: str):
+    """Write (or rewrite) the whole picture book — spreads, text and art briefs."""
+    from ..writing.childrens import write_childrens_book
+    if not db.get_book_by_catalog(catalog):
+        raise HTTPException(404, "Book not found")
+    return {"job_id": start_job("childrens_book",
+                                lambda h: write_childrens_book(catalog, h),
+                                book_catalog=catalog)}
+
+
+@router.get("/childrens/{catalog}/layout/{n}")
+def childrens_layout_options(catalog: str, n: int):
+    """The placements available for this spread, best first."""
+    from pathlib import Path as _P
+    from PIL import Image
+    from ..interior.childrens_interior import zone_candidates, _spec
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    rec = book["data"].get("childrens") or {}
+    art = (rec.get("art") or {}).get(str(n))
+    if not art:
+        raise HTTPException(400, "That spread is not drawn yet")
+    img = _P(OUTPUT_DIR) / catalog / art
+    if not img.exists():
+        raise HTTPException(404, "Artwork missing")
+    sp = _spec(rec, book)
+    dpi = 300
+    safe_px = int((sp["bleed"] + sp["safe"]) * dpi)
+    spread = next((x for x in (rec.get("spreads") or []) if x["n"] == n), None)
+    words = len((spread or {}).get("text", "").split())
+    est_lines = max(1, int(words / 7) + 1)
+    im = Image.open(img).convert("RGB")
+    cands = zone_candidates(im, safe_px, est_lines, 60,
+                            rec.get("layout_prefs") or {})
+    # one per position, not every width variant — the editor picks a place
+    seen, top = set(), []
+    for c in cands:
+        pos = f"{c['band']}-{c['column']}"
+        if pos in seen:
+            continue
+        seen.add(pos); top.append(c)
+        if len(top) >= 8:
+            break
+    return {"spread": n, "chosen": (rec.get("layout") or {}).get(str(n)),
+            "auto": (rec.get("layout_used") or {}).get(str(n)),
+            "options": top}
+
+
+@router.post("/childrens/{catalog}/layout/{n}")
+def childrens_set_layout(catalog: str, n: int, body: dict = Body(default={})):
+    """Pin a placement for one spread — and learn from the correction.
+
+    Every manual move is a signal about house taste: the position the editor
+    moved TO gains weight for future books, the one they moved AWAY from
+    loses a little. That is how the layout gets better as we make books."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    d = dict(book["data"]); rec = dict(d.get("childrens") or {})
+    key = (body.get("key") or "").strip()
+    page = (body.get("page") or "").strip() or None
+    layout = dict(rec.get("layout") or {})
+    prefs = dict(rec.get("layout_prefs") or {})
+
+    if not key:                                  # back to the automatic choice
+        layout.pop(str(n), None)
+    else:
+        was = ((rec.get("layout_used") or {}).get(str(n)) or {}).get("key")
+        layout[str(n)] = {"key": key, "page": page}
+        prefs[key] = round(float(prefs.get(key, 0.0)) + 0.25, 3)
+        if was and was != key:
+            prefs[was] = round(float(prefs.get(was, 0.0)) - 0.15, 3)
+
+    rec["layout"] = layout
+    rec["layout_prefs"] = prefs
+    d["childrens"] = rec
+    db.update_book(book["id"], d)
+    # taste carries across books, not just this one
+    house = db.get_setting("childrens_layout_prefs", {}) or {}
+    for k, v in prefs.items():
+        house[k] = round(float(house.get(k, 0.0)) * 0.9 + v * 0.1, 3)
+    db.set_setting("childrens_layout_prefs", house)
+    return {"layout": layout.get(str(n)), "prefs": prefs}
+
+
+@router.get("/childrens/{catalog}/pages")
+def childrens_pages(catalog: str):
+    """How many pages the built interior actually has."""
+    import fitz
+    pdf = OUTPUT_DIR / catalog / "interior.pdf"
+    if not pdf.exists():
+        return {"pages": 0, "built": False}
+    with fitz.open(str(pdf)) as d:
+        n = d.page_count
+    return {"pages": n, "built": True, "divisible_by_8": n % 8 == 0}
+
+
+@router.get("/childrens/{catalog}/page/{n}.png")
+def childrens_page_image(catalog: str, n: int, dpi: int = 90):
+    """One page of the built interior, rendered.
+
+    The read-through used to reassemble the book from the spread artwork,
+    which meant it showed a book that did not exist — no front matter, no
+    blanks, no real pagination. This serves the PRINT FILE itself, so what
+    is on screen is exactly what goes to KDP."""
+    import fitz
+    from fastapi.responses import Response
+    pdf = OUTPUT_DIR / catalog / "interior.pdf"
+    if not pdf.exists():
+        raise HTTPException(404, "Interior not built yet")
+    with fitz.open(str(pdf)) as d:
+        if n < 1 or n > d.page_count:
+            raise HTTPException(404, "No such page")
+        pix = d[n - 1].get_pixmap(dpi=max(40, min(200, dpi)))
+        png = pix.tobytes("png")
+    return Response(content=png, media_type="image/png",
+                    headers={"Cache-Control": "no-store"})
+
+
+@router.post("/childrens/{catalog}/interior")
+async def childrens_interior(catalog: str):
+    """Build the print-ready interior PDF for a picture book.
+
+    Full-bleed art at trim + bleed, words inside the safe margin and clear of
+    the gutter, padded to a page count the binder accepts."""
+    from ..interior.childrens_interior import build_interior
+    if not db.get_book_by_catalog(catalog):
+        raise HTTPException(404, "Book not found")
+    return {"job_id": start_job("childrens_interior",
+                                lambda h: build_interior(catalog, h),
+                                book_catalog=catalog)}
+
+
+@router.get("/childrens/{catalog}/bible")
+def childrens_bible_get(catalog: str):
+    """The character bible and the scenery bible for this book."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    rec = book["data"].get("childrens") or {}
+    bible = rec.get("bible") or {}
+    return {"bible": bible, "plates": rec.get("plates") or [],
+            "has": bool(bible.get("characters") or bible.get("settings"))}
+
+
+@router.post("/childrens/{catalog}/bible")
+async def childrens_bible_build(catalog: str, body: dict = Body(default={})):
+    """Write the bibles — or extend the series bible this book inherits."""
+    from ..writing.childrens_bible import build_bible
+    if not db.get_book_by_catalog(catalog):
+        raise HTTPException(404, "Book not found")
+    rebuild = bool(body.get("rebuild"))
+    return {"job_id": start_job("childrens_bible",
+                                lambda h: build_bible(catalog, h, rebuild),
+                                book_catalog=catalog)}
+
+
+@router.post("/childrens/{catalog}/bible/plates")
+async def childrens_bible_plates(catalog: str, body: dict = Body(default={})):
+    """Draw the character turnaround sheets and the location plates."""
+    from ..writing.childrens_bible import draw_plates
+    if not db.get_book_by_catalog(catalog):
+        raise HTTPException(404, "Book not found")
+    only = (body.get("name") or "").strip() or None
+    return {"job_id": start_job("childrens_plates",
+                                lambda h: draw_plates(catalog, only, h),
+                                book_catalog=catalog)}
+
+
+@router.post("/childrens/{catalog}/illustrate")
+async def childrens_illustrate(catalog: str, body: dict = Body(default={})):
+    """Draw the spreads with gpt-image-1. Spread 1 sets the look and every
+    later spread is drawn as an edit against it, so the characters hold."""
+    from ..writing.childrens import illustrate
+    if not db.get_book_by_catalog(catalog):
+        raise HTTPException(404, "Book not found")
+    only = body.get("spread")
+    only = int(only) if only else None
+    return {"job_id": start_job("childrens_art",
+                                lambda h: illustrate(catalog, only, h),
+                                book_catalog=catalog)}
+
+
+# ── character bibles ─────────────────────────────────────────────
+# The cast, held as canon. Uploaded as a sheet, transcribed once, then every
+# trailer panel (and later every film scene) that names a character gets that
+# character's exact wording — the only reliable cure for drift.
+
+@router.get("/bible/{catalog}")
+def bible_status(catalog: str):
+    from ..trailer.bible import cast_of, world_of, KINDS
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    bibles = (book["data"].get("bibles") or {})
+    out = {}
+    for k in KINDS:
+        b = bibles.get(k)
+        out[k] = ({"characters": b.get("characters") or [],
+                   "locations": b.get("locations") or [],
+                   "style": b.get("style") or "", "tone": b.get("tone") or "",
+                   "source": b.get("source") or ""} if b else None)
+    return {"bibles": out, "cast": cast_of(book), "world": world_of(book)}
+
+
+@router.post("/bible/{catalog}")
+async def bible_upload(catalog: str, kind: str = "main", file: UploadFile = File(...)):
+    """Upload a character-bible sheet. kind=main|supporting."""
+    from ..trailer.bible import KINDS, parse_bible, save_bible
+    if kind not in KINDS:
+        raise HTTPException(400, f"kind must be one of {KINDS}")
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    if not (file.content_type or "").lower().startswith("image/"):
+        raise HTTPException(400, "Upload an image of the character bible (PNG or JPG)")
+    blob = await file.read()
+    if len(blob) > 20 * 1024 * 1024:
+        raise HTTPException(400, "That image is too large (20MB max)")
+
+    async def job(handle):
+        handle.progress(0.2, "reading", f"reading the {kind} character bible")
+        fresh = db.get_book_by_catalog(catalog)
+        rec = await parse_bible(blob, fresh, kind)
+        save_bible(catalog, kind, rec, file.filename or "bible.png")
+        return {"characters": len(rec["characters"]), "locations": len(rec["locations"])}
+
+    return {"job_id": start_job("character_bible", job, book_catalog=catalog)}
+
+
+@router.delete("/bible/{catalog}")
+def bible_delete(catalog: str, kind: str = "main"):
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    data = dict(book["data"]); bibles = dict(data.get("bibles") or {})
+    bibles.pop(kind, None)
+    data["bibles"] = bibles
+    db.update_book(book["id"], data)
+    return {"ok": True}
+
+
+# ── the model bench ──────────────────────────────────────────────
+# Asked live of Anthropic, so a model published tomorrow appears in the
+# dropdown tomorrow without SCRPT being touched.
+
+@router.get("/models")
+async def writing_models():
+    from ..writing.client import client as _client, DEFAULT_MODEL
+    current = db.get_setting("writing_model", "") or DEFAULT_MODEL
+    models, error = [], ""
+    try:
+        listed = await _client().models.list(limit=50)
+        for m in listed.data:
+            models.append({"id": m.id,
+                           "name": getattr(m, "display_name", "") or m.id})
+    except Exception as e:
+        error = str(e)[:200]
+    # whatever is configured must always be selectable, even if the account
+    # cannot list models right now
+    if current and not any(m["id"] == current for m in models):
+        models.insert(0, {"id": current, "name": current})
+    return {"models": models, "current": current,
+            "mechanical": db.get_setting("mechanical_model", "") or current,
+            "assistant": db.get_setting("assistant_model", "") or "claude-haiku-4-5",
+            "error": error}
+
+
+# ── the house ident ──────────────────────────────────────────────
+# The short audio logo every audiobook opens on. Named after the Copyright
+# holder in Settings, so a brand-new SCRPT install gets its own automatically.
+
+@router.get("/audiobook/ident")
+def audiobook_ident_status():
+    from ..audio import ident as _id
+    exists = _id.IDENT.exists() and _id.IDENT.stat().st_size > 10_000
+    vid, vname = _id.ident_voice()
+    return {
+        "house": _id.house_name(),
+        "line": _id.ident_line(),
+        "voice_id": vid, "voice_name": vname,
+        "exists": exists,
+        "current": _id.is_current(),
+        "seconds": round(_id._seconds(_id.IDENT), 2) if exists else None,
+        "url": f"/api/scrpt/audiobook/ident/audio?v={int(_id.IDENT.stat().st_mtime)}" if exists else None,
+        "voices": _id.IDENT_VOICES,
+    }
+
+
+@router.get("/audiobook/ident/audio")
+def audiobook_ident_audio():
+    from ..audio import ident as _id
+    if not _id.IDENT.exists():
+        raise HTTPException(404, "No ident yet")
+    return FileResponse(str(_id.IDENT), media_type="audio/mpeg", filename="audiobook-intro.mp3")
+
+
+@router.post("/audiobook/ident")
+async def audiobook_ident_build(body: dict = Body(default={})):
+    """Make (or remake) the house ident. body: {line?, voice_id?, force?}"""
+    from ..audio import ident as _id
+    line = (body.get("line") or "").strip()
+    voice_id = (body.get("voice_id") or "").strip()
+    if line:
+        db.set_setting("audiobook_ident_line", line)
+    if voice_id:
+        db.set_setting("audiobook_ident_voice_id", voice_id)
+        for v in _id.IDENT_VOICES:
+            if v["id"] == voice_id:
+                db.set_setting("audiobook_ident_voice_name", v["name"])
+    try:
+        return await _id.build_ident(force=bool(body.get("force", True)))
+    except Exception as e:
+        raise HTTPException(400, str(e)[:300])
+
+
+# ── audiobook opening preview ────────────────────────────────────
+# A few minutes of chapter one read by the house narrator voice: hear the
+# audiobook AND quality-check the opening by ear before anything ships.
+
+@router.get("/audiobook/preview/{catalog}")
+async def audiobook_preview_status(catalog: str):
+    from .. import audiobook as ab
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    rec = ((book["data"].get("audiobook") or {}).get("preview"))
+    ch_rec = ((book["data"].get("audiobook") or {}).get("chapter1"))
+    mp3 = OUTPUT_DIR / catalog / "audiobook-preview.mp3"
+    ch_mp3 = OUTPUT_DIR / catalog / "audiobook-chapter1.mp3"
+    chapter_chars = None
+    try:
+        chapter_chars = ab.chapter_text(catalog)["chars"]
+    except Exception:
+        pass
+    voice_id, voice_name = ab.narrator_voice(book)
+    # the cast voice's own audition clip, so the bench can be heard here
+    voice_preview = None
+    try:
+        import httpx
+        key = db.get_setting("elevenlabs_api_key", "")
+        if key:
+            async with httpx.AsyncClient(timeout=15) as c:
+                rv = await c.get(f"https://api.elevenlabs.io/v1/voices/{voice_id}", headers={"xi-api-key": key})
+            if rv.status_code == 200:
+                voice_preview = rv.json().get("preview_url")
+    except Exception:
+        pass
+    def stamped(p):
+        return f"/api/files/{catalog}/{p.name}?v={int(p.stat().st_mtime)}" if p.exists() else None
+    live = None
+    live_file = OUTPUT_DIR / catalog / "audio-preview" / "live.json"
+    if live_file.exists():
+        try:
+            import json as _json
+            lj = _json.loads(live_file.read_text())
+            live = {**lj, "urls": [f"/api/files/{catalog}/audio-preview/{n}?v={int((live_file.parent / n).stat().st_mtime)}"
+                                   for n in lj.get("parts", []) if (live_file.parent / n).exists()]}
+        except Exception:
+            live = None
+    return {
+        "preview": rec, "chapter1": ch_rec, "live": live,
+        "has_audio": mp3.exists(), "audio_url": stamped(mp3),
+        "chapter_url": stamped(ch_mp3),
+        "voice": voice_name, "voice_id": voice_id, "voice_preview_url": voice_preview,
+        "chapter_chars": chapter_chars,
+        "chapter_minutes": round(chapter_chars / 900, 1) if chapter_chars else None,   # ~900 chars/min read
+    }
+
+
+@router.post("/audiobook/preview/{catalog}")
+async def audiobook_preview_generate(catalog: str, body: dict = Body(default={})):
+    from .. import audiobook as ab
+    from ..trailer import runway as _runway
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    if not _runway.configured():
+        raise HTTPException(status_code=400, detail="Runway is not connected")
+
+    scope = (body.get("scope") or "opening").strip()
+
+    async def job(handle):
+        if scope == "chapter":
+            return await ab.record_chapter(catalog, handle=handle)
+        return await ab.preview(catalog, handle=handle)
+
+    job_id = start_job("audiobook_preview", job, book_catalog=catalog)
+    return {"job_id": job_id, "scope": scope}
+
+
+@router.post("/trailer/finish/{catalog}")
+async def trailer_finish(catalog: str, body: dict = Body(default={})):
+    """Finish the approved master in 4K (or 2K) via the upscale lab."""
+    from ..trailer import runway as _runway
+    from ..trailer.producer import finish_4k
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    if not _runway.configured():
+        raise HTTPException(status_code=400, detail="Runway is not connected")
+    resolution = (body.get("resolution") or "4k").strip()
+    if resolution not in ("2k", "4k"):
+        raise HTTPException(status_code=400, detail="resolution must be 2k or 4k")
+
+    async def job(handle):
+        return await finish_4k(catalog, resolution=resolution, handle=handle)
+
+    job_id = start_job("trailer_finish", job, book_catalog=catalog)
+    return {"job_id": job_id, "resolution": resolution}
+
+
+@router.post("/trailer/line/{catalog}")
+async def trailer_rewrite_line(catalog: str, body: dict = Body(default={})):
+    """Punch-up desk: four alternative reads for one VO line or the tagline."""
+    from ..trailer.director import rewrite_line
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    try:
+        suggestions = await rewrite_line(
+            catalog, shot_n=int(body.get("n") or 0),
+            tagline=bool(body.get("tagline")),
+            field=(body.get("field") or "voiceover"))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"suggestions": suggestions}
+
+
+# ── trailer voice casting ────────────────────────────────────────
+
+@router.get("/trailer/voices/{catalog}")
+async def trailer_voices(catalog: str):
+    """The trailer voice bench: the publisher's ElevenLabs bank with
+    audition clips, plus which voice is currently cast for this book."""
+    import httpx
+    from ..trailer.producer import trailer_voice
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    api_key = db.get_setting("elevenlabs_api_key", "")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="ElevenLabs is not configured")
+    async with httpx.AsyncClient(timeout=30) as c:
+        resp = await c.get("https://api.elevenlabs.io/v1/voices",
+                           headers={"xi-api-key": api_key})
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Could not reach the voice bank")
+    voices = [{"id": v["voice_id"], "name": v["name"],
+               "category": v.get("category"),
+               "preview_url": v.get("preview_url")}
+              for v in resp.json().get("voices", [])]
+    cur_id, cur_name = trailer_voice(book["data"].get("genre_preset") or "", catalog)
+    return {"voices": voices, "current": {"id": cur_id, "name": cur_name}}
+
+
+@router.post("/trailer/voice/{catalog}")
+async def trailer_cast_voice(catalog: str, body: dict = Body(default={})):
+    """Cast the trailer narrator for this book. The take ledger keys voice
+    into every recording, so a recast re-records all the lines — nothing
+    else — on the next production."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    voice_id = (body.get("voice_id") or "").strip()
+    if not voice_id:
+        raise HTTPException(status_code=400, detail="voice_id is required")
+    body["auto"] = False          # a hand-cast narrator is never overruled by the director
+    data = dict(book["data"])
+    tr = dict(data.get("trailer") or {})
+    tr["voice"] = {"id": voice_id, "name": (body.get("name") or "").strip(), "auto": False}
+    data["trailer"] = tr
+    db.update_book(book["id"], data)
+    return {"cast": tr["voice"]}
+
+
+@router.post("/trailer/shot/insert/{catalog}")
+async def trailer_insert_shot(catalog: str, body: dict = Body(default={})):
+    """Insert a new AI-drafted scene after shot `after` (0 = new opening).
+    The scene bridges its neighbours, comes from the book, and arrives
+    fully editable. Clears approval — new words need a new okay."""
+    from ..trailer.director import write_shot
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    async def job(handle):
+        return await write_shot(catalog, after_n=int(body.get("after") or 0))
+
+    job_id = start_job("trailer_shot", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.post("/trailer/shot/delete/{catalog}")
+async def trailer_delete_shot(catalog: str, body: dict = Body(default={})):
+    """Cut a scene from the running order. Footage takes are content-keyed,
+    so nothing else is affected; approval is cleared."""
+    n = int(body.get("n") or 0)
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    data = dict(book["data"])
+    tr = dict(data.get("trailer") or {})
+    treatment = dict(tr.get("treatment") or {})
+    shots = [dict(s) for s in (treatment.get("shots") or []) if s.get("n") != n]
+    if len(shots) == len(treatment.get("shots") or []):
+        raise HTTPException(status_code=400, detail=f"No shot {n}")
+    if len(shots) < 2:
+        raise HTTPException(status_code=400, detail="A trailer needs at least two shots")
+    for i, s2 in enumerate(shots, 1):
+        s2["n"] = i
+    treatment["shots"] = shots
+    tr["treatment"] = treatment
+    tr["approved"] = False
+    data["trailer"] = tr
+    db.update_book(book["id"], data)
+    return {"count": len(shots)}
+
+
+# ── the score bench ──────────────────────────────────────────────
+
+@router.post("/trailer/score/options/{catalog}")
+async def trailer_score_options(catalog: str, body: dict = Body(default={})):
+    """Compose 3 candidate scores from an energy description (~15 credits)."""
+    from ..trailer.producer import compose_score_options
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    brief = (body.get("brief") or "").strip()
+    if not brief:
+        raise HTTPException(status_code=400, detail="Describe the music you want")
+
+    async def job(handle):
+        return await compose_score_options(catalog, brief, handle=handle)
+
+    job_id = start_job("score_options", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.post("/trailer/score/pick/{catalog}")
+async def trailer_score_pick(catalog: str, body: dict = Body(default={})):
+    from ..trailer.producer import pin_score
+    try:
+        return {"pinned": pin_score(catalog, int(body.get("n") or 0))}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/trailer/score/{catalog}")
+async def trailer_score_status(catalog: str):
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    tr = book["data"].get("trailer") or {}
+    out = OUTPUT_DIR / catalog
+    options = [{**o, "url": f"/api/files/{catalog}/{o['file']}"}
+               for o in (tr.get("score_options") or [])
+               if (out / o.get("file", "")).exists()]
+    pinned = tr.get("score") or None
+    if pinned and not (out / pinned.get("file", "")).exists():
+        pinned = None
+    return {"options": options,
+            "pinned": {**pinned, "url": f"/api/files/{catalog}/{pinned['file']}"} if pinned else None}
+
+
+# ── voice search (the whole ElevenLabs library) ──────────────────
+
+@router.get("/voice-library/search")
+async def trailer_voice_search(q: str = ""):
+    """Search the full ElevenLabs voice library by description — "deep
+    movie trailer", "warm french female", whatever the film needs."""
+    import httpx
+    api_key = db.get_setting("elevenlabs_api_key", "")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="ElevenLabs is not configured")
+    async with httpx.AsyncClient(timeout=30) as c:
+        resp = await c.get("https://api.elevenlabs.io/v1/shared-voices",
+                           params={"search": q, "page_size": 12},
+                           headers={"xi-api-key": api_key})
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Voice library unreachable")
+    return {"voices": [{
+        "id": v["voice_id"], "name": v["name"],
+        "description": (v.get("description") or "")[:140],
+        "preview_url": v.get("preview_url"),
+        "owner_id": v.get("public_owner_id"),
+    } for v in resp.json().get("voices", [])]}
+
+
+@router.post("/trailer/voice/hire/{catalog}")
+async def trailer_voice_hire(catalog: str, body: dict = Body(default={})):
+    """Add a library voice to the bank and cast it for this book."""
+    import httpx
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    api_key = db.get_setting("elevenlabs_api_key", "")
+    voice_id = (body.get("voice_id") or "").strip()
+    owner_id = (body.get("owner_id") or "").strip()
+    name = (body.get("name") or "").strip()
+    if not (voice_id and owner_id):
+        raise HTTPException(status_code=400, detail="voice_id and owner_id are required")
+    async with httpx.AsyncClient(timeout=30) as c:
+        resp = await c.post(
+            f"https://api.elevenlabs.io/v1/voices/add/{owner_id}/{voice_id}",
+            headers={"xi-api-key": api_key, "Content-Type": "application/json"},
+            json={"new_name": name or "Trailer voice"})
+    if resp.status_code not in (200, 201):
+        raise HTTPException(status_code=502,
+                            detail=f"Could not hire the voice: {resp.text[:150]}")
+    data = dict(book["data"])
+    tr = dict(data.get("trailer") or {})
+    tr["voice"] = {"id": voice_id, "name": name}
+    data["trailer"] = tr
+    db.update_book(book["id"], data)
+    return {"cast": tr["voice"]}
+
+
+# ── release calendar ─────────────────────────────────────────────
+# Every title carries a release plan: a date and a mode. The shelf shows it
+# under each cover; the calendar shows the whole slate. Spacing is the
+# strategy — each launch gets its own 30-day new-release window.
+
+def _release_of(book: dict) -> dict:
+    d = book.get("data") or {}
+    rel = dict(d.get("release") or {})
+    pub = d.get("publishing") or {}
+    if pub.get("released_at") or pub.get("asin") or d.get("external"):
+        rel.setdefault("status", "released")
+        rel.setdefault("date", (pub.get("released_at") or "")[:10] or rel.get("date"))
+    elif pub.get("uploaded_at"):
+        rel.setdefault("status", "submitted")
+    elif rel.get("date"):
+        rel.setdefault("status", "planned")
+    else:
+        rel.setdefault("status", "unplanned")
+    return rel
+
+
+@router.get("/release-calendar")
+def release_calendar():
+    """Every title with its release plan, sorted by date (unplanned last)."""
+    rows = []
+    for b in db.list_books(per_page=500).get("books", []):
+        rel = _release_of(b)
+        d = b.get("data") or {}
+        series = d.get("series") or {}
+        rows.append({
+            "catalog": b["catalog_number"], "title": b["title"],
+            "author": d.get("author_name"), "genre": d.get("genre_preset"),
+            "series": series.get("series_title"), "book_number": series.get("book_number"),
+            "date": rel.get("date"), "mode": rel.get("mode") or "immediate",
+            "status": rel.get("status"), "note": rel.get("note"),
+        })
+    rows.sort(key=lambda r: (r["date"] is None, r["date"] or "", r["catalog"]))
+    return {"releases": rows}
+
+
+@router.post("/release/{catalog}")
+def set_release(catalog: str, body: dict = Body(default={})):
+    """Set the planned release date and mode for a title."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    data = dict(book["data"])
+    rel = dict(data.get("release") or {})
+    date = (body.get("date") or "").strip()
+    if date:
+        import datetime
+        try:
+            datetime.date.fromisoformat(date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD")
+        rel["date"] = date
+    elif "date" in body:
+        rel.pop("date", None)
+    mode = (body.get("mode") or "").strip()
+    if mode:
+        if mode not in ("immediate", "scheduled"):
+            raise HTTPException(status_code=400, detail="mode must be immediate or scheduled")
+        rel["mode"] = mode
+    if "note" in body:
+        rel["note"] = (body.get("note") or "").strip()
+    if "status" in body and body["status"] in ("planned", "submitted", "released", "unplanned"):
+        rel["status"] = body["status"]
+    data["release"] = rel
+    db.update_book(book["id"], data)
+    return {"release": _release_of({"data": data})}
+
+
+@router.get("/release-calendar/suggest")
+def release_suggest():
+    """The slate planner's proposal for every open title, with reasons."""
+    from ..market.scheduler import suggest_schedule
+    return suggest_schedule()
+
+
+@router.post("/release-calendar/apply")
+def release_apply(body: dict = Body(default={})):
+    """Accept proposals: [{catalog, date}] — writes each release plan."""
+    applied = []
+    for item in body.get("items") or []:
+        book = db.get_book_by_catalog(item.get("catalog") or "")
+        if not book or not item.get("date"):
+            continue
+        data = dict(book["data"])
+        rel = dict(data.get("release") or {})
+        rel["date"] = item["date"]
+        rel.setdefault("mode", "immediate")
+        rel["status"] = "planned"
+        rel["planned_by"] = "slate-planner"
+        data["release"] = rel
+        db.update_book(book["id"], data)
+        applied.append(item["catalog"])
+    return {"applied": applied}
+
+
+# ── the launch gate / factory line ───────────────────────────────
+
+@router.get("/launch-gate/{catalog}")
+def launch_gate_one(catalog: str):
+    from ..market.launch_gate import launch_gate
+    try:
+        return launch_gate(catalog)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/factory-line")
+def factory_line():
+    from ..market.launch_gate import line_status
+    return line_status()
+
+
+@router.get("/cost/{catalog}")
+def book_cost(catalog: str):
+    from ..writing.ledger import book_cost as _bc
+    return _bc(catalog)
+
+
+@router.post("/line/run")
+async def line_run(body: dict = Body(default={})):
+    """Run the factory line for one or more books, all the way to KDP.
+    body: {catalogs: [...], publish?: true}"""
+    from ..market.line import run_many
+    catalogs = [c for c in (body.get("catalogs") or []) if db.get_book_by_catalog(c)]
+    if not catalogs:
+        raise HTTPException(status_code=400, detail="No known catalog numbers")
+    publish = body.get("publish", True)
+
+    async def job(handle):
+        return await run_many(catalogs, handle, publish=publish)
+
+    return {"job_id": start_job("factory_line", job, book_catalog=catalogs[0]), "catalogs": catalogs}
+
+
+@router.post("/kdp/stage-kindle/{catalog}")
+async def kdp_stage_kindle(catalog: str, body: dict = Body(default={})):
+    """Stage the Kindle eBook from the paperback (visible browser, persistent
+    session). publish=true presses Publish — only past a clear launch gate
+    and with confirm:true."""
+    from ..market.kdp_ebook import stage_kindle
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    publish = bool(body.get("publish"))
+    if publish and (db.get_setting("kdp_auto_publish", "0") or "0") != "1" and not body.get("confirm"):
+        raise HTTPException(status_code=400, detail="Publishing needs confirm:true")
+
+    async def job(handle):
+        handle.progress(0.05, "kdp", "opening KDP for the Kindle edition")
+        return await stage_kindle(catalog, publish=publish)
+
+    return {"job_id": start_job("kdp_stage_kindle", job, book_catalog=catalog)}
+
+
+@router.post("/kdp/stage/{catalog}")
+async def kdp_stage(catalog: str, body: dict = Body(default={})):
+    """Stage the paperback on KDP from the book's record (visible browser,
+    persistent session). publish=true presses Publish — only past a clear
+    launch gate."""
+    from ..market.kdp_paperback import stage_paperback
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    publish = bool(body.get("publish"))
+    if publish and (db.get_setting("kdp_auto_publish", "0") or "0") != "1" and not body.get("confirm"):
+        raise HTTPException(status_code=400, detail="Publishing needs confirm:true (or the kdp_auto_publish setting)")
+
+    async def job(handle):
+        handle.progress(0.05, "kdp", "opening KDP")
+        return await stage_paperback(catalog, publish=publish)
+
+    job_id = start_job("kdp_stage", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+# ── keyword plan (live Amazon search data) ───────────────────────
+
+@router.get("/keywords/{catalog}")
+def keywords_status(catalog: str):
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return {"current": book["data"].get("keywords") or [],
+            "research": book["data"].get("keyword_research")}
+
+
+@router.post("/keywords/research/{catalog}")
+async def keywords_research(catalog: str, body: dict = Body(default={})):
+    """Research the seven KDP slots from Amazon autosuggest + competition,
+    scrubbed for compliance and truth. apply=true writes them to the book."""
+    from ..market.keyword_plan import keyword_plan
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    apply = bool(body.get("apply", True))
+
+    async def job(handle):
+        handle.progress(0.1, "keywords", "asking Amazon what readers type")
+        return await keyword_plan(catalog, apply=apply)
+
+    job_id = start_job("keyword_research", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.post("/trailer/reference/{catalog}")
+async def trailer_reference(catalog: str, body: dict = Body(default={})):
+    """Learn the craft of a reference trailer (YouTube link): rhythm, voice,
+    music, look. The director then matches its feel for this book."""
+    from ..trailer.reference import analyze_reference
+    url = (body.get("url") or "").strip()
+    if not url.startswith("http"):
+        raise HTTPException(status_code=400, detail="Paste a YouTube link")
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    async def job(handle):
+        handle.progress(0.1, "reference", "studying the reference trailer")
+        return await analyze_reference(catalog, url)
+
+    job_id = start_job("trailer_reference", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.post("/trailer/storyboard/upload/{catalog}")
+async def trailer_storyboard_upload(catalog: str, file: UploadFile = File(...)):
+    """Upload a storyboard sheet (an image of numbered panels with shot
+    notes and captions). SCRPT reads it and transcribes it into a shootable
+    board — one clip per panel, narrated, scored, closed on the real cover.
+    Works the same way as the reference-trailer field, just for a director's
+    own storyboard instead of a YouTube link."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    ctype = (file.content_type or "").lower()
+    if not ctype.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Upload an image of the storyboard (PNG or JPG)")
+    image_bytes = await file.read()
+    if len(image_bytes) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="That image is too large (20MB max)")
+
+    async def job(handle):
+        from ..trailer.producer import parse_storyboard_image
+        handle.progress(0.2, "reading", "reading the storyboard panel by panel")
+        fresh = db.get_book_by_catalog(catalog)
+        board = await parse_storyboard_image(image_bytes, fresh)
+        data = dict(fresh["data"])
+        tr = dict(data.get("trailer") or {})
+        tr["storyboard_pending"] = board
+        tr["storyboard_pending_source"] = file.filename or "storyboard.png"
+        data["trailer"] = tr
+        db.update_book(fresh["id"], data)
+        return {"panels": len(board["panels"])}
+
+    job_id = start_job("trailer_storyboard_upload", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.post("/trailer/storyboard/shoot/{catalog}")
+async def trailer_storyboard_shoot(catalog: str, body: dict = Body(default={})):
+    """Shoot the uploaded (or directly supplied) storyboard: one clip per
+    panel on Seedance 2.5, narrated, scored, closed on the real cover.
+    body: {board?: {...}, format?: wide|vertical|ad} — board defaults to
+    the last uploaded storyboard for this book."""
+    from ..trailer.producer import produce_storyboard
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    board = body.get("board") or (book["data"].get("trailer") or {}).get("storyboard_pending")
+    if not board or not board.get("panels"):
+        raise HTTPException(status_code=400, detail="Upload a storyboard first")
+    fmt = (body.get("format") or "wide").strip()
+
+    async def job(handle):
+        result = await produce_storyboard(catalog, board, format_name=fmt, handle=handle)
+        fresh = db.get_book_by_catalog(catalog)
+        data = dict(fresh["data"])
+        tr = dict(data.get("trailer") or {})
+        tr.pop("storyboard_pending", None)
+        tr.pop("storyboard_pending_source", None)
+        data["trailer"] = tr
+        db.update_book(fresh["id"], data)
+        return result
+
+    job_id = start_job("trailer_produce", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+@router.post("/trailer/workorder/{catalog}")
+async def trailer_workorder(catalog: str, body: dict = Body(default={})):
+    """The work order: title + cover + blurb + end screen, one Seedance take.
+    body: {quality: draft|master, format: wide|vertical|ad, seconds?: 30}"""
+    from ..trailer.producer import produce_workorder
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    quality = (body.get("quality") or "draft").strip()
+    fmt = (body.get("format") or "wide").strip()
+    seconds = int(body.get("seconds") or 30)
+    finish = "4k" if quality in ("4k", "master") else ""     # "master" of a work-order cut = this cut in 4K
+
+    async def job(handle):
+        return await produce_workorder(catalog, quality="draft", format_name=fmt, seconds=seconds,
+                                       handle=handle, finish=finish)
+
+    return {"job_id": start_job("trailer_produce", job, book_catalog=catalog)}
+
+
+@router.post("/trailer/reset/{catalog}")
+def trailer_reset(catalog: str):
+    """Start over: drop the script, the direction, the review, the take
+    ledger and every generated file — keep the archived versions and a
+    narrator the publisher cast by hand."""
+    from ..trailer.producer import OUTPUT_DIR as _OUT
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    data = dict(book["data"])
+    tr = dict(data.get("trailer") or {})
+    keep = {k: tr[k] for k in ("versions", "reference") if k in tr}
+    voice = tr.get("voice") or {}
+    if voice.get("id") and voice.get("auto") is False:
+        keep["voice"] = voice
+    data["trailer"] = keep
+    db.update_book(book["id"], data)
+    tdir = _OUT / catalog / "trailer"
+    removed = 0
+    if tdir.exists():
+        for f in tdir.iterdir():
+            if f.name in ("world-plate.png",):
+                continue
+            if f.suffix in (".mp4", ".mp3", ".png", ".jpg", ".txt"):
+                f.unlink(missing_ok=True); removed += 1
+    for name in ("trailer.mp4", "trailer-poster.jpg"):
+        f = _OUT / catalog / name
+        if f.exists():
+            f.unlink(missing_ok=True)
+    return {"reset": True, "removed_files": removed, "kept": list(keep)}
+
+
+@router.post("/trailer/like-this/{catalog}")
+async def trailer_like_this(catalog: str, body: dict = Body(default={})):
+    """One click: study a reference trailer, write this book's script in its
+    rhythm and register, and shoot it (draft by default)."""
+    from ..trailer.reference import analyze_reference
+    from ..trailer.director import write_treatment
+    from ..trailer.producer import produce, MODES, FORMATS
+    url = (body.get("url") or "").strip()
+    mode = (body.get("mode") or "draft").strip()
+    fmt = (body.get("format") or "wide").strip()
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    if mode not in MODES or fmt not in FORMATS:
+        raise HTTPException(status_code=400, detail="bad mode/format")
+    stored = ((book["data"].get("trailer") or {}).get("reference") or {}).get("url")
+    # no link and no reference: the director works from the book alone —
+    # the one-button "create the trailer"
+
+    async def job(handle):
+        if url and url != stored:
+            handle.progress(0.05, "reference", "studying the reference trailer")
+            await analyze_reference(catalog, url)
+        from ..trailer.direction import write_direction, cast_narrator
+        handle.progress(0.12, "directing", "making the directorial choices — look, rhythm, voice, score")
+        direction = await write_direction(catalog)
+        handle.progress(0.18, "casting", "casting the narrator")
+        try:
+            await cast_narrator(catalog, direction)
+        except Exception:
+            pass
+        handle.progress(0.25, "directing",
+                        "writing the script in the reference's rhythm" if (url or stored)
+                        else "writing the script from the book")
+        await write_treatment(catalog)
+        fresh = db.get_book_by_catalog(catalog)
+        data = dict(fresh["data"]); tr = dict(data.get("trailer") or {})
+        tr["approved"] = True          # the publisher asked for the film in one click
+        data["trailer"] = tr
+        db.update_book(fresh["id"], data)
+        handle.progress(0.30, "shooting", "rolling")
+
+        class _Scaled:
+            """The shoot owns the last 70% of the bar — it never runs backwards."""
+            def progress(self, p, stage="", detail=""):
+                handle.progress(0.30 + 0.70 * max(0.0, min(1.0, float(p or 0))), stage, detail)
+            def __getattr__(self, name):
+                return getattr(handle, name)
+
+        return await produce(catalog, mode, format_name=fmt, handle=_Scaled())
+
+    job_id = start_job("trailer_produce", job, book_catalog=catalog)
+    return {"job_id": job_id}
+
+
+# ── series builder: group existing standalone books into a series ───
+
+@router.post("/series/group")
+def series_group(body: dict = Body(default={})):
+    """Make a series out of existing, unreleased books.
+    body: {series_title, catalogs: [in reading order], bible?}
+    Stamps series data + numbering on each book, keeps one series_id, and
+    rebuilds the print wrap so the back cover carries 'Series · Book N'."""
+    import uuid
+    title = (body.get("series_title") or "").strip()
+    catalogs = [c for c in (body.get("catalogs") or []) if c]
+    if not title or len(catalogs) < 2:
+        raise HTTPException(status_code=400, detail="A series needs a title and at least two books")
+    books = []
+    for c in catalogs:
+        b = db.get_book_by_catalog(c)
+        if not b:
+            raise HTTPException(status_code=404, detail=f"{c} not found")
+        pub = (b.get("data") or {}).get("publishing") or {}
+        if pub.get("asin") or (b.get("data") or {}).get("external"):
+            raise HTTPException(status_code=400, detail=f"{c} is already released — series membership is set on KDP for live titles")
+        books.append(b)
+    # reuse an existing id if any member already belongs to a series of this name
+    sid = next(((b["data"].get("series") or {}).get("series_id") for b in books
+                if (b["data"].get("series") or {}).get("series_title") == title
+                and (b["data"].get("series") or {}).get("series_id")), None) or uuid.uuid4().hex[:8]
+    bible = (body.get("bible") or "").strip()
+    wraps = []
+    for i, b in enumerate(books, 1):
+        data = dict(b["data"])
+        prev = dict(data.get("series") or {})
+        data["series"] = {**prev, "series_id": sid, "series_title": title,
+                          "book_number": i, "total_planned": len(books),
+                          "series_bible": bible or prev.get("series_bible") or "",
+                          "grouped_from_standalone": True}
+        db.update_book(b["id"], data)
+        if data.get("interior", {}).get("page_count"):
+            try:
+                build_print_wrap(b["catalog_number"])
+                wraps.append(b["catalog_number"])
+            except Exception:
+                pass
+    return {"series_id": sid, "series_title": title,
+            "books": [{"catalog": b["catalog_number"], "title": b["title"], "book_number": i}
+                      for i, b in enumerate(books, 1)],
+            "wraps_rebuilt": wraps}
+
+
+@router.get("/series/candidates")
+def series_candidates():
+    """Unreleased books that could join a series (standalones first)."""
+    rows = []
+    for b in db.list_books(per_page=500).get("books", []):
+        d = b.get("data") or {}
+        pub = d.get("publishing") or {}
+        if pub.get("asin") or d.get("external"):
+            continue
+        s = d.get("series") or {}
+        rows.append({"catalog": b["catalog_number"], "title": b["title"],
+                     "author": d.get("author_name"), "genre": d.get("genre_preset"),
+                     "series": s.get("series_title"), "book_number": s.get("book_number")})
+    rows.sort(key=lambda r: (r["series"] is not None, r["catalog"]))
+    return {"books": rows}

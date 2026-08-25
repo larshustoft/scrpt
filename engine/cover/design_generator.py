@@ -371,11 +371,16 @@ async def generate_cover_artwork(
 
         # Run synchronous OpenAI call in executor to avoid blocking
         client = OpenAI(api_key=OPENAI_API_KEY)
+        # the newest engine on the account, asked live — never a pinned model
+        import httpx as _httpx
+        from .front_cover import _best_image_model
+        async with _httpx.AsyncClient(timeout=20) as _c:
+            _model = await _best_image_model(_c)
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None,
             lambda: client.images.generate(
-                model="gpt-image-1",
+                model=_model,
                 prompt=full_prompt,
                 size=size,
                 n=1,
@@ -476,7 +481,7 @@ async def generate_design_from_reference(
 
     try:
         import anthropic
-from ..writing.client import writing_model
+        from ..writing.client import writing_model
 
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 

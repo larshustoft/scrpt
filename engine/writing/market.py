@@ -48,7 +48,7 @@ async def market_check(book: dict, ms) -> dict:
     raw = await complete(
         "You verify publishing decisions against the live market before "
         "committing production resources. Numbers over adjectives.",
-        prompt, max_tokens=2500, web_search=4)
+        prompt, max_tokens=2500, web_search=4, mechanical=True)
     out = extract_json(raw)
     return {
         "target_words": int(out.get("target_words") or 0),

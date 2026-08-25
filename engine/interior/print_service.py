@@ -58,6 +58,10 @@ async def export_interior(catalog: str, base_url: str = "") -> dict:
         finally:
             await browser.close()
 
+    # a printed book always has an even page count: when the layout ends
+    # on an odd page, append one blank page (the last verso) ourselves
+    _pad_even(str(pdf_path))
+
     validation = validate_interior_pdf(
         str(pdf_path),
         trim_w=spec["widthIn"],
@@ -90,6 +94,19 @@ async def export_interior(catalog: str, base_url: str = "") -> dict:
     update_book(book["id"], data)
     return {"pdf_path": str(pdf_path), "page_count": interior["page_count"],
             "validation": validation}
+
+
+def _pad_even(path: str) -> int:
+    import fitz
+    doc = fitz.open(path)
+    try:
+        if doc.page_count % 2 == 1:
+            last = doc[-1]
+            doc.new_page(width=last.rect.width, height=last.rect.height)
+            doc.save(path, incremental=True, encryption=fitz.PDF_ENCRYPT_KEEP)
+        return doc.page_count
+    finally:
+        doc.close()
 
 
 def _pdf_pages(path: str) -> int:

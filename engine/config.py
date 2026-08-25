@@ -198,3 +198,36 @@ BOOK_STATUSES = [
     "rejected",         # KDP rejected — needs fixes
     "paused",           # Temporarily pulled
 ]
+
+
+# ── delivery filenames ───────────────────────────────────────────
+# House rule: files that leave SCRPT carry the book's title — a shortened,
+# filesystem-safe form — plus what they are: "<Title>-interior.pdf",
+# "<Title>-cover.pdf". Internal canonical names (interior.pdf,
+# cover-wrap.pdf) stay as they are; the titled files are copies for delivery.
+
+def short_title(title: str, max_len: int = 40) -> str:
+    import re
+    t = re.sub(r"[\u2018\u2019'\"\u201c\u201d]", "", title or "")
+    t = re.sub(r"[^A-Za-z0-9]+", "-", t).strip("-")
+    if len(t) > max_len:
+        t = t[:max_len].rsplit("-", 1)[0]
+    return t or "book"
+
+
+def delivery_name(title: str, kind: str) -> str:
+    return f"{short_title(title)}-{kind}.pdf"
+
+
+def write_delivery_copies(catalog: str, title: str) -> dict:
+    """Copy canonical files to their titled delivery names. Returns paths."""
+    import shutil
+    out = OUTPUT_DIR / catalog
+    made = {}
+    for src, kind in (("interior.pdf", "interior"), ("cover-wrap.pdf", "cover")):
+        f = out / src
+        if f.exists():
+            dst = out / delivery_name(title, kind)
+            shutil.copy2(f, dst)
+            made[kind] = dst.name
+    return made
