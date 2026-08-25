@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useAuthContext } from "@/components/AuthProvider";
 import { ScrptLogo } from "@/components/Logo";
+import { FilmPlayer } from "@/components/FilmPlayer";
+import { InterestForm } from "@/components/InterestForm";
 
 /**
  * scrpt.ai — the sales page.
@@ -24,8 +26,8 @@ export default function SalesPage() {
           <a href="#how" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
             How it works
           </a>
-          <a href="#pricing" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
-            Pricing
+          <a href="#access" className="text-[13px] text-text-secondary hover:text-text-primary transition-colors hidden sm:inline">
+            Early access
           </a>
           <Link href={appHref} className="btn-brass">
             {user ? "Open SCRPT" : "Sign in"}
@@ -39,33 +41,43 @@ export default function SalesPage() {
           className="absolute inset-0 bg-cover"
           style={{ backgroundImage: "url(/hq-background.png)", backgroundPosition: "center 26%" }}
         />
+        {/* A single top-to-bottom wash left the right-hand side of the room —
+            shelves, frames, the lamp — competing with the headline. Two
+            passes: one for depth down the frame, and a soft vignette that
+            settles the edges so the words sit on something calm. */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(180deg, rgba(14,12,9,0.6) 0%, rgba(14,12,9,0.42) 40%, var(--bg) 96%)",
+              "linear-gradient(180deg, rgba(14,12,9,0.72) 0%, rgba(14,12,9,0.55) 42%, var(--bg) 97%)",
+          }}
+        />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 62% 70% at 50% 42%, rgba(14,12,9,0) 0%,"
+              + " rgba(14,12,9,0.30) 58%, rgba(14,12,9,0.68) 100%)",
           }}
         />
         <div className="relative max-w-[1150px] mx-auto px-8 pt-36 pb-16 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-transparent.png" alt="SCRPT" className="w-[200px] mx-auto"
-               style={{ filter: "drop-shadow(0 2px 20px rgba(0,0,0,0.7))", marginBottom: -28 }} />
           <h1
-            className="serif-display text-[44px] md:text-[56px] leading-[1.08] font-semibold text-text-primary max-w-[780px] mx-auto"
+            className="serif-display text-[44px] md:text-[58px] leading-[1.06] font-semibold text-text-primary max-w-[820px] mx-auto"
             style={{ textShadow: "0 2px 30px rgba(0,0,0,0.85)" }}
           >
-            Your publishing house.
+            From writer
             <br />
-            <span className="text-accent">Population: you.</span>
+            to <span className="text-accent">publishing house.</span>
           </h1>
           <p
-            className="text-[16px] text-text-secondary mt-6 max-w-[600px] mx-auto leading-relaxed"
+            className="text-[16.5px] text-text-secondary mt-7 max-w-[640px] mx-auto leading-relaxed"
             style={{ textShadow: "0 1px 16px rgba(0,0,0,0.9)" }}
           >
-            SCRPT plots, writes, and typesets professional books — thrillers,
-            romance, non-fiction — formats them precisely for Amazon KDP,
-            narrates the audiobook, and tracks every royalty. You are the
-            publisher. SCRPT is the house.
+            SCRPT writes and typesets the book, designs the cover, produces the
+            audiobook, cuts the trailer — and when the story earns it, the film.
+            It keeps your catalogue, tracks what every title earns, runs the
+            marketing, and reports to you each morning through your own
+            publishing assistant.
           </p>
           <div className="flex items-center justify-center gap-4 mt-9">
             <Link href="/login" className="btn-brass text-[14px] px-7 py-3">
@@ -76,9 +88,19 @@ export default function SalesPage() {
               See it working
             </a>
           </div>
+        </div>
+      </section>
 
-          {/* the proof — a real typeset spread */}
-          <div id="studio" className="mt-16 rounded-[14px] overflow-hidden"
+      {/* the film, directly under the hero and edge to edge — at full width
+          it reads as part of the page rather than a box sitting on it */}
+      <section className="relative w-full">
+        <FilmPlayer src="/film/scrpt.mp4" poster="/film/poster.jpg" fullBleed />
+      </section>
+
+      {/* the proof — a real typeset spread */}
+      <section className="border-t border-border-subtle">
+        <div className="max-w-[1150px] mx-auto px-8 py-20 text-center">
+          <div id="studio" className="rounded-[14px] overflow-hidden"
                style={{ boxShadow: "0 0 0 1px rgba(236,229,218,0.1), 0 30px 90px rgba(0,0,0,0.7)" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/marketing/formatting-studio.jpg"
@@ -157,22 +179,20 @@ export default function SalesPage() {
         </div>
       </section>
 
-      {/* pricing */}
-      <section id="pricing" className="border-t border-border-subtle">
+
+      {/* pre-launch: no price, an invitation */}
+      <section id="access" className="border-t border-border-subtle">
         <div className="max-w-[720px] mx-auto px-8 py-24 text-center">
-          <h2 className="serif-display text-[34px] font-semibold">Pricing</h2>
-          <div className="card mt-10 py-12">
-            <div className="serif-display text-[22px] font-semibold text-accent">
-              Early access
-            </div>
-            <p className="text-[14px] text-text-secondary mt-3 max-w-[420px] mx-auto">
-              SCRPT is in private early access while the first catalogs are
-              built. Create an account to join the list — founding publishers
-              set their own terms.
-            </p>
-            <Link href="/login" className="btn-brass mt-8">
-              Request access
-            </Link>
+          <h2 className="serif-display text-[34px] font-semibold">
+            SCRPT opens soon.
+          </h2>
+          <p className="text-[14.5px] text-text-secondary mt-4 max-w-[520px] mx-auto leading-relaxed">
+            The first catalogues are being built now. Leave your email and
+            you&rsquo;ll hear the day it opens — nothing else, and never your
+            address to anyone.
+          </p>
+          <div className="mt-9">
+            <InterestForm />
           </div>
         </div>
       </section>
@@ -183,9 +203,9 @@ export default function SalesPage() {
           <h2 className="serif-display text-[28px] font-semibold leading-snug">
             The next book on your shelf hasn&apos;t been written yet.
           </h2>
-          <Link href="/login" className="btn-brass mt-8 text-[14px] px-7 py-3">
-            Commission it
-          </Link>
+          <a href="#access" className="btn-brass mt-8 text-[14px] px-7 py-3 inline-block">
+            Get early access
+          </a>
         </div>
       </section>
 

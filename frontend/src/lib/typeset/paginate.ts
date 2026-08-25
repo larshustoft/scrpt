@@ -232,7 +232,9 @@ export async function paginate(
 
   // gutter iteration: estimate -> paginate -> check tier -> repeat (max 3)
   let assumedPages = estimatePages(ms.word_count || 40000, {
-    trimW: 0, trimH: 0, fontSizePt: 0, leading: 0,
+    // the four format values come from the spread below; declaring zeroes
+    // here as well made them dead properties that TypeScript rejects in a
+    // production build, which is what broke the Vercel deploy
     marginTop: cfg.margin_top, marginBottom: cfg.margin_bottom,
     marginOutside: cfg.margin_outside,
     ...((): { trimW: number; trimH: number; fontSizePt: number; leading: number } => {

@@ -2713,6 +2713,12 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     # music. Three seconds of score over the establishing shot — carrying the
     # series logo if there is one — before the narrator says a word.
     lead_in = float((book["data"].get("trailer") or {}).get("score_lead_in") or 3.0)
+
+    # ── plan every panel first, then SHOOT THEM ALL AT ONCE.
+    # Shooting inside the assembly loop meant panel 2 waited for panel 1 to
+    # come back from Runway. Nine panels at two to five minutes each is most
+    # of an hour spent waiting, and the panels do not depend on one another.
+    plans = []
     for i, pn in enumerate(panels):
         want = float(pn.get("dur") or 3)
         lf, lgap, llen = line_files[i]
@@ -2732,12 +2738,25 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         shot_txt = apply_cast(pn.get("shot", "").strip(), cast)
         prompt = f"{shot_txt} {style} No text or lettering on screen.{who}".strip()
         clip = tdir / f"sb-{_h(prompt + ratio + str(secs))}.mp4"
-        if not (clip.exists() and clip.stat().st_size > 200_000):
+        plans.append({"i": i, "pn": pn, "prompt": prompt, "refs": refs,
+                      "secs": secs, "clip": clip, "need": need, "off": off,
+                      "lf": lf, "lgap": lgap})
+
+    done_n = [0]
+    shoot_gate = asyncio.Semaphore(4)
+
+    async def shoot_panel(pl):
+        i, pn, clip = pl["i"], pl["pn"], pl["clip"]
+        prompt, refs, secs = pl["prompt"], pl["refs"], pl["secs"]
+        if clip.exists() and clip.stat().st_size > 200_000:
+            return
+        async with shoot_gate:
             if handle:
                 handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting", f"panel {pn.get('n', i+1)} — {pn.get('title','')}")
             ok = False
             moderation_hits = 0
-            live_refs = refs
+            live_refs = list(refs)
+            last_fail = ""
             for attempt in range(8):
                 task = await runway.generate_seedance(prompt, live_refs, seconds=secs, ratio=ratio,
                                                       model="seedance2_5", audio=False)
@@ -2762,6 +2781,18 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                 await asyncio.sleep(8 * (attempt + 1))
             if not ok:
                 raise RuntimeError(f"panel {pn.get('n', i+1)} could not be shot: {last_fail[:200]}")
+        done_n[0] += 1
+        if handle:
+            handle.progress(0.1 + 0.6 * done_n[0] / max(1, len(plans)), "shooting",
+                            f"{done_n[0]} of {len(plans)} panels shot")
+
+    await asyncio.gather(*(shoot_panel(pl) for pl in plans))
+
+    # ── now assemble, in order, from clips that already exist
+    for pl in plans:
+        i, pn, clip = pl["i"], pl["pn"], pl["clip"]
+        need, off = pl["need"], pl["off"]
+        lf, lgap = pl["lf"], pl["lgap"]
         if W is None:
             W, H = _probe_size(clip)
         seg = tdir / f"sb-seg-{i:02d}.mp4"
