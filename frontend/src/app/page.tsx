@@ -60,7 +60,15 @@ export default function SalesPage() {
               + " rgba(14,12,9,0.30) 58%, rgba(14,12,9,0.68) 100%)",
           }}
         />
-        <div className="relative max-w-[1150px] mx-auto px-8 pt-36 pb-16 text-center">
+        {/* pt-36 was a fixed 9rem: fine on a laptop, far too low on a big
+            iMac where the hero grows with the viewport. Scale the padding
+            with the screen and give the section a sensible height range so
+            the headline sits in the same place everywhere. */}
+        <div className="relative max-w-[1150px] mx-auto px-8 text-center
+                        flex flex-col justify-center"
+             style={{ paddingTop: "clamp(3.25rem, 6.5vh, 5.5rem)",
+                      paddingBottom: "clamp(1.75rem, 4vh, 3.5rem)",
+                      minHeight: "clamp(300px, 40vh, 480px)" }}>
           <h1
             className="serif-display text-[44px] md:text-[58px] leading-[1.06] font-semibold text-text-primary max-w-[820px] mx-auto"
             style={{ textShadow: "0 2px 30px rgba(0,0,0,0.85)" }}
@@ -91,10 +99,18 @@ export default function SalesPage() {
         </div>
       </section>
 
-      {/* the film, directly under the hero and edge to edge — at full width
-          it reads as part of the page rather than a box sitting on it */}
-      <section className="relative w-full">
-        <FilmPlayer src="/film/scrpt.mp4" poster="/film/poster.jpg" fullBleed />
+      {/* the film, directly under the hero.
+          Edge-to-edge and "fits on screen" pull against each other: a 16:9
+          film at full width is taller than the viewport, and capping its
+          height leaves bars at the sides that read as broken. So it is a
+          contained element — as large as the screen allows, with the page
+          itself around it. */}
+      <section className="relative w-full"
+               style={{ paddingBottom: "clamp(2rem, 5vh, 4rem)" }}>
+        <div className="mx-auto px-4 sm:px-8"
+             style={{ maxWidth: "min(1400px, calc(53vh * 16 / 9 + 4rem))" }}>
+          <FilmPlayer src="/film/scrpt.mp4" poster="/film/poster.jpg" />
+        </div>
       </section>
 
       {/* the proof — a real typeset spread */}

@@ -400,10 +400,23 @@ def front_cover_hires(catalog: str):
     out = OUTPUT_DIR / catalog
     cache = out / "trailer" / "front-hires.png"
     wrap = out / "cover-wrap.pdf"
-    if cache.exists() and wrap.exists() and cache.stat().st_mtime >= wrap.stat().st_mtime:
-        return cache
+    chosen = out / "cover-front.png"
+
+    # The wrap is only a better source while it still contains the cover the
+    # author actually chose. Picking a new variant rewrites cover-front.png
+    # but not the wrap, so a wrap older than the chosen cover is STALE — and
+    # rendering from it put a cover on the end card that had been replaced.
+    if (wrap.exists() and chosen.exists()
+            and chosen.stat().st_mtime > wrap.stat().st_mtime):
+        return None                      # caller falls back to the chosen cover
+
     if not wrap.exists():
         return None
+    # the cache must also lose to a newer chosen cover, not just a newer wrap
+    newest = max([wrap.stat().st_mtime] +
+                 ([chosen.stat().st_mtime] if chosen.exists() else []))
+    if cache.exists() and cache.stat().st_mtime >= newest:
+        return cache
     try:
         import fitz  # PyMuPDF
         book = get_book_by_catalog(catalog)

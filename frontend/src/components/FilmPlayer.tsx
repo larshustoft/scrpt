@@ -29,9 +29,10 @@ export function FilmPlayer({ src, poster, caption, fullBleed = false }: {
   return (
     <figure className="m-0">
       <div
-        className={`relative overflow-hidden group ${fullBleed ? "" : "rounded-[10px]"}`}
+        className={`relative overflow-hidden group flex items-center justify-center
+                    ${fullBleed ? "" : "rounded-[10px]"}`}
         style={fullBleed
-          ? { background: "#0b0907" }
+          ? { background: "var(--bg)" }
           : { boxShadow: "var(--shadow-page)",
               border: "1px solid var(--border-subtle)",
               background: "#0b0907" }}
@@ -47,7 +48,18 @@ export function FilmPlayer({ src, poster, caption, fullBleed = false }: {
           onPause={() => setPlaying(!(ref.current?.paused ?? true))}
           onEnded={() => setPlaying(false)}
           className="w-full block"
-          style={{ aspectRatio: "16 / 9" }}
+          // A full-bleed 16:9 film is taller than a wide screen: at 2560 across
+          // it wants 1440 of height and the top and bottom fall off. Cap the
+          // height against the viewport and let it letterbox into the dark band
+          // rather than crop the picture.
+          style={{ aspectRatio: "16 / 9",
+                   maxHeight: "53vh",
+                   objectFit: "contain",
+                   margin: fullBleed ? "0 auto" : undefined,
+                   borderRadius: fullBleed ? 10 : undefined,
+                   boxShadow: fullBleed
+                     ? "0 24px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(236,229,218,0.08)"
+                     : undefined }}
         />
 
         {!playing && (
