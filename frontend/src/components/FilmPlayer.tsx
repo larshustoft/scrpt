@@ -1,68 +1,71 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
- * The brand film, edge to edge.
+ * The brand film: full width, its own shape, and no words on it.
  *
- * Two earlier attempts got this wrong in opposite directions: a full-bleed
- * 16:9 film is taller than a laptop viewport, and capping its height left
- * bars down the sides that read as a bug. A modern product-film section does
- * neither — it runs the film at full width in its own shape and lets the
- * page scroll to it.
- *
- * It also plays. Muted and looping from the moment it loads, so the section
- * is alive rather than a frozen poster; one press brings the sound, starts
- * it from the top and hands over the native controls.
+ * It plays muted on a loop as soon as it loads so the section is alive
+ * rather than a frozen poster; one press brings the sound, restarts it from
+ * the top and hands over the native controls.
  */
-export function FilmPlayer({ src, poster, caption }: {
-  src: string; poster: string; caption?: string;
+export function FilmPlayer({ ambient, film, poster }: {
+  ambient: string; film: string; poster: string;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
-  const [withSound, setWithSound] = useState(false);
+  const [watching, setWatching] = useState(false);
+
+  // autoPlay alone is unreliable after hydration — the element can settle
+  // after the browser's autoplay moment has passed. Ask once on mount.
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    v.muted = true;
+    const go = () => v.play().catch(() => {});
+    if (v.readyState >= 2) go();
+    else v.addEventListener("loadeddata", go, { once: true });
+  }, []);
 
   const play = () => {
     const v = ref.current;
     if (!v) return;
-    v.muted = false;
+    v.src = film;                 // the subtitled cut, with sound
     v.loop = false;
+    v.muted = false;
     v.currentTime = 0;
-    v.play().then(() => setWithSound(true)).catch(() => setWithSound(false));
+    v.play().then(() => setWatching(true)).catch(() => setWatching(false));
   };
 
   return (
-    <figure className="m-0 relative w-full" style={{ background: "var(--bg)" }}>
+    <div className="relative w-full" style={{ background: "var(--bg)" }}>
       <video
         ref={ref}
-        src={src}
+        src={ambient}
         poster={poster}
-        /* muted + playsInline + autoPlay is the only combination a browser
-           will start unprompted; sound waits for a real press */
         autoPlay
         muted
         loop
         playsInline
         preload="metadata"
-        controls={withSound}
-        onEnded={() => setWithSound(false)}
+        controls={watching}
+        onEnded={() => setWatching(false)}
         className="w-full block"
         style={{ aspectRatio: "16 / 9" }}
       />
-
-      {!withSound && (
+      {!watching && (
         <button
           onClick={play}
           aria-label="Play the film with sound"
           className="absolute inset-0 flex items-center justify-center group cursor-pointer"
           style={{ background:
-            "linear-gradient(180deg, rgba(10,8,6,0.06) 0%, rgba(10,8,6,0.34) 100%)" }}
+            "linear-gradient(180deg, rgba(10,8,6,0.04) 0%, rgba(10,8,6,0.26) 100%)" }}
         >
           <span
             className="flex items-center justify-center rounded-full transition-transform
                        duration-300 group-hover:scale-[1.07]"
             style={{
-              width: "clamp(64px, 6vw, 104px)",
-              height: "clamp(64px, 6vw, 104px)",
+              width: "clamp(64px, 5.5vw, 100px)",
+              height: "clamp(64px, 5.5vw, 100px)",
               background: "rgba(14,12,9,0.5)",
               border: "1px solid rgba(236,229,218,0.5)",
               backdropFilter: "blur(6px)",
@@ -71,22 +74,12 @@ export function FilmPlayer({ src, poster, caption }: {
           >
             {/* optically centred — a mathematically centred triangle reads left-heavy */}
             <svg viewBox="0 0 26 30" aria-hidden
-                 style={{ width: "clamp(20px, 1.9vw, 32px)", marginLeft: "0.18em" }}>
+                 style={{ width: "clamp(20px, 1.8vw, 30px)", marginLeft: "0.18em" }}>
               <path d="M0 0 L26 15 L0 30 Z" fill="#f2ece1" />
             </svg>
           </span>
-          <span className="absolute text-[11.5px] tracking-[0.2em] uppercase"
-                style={{ bottom: "clamp(1.25rem, 4vh, 3rem)",
-                         color: "rgba(236,229,218,0.72)" }}>
-            Play with sound
-          </span>
         </button>
       )}
-      {caption && (
-        <figcaption className="text-[12.5px] text-text-faint text-center mt-4">
-          {caption}
-        </figcaption>
-      )}
-    </figure>
+    </div>
   );
 }

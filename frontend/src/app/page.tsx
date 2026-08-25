@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useAuthContext } from "@/components/AuthProvider";
 import { ScrptLogo } from "@/components/Logo";
-import { FilmHero } from "@/components/FilmHero";
+import { FilmPlayer } from "@/components/FilmPlayer";
 import { InterestForm } from "@/components/InterestForm";
 
 /**
@@ -35,40 +35,71 @@ export default function SalesPage() {
         </nav>
       </header>
 
-      {/* the film IS the hero — a full-width 16:9 film is nearly as tall as
-          the window on its own, so a headline above it always pushed it off
-          the screen. Now the two share the same space. */}
-      <FilmHero
-        ambient="/film/scrpt-ambient.mp4"
-        film="/film/scrpt.mp4"
-        poster="/film/poster.jpg"
-      >
-        <h1 className="serif-display font-semibold text-text-primary max-w-[820px]"
-            style={{ fontSize: "clamp(2.2rem, 4.2vw, 3.6rem)", lineHeight: 1.06,
-                     textShadow: "0 2px 34px rgba(0,0,0,0.9)" }}>
-          From writer
-          <br />
-          to <span className="text-accent">publishing house.</span>
-        </h1>
-        <p className="text-text-secondary mt-6 max-w-[620px] leading-relaxed"
-           style={{ fontSize: "clamp(0.95rem, 1.1vw, 1.05rem)",
-                    textShadow: "0 1px 18px rgba(0,0,0,0.95)" }}>
-          SCRPT writes and typesets the book, designs the cover, produces the
-          audiobook, cuts the trailer — and when the story earns it, the film.
-          It keeps your catalogue, tracks what every title earns, runs the
-          marketing, and reports to you each morning through your own
-          publishing assistant.
-        </p>
-        <div className="flex items-center justify-center gap-4 mt-8">
-          <Link href="/login" className="btn-brass text-[14px] px-7 py-3">
-            Start your catalog
-          </Link>
-          <a href="#access" className="btn-ghost"
-             style={{ background: "rgba(14,12,9,0.5)", backdropFilter: "blur(8px)" }}>
-            Get early access
-          </a>
+      {/* hero — the room, the headline, the copy */}
+      <section className="relative overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{ backgroundImage: "url(/hq-background.png)",
+                   backgroundSize: "cover",
+                   backgroundPosition: "center 30%",
+                   backgroundRepeat: "no-repeat" }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background:
+            "linear-gradient(180deg, rgba(14,12,9,0.72) 0%, rgba(14,12,9,0.55) 42%, var(--bg) 97%)" }}
+        />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background:
+            "radial-gradient(ellipse 62% 70% at 50% 42%, rgba(14,12,9,0) 0%,"
+            + " rgba(14,12,9,0.30) 58%, rgba(14,12,9,0.68) 100%)" }}
+        />
+        {/* the room fills the window, whatever the window is: 100dvh so a
+            phone's collapsing address bar cannot leave a strip of page
+            showing underneath, and the content centres in whatever height
+            that turns out to be */}
+        <div className="relative max-w-[1150px] mx-auto px-8 text-center
+                        flex flex-col justify-center"
+             style={{ minHeight: "100dvh",
+                      paddingTop: "clamp(4rem, 8vh, 7rem)",
+                      paddingBottom: "clamp(2rem, 5vh, 4rem)" }}>
+          <h1 className="serif-display font-semibold text-text-primary max-w-[820px] mx-auto"
+              style={{ fontSize: "clamp(2.2rem, 4vw, 3.5rem)", lineHeight: 1.06,
+                       textShadow: "0 2px 30px rgba(0,0,0,0.85)" }}>
+            From writer
+            <br />
+            to <span className="text-accent">publishing house.</span>
+          </h1>
+          <p className="text-text-secondary mt-6 max-w-[640px] mx-auto leading-relaxed"
+             style={{ fontSize: "clamp(0.95rem, 1.05vw, 1.03rem)",
+                      textShadow: "0 1px 16px rgba(0,0,0,0.9)" }}>
+            SCRPT writes and typesets the book, designs the cover, produces the
+            audiobook, cuts the trailer — and when the story earns it, the film.
+            It keeps your catalogue, tracks what every title earns, runs the
+            marketing, and reports to you each morning through your own
+            publishing assistant.
+          </p>
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <Link href="/login" className="btn-brass text-[14px] px-7 py-3">
+              Start your catalog
+            </Link>
+            <a href="#access" className="btn-ghost"
+               style={{ background: "rgba(14,12,9,0.5)", backdropFilter: "blur(8px)" }}>
+              Get early access
+            </a>
+          </div>
         </div>
-      </FilmHero>
+      </section>
+
+      {/* the film — the whole section, edge to edge, and nothing written on it */}
+      <section className="relative w-full">
+        <FilmPlayer
+          ambient="/film/scrpt-ambient.mp4"
+          film="/film/scrpt.mp4"
+          poster="/film/poster.jpg"
+        />
+      </section>
 
       {/* the proof — a real typeset spread */}
       <section className="border-t border-border-subtle">
