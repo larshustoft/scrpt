@@ -167,8 +167,24 @@ async def main():
         cur = film.setdefault("scenes", {}).setdefault(n, {})
         cur["ambience"] = sc["amb"]
         cur["shots"] = sc["shots"]
+
+    # EVERY shot rides the veo3.1 first-frame chain — the only camera whose
+    # provider lets her face through (Seedance blocks it in every channel;
+    # the redheaded stranger in the first gate take is what words-only casts).
+    # Any take shot before this switch is a wrong-camera take: clear it.
+    for n in range(2, 14):
+        scn = film["scenes"].get(str(n)) or {}
+        for sh in scn.get("shots") or []:
+            sh["camera"] = "veo"
+        prod = scn.get("produced") or {}
+        old_take = (BASE / f"scene-{n:02d}" / "scene.mp4")
+        was_veo = all(s.get("camera") == "veo" for s in (scn.get("shots") or [{}])) and prod.get("camera") == "veo"
+        if old_take.exists() and not was_veo:
+            for f in (BASE / f"scene-{n:02d}").glob("*.mp4"):
+                f.unlink()
+            print(f"scene {n}: pre-veo take cleared", flush=True)
     _save_film("SC-033", film)
-    print("scenes 4-13 staged", flush=True)
+    print("scenes 2-13 staged on the veo chain", flush=True)
 
     for (n, k), src in FRAME_SRC.items():
         d = BASE / f"scene-{int(n):02d}"

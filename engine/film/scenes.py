@@ -135,6 +135,152 @@ async def _draw_shot_frame(catalog: str, scene_n: int, shot: dict, style: str,
     return dest if dest.exists() else None
 
 
+def _sentence_chunks(text: str, max_words: int = 22) -> list:
+    """Split a line into veo-take-sized pieces at natural pauses.
+
+    veo3.1 tops out at 8 seconds, so long speeches shoot as a CHAIN of takes
+    — each opening on the previous take's final frame, which keeps the scene
+    pixel-continuous and the woman the same. Splits land on sentence ends
+    first, then dashes and commas, so every seam is a natural breath.
+    """
+    import re as _re
+
+    def _split_long(s):
+        if len(s.split()) <= max_words:
+            return [s]
+        for sep in (" — ", "; ", ", "):
+            if sep in s:
+                parts, out, cur = s.split(sep), [], ""
+                for p in parts:
+                    cand = (cur + sep + p) if cur else p
+                    if cur and len(cand.split()) > max_words:
+                        out.append(cur); cur = p
+                    else:
+                        cur = cand
+                if cur:
+                    out.append(cur)
+                return [y for x in out for y in _split_long(x)]
+        w = s.split()
+        return [" ".join(w[i:i + max_words]) for i in range(0, len(w), max_words)]
+
+    sents = [s.strip() for s in _re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+    pieces = [y for s in sents for y in _split_long(s)]
+    # merge pass: pack the pieces back up toward full takes — every extra
+    # take is another roll of the voice dice and 320 more credits
+    merged, cur = [], ""
+    for p in pieces:
+        cand = (cur + " " + p).strip()
+        if cur and len(cand.split()) > max_words:
+            merged.append(cur); cur = p
+        else:
+            cur = cand
+    if cur:
+        merged.append(cur)
+    return merged
+
+
+def _crop_16x9(src: Path, dest: Path) -> Path:
+    """veo letterboxes any non-16:9 first frame — centre-crop before use."""
+    from PIL import Image
+    im = Image.open(src).convert("RGB")
+    w, h = im.size
+    want = w * 9 // 16
+    if h > want:
+        top = (h - want) // 2
+        im = im.crop((0, top, w, top + want))
+    elif h < want:
+        ww = h * 16 // 9
+        left = (w - ww) // 2
+        im = im.crop((left, 0, left + ww, h))
+    im.save(dest)
+    return dest
+
+
+async def _shoot_veo_chain(sdir: Path, sh: dict, frame: Path, action: str,
+                           snd: str, style: str, handle=None, tag="") -> Path:
+    """One continuous shot on veo3.1, chained 8-second takes.
+
+    The scene's true-face frame is the literal FIRST FRAME of take one; every
+    later take opens on the last frame of the take before it. Identity lives
+    in pixels the whole way — this is the only channel Runway's providers
+    let her face through (Seedance blocks it in every input, veo does not).
+    Audio is native per take: her voice, lip sync, and the world's sound.
+    """
+    clip = sdir / f"shot-{sh['k']:02d}.mp4"
+    ln = sh.get("line") or {}
+    speak = bool((ln.get("text") or "").strip())
+    spoken = (ln.get("text") or "").replace("SCRPT", "Script") if speak else ""
+    stage_sent = sh.get("speech_stage") or (
+        "She looks straight into the camera, smiling warmly, and says clearly:")
+    vdesc = sh.get("voice_desc") or (
+        "a warm friendly professional female voice in her mid-thirties")
+    chunks = _sentence_chunks(spoken) if speak else [None]
+    if speak:
+        sh["native_dialogue"] = True
+
+    first = _crop_16x9(frame, sdir / f"veo-first-{sh['k']:02d}.png")
+    parts = []
+    for i, chunk in enumerate(chunks):
+        part = sdir / f"veopart-{sh['k']:02d}-{i:02d}.mp4"
+        if not (part.exists() and part.stat().st_size > 100_000):
+            uri = await runway.upload_file(first)
+            if chunk:
+                est = len(chunk.split()) / 2.3 + 1.2
+                dur = 8 if est > 6 else (6 if est > 4 else 4)
+                opener = (action if i == 0 else
+                          "She continues mid-conversation, the same woman, "
+                          "the same place, seamlessly from the first frame.")
+                prompt = (f"{opener} {stage_sent} \"{chunk}\" — natural, accurate "
+                          f"lip sync, {vdesc}, the SAME voice throughout. {style}"
+                          + (f" Background sound: {snd}. No music." if snd else " No music.")
+                          + " The only visible lettering anywhere is her small brass name"
+                            " badge, which reads exactly: SCRPT — spelled S-C-R-P-T,"
+                            " never \"Script\". No other text on screen."
+                            " Continue the motion seamlessly from the first frame.")
+            else:
+                dur = min(8, max(4, int(sh.get("seconds") or 6)))
+                prompt = (f"{action} {style} No speech, no text on screen."
+                          + (f" Sound: {snd}. No music." if snd else " No music.")
+                          + " Continue the motion seamlessly from the first frame.")
+            ok = False
+            for attempt in range(5):
+                if handle:
+                    handle.progress(0.3, "shooting", f"{tag} take {i+1}/{len(chunks)}")
+                task = await runway.generate_shot(prompt, uri, seconds=dur,
+                                                  ratio="1280:720", model="veo3.1",
+                                                  audio=True)
+                result = await runway.wait_for(task["id"], timeout_s=1200)
+                url = (result.get("output") or [None])[0] if result.get("status") == "SUCCEEDED" else None
+                if url:
+                    await runway.download(url, part)
+                    ok = True
+                    break
+                await asyncio.sleep(10 * (attempt + 1))
+            if not ok:
+                raise RuntimeError(f"veo chain {tag} take {i+1} failed")
+        if i + 1 < len(chunks):
+            # the next take opens exactly where this one ended
+            first = sdir / f"veolast-{sh['k']:02d}-{i:02d}.png"
+            _run(["-y", "-sseof", "-0.1", "-i", str(part), "-frames:v", "1",
+                  "-update", "1", str(first)], "last frame")
+        parts.append(part)
+
+    if len(parts) == 1:
+        import shutil as _s
+        _s.copyfile(parts[0], clip)
+    else:
+        lst = sdir / f"veochain-{sh['k']:02d}.txt"
+        lst.write_text("".join(f"file '{p.resolve()}'\n" for p in parts))
+        _run(["-y", "-f", "concat", "-safe", "0", "-i", str(lst),
+              "-vf", "scale=1280:720,fps=24,format=yuv420p",
+              "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+              "-c:a", "aac", "-ar", "48000", "-ac", "2", str(clip)], "chain concat")
+    took = _probe_seconds(clip)
+    if took:
+        sh["seconds"] = round(took, 1)   # keep every spoken word at the cut
+    return clip
+
+
 async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
     """Shoot one scene of the film, shot by shot, and mix its sound."""
     book = get_book_by_catalog(catalog)
@@ -189,6 +335,17 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
         clip = sdir / f"shot-{sh['k']:02d}.mp4"
         if clip.exists() and clip.stat().st_size > 200_000:
             return clip
+        if sh.get("camera") == "veo":
+            fr = frames[idx]
+            if not (isinstance(fr, Path) and fr.exists()):
+                raise RuntimeError(f"scene {scene_n} shot {sh['k']}: veo needs its frame")
+            action = apply_cast(f"{sh.get('framing','')}: {sh.get('action','')}", cast)
+            async with gate:
+                out_clip = await _shoot_veo_chain(
+                    sdir, sh, fr, action, (sh.get("sound") or "").strip(), style,
+                    handle, tag=f"scene {scene_n} shot {sh['k']}")
+            done[0] += 1
+            return out_clip
         # The FRAME leads: it is the shot's target image and now carries the
         # cast's true faces (composited from the locked plates), so identity
         # survives even when moderation strips the portrait refs. Plates ride
@@ -368,7 +525,8 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
     record = {"n": scene_n, "file": f"film/scene-{scene_n:02d}/scene.mp4",
               "seconds": round(_probe_seconds(out) or t, 1), "shots": len(shots),
               "credits_used": max(0, credits_before - credits_after),
-              "refs_dropped": [sh["k"] for sh in shots if sh.get("refs_dropped")]}
+              "refs_dropped": [sh["k"] for sh in shots if sh.get("refs_dropped")],
+              "camera": "veo" if all(sh.get("camera") == "veo" for sh in shots) else "seedance"}
     film = _film(get_book_by_catalog(catalog))
     film.setdefault("scenes", {}).setdefault(str(scene_n), {}).update(
         {"shots": shots, "produced": record})
