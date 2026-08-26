@@ -47,12 +47,11 @@ async def open_login() -> dict:
     the persistent profile for later headless work.
     """
     from playwright.async_api import async_playwright
-    from .browser import PROFILE_DIR, UA, _ARGS, _STEALTH
+    from .browser import PROFILE_DIR, _ARGS, _STEALTH, context_kwargs
     PROFILE_DIR.mkdir(parents=True, exist_ok=True)
     pw = await async_playwright().start()
     ctx = await pw.chromium.launch_persistent_context(
-        str(PROFILE_DIR), headless=False, args=_ARGS, user_agent=UA,
-        viewport={"width": 1440, "height": 900}, locale="en-US")
+        str(PROFILE_DIR), headless=False, args=_ARGS, **context_kwargs())
     await ctx.add_init_script(_STEALTH)
     page = ctx.pages[0] if ctx.pages else await ctx.new_page()
     await page.goto(BOOKSHELF, timeout=60000)
@@ -62,34 +61,109 @@ async def open_login() -> dict:
                            "close it. SCRPT will reuse that session."}
 
 
+# The exact words KDP prints under a format. "Release scheduled" is the one
+# that matters most and reads least like the others: a book showing it is
+# submitted and dated, NOT live and NOT editable as a draft. Matching is by
+# prefix, so the longer phrasings have to be listed in their own right or a
+# scheduled book goes unrecognised and disappears off our copy of the shelf.
+KDP_STATES = ("draft", "in review", "live", "publishing", "release scheduled",
+              "scheduled", "blocked", "unpublished", "updates publishing",
+              "updates in review", "manuscript ready", "draft incomplete")
+
+
 def _parse_bookshelf_text(text: str) -> list[dict]:
     """KDP renders the bookshelf as flowing text, not clean rows. Each book
-    reads: <title> / "by <author>" / ... / "ASIN: B0XXXXXXXX" (twice when a
-    paperback shares the title). Walk the lines and bind each ASIN to the
-    title/author block above it."""
+    reads: <title> / "by <author>" / a status / ... / "ASIN: B0XXXXXXXX".
+
+    A title only gets an ASIN once it is LIVE. Binding records to the ASIN
+    line therefore made every draft and every scheduled release invisible —
+    and a book SCRPT cannot see is a book it will happily upload twice. So
+    each title block is recorded whether or not it has an ASIN, carrying
+    whatever state KDP shows beside it.
+    """
     import re
     lines = [l.strip() for l in text.split("\n") if l.strip()]
     books: list[dict] = []
-    current = {"title": None, "author": None}
+    cur = None
+
+    def flush():
+        """One record per format actually present on the shelf.
+
+        A title is rarely in one state: the same book can be a scheduled
+        paperback and a draft ebook at the same time, and collapsing that into
+        a single row is what made the shelf unreadable. A format with no
+        status was never created — only offered — so it is not recorded.
+        """
+        if not (cur and cur.get("title")):
+            return
+        found = cur.get("formats") or {}
+        for fmt, slot in found.items():
+            if not slot.get("status"):
+                continue
+            books.append({"title": cur["title"], "author": cur.get("author"),
+                          "format": fmt, "status": slot["status"],
+                          "asin": slot.get("asin"),
+                          "series_status": cur.get("series_status")})
+        if not found:
+            books.append({"title": cur["title"], "author": cur.get("author"),
+                          "format": None, "status": None, "asin": None,
+                          "series_status": cur.get("series_status")})
+
     for i, line in enumerate(lines):
-        if line.lower().startswith("by ") and 3 < len(line) < 80:
-            # the line just above a "by ..." is the title
+        low = line.lower()
+        if low.startswith("by ") and 3 < len(line) < 80:
             prev = lines[i - 1] if i else ""
             if prev and 3 < len(prev) < 120 and not prev.lower().startswith(
                     ("asin", "submitted", "$", "manage", "view", "order", "why")):
-                current = {"title": prev, "author": line[3:].strip()}
-        m = re.match(r"ASIN:\s*(B0[A-Z0-9]{8})", line, re.I)
-        if m and current.get("title"):
-            books.append({"title": current["title"], "author": current["author"],
-                          "asin": m.group(1)})
-    # collapse duplicate ASINs, keep the first title binding per ASIN
-    seen, out = set(), []
-    for b in books:
-        if b["asin"] in seen:
+                flush()
+                cur = {"title": prev, "author": line[3:].strip(),
+                       "asin": None, "status": None, "format": None}
             continue
-        seen.add(b["asin"])
-        out.append(b)
-    return out
+        if not cur:
+            continue
+
+        # "Series status: Live" describes the SERIES, not this book. Reading it
+        # as the book's state made a paperback that says "Draft" report itself
+        # as live — the exact misreading that would let an upload run against a
+        # published title.
+        if low.startswith("series status"):
+            cur["series_status"] = line.split(":", 1)[-1].strip().lower() or None
+            continue
+
+        # KDP prints one section per format — "Kindle eBook", "Paperback",
+        # "Hardcover" — each with its own status underneath. Everything that
+        # follows belongs to the section last opened.
+        if low in ("kindle ebook", "kindle edition", "paperback", "hardcover"):
+            cur["section"] = "ebook" if low.startswith("kindle") else low
+            continue
+
+        sec = cur.get("section")
+        if not sec:
+            continue
+
+        # "+ Create Kindle eBook" is an offer to make one, not evidence of one.
+        # Treating it as evidence labelled every paperback an ebook.
+        if low.startswith(("+ create", "create ", "link existing")):
+            continue
+
+        slot = cur.setdefault("formats", {}).setdefault(sec, {"status": None, "asin": None})
+        if slot["status"] is None:
+            for st in KDP_STATES:
+                if low == st or low.startswith(st):
+                    slot["status"] = st
+                    break
+        m = re.match(r"ASIN:\s*(B0[A-Z0-9]{8})", line, re.I)
+        if m and not slot["asin"]:
+            slot["asin"] = m.group(1)
+    flush()
+
+    # one record per (title, format); prefer the entry that carries an ASIN
+    out: dict = {}
+    for b in books:
+        key = ((b["title"] or "").strip().lower(), b.get("format") or "")
+        if key not in out or (b.get("asin") and not out[key].get("asin")):
+            out[key] = b
+    return list(out.values())
 
 
 async def read_bookshelf() -> dict:
@@ -122,19 +196,31 @@ async def sync_bookshelf() -> dict:
             continue
         data = dict(get_book_by_catalog(hit["catalog_number"])["data"])
         pub = dict(data.get("publishing") or {})
-        if pub.get("asin") != row["asin"]:
+        changed = False
+        # A title on the shelf is on KDP whether or not it has an ASIN yet —
+        # record its presence so nothing tries to upload it a second time.
+        if not pub.get("kdp_present"):
+            pub["kdp_present"] = True
+            changed = True
+        if row.get("status") and pub.get("kdp_status") != row["status"]:
+            pub["kdp_status"] = row["status"]
+            changed = True
+        if row.get("asin") and pub.get("asin") != row["asin"]:
             pub["asin"] = row["asin"]
             pub.setdefault("released_at", date.today().isoformat())
+            changed = True
+        if changed:
             data["publishing"] = pub
             update_book(hit["id"], data)
         matched.append({"catalog": hit["catalog_number"], "title": hit["title"],
-                        "asin": row["asin"]})
+                        "asin": row.get("asin"), "status": row.get("status"),
+                        "format": row.get("format")})
 
     # persist the whole live shelf so SCRPT can show the account's catalogue,
     # collapsing ebook + paperback + hardcover of one book into a single entry
     from ..database import set_setting
     grouped: dict = {}
-    scrpt_asins = {m["asin"] for m in matched}
+    scrpt_asins = {m["asin"] for m in matched if m.get("asin")}
     for row in shelf["titles"]:
         key = (row.get("title") or "").strip().lower()
         g = grouped.setdefault(key, {"title": row.get("title"),
@@ -205,11 +291,10 @@ async def prepare_draft(catalog: str) -> dict:
     meta = pkg["metadata"]
 
     from playwright.async_api import async_playwright
-    from .browser import PROFILE_DIR, UA, _ARGS, _STEALTH
+    from .browser import PROFILE_DIR, _ARGS, _STEALTH, context_kwargs
     pw = await async_playwright().start()
     ctx = await pw.chromium.launch_persistent_context(
-        str(PROFILE_DIR), headless=False, args=_ARGS, user_agent=UA,
-        viewport={"width": 1440, "height": 900}, locale="en-US")
+        str(PROFILE_DIR), headless=False, args=_ARGS, **context_kwargs())
     await ctx.add_init_script(_STEALTH)
     page = ctx.pages[0] if ctx.pages else await ctx.new_page()
     await page.goto(NEW_TITLE, timeout=60000, wait_until="domcontentloaded")

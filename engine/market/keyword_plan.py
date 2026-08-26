@@ -125,6 +125,18 @@ async def keyword_plan(catalog: str, apply: bool = False) -> dict:
                 cur = rows.get(ph)
                 if not cur or (k.get("opportunity") or 0) > (cur.get("opportunity") or 0):
                     rows[ph] = {**k, "phrase": ph, "store": alias, "seed": seed}
+    # The seeds are the phrases that actually describe THIS book. Used only as
+    # queries they get thrown away, and what comes back from autocomplete is
+    # mostly other people's titles — which the truth filter then has to reject,
+    # leaving two usable phrases out of forty. So the seeds compete as
+    # candidates in their own right. They rank below anything with measured
+    # demand, but an unmeasured phrase that fits the book beats an empty slot,
+    # which indexes nothing at all.
+    for seed in seeds:
+        if seed not in rows:
+            rows[seed] = {"phrase": seed, "demand": None, "opportunity": 0.0,
+                          "competing_titles": None, "store": "seed", "seed": seed}
+
     candidates = sorted(rows.values(), key=lambda x: -(x.get("opportunity") or 0))
 
     # 2. compliance

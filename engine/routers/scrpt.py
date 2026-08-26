@@ -1596,8 +1596,36 @@ async def trailer_status(catalog: str):
         "storyboard_pending": ({"panels": len((t.get("storyboard_pending") or {}).get("panels") or []),
                                 "source": t.get("storyboard_pending_source") or ""}
                                if t.get("storyboard_pending") else None),
-        "storyboard": ({"panels": len((t.get("storyboard") or {}).get("panels") or [])}
-                       if t.get("storyboard") else None),
+        # The cast sheet and the board, in full — the publisher should be able
+        # to SEE what the trailer was built from, and judge it, without going
+        # to the database. Pictures are addressed through /api/files.
+        "bibles": {
+            kind: {
+                "source": (b or {}).get("source") or "",
+                "style": (b or {}).get("style") or "",
+                "characters": [
+                    {**c,
+                     "plate_url": (f"/api/files/{catalog}/trailer/{c['plate']}"
+                                   if c.get("plate") else None),
+                     "locked": bool(c.get("locked")),
+                     "variant_urls": [f"/api/files/{catalog}/trailer/{v}"
+                                      for v in (c.get("variants") or [])]}
+                    for c in ((b or {}).get("characters") or [])
+                ],
+                "locations": (b or {}).get("locations") or [],
+            } if b else None
+            for kind, b in ((k, (book["data"].get("bibles") or {}).get(k))
+                            for k in ("main", "supporting"))
+        },
+        "storyboard": ({
+            "panels": [
+                {**p, "frame_url": (f"/api/files/{catalog}/trailer/{p['frame']}"
+                                    if p.get("frame") else None)}
+                for p in ((t.get("storyboard") or {}).get("panels") or [])
+            ],
+            "music": (t.get("storyboard") or {}).get("music") or "",
+            "count": len((t.get("storyboard") or {}).get("panels") or []),
+        } if t.get("storyboard") else None),
         "versions": versions,
         "has_video": (out / latest_file).exists(),
         # the latest reel is a mutable file: stamp its address with the
@@ -1741,17 +1769,40 @@ async def trailer_auto(catalog: str, body: dict = Body(default={})):
                 handle.progress(self.lo + (self.hi - self.lo) * min(1.0, max(0.0, f)), stage, detail)
             def cancelled(self): return handle.cancelled()
 
+        from ..trailer.plates import draw_board_plates, draw_cast_plates
+
         handle.progress(0.02, "bible", "checking the cast sheet")
-        await ensure_bibles(catalog, _Sub(0.02, 0.20))
+        await ensure_bibles(catalog, _Sub(0.02, 0.12))
+
+        # Draw the cast. A written description cannot hold a face: every shot
+        # reads the same words and invents a different person, which is how a
+        # nine-shot trailer came back with nine different leads. These
+        # portraits are handed to the camera as references so the same man
+        # walks through the whole film.
+        handle.progress(0.12, "cast", "drawing the cast sheet")
+        cast_plates = (await draw_cast_plates(catalog, _Sub(0.12, 0.26))).get("plates") or {}
 
         fresh = db.get_book_by_catalog(catalog)
         board = ((fresh["data"].get("trailer") or {}).get("storyboard"))
         if rebuild or not board:
-            board = await auto_storyboard(catalog, panels=panels, handle=_Sub(0.20, 0.35))
+            board = await auto_storyboard(catalog, panels=panels, handle=_Sub(0.26, 0.36))
         else:
-            handle.progress(0.35, "board", "using the storyboard already on the book")
+            handle.progress(0.36, "board", "using the storyboard already on the book")
 
-        return await produce_storyboard(catalog, board, format_name=fmt, handle=_Sub(0.35, 1.0))
+        # The shoot looks up references here, by character name.
+        board["characters"] = {**(board.get("characters") or {}), **cast_plates}
+
+        handle.progress(0.38, "board", "drawing the storyboard")
+        try:
+            await draw_board_plates(catalog, board, _Sub(0.38, 0.50))
+        except Exception as e:                    # a board picture is for us to
+            handle.progress(0.50, "board", f"board art skipped: {str(e)[:70]}")  # look at, not to shoot
+
+        data = dict(db.get_book_by_catalog(catalog)["data"])
+        data["trailer"] = {**(data.get("trailer") or {}), "storyboard": board}
+        db.update_book(db.get_book_by_catalog(catalog)["id"], data)
+
+        return await produce_storyboard(catalog, board, format_name=fmt, handle=_Sub(0.50, 1.0))
 
     return {"job_id": start_job("trailer_produce", job, book_catalog=catalog)}
 
@@ -2560,6 +2611,156 @@ async def kdp_stage_kindle(catalog: str, body: dict = Body(default={})):
     return {"job_id": start_job("kdp_stage_kindle", job, book_catalog=catalog)}
 
 
+@router.post("/bible/{catalog}/lock")
+def bible_lock(catalog: str, body: dict = Body(default={})):
+    """Lock or unlock a character's face. body: {name, locked}
+
+    A locked face is the series' canon and nothing redraws it. Unlocking is
+    the only way to ask for alternatives — which is the point: a recurring
+    lead should not quietly change between books because a job ran twice.
+    """
+    from ..trailer.plates import set_lock
+    try:
+        return set_lock(catalog, str(body.get("name") or ""), bool(body.get("locked")))
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+
+
+@router.post("/bible/{catalog}/variants")
+async def bible_variants(catalog: str, body: dict = Body(default={})):
+    """Draw alternative looks for one unlocked character. body: {name, n?}"""
+    from ..trailer.plates import draw_variants
+    name = str(body.get("name") or "")
+    n = max(1, min(4, int(body.get("n") or 3)))
+
+    async def job(handle):
+        return await draw_variants(catalog, name, n=n, handle=handle)
+
+    return {"job_id": start_job("bible_variants", job, book_catalog=catalog)}
+
+
+@router.post("/bible/{catalog}/choose")
+def bible_choose(catalog: str, body: dict = Body(default={})):
+    """Pick a look and lock it across the series. body: {name, variant, lock?}"""
+    from ..trailer.plates import choose_variant
+    try:
+        return choose_variant(catalog, str(body.get("name") or ""),
+                              str(body.get("variant") or ""),
+                              lock=bool(body.get("lock", True)))
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(400, str(e))
+
+
+# ── the film desk ────────────────────────────────────────────────
+# Book → treatment → screenplay (scene by scene) → shot scenes → assembly.
+# Same canon as the trailers: the bible casts, frames stage, the cover
+# stays off the camera. Every stage is reviewable before the next spends.
+
+@router.post("/film/adapt/{catalog}")
+async def film_adapt(catalog: str):
+    """Write the treatment: three acts, beat sheet, full scene list."""
+    from ..film.screenplay import adapt
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+
+    async def job(handle):
+        return await adapt(catalog, handle)
+
+    return {"job_id": start_job("film_adapt", job, book_catalog=catalog)}
+
+
+@router.post("/film/screenplay/{catalog}")
+async def film_screenplay(catalog: str, body: dict = Body(default={})):
+    """Write scenes. body: {scene?: n} for one, {opening: true} for the first reel."""
+    from ..film.screenplay import write_opening, write_scene
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    n = body.get("scene")
+
+    async def job(handle):
+        if n is not None:
+            return await write_scene(catalog, int(n), handle)
+        return await write_opening(catalog, handle)
+
+    return {"job_id": start_job("film_screenplay", job, book_catalog=catalog)}
+
+
+@router.post("/film/shoot/{catalog}/{scene_n}")
+async def film_shoot(catalog: str, scene_n: int):
+    """Shoot one written scene. Re-shooting a scene touches only that scene."""
+    from ..film.scenes import produce_scene
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+
+    async def job(handle):
+        return await produce_scene(catalog, scene_n, handle)
+
+    return {"job_id": start_job("film_scene", job, book_catalog=catalog)}
+
+
+@router.get("/film/{catalog}")
+def film_status(catalog: str):
+    """The whole film desk: treatment, written scenes, produced scenes."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    film = (book["data"].get("film")) or {}
+    t = film.get("treatment") or {}
+    scenes = film.get("scenes") or {}
+    return {
+        "treatment": t or None,
+        "written": sorted(int(k) for k in scenes),
+        "produced": [
+            {**(s.get("produced") or {}),
+             "url": f"/api/files/{catalog}/{(s.get('produced') or {}).get('file','')}"}
+            for s in scenes.values() if s.get("produced")
+        ],
+    }
+
+
+@router.post("/series-logo/{catalog}")
+async def series_logo(catalog: str, body: dict = Body(default={})):
+    """Draw wordmark options for this book's series. body: {n?}"""
+    from ..trailer.plates import draw_series_logo
+    n = max(1, min(4, int(body.get("n") or 3)))
+
+    async def job(handle):
+        return await draw_series_logo(catalog, n=n, handle=handle)
+
+    return {"job_id": start_job("series_logo", job, book_catalog=catalog)}
+
+
+@router.post("/series-logo/{catalog}/choose")
+def series_logo_choose(catalog: str, body: dict = Body(default={})):
+    """Adopt one option as the series mark. body: {option}"""
+    from ..trailer.plates import choose_series_logo
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    sid = ((book["data"].get("series") or {}).get("series_id") or "").strip()
+    if not sid:
+        raise HTTPException(400, "This book is not part of a series")
+    try:
+        return choose_series_logo(sid, str(body.get("option") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.get("/kdp/quota")
+def kdp_quota():
+    """How many new titles KDP will still let us create this week.
+
+    Amazon caps title CREATION at 10 per format per week, not publishing —
+    and an abandoned draft spends a slot just as a finished book does. Editing
+    or publishing a title we already created costs nothing.
+    """
+    from ..market.kdp_quota import usage
+    return usage()
+
+
 @router.post("/kdp/stage/{catalog}")
 async def kdp_stage(catalog: str, body: dict = Body(default={})):
     """Stage the paperback on KDP from the book's record (visible browser,
@@ -2575,7 +2776,8 @@ async def kdp_stage(catalog: str, body: dict = Body(default={})):
 
     async def job(handle):
         handle.progress(0.05, "kdp", "opening KDP")
-        return await stage_paperback(catalog, publish=publish)
+        return await stage_paperback(catalog, publish=publish,
+                                     force=bool(body.get("force")))
 
     job_id = start_job("kdp_stage", job, book_catalog=catalog)
     return {"job_id": job_id}

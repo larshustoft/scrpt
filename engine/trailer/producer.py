@@ -342,16 +342,48 @@ def build_series_card(catalog: str, series_title: str, size: tuple) -> Optional[
     article, name_words = ("", parts)
     if parts and parts[0].lower() in ("the", "a", "an"):
         article, name_words = parts[0].upper(), parts[1:]
-    lines = [" ".join(name_words[:1]).upper(), " ".join(name_words[1:]).upper()] \
-        if len(name_words) > 1 else [" ".join(name_words).upper()]
+    # Break where the phrase allows, not always after the first word. The old
+    # rule put word one on its own line and everything else on the next, which
+    # reads correctly for "Larkspur / Season" and badly for "A Luc Reyer
+    # Thriller" — it split the man's name and overran the frame with "REYER
+    # THRILLER". Balance the two lines by length instead, and keep a personal
+    # name together when one is obvious.
+    up = [w.upper() for w in name_words]
+    if len(up) <= 1:
+        lines = [" ".join(up)]
+    elif len(up) == 2:
+        lines = up
+    else:
+        best, split = None, 1
+        for i in range(1, len(up)):
+            a, b = " ".join(up[:i]), " ".join(up[i:])
+            score = abs(len(a) - len(b)) + 6 * abs(len(a) - len(b)) / max(len(a), len(b))
+            if best is None or score < best:
+                best, split = score, i
+        lines = [" ".join(up[:split]), " ".join(up[split:])]
     lines = [l for l in lines if l]
 
     def spaced(t, em=0.34):
         # real letterspacing: draw glyph by glyph so the tracking is even
         return t
 
-    big = _font("EBGaramond-Regular.ttf", int(96 * k))
-    small = _font("EBGaramond-Regular.ttf", int(26 * k))
+    # Fit the type to the frame. At a fixed 96pt with wide tracking, a long
+    # line ran edge to edge and touched the bezel; the size has to answer to
+    # the longest line, not to a constant.
+    SAFE = W * 0.80
+
+    def _line_width(text: str, font, track: float) -> float:
+        return sum(d.textlength(ch, font=font) for ch in text) + track * max(0, len(text) - 1)
+
+    pt = int(96 * k)
+    while pt > int(46 * k):
+        probe = _font("EBGaramond-Regular.ttf", pt)
+        track = 15 * k * pt / (96 * k)
+        if max((_line_width(ln, probe, track) for ln in lines), default=0) <= SAFE:
+            break
+        pt -= max(2, int(4 * k))
+    big = _font("EBGaramond-Regular.ttf", pt)
+    small = _font("EBGaramond-Regular.ttf", int(26 * k * pt / (96 * k)))
     IVORY = (255, 250, 242, 255)
 
     def draw_tracked(text, font, cy, track, fill):
@@ -2045,17 +2077,29 @@ async def _pick_blurb_lines(blurb: str, n: int = 4) -> list:
 
 def _mix_narration(take: Path, vo: list, out: Path, tag: Optional[Path] = None, tag_at: float = 0.0,
                    score: Optional[Path] = None, bed: float = 0.42,
-                   score_fade_in: float = 1.0):
+                   score_fade_in: float = 1.0, sfx: Optional[list] = None):
     """vo: [(path, start_s)]. The take's own sound stays as ambience, the
-    score sits under it, and both duck under every narration line."""
+    score sits under it, and both duck under every narration line.
+    sfx: [(path, start_s, vol)] — sound-design cues that live WITH the bed,
+    not the voice: they duck under narration like everything else that is
+    world rather than word."""
     inputs = ["-i", str(take)]
     filters = []
     labels = []
+    sfx_labels = []
     n = 1
     score_idx = None
     if score and score.exists():
         inputs += ["-stream_loop", "-1", "-i", str(score)]      # the score repeats as long as the film needs
         score_idx = n; n += 1
+    for cue in (sfx or []):
+        path, start = cue[0], float(cue[1])
+        vol = float(cue[2]) if len(cue) > 2 else 0.9
+        if not (path and Path(path).exists()):
+            continue
+        inputs += ["-i", str(path)]
+        filters.append(f"[{n}:a]adelay={int(start*1000)}|{int(start*1000)},volume={vol:.2f}[fx{n}]")
+        sfx_labels.append(f"[fx{n}]"); n += 1
     for item in vo:
         path, start = item[0], item[1]
         gain = 1.45 * (item[2] if len(item) > 2 and item[2] else 1.0)
@@ -2076,6 +2120,13 @@ def _mix_narration(take: Path, vo: list, out: Path, tag: Optional[Path] = None, 
         bed_in = "[bedraw]"
     else:
         bed_in = "[0:a]"
+    if sfx_labels:
+        # the cues join the world's side of the mix, first mixed with each
+        # other, then laid over the ambience+score bed
+        filters.append("".join(sfx_labels)
+                       + f"amix=inputs={len(sfx_labels)}:duration=longest:normalize=0[fxbus]")
+        filters.append(f"{bed_in}[fxbus]amix=inputs=2:duration=first:normalize=0[bedfx]")
+        bed_in = "[bedfx]"
     if not labels:
         filters.append(f"{bed_in}apad=whole_dur={total:.2f},atrim=0:{total:.2f},loudnorm=I=-14:TP=-1.5:LRA=11[a]")
     else:
@@ -2269,6 +2320,12 @@ async def produce_workorder(catalog: str, quality: str = "draft", format_name: s
         raise ValueError("Book not found")
     fmt = FORMATS.get(format_name, FORMATS["wide"])
     ratio = WORKORDER_RATIO.get(format_name, WORKORDER_RATIO["wide"])["master" if quality == "master" else "draft"]
+    # House rule: a trailer never runs past a minute. Two takes of a 30s work
+    # order would sit exactly on the line, and anything longer overshoots it,
+    # so both the take length and how many takes are cut against the limit.
+    seconds = max(4, min(int(seconds), MAX_TRAILER_SECONDS))
+    if takes_wanted >= 2 and seconds * takes_wanted > MAX_TRAILER_SECONDS:
+        takes_wanted = max(1, MAX_TRAILER_SECONDS // seconds)
     cover = OUTPUT_DIR / catalog / "cover-front.png"
     if not cover.exists():
         raise RuntimeError("The book has no front cover yet — the work order needs it as the reference")
@@ -2649,6 +2706,46 @@ async def parse_storyboard_image(image_bytes: bytes, book: dict) -> dict:
             "panels": clean}
 
 
+MAX_TRAILER_SECONDS = 60      # house rule: no trailer runs longer than a minute
+
+
+def _cap_to_house_length(panels: list, handle=None) -> list:
+    """Keep a board inside the house's one-minute limit.
+
+    A board is written before anyone knows how long the narration will run, so
+    panel durations drift and a nine-panel board can overshoot a minute. Cut
+    from the middle rather than the end: the opening establishes and the last
+    panel carries the title card, so both have to survive. Dropped panels are
+    reported — a trailer quietly missing a beat is worse than a long one.
+    """
+    if not panels:
+        return panels
+    # A coarse guard only. A panel's planned duration is not what it runs:
+    # narration is recorded first and panels stretch to fit it, so a board
+    # planning 38s delivered 62.3s. The limit is therefore enforced in
+    # produce_storyboard once the narration has been measured; this just stops
+    # a wildly long board from being narrated in full before that happens.
+    budget = MAX_TRAILER_SECONDS
+    total = sum(float(p.get("dur") or 4.0) for p in panels)
+    if total <= budget:
+        return panels
+    kept, dropped = list(panels), []
+    while len(kept) > 3 and sum(float(p.get("dur") or 4.0) for p in kept) > budget:
+        cut = len(kept) // 2            # from the middle, never the ends
+        dropped.append(kept.pop(cut).get("n", cut + 1))
+    # still over with the fewest panels we will cut to: shorten what is left
+    over = sum(float(p.get("dur") or 4.0) for p in kept) - budget
+    if over > 0:
+        share = over / len(kept)
+        for p in kept:
+            p["dur"] = max(2.0, float(p.get("dur") or 4.0) - share)
+    if dropped and handle:
+        handle.progress(0.05, "board",
+                        f"trimmed to fit {MAX_TRAILER_SECONDS}s — dropped panel(s) "
+                        f"{', '.join(str(d) for d in dropped)}")
+    return kept
+
+
 async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide",
                              handle=None, version_label: str = "storyboard") -> dict:
     import datetime
@@ -2663,7 +2760,8 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     tdir.mkdir(parents=True, exist_ok=True)
     if not cover.exists():
         raise RuntimeError("The book has no front cover yet — upload it on the Cover tab first")
-    cover_uri = await runway.upload_file(cover)
+    # the cover is used locally (end card) but is never uploaded to Runway —
+    # the camera's references are the cast faces alone
     # character references: the same face across books (e.g. Luc Reyer)
     char_uris = {}
     for name, rel in (board.get("characters") or {}).items():
@@ -2680,6 +2778,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     # a board may bring its own style; otherwise the bible's world describes it
     style = (board.get("style") or "").strip() or world.get("style", "")
     panels = board.get("panels") or []
+    panels = _cap_to_house_length(panels, handle)
     genre = book["data"].get("genre_preset") or ""
     _g = genre.lower()
     _fast = any(k in _g for k in ("thriller", "crime", "action", "mystery"))
@@ -2718,6 +2817,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     # 2. one clip per panel, trimmed to the panel's length (stretched if the line needs it)
     W = H = None
     segs, cues, t = [], [], 0.0
+    panel_starts = []                    # (index, panel, start_s) for sound design
     # A trailer should breathe before it speaks: hold the opening image on
     # music alone for a beat so the score sets the tone, then bring the
     # narrator in. Only the first panel is stretched; everything after it
@@ -2731,25 +2831,92 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     # Shooting inside the assembly loop meant panel 2 waited for panel 1 to
     # come back from Runway. Nine panels at two to five minutes each is most
     # of an hour spent waiting, and the panels do not depend on one another.
-    plans = []
-    for i, pn in enumerate(panels):
+    def _panel_plan(i: int, pn: dict):
+        """(need, off, secs, lf, lgap): how long the panel must run for its
+        narration, and how long a take to order. One computation, used by both
+        the house-limit trim and the shoot — computing it twice is how the
+        first version left the shoot referencing variables that no longer
+        existed."""
         want = float(pn.get("dur") or 3)
         lf, lgap, llen = line_files[i]
         spoken_end = (vo_durs[i] + lgap + llen + 0.45) if lf else 0.0
         off = lead_in if i == 0 else 0.0
         need = off + max(want, (vo_durs[i] + GAP if vo_durs[i] else 0), spoken_end)
         secs = int(max(4, min(12, round(need + 0.6))))
-        use_cover_ref = board.get("cover_ref", True)
-        refs = [cover_uri] if use_cover_ref else []
-        who = " Reference image 1 is the book cover: its world and palette." if use_cover_ref else ""
+        return need, off, secs, lf, lgap
+
+    def _panel_seconds(i: int, pn: dict) -> int:
+        return _panel_plan(i, pn)[2]
+
+    # The house minute, enforced where the real length is finally known.
+    # A panel runs as long as its narration needs, so a board planning 38s of
+    # picture delivered 62.3s once the voice was recorded — capping the plan
+    # could never work. Trim here, before the shoot, so Runway is not paid for
+    # panels that would be dropped afterwards. Middle panels go first: the
+    # opening establishes and the last one carries the title card.
+    _budget = MAX_TRAILER_SECONDS - END_CARD_SECONDS
+    _idx = list(range(len(panels)))
+    while len(_idx) > 3 and sum(_panel_seconds(i, panels[i]) for i in _idx) > _budget:
+        _idx.pop(len(_idx) // 2)
+    if len(_idx) < len(panels):
+        _dropped = [panels[i].get("n", i + 1) for i in range(len(panels)) if i not in _idx]
+        panels = [panels[i] for i in _idx]
+        vo_files = [vo_files[i] for i in _idx]
+        vo_durs = [vo_durs[i] for i in _idx]
+        line_files = [line_files[i] for i in _idx]
+        if handle:
+            handle.progress(0.1, "board",
+                            f"trimmed to the {MAX_TRAILER_SECONDS}s house limit — "
+                            f"dropped panel(s) {', '.join(str(d) for d in _dropped)}")
+
+    plans = []
+    for i, pn in enumerate(panels):
+        # a fresh run answers for itself: a stale flag from the LAST run made
+        # a fully-cached rerun report references dropped that were never sent
+        pn.pop("refs_dropped", None)
+        need, off, secs, lf, lgap = _panel_plan(i, pn)
+        # The camera sees ONLY the cast (house rule, 2026-08-26): the cover's
+        # job ends at the storyboard — it shapes the world in TEXT (the style
+        # line) and never goes to Runway. Feeding it as an image meant the
+        # first reference slot anchored on a building while the lead's face
+        # floated free, and Luc came back as whoever the model felt like —
+        # famously, a Willem Dafoe lookalike. Faces are the references;
+        # everything else is words.
+        refs, who = [], ""
         for name in (pn.get("characters") or []):
             if char_uris.get(name):
                 refs.append(char_uris[name])
-                who += f" {name} is the man in reference image {len(refs)} — the same face, hair, beard and build." if who else f" {name} is the man in reference image {len(refs)} — the same face, hair, beard and build."
+                # "the man" misdescribed half the cast — Ingrid, Camille and
+                # Hélène were each introduced to the camera as a man
+                who += (f" {name} is the person in reference image {len(refs)} — "
+                        f"exactly the same face, hair and build, in this scene.")
+        # The storyboard frame travels too — faces first (identity), then the
+        # frame (composition). Without it the board was advisory: the model
+        # re-imagined every composition from words, and what you approved on
+        # the board was not what came back from the camera.
+        frame_rel = (pn.get("frame") or "").strip()
+        if frame_rel:
+            fp = Path(frame_rel) if frame_rel.startswith("/") \
+                else OUTPUT_DIR / catalog / "trailer" / frame_rel
+            if fp.exists():
+                try:
+                    refs.append(await runway.upload_file(fp))
+                    who += (f" Reference image {len(refs)} is the storyboard frame for "
+                            f"this exact shot: match its composition, framing, light "
+                            f"and blocking — but every face comes from the earlier "
+                            f"reference images, not from this frame.")
+                except Exception:
+                    pass
         # the cast sheet is canon: a named character always arrives with the
         # same words, so the face does not drift from panel to panel
         shot_txt = apply_cast(pn.get("shot", "").strip(), cast)
-        prompt = f"{shot_txt} {style} No text or lettering on screen.{who}".strip()
+        # The panel's diegetic sound goes into the shot itself: Seedance
+        # renders native audio, and a shot told what the world sounds like
+        # comes back alive — wind, boots, machinery — instead of near-silence
+        # for the mixer to paper over.
+        snd = (pn.get("sound") or "").strip()
+        snd_txt = f" Sound: {snd}. No music, no speech, no voices." if snd else ""
+        prompt = f"{shot_txt} {style} No text or lettering on screen.{snd_txt}{who}".strip()
         clip = tdir / f"sb-{_h(prompt + ratio + str(secs))}.mp4"
         plans.append({"i": i, "pn": pn, "prompt": prompt, "refs": refs,
                       "secs": secs, "clip": clip, "need": need, "off": off,
@@ -2770,7 +2937,12 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             moderation_hits = 0
             live_refs = list(refs)
             last_fail = ""
-            for attempt in range(8):
+            # Moderation rejections are FREE (cost: 0) and measurably random —
+            # the commercial's ladder test passed at level 5 and failed at
+            # level 2. So the photo references are held through many retries;
+            # dropping them is the last resort, not the third response. This
+            # is the whole difference between a lead who holds and a Dafoe.
+            for attempt in range(16):
                 task = await runway.generate_seedance(prompt, live_refs, seconds=secs, ratio=ratio,
                                                       model="seedance2_5", audio=False)
                 result = await runway.wait_for(task["id"], timeout_s=1500)
@@ -2784,8 +2956,14 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                 # reference (the cover, or a cast face) reads as a real person — the same picture
                 # keeps getting rejected no matter how many times we ask, so drop the image and
                 # ship on the text alone rather than exhaust every retry on a doomed reference.
-                if moderation_hits >= 3 and live_refs:
+                if moderation_hits >= 12 and live_refs:
                     live_refs = []
+                    # This fallback must not be silent: a panel shot without
+                    # its references is a panel whose faces drift, and when
+                    # every record says the refs were sent nobody can explain
+                    # why the lead looks different shot to shot. Mark the
+                    # panel so the result names exactly which shots lost them.
+                    pn["refs_dropped"] = True
                     if handle:
                         handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
                                         f"panel {pn.get('n', i+1)} — reference image looks blocked as a real likeness, retrying without it")
@@ -2809,13 +2987,23 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         if W is None:
             W, H = _probe_size(clip)
         seg = tdir / f"sb-seg-{i:02d}.mp4"
-        _cut_segment(clip, 0.0, need, seg, W, H)
+        # A montage shot is cut from the MIDDLE of its take, not the top.
+        # Seedance spends its first second settling the scene — camera easing
+        # in, subject not yet moving — and a sub-2.5s cut of that settling is
+        # a still. Deeper into the take the action has arrived; that is the
+        # piece an action cut wants.
+        seg_start = 0.0
+        if need <= 2.5:
+            clip_dur = _probe_seconds(clip) or need
+            seg_start = max(0.0, min(clip_dur - need - 0.2, (clip_dur - need) * 0.55))
+        _cut_segment(clip, seg_start, seg_start + need, seg, W, H)
         segs.append(seg)
         if vo_files[i]:
             cues.append((vo_files[i], t + off + 0.15, 1.0))
         if lf:
             # lands after the narrator has finished — never over him
             cues.append((lf, t + off + 0.15 + vo_durs[i] + lgap, 1.25))
+        panel_starts.append((i, pn, t))
         t += need
     # the series name over the opening beat, while the theme plays alone
     series_title = ((book["data"].get("series") or {}).get("series_title") or "").strip()
@@ -2884,12 +3072,32 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         score = await _record_music(catalog, (board.get("music") or "").strip() or score_brief_for(book), total + 15, "storyboard")
     if not score:
         raise RuntimeError("No usable score came back from the music model")
+    # ── sound design: every panel's key sound, rendered and placed ──
+    # Seedance performs the sound inside the shot, but its native audio is
+    # quiet and uneven; a dedicated cue at each panel's first moment is what
+    # makes the cut feel inhabited. Cached by content, so re-runs are free.
+    sfx = []
+    if handle:
+        handle.progress(0.93, "sound", "recording the sound design")
+    recipe = sound_for(book["data"])
+    intro = await _record_sfx(catalog, recipe["intro"], 2.5, "sfx-sb-intro", "sfx-sb-intro.mp3")
+    if intro:
+        sfx.append((intro, 0.0, 0.85))
+    for i, pn, start in panel_starts:
+        snd = (pn.get("sound") or "").strip()
+        if not snd:
+            continue
+        cue = await _record_sfx(catalog, snd, min(4.0, float(pn.get("dur") or 4)),
+                                f"sfx-sb-{_h(snd)}", f"sfx-sb-{_h(snd)}.mp3")
+        if cue:
+            sfx.append((cue, max(0.0, start + 0.1), 0.8))
+
     mixed = tdir / "sb-mixed.mp4"
     out = OUTPUT_DIR / catalog / f"trailer{fmt['suffix']}.mp4"
     bed = (book["data"].get("trailer") or {}).get("workorder_bed") or (0.8 if _fast else 0.42)
     fade_in = float((book["data"].get("trailer") or {}).get("score_fade_in") or 3.5)
     if _mix_narration(picture, cues, mixed, tag=tag_vo, tag_at=card_at + TAG_IN, score=score,
-                      bed=bed, score_fade_in=fade_in):
+                      bed=bed, score_fade_in=fade_in, sfx=sfx):
         shutil.copy2(mixed, out)
     else:
         shutil.copy2(picture, out)
@@ -2899,7 +3107,8 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     record = {"mode": "storyboard", "model": "seedance2_5", "format": format_name, "quality": "draft", "provider": "seedance",
               "file": out.name, "poster": poster.name, "seconds": round(_probe_seconds(out), 1),
               "credits_used": max(0, credits_before - credits_after), "credits_left": credits_after,
-              "shots": len(panels), "plates": len(panels)}
+              "shots": len(panels), "plates": len(panels),
+              "refs_dropped": [p.get("n") for p in panels if p.get("refs_dropped")]}
     book2 = get_book_by_catalog(catalog)
     versions = list(((book2["data"].get("trailer") or {}).get("versions")) or [])
     vn = len(versions) + 1

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { scrpt } from "@/lib/scrpt";
+import { OFFICES, rememberOffice, type OfficeKey } from "@/lib/background";
 
 interface Settings {
   publisher_name?: string;
@@ -72,6 +73,30 @@ export default function SettingsPage() {
                settings={settings} save={save} savedField={savedField} />
         <Field label="Website" k="website" placeholder="https://…"
                settings={settings} save={save} savedField={savedField} />
+      </Section>
+
+      <Section title="The office"
+               sub="The room behind SCRPT — painted across the front desk and the sign-in screen. Same publisher, same mark on the wall; choose the window.">
+        <div className="flex gap-3">
+          {(Object.entries(OFFICES) as [OfficeKey, { label: string; src: string }][]).map(([k, o]) => {
+            const active = ((settings.office_background as string) || "newyork") === k;
+            return (
+              <button key={k}
+                      onClick={() => { save("office_background", k); rememberOffice(k); }}
+                      className="text-left group" style={{ width: 220 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={o.src} alt={o.label}
+                     className="w-full rounded object-cover transition-opacity group-hover:opacity-90"
+                     style={{ aspectRatio: "16/9",
+                              border: active ? "2px solid var(--accent)" : "1px solid var(--line)" }} />
+                <div className="text-[12px] mt-1.5"
+                     style={{ color: active ? "var(--accent)" : "var(--text-secondary)" }}>
+                  {o.label}{active ? " — chosen" : ""}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </Section>
 
       <AccountSection />

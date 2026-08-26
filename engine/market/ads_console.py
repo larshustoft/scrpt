@@ -30,12 +30,11 @@ async def session_status() -> dict:
 async def open_login() -> dict:
     """Visible window for the publisher to sign in to Amazon Ads once."""
     from playwright.async_api import async_playwright
-    from .browser import PROFILE_DIR, UA, _ARGS, _STEALTH
+    from .browser import PROFILE_DIR, _ARGS, _STEALTH, context_kwargs
     PROFILE_DIR.mkdir(parents=True, exist_ok=True)
     pw = await async_playwright().start()
     ctx = await pw.chromium.launch_persistent_context(
-        str(PROFILE_DIR), headless=False, args=_ARGS, user_agent=UA,
-        viewport={"width": 1440, "height": 900}, locale="en-US")
+        str(PROFILE_DIR), headless=False, args=_ARGS, **context_kwargs())
     await ctx.add_init_script(_STEALTH)
     page = ctx.pages[0] if ctx.pages else await ctx.new_page()
     await page.goto(CONSOLE, timeout=60000)

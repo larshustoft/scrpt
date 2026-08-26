@@ -15,15 +15,40 @@ import os
 from pathlib import Path
 from typing import Optional
 
-UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+# No user-agent override. Real Chrome sends Sec-CH-UA client hints carrying its
+# true version; a spoofed UA claiming an older Chrome contradicts them, and that
+# mismatch is a louder automation signal than sending nothing at all.
+
+# The publisher's own machine and network. A browser claiming a US timezone from
+# a French IP reads as a proxy — which is how KDP sessions were being burned.
+LOCALE = "en-US"
+TIMEZONE = "Europe/Paris"
 
 PROFILE_DIR = Path(os.path.expanduser("~/.scrpt/browser-profile"))
 
 _STEALTH = "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
 
-_ARGS = ["--disable-blink-features=AutomationControlled", "--no-sandbox",
-         "--disable-dev-shm-usage"]
+# --no-sandbox and --disable-dev-shm-usage are container workarounds that do
+# nothing on a Mac and are passed by almost nothing except automation.
+_ARGS = ["--disable-blink-features=AutomationControlled"]
+
+# Real Chrome, not Playwright's bundled Chrome for Testing. The testing build is
+# distinguishable from the shipping one, and KDP re-challenges it hard.
+CHANNEL = "chrome"
+
+
+def context_kwargs(**over) -> dict:
+    """The one fingerprint every launch site shares.
+
+    Several modules open their own window on this same profile. If they don't
+    agree — one sending a spoofed user-agent, another the real one — Amazon
+    sees a single session whose client keeps changing, which is a worse signal
+    than any of them alone. So the settings live here and nowhere else.
+    """
+    kw = {"channel": CHANNEL, "viewport": {"width": 1440, "height": 900},
+          "locale": LOCALE, "timezone_id": TIMEZONE}
+    kw.update(over)
+    return kw
 
 
 class Page:
@@ -43,14 +68,14 @@ class Page:
             PROFILE_DIR.mkdir(parents=True, exist_ok=True)
             self._ctx = await self._pw.chromium.launch_persistent_context(
                 str(PROFILE_DIR), headless=self.headless, args=_ARGS,
-                user_agent=UA, viewport={"width": 1440, "height": 900},
-                locale="en-US", timezone_id="America/New_York")
+                channel=CHANNEL, viewport={"width": 1440, "height": 900},
+                locale=LOCALE, timezone_id=TIMEZONE)
         else:
             self._browser = await self._pw.chromium.launch(
-                headless=self.headless, args=_ARGS)
+                headless=self.headless, args=_ARGS, channel=CHANNEL)
             self._ctx = await self._browser.new_context(
-                user_agent=UA, viewport={"width": 1440, "height": 900},
-                locale="en-US", timezone_id="America/New_York")
+                viewport={"width": 1440, "height": 900},
+                locale=LOCALE, timezone_id=TIMEZONE)
         await self._ctx.add_init_script(_STEALTH)
         pages = self._ctx.pages
         return pages[0] if pages else await self._ctx.new_page()

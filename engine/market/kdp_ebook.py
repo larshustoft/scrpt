@@ -23,7 +23,7 @@ from pathlib import Path
 
 from ..config import OUTPUT_DIR
 from ..database import get_book_by_catalog, update_book
-from .browser import PROFILE_DIR, UA, _ARGS, _STEALTH
+from .browser import PROFILE_DIR, _ARGS, _STEALTH, context_kwargs
 from .kdp_paperback import AI_DEFAULTS, BANNED
 from .launch_gate import launch_gate
 
@@ -84,8 +84,18 @@ class KindleStager:
     def _remember(self, patch: dict):
         fresh = get_book_by_catalog(self.catalog)
         data = dict(fresh["data"])
-        data["kdp"] = {**(data.get("kdp") or {}), **patch}
+        prev = data.get("kdp") or {}
+        data["kdp"] = {**prev, **patch}
         update_book(fresh["id"], data)
+        # see the paperback note: a new title id spends one of the ten
+        # creations KDP allows per format each week, success or not
+        new_id = patch.get("kindle_id")
+        if new_id and prev.get("kindle_id") != new_id:
+            try:
+                from .kdp_quota import record_creation
+                record_creation(self.catalog, "kindle", new_id)
+            except Exception:
+                pass
 
     async def signed_in(self) -> bool:
         return "signin" not in self.page.url and "ap/signin" not in self.page.url
@@ -107,6 +117,19 @@ class KindleStager:
         else:
             await p.goto("https://kdp.amazon.com/en_US/title-setup/kindle/new/details", timeout=60000, wait_until="domcontentloaded")
         await p.wait_for_timeout(8000)
+        # Claim the id before any of the work below can fail. KDP has already
+        # created the title by this point and already spent one of the ten
+        # Kindle creations it allows per week; writing the id down only after
+        # Save and Continue meant a failure in between stranded the draft and
+        # the next run minted a second title for the same book.
+        for _ in range(4):
+            _m = re.search(r"/title-setup/kindle/([A-Za-z0-9]{6,})/", p.url)
+            if _m and _m.group(1).lower() != "new":
+                if (self.d.get("kdp") or {}).get("kindle_id") != _m.group(1):
+                    self._remember({"kindle_id": _m.group(1)})
+                    self.note(f"kindle draft {_m.group(1)} — later runs will resume it")
+                break
+            await p.wait_for_timeout(1500)
         if not await self.signed_in():
             return "needs_signin"
         # the paperback carries title, subtitle, author, series, description, keywords.
@@ -141,7 +164,22 @@ class KindleStager:
     async def _place_categories(self, cats: list) -> int:
         p = self.page
         SEL = """(t) => { const ss=[...document.querySelectorAll('select')].filter(s=>s.offsetParent!==null); const s=ss[ss.length-1]; if(!s) return 'noselect'; const o=[...s.options].find(o=>o.text.trim()===t); if(!o) return 'nooption'; s.value=o.value; s.dispatchEvent(new Event('change',{bubbles:true})); return 'ok'; }"""
-        await p.locator("#categories-modal-button").click(timeout=10000)
+        # KDP renders this button disabled while the details form is still
+        # wiring itself up, and a click on a disabled button waits out its
+        # whole timeout and fails the run. Wait for it to actually become
+        # usable instead of racing it.
+        btn = p.locator("#categories-modal-button")
+        for _ in range(20):
+            try:
+                if await btn.is_enabled():
+                    break
+            except Exception:
+                pass
+            await p.wait_for_timeout(1500)
+        else:
+            self.note("categories button never became enabled — categories left as they are")
+            return 0
+        await btn.click(timeout=10000)
         await p.wait_for_timeout(2500)
         placed = 0
         groups: dict = {}
@@ -256,7 +294,10 @@ class KindleStager:
         await p.evaluate("""() => { const r=[...document.querySelectorAll('input[name="data[digital][royalty_rate]-radio"]')].find(x=>x.value==='70_PERCENT'); r && r.click(); }""")
         await p.wait_for_timeout(1500)
         price = float((self.d.get("kdp") or {}).get("ebook_price") or EBOOK_PRICE_DEFAULT)
-        price = min(12.99, max(2.99, price))
+        # Amazon pays the 70% rate only from $2.99 to $9.99. Above that the
+        # tier selected below is not on offer and the book quietly earns 35%,
+        # so the price has to stay inside the band the royalty assumes.
+        price = min(9.99, max(2.99, price))
         us = p.locator('input[name="data[digital][channels][amazon][US][price_vat_inclusive]"]').first
         await us.click()
         await us.fill("")
@@ -295,8 +336,8 @@ class KindleStager:
         _pb._OPEN = None
         pw = await async_playwright().start()
         ctx = await pw.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=False, args=_ARGS, user_agent=UA,
-            viewport={"width": 1400, "height": 900}, locale="en-US")
+            str(PROFILE_DIR), headless=False, args=_ARGS,
+            **context_kwargs(viewport={"width": 1400, "height": 900}))
         await ctx.add_init_script(_STEALTH)
         _pb._OPEN = (ctx, pw)
         self.page = ctx.pages[0] if ctx.pages else await ctx.new_page()

@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/components/AuthProvider";
 import { LOCAL_AUTH, localLogin, localSetup, localStatus } from "@/lib/local-auth";
+import { useOfficeBackground } from "@/lib/background";
 
 type Mode = "signin" | "magic";
 
 function Shell({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) {
+  const office = useOfficeBackground();
   return (
     <div className="min-h-screen relative flex items-center justify-center px-6">
       <div className="absolute inset-0 bg-cover"
-           style={{ backgroundImage: "url(/hq-background.png)", backgroundPosition: "center 30%" }} />
+           style={{ backgroundImage: `url(${office})`, backgroundPosition: "center 30%" }} />
       <div className="absolute inset-0" style={{ background: "rgba(14,12,9,0.72)" }} />
       <div className="relative w-full max-w-[400px]">
         <div className="flex justify-center">
@@ -105,6 +107,7 @@ export default function LoginPage() {
 }
 
 function SupabaseLogin() {
+  const office = useOfficeBackground();
   const { signInWithEmail, signInWithMagicLink, configured } = useAuthContext();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
@@ -135,7 +138,7 @@ function SupabaseLogin() {
   return (
     <div className="min-h-screen relative flex items-center justify-center px-6">
       <div className="absolute inset-0 bg-cover"
-           style={{ backgroundImage: "url(/hq-background.png)", backgroundPosition: "center 30%" }} />
+           style={{ backgroundImage: `url(${office})`, backgroundPosition: "center 30%" }} />
       <div className="absolute inset-0" style={{ background: "rgba(14,12,9,0.72)" }} />
 
       <div className="relative w-full max-w-[400px]">

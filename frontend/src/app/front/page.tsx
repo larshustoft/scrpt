@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCoverLightbox } from "@/components/CoverLightbox";
+import { useOfficeBackground } from "@/lib/background";
 import { scrpt, type Job, type ScrptBook } from "@/lib/scrpt";
 
 function getGreeting(): string {
@@ -18,6 +19,7 @@ function getGreeting(): string {
  * Everything operational lives in the Back Office.
  */
 export default function HQPage() {
+  const office = useOfficeBackground();
   const [desk, setDesk] = useState<{ book: ScrptBook; job: Job | null }[]>([]);
   const [waiting, setWaiting] = useState<string[]>([]);
   const openCover = useCoverLightbox();
@@ -99,7 +101,7 @@ export default function HQPage() {
       {/* the study */}
       <div
         className="absolute inset-0 bg-cover"
-        style={{ backgroundImage: "url(/hq-background.png)", backgroundPosition: "center 30%" }}
+        style={{ backgroundImage: `url(${office})`, backgroundPosition: "center 30%" }}
       />
       <div
         className="absolute inset-0"

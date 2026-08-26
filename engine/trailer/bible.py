@@ -225,10 +225,25 @@ async def auto_bible(catalog: str, kind: str = "main") -> dict:
     who = ("ONLY the single main character — the lead the story follows"
            if kind == "main" else
            "the SUPPORTING cast: every named character EXCEPT the lead")
+
+    # Anyone this series has already established arrives with their look fixed.
+    # Without this each book writes its own lead from its own cover, and a
+    # recurring character ages and changes wardrobe between books.
+    from .plates import series_canon
+    canon = series_canon(book)
+    canon_txt = ""
+    if canon:
+        canon_txt = (
+            "\n\nCHARACTERS THIS SERIES HAS ALREADY ESTABLISHED — if one of these "
+            "appears in this book, copy the `look` line EXACTLY as given. It is "
+            "canon from an earlier book and the reader has already met them. Do "
+            "not restyle, re-age or re-dress them, however this cover looks:\n"
+            + "\n".join(f"  - {n}: {c['look']}" for n, c in canon.items() if c.get("look"))
+        )
     prompt = (
         f"This is the front cover of \"{book['title']}\". Study its world — palette, "
         f"era, light, costume, mood — then read the story below.\n\n{story}\n\n"
-        f"Write the character bible for {who}.\n\n"
+        f"Write the character bible for {who}.{canon_txt}\n\n"
         "For EACH character give a `look` line: a complete, self-contained physical "
         "description a video model can film from, as a noun phrase that drops "
         "straight into a shot — apparent age, build, hair, facial hair, "
@@ -317,6 +332,32 @@ async def auto_storyboard(catalog: str, panels: int = 9, handle=None) -> dict:
     from .producer import _genre_label
     genre = _genre_label(book)
 
+    # Action grammar. A romance trailer breathes; a thriller trailer runs.
+    # Ours were all cut to the romance clock — nine even beats, a narrator
+    # wall to wall — which is why they felt like slideshows next to the real
+    # thing (study: Mission: Impossible and Jack Ryan cut 25–40 shots a
+    # minute, accelerating to under a second, with the CHARACTERS carrying
+    # the story and the narrator almost silent).
+    _fast = any(k in (book["data"].get("genre_preset") or "").lower()
+                for k in ("thriller", "crime", "action", "mystery"))
+    if _fast:
+        panels = max(panels, 13)
+    action_rules = (
+        "\nACTION GRAMMAR — this is a thriller, so the trailer accelerates:\n"
+        f"A. Build in three movements: SETUP (panels 1-4, durs 3-4, let it "
+        "breathe), ESCALATION (middle, durs 2-3, each shot raises the "
+        "pressure), then a CLIMAX MONTAGE — the last 4 panels before the end "
+        "run at dur 1.5-2 each, pure movement, NO vo on any of them: pursuit, "
+        "impact, weather, machinery, bodies in motion.\n"
+        "B. MOVEMENT in every shot from the escalation on. Nobody stands "
+        "still; something is always travelling through the frame.\n"
+        "C. The CHARACTERS carry the story: use `line` on up to THREE panels "
+        "— short, urgent, in-world sentences. Narration is sparse: `vo` on at "
+        "most half the panels, never over 10 words, none in the montage.\n"
+        "D. One panel of near-silence directly before the montage — a held "
+        "breath. Its `sound` is a single quiet detail.\n"
+    ) if _fast else ""
+
     prompt = (
         f"BOOK: \"{book['title']}\" — a {genre} novel.\n\n"
         f"{_story_digest(book, 4500)}\n\n"
@@ -339,11 +380,25 @@ async def auto_storyboard(catalog: str, panels: int = 9, handle=None) -> dict:
         "split the thought across two panels instead.\n"
         "6. The last panel is the emotional peak, NOT a title card: the cover ending "
         "is added afterwards.\n"
-        "7. `dur` is seconds, 3 to 5, long enough to hold the shot and its line.\n"
+        "7. `dur` is seconds, 3 to 5, long enough to hold the shot and its line "
+        "(the ACTION GRAMMAR below overrides this where it says so).\n"
         "8. `line` is OPTIONAL: a single short sentence a character says out loud, "
-        "with the speaker's cast name. Use it at most twice in the trailer.\n\n"
-        "Return JSON only:\n"
+        "with the speaker's cast name. Use it at most twice in the trailer "
+        "(three, where the ACTION GRAMMAR applies).\n"
+        "9. `characters` lists, by their EXACT cast-sheet names, everyone visible "
+        "in that panel — empty only for a shot with no people in it. This is not "
+        "decoration: each name here sends that character's reference portrait to "
+        "the camera, and a face that arrives without one is redrawn from scratch "
+        "and comes back as a different person from the shot before.\n"
+        "10. `sound` is the panel's key DIEGETIC sound — what the world itself is "
+        "doing: wind over ice, a buckle tightening, boots on frost, a distant "
+        "siren. One concrete sound per panel, five to ten words, no music and no "
+        "voices. This is what makes the film feel real rather than scored "
+        "silence, so give every panel one.\n"
+        + action_rules +
+        "\nReturn JSON only:\n"
         '{"panels": [{"n": "1", "title": "3 words", "dur": 4, "shot": "...", '
+        '"characters": ["Cast Name"], "sound": "...", '
         '"vo": "...", "line": {"speaker": "Name", "text": "..."}}], '
         '"music": "a score brief: instrumentation, mood, tempo, and \\"no vocals\\""}'
     )
@@ -367,8 +422,22 @@ async def auto_storyboard(catalog: str, panels: int = 9, handle=None) -> dict:
         except (TypeError, ValueError):
             dur = 4.0
         panel = {"n": str(i), "title": str(p.get("title") or "")[:60],
-                 "dur": max(2.5, min(8.0, dur)), "shot": str(p["shot"]).strip(),
-                 "vo": str(p.get("vo") or "").strip()}
+                 "dur": max(1.5, min(8.0, dur)), "shot": str(p["shot"]).strip(),
+                 "vo": str(p.get("vo") or "").strip(),
+                 # the panel's key diegetic sound — kept explicitly, because
+                 # this whitelist is exactly where `characters` used to vanish
+                 "sound": str(p.get("sound") or "").strip()[:160]}
+        # Who is in the shot, kept. Rebuilding the panel from a whitelist that
+        # omitted this quietly discarded the cast on every board, so no shot
+        # ever received a reference portrait and the lead was reinvented nine
+        # times over. Names are matched against the cast sheet — an invented
+        # one has no portrait behind it and would only mislead the camera.
+        known = {n.lower(): n for n in cast}
+        picked = [known[str(x).strip().lower()]
+                  for x in (p.get("characters") or [])
+                  if isinstance(x, str) and str(x).strip().lower() in known]
+        if picked:
+            panel["characters"] = list(dict.fromkeys(picked))
         ln = p.get("line")
         if isinstance(ln, dict) and (ln.get("text") or "").strip():
             panel["line"] = {"text": str(ln["text"]).strip()[:200],

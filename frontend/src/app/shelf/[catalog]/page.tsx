@@ -1723,6 +1723,274 @@ const TRAILER_FORMATS = [
   { key: "ad", label: "Ad 4:5", hint: "Feed ads — framed from the vertical shoot" },
 ] as const;
 
+/** A padlock, drawn rather than typed — closed when the face is canon. */
+function Lock({ closed }: { closed: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" aria-hidden
+         stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <rect x="4" y="11" width="16" height="9" rx="2" />
+      {closed
+        ? <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+        : <path d="M8 11V7a4 4 0 0 1 7.5-2" />}
+    </svg>
+  );
+}
+
+/** One character: the face that is canon, and the way to change your mind.
+ *
+ *  A locked face is what every book in the series will show, so it is locked
+ *  by default the moment it is first drawn — otherwise a job that runs twice
+ *  quietly recasts the lead. Opening the padlock is the deliberate act that
+ *  allows alternatives to be drawn and a different one chosen; choosing writes
+ *  that face across every book in the series at once.
+ */
+function CastCard({ c, catalog, onChanged, openOne }: {
+  c: { name?: string; role?: string; look?: string; plate_url?: string | null;
+       locked?: boolean; variant_urls?: string[]; variants?: string[]; kind?: string };
+  catalog: string;
+  onChanged: () => void;
+  openOne: (src: string, alt?: string) => void;
+}) {
+  const [busy, setBusy] = useState("");
+  const [showAlts, setShowAlts] = useState(false);
+  const locked = !!c.locked;
+
+  const call = async (path: string, body: object) => {
+    setBusy("…");
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/bible/${catalog}/${path}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: c.name, ...body }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || "Failed");
+      setBusy("");
+      onChanged();
+      return d;
+    } catch (e) {
+      setBusy(e instanceof Error ? e.message.slice(0, 30) : "Failed");
+      setTimeout(() => setBusy(""), 3500);
+      return null;
+    }
+  };
+
+  const toggleLock = async () => {
+    const d = await call("lock", { locked: !locked });
+    if (d && locked) setShowAlts(true);      // just opened: offer alternatives
+  };
+
+  const drawMore = async () => {
+    setBusy("drawing…");
+    const r = await fetch(`${scrpt.engineUrl}/api/scrpt/bible/${catalog}/variants`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: c.name, n: 3 }),
+    });
+    const d = await r.json();
+    if (!r.ok) { setBusy(d.detail || "Failed"); setTimeout(() => setBusy(""), 3500); return; }
+    // the drawing runs as a job; poll until it settles, then refresh
+    for (let i = 0; i < 60; i++) {
+      await new Promise((res) => setTimeout(res, 4000));
+      const j = await (await fetch(`${scrpt.engineUrl}/api/scrpt/jobs/${d.job_id}`)).json();
+      if (j.status !== "running") break;
+    }
+    setBusy("");
+    onChanged();
+  };
+
+  const alts = c.variant_urls || [];
+
+  return (
+    <div className="shrink-0" style={{ width: 128 }}>
+      <div className="relative">
+        {c.plate_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={`${scrpt.engineUrl}${c.plate_url}`} alt={c.name || ""}
+               onClick={() => openOne(`${scrpt.engineUrl}${c.plate_url}`, c.name || "Cast")}
+               className="w-full rounded cursor-zoom-in object-cover"
+               style={{ height: 128, border: "1px solid var(--line)" }} />
+        ) : (
+          <div className="w-full rounded flex items-center justify-center text-[10px] text-text-faint text-center px-2"
+               style={{ height: 128, border: "1px dashed var(--line)" }}>
+            not drawn yet
+          </div>
+        )}
+        <button onClick={toggleLock} disabled={!!busy}
+                title={locked
+                  ? "Locked for the whole series — click to open and draw alternatives"
+                  : "Open: click to lock this face across the series"}
+                className="absolute top-1 right-1 rounded p-1 transition-colors"
+                style={{ background: "rgba(14,12,9,0.72)",
+                         color: locked ? "var(--accent)" : "var(--status-red)",
+                         border: "1px solid rgba(236,229,218,0.18)" }}>
+          <Lock closed={locked} />
+        </button>
+      </div>
+      <div className="text-[11px] text-text mt-1 truncate" title={c.name}>{c.name}</div>
+      <div className="text-[10px] text-text-faint leading-snug line-clamp-2">{c.role}</div>
+      {busy && <div className="text-[10px] text-accent mt-0.5">{busy}</div>}
+
+      {!locked && (
+        <div className="mt-1">
+          <button onClick={() => setShowAlts((v) => !v)}
+                  className="text-[10px] text-accent hover:underline">
+            {showAlts ? "hide looks" : `other looks${alts.length > 1 ? ` (${alts.length})` : ""}`}
+          </button>
+          {showAlts && (
+            <div className="mt-1">
+              <div className="grid grid-cols-2 gap-1">
+                {alts.map((u, i) => (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img key={u} src={`${scrpt.engineUrl}${u}`} alt={`${c.name} option ${i + 1}`}
+                       onClick={() => call("choose", {
+                         variant: (c.variants || [])[i], lock: true })}
+                       title="Use this face and lock it for the series"
+                       className="w-full rounded cursor-pointer hover:opacity-80"
+                       style={{ aspectRatio: "1", objectFit: "cover",
+                                border: `1px solid ${u === c.plate_url ? "var(--accent)" : "var(--line)"}` }} />
+                ))}
+              </div>
+              <button onClick={drawMore} disabled={!!busy}
+                      className="btn-ghost text-[10px] mt-1 w-full">
+                Draw 3 more
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The cast sheet and the board, under the film they produced.
+ *
+ *  These are the two things the trailer is actually built from, and until now
+ *  they lived only in the database — so a trailer whose faces drifted gave no
+ *  clue why. Seeing the cast means seeing whether the same man was handed to
+ *  every shot; seeing the board means judging the film before paying to shoot
+ *  it. Either can be replaced with your own picture.
+ */
+function CastAndBoard({ st, catalog, onChanged }: {
+  st: TrailerStatus; catalog: string; onChanged: () => void;
+}) {
+  const openRun = useLightboxRun();
+  const openOne = useCoverLightbox();
+  const bibleInput = useRef<HTMLInputElement | null>(null);
+  const [kind, setKind] = useState<"main" | "supporting">("main");
+  const [busy, setBusy] = useState("");
+  const [open, setOpen] = useState(true);
+
+  const cast = Object.entries(st.bibles || {}).flatMap(([k, b]) =>
+    (b?.characters || []).map((c) => ({ ...c, kind: k })));
+  const panels = st.storyboard?.panels || [];
+  if (!cast.length && !panels.length) return null;
+
+  const uploadBible = async (f: File) => {
+    setBusy("Reading the cast sheet…");
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const r = await fetch(
+        `${scrpt.engineUrl}/api/scrpt/bible/${catalog}?kind=${kind}`,
+        { method: "POST", body: fd });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || "Upload failed");
+      onChanged();
+    } catch (e) {
+      setBusy(e instanceof Error ? e.message : "Upload failed");
+      setTimeout(() => setBusy(""), 4000);
+      return;
+    }
+    setBusy("");
+    if (bibleInput.current) bibleInput.current.value = "";
+  };
+
+  const frames = panels.filter((p) => p.frame_url);
+
+  return (
+    <div className="mt-4 border-t border-line pt-3">
+      <button onClick={() => setOpen((v) => !v)}
+              className="flex items-center gap-2 text-[12px] text-text-secondary hover:text-text">
+        <span style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 140ms" }}>›</span>
+        Cast sheet &amp; storyboard
+        <span className="text-text-faint">
+          {cast.length ? `· ${cast.length} character${cast.length > 1 ? "s" : ""}` : ""}
+          {panels.length ? ` · ${panels.length} panels` : ""}
+        </span>
+      </button>
+
+      {open && (
+        <div className="mt-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-text-faint">Cast</span>
+            <select value={kind} onChange={(e) => setKind(e.target.value as "main" | "supporting")}
+                    className="input-scrpt text-[11px] py-0.5 px-1">
+              <option value="main">main</option>
+              <option value="supporting">supporting</option>
+            </select>
+            <input ref={bibleInput} type="file" accept="image/*" className="hidden"
+                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBible(f); }} />
+            <button className="btn-ghost text-[11px]" disabled={!!busy}
+                    onClick={() => bibleInput.current?.click()}>
+              {busy || "Upload your own cast sheet"}
+            </button>
+          </div>
+
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {cast.map((c) => (
+              <CastCard key={`${c.kind}-${c.name}`} c={c} catalog={catalog}
+                        onChanged={onChanged} openOne={openOne} />
+            ))}
+          </div>
+
+          {panels.length > 0 && (
+            <>
+              <div className="text-[11px] uppercase tracking-[0.14em] text-text-faint mt-4 mb-2">
+                Storyboard
+              </div>
+              <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
+                {panels.map((p, i) => (
+                  <div key={String(p.n ?? i)}>
+                    {p.frame_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={`${scrpt.engineUrl}${p.frame_url}`} alt={String(p.title || p.n || i + 1)}
+                           onClick={() => openRun({
+                             index: frames.findIndex((f) => f.n === p.n),
+                             frames: frames.map((f) => ({
+                               label: `Panel ${f.n} · ${f.title || ""}`,
+                               srcs: [`${scrpt.engineUrl}${f.frame_url}`],
+                             })),
+                           }, `Panel ${p.n}`)}
+                           className="w-full rounded cursor-zoom-in"
+                           style={{ aspectRatio: "16/9", objectFit: "cover", border: "1px solid var(--line)" }} />
+                    ) : (
+                      <div className="w-full rounded flex items-center justify-center text-[10px] text-text-faint"
+                           style={{ aspectRatio: "16/9", border: "1px dashed var(--line)" }}>
+                        panel {String(p.n ?? i + 1)}
+                      </div>
+                    )}
+                    <div className="text-[11px] text-text mt-1">
+                      {p.n}. {p.title}
+                      {p.dur ? <span className="text-text-faint"> · {p.dur}s</span> : null}
+                    </div>
+                    {p.characters?.length ? (
+                      <div className="text-[10px] text-accent">{p.characters.join(", ")}</div>
+                    ) : (
+                      <div className="text-[10px] text-text-faint">no cast referenced</div>
+                    )}
+                    {p.vo ? <div className="text-[10px] text-text-secondary italic leading-snug">“{p.vo}”</div> : null}
+                  </div>
+                ))}
+              </div>
+              {st.storyboard?.music ? (
+                <div className="text-[10px] text-text-faint mt-2">Score: {st.storyboard.music}</div>
+              ) : null}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type TrailerShot = { n: number; seconds?: number; camera?: string; prompt?: string; voiceover?: string; sound?: string };
 
 type TrailerStatus = {
@@ -1732,7 +2000,22 @@ type TrailerStatus = {
   reference?: { title?: string; duration?: number; shots?: number; avg_shot_seconds?: number;
                 analysis?: { lessons?: string[] } } | null;
   storyboard_pending?: { panels: number; source: string } | null;
-  storyboard?: { panels: number } | null;
+  storyboard?: {
+    count: number;
+    music?: string;
+    panels: Array<{
+      n?: string | number; title?: string; dur?: number; shot?: string;
+      vo?: string; characters?: string[]; frame_url?: string | null;
+      line?: { speaker?: string; text?: string } | null;
+    }>;
+  } | null;
+  bibles?: Record<string, {
+    source?: string; style?: string;
+    characters?: Array<{ name?: string; role?: string; look?: string;
+                         plate_url?: string | null; locked?: boolean;
+                         variants?: string[]; variant_urls?: string[] }>;
+    locations?: Array<{ name?: string; look?: string }>;
+  } | null> | null;
   review?: { score?: number; reads_as_trailer?: boolean; notes?: string[]; defects?: { plate?: string; what?: string }[] } | null;
   workorder_prompt?: string | null;
   direction?: { angle?: string; look?: string; seconds?: number; shots?: number; pacing?: string;
@@ -1894,23 +2177,42 @@ function TrailerCard({ catalog, title }: { catalog: string; title?: string }) {
       setWatching("latest"); setKey((k) => k + 1);
     } catch { setMsg("Could not reset"); setBusy(false); return; }
     setBusy(false);
-    await makeLikeThis();
+    await makeInOrder();
+  };
+
+  // Starting over means the house order, every time: character bible from
+  // the cover, storyboard written from that bible, then the shoot. The
+  // work-order path (one Seedance take from title + cover + blurb) skips
+  // both, so a re-run there only re-rolled the same dice — it could not be
+  // better than the last one, only different.
+  const makeInOrder = async () => {
+    setBusy(true); setMsg("");
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/auto/${catalog}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format, rebuild_board: true }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setMsg(d.detail || "Could not start"); setBusy(false); return; }
+      setShooting({ stage: "bible", detail: "writing the cast sheet from the cover",
+                    progress: 0.02, started: Date.now(), total: 1200 });
+      setWatching("latest"); setKey((k) => k + 1);
+    } catch { setMsg("Could not start"); }
+    setBusy(false);
   };
 
   const makeLikeThis = async () => {
     setBusy(true); setMsg("");
     try {
-      // the work order (house rule): title + cover + blurb + end screen, one
-      // Seedance take — no art direction from SCRPT. The director's desk
-      // path (Veo, script, inserts) stays available from the desk below.
-      const workorder = quality.startsWith("seedance") && !refUrl.trim();
-      const r = await fetch(workorder
-          ? `${scrpt.engineUrl}/api/scrpt/trailer/workorder/${catalog}`
-          : `${scrpt.engineUrl}/api/scrpt/trailer/like-this/${catalog}`, {
+      // Every trailer is made the same way: character bible, then a
+      // storyboard written from that bible, then the shoot. The one-take
+      // work order skipped both, so the faces drifted between shots and a
+      // re-run could only be different, never better. It is reachable now
+      // only by naming a reference trailer to imitate.
+      if (!refUrl.trim()) { setBusy(false); await makeInOrder(); return; }
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/like-this/${catalog}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(workorder
-          ? { quality: quality === "seedance_master" ? "master" : "draft", format, seconds: 30 }
-          : { url: refUrl.trim(), mode: quality, format }),
+        body: JSON.stringify({ url: refUrl.trim(), mode: quality, format }),
       });
       const d = await r.json();
       if (!r.ok) { setMsg(d.detail || "Could not start"); setBusy(false); return; }
@@ -2305,6 +2607,7 @@ function TrailerCard({ catalog, title }: { catalog: string; title?: string }) {
             </button>
           )}
         </div>
+        <CastAndBoard st={st} catalog={catalog} onChanged={() => setKey((k) => k + 1)} />
         {st.storyboard_pending && (
           <div className="text-[11px] text-text-faint mt-1.5">
             Storyboard ready: <span className="text-text-secondary">{st.storyboard_pending.panels} panels</span>
@@ -2313,7 +2616,7 @@ function TrailerCard({ catalog, title }: { catalog: string; title?: string }) {
         )}
         {!st.storyboard_pending && st.storyboard && (
           <div className="text-[11px] text-text-faint mt-1.5">
-            Last cut from a storyboard: <span className="text-text-secondary">{st.storyboard.panels} panels</span>
+            Last cut from a storyboard: <span className="text-text-secondary">{st.storyboard.count} panels</span>
           </div>
         )}
 

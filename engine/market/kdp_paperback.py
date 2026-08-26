@@ -28,8 +28,38 @@ from pathlib import Path
 from typing import Optional
 
 from ..config import OUTPUT_DIR, delivery_name, write_delivery_copies
-from ..database import get_book_by_catalog, update_book
+from ..database import get_book_by_catalog, list_books, update_book
 from .launch_gate import launch_gate
+
+
+def _sibling_series_id(d: dict) -> Optional[str]:
+    """The KDP series id belongs to the SERIES, not to one book.
+
+    Whichever book happened to be created first made the series on KDP and
+    kept the id to itself, so its siblings arrived believing no series
+    existed. Book two of Lake Como created the series; books one and three
+    were never attached to it and shipped as standalones — which is the whole
+    point of a series lost, since the "Book 2 of 3" link is what carries a
+    reader from one to the next. So: ask the family, not just this book.
+    """
+    series = (d.get("series") or {}).get("series_title")
+    if not series:
+        return None
+    try:
+        family = [b for b in (list_books(per_page=500) or {}).get("books", [])
+                  if ((b.get("data") or {}).get("series") or {}).get("series_title") == series]
+    except Exception:
+        return None
+    # Prefer the EARLIEST book's series. Two ids for one series already exist
+    # (book two of Larkspur made its own before it learned to look), and when
+    # they disagree the right one is the series readers are already attached
+    # to — the one carrying book one.
+    family.sort(key=lambda b: ((b.get("data") or {}).get("series") or {}).get("book_number") or 99)
+    for b in family:
+        sid = ((b.get("data") or {}).get("kdp") or {}).get("series_id")
+        if sid:
+            return sid
+    return None
 
 BOOKSHELF = "https://kdp.amazon.com/en_US/bookshelf"
 CREATE = "https://kdp.amazon.com/en_US/create"
@@ -51,9 +81,10 @@ _OPEN = None          # (context, playwright) of the window left open for review
 
 
 class Stager:
-    def __init__(self, catalog: str, publish: bool = False):
+    def __init__(self, catalog: str, publish: bool = False, force: bool = False):
         self.catalog = catalog
         self.publish = publish
+        self.force = force
         self.book = get_book_by_catalog(catalog)
         if not self.book:
             raise ValueError("Book not found")
@@ -165,9 +196,31 @@ class Stager:
             "series_title": series.get("series_title"), "book_number": series.get("book_number"),
             "paper": paper, "trim": d.get("trim_size") or "5.25x8", "price": price,
             "release_date": rel.get("date"), "release_mode": rel.get("mode") or "immediate",
-            "kdp_series_id": (d.get("kdp") or {}).get("series_id"),
+            "kdp_series_id": (d.get("kdp") or {}).get("series_id") or _sibling_series_id(d),
             "paperback_id": (d.get("kdp") or {}).get("paperback_id"),
         }
+
+    async def _capture_id(self, tries: int = 6):
+        """Write down the title id the instant KDP mints it.
+
+        KDP creates the title — and spends one of the ten creations it allows
+        per format each week — the moment the setup page opens, long before
+        anything is saved. Recording the id only after a step succeeds meant
+        a run that died in between left an orphan draft behind and the next
+        attempt started a SECOND title for the same book: two slots gone, one
+        of them dead. So the id is claimed here, before anything can fail,
+        and every later run resumes this draft instead of minting another.
+        """
+        import re as _re
+        for _ in range(tries):
+            mm = _re.search(r"/paperback/([A-Za-z0-9]{8,})", self.page.url)
+            if mm and mm.group(1).lower() != "new":
+                self._remember({"paperback_id": mm.group(1)})
+                self.note(f"draft {mm.group(1)} created — later runs will resume it")
+                return mm.group(1)
+            await self.page.wait_for_timeout(1500)
+        self.note("no draft id in the URL yet — a retry may create a second title")
+        return None
 
     # ── pages ────────────────────────────────────────────────────
     async def details(self, m: dict):
@@ -178,6 +231,7 @@ class Stager:
         else:
             await p.goto(CREATE, timeout=60000, wait_until="domcontentloaded")
             await self.click_text("Create paperback", 4000)
+            await self._capture_id()
         if not await self.signed_in():
             return "needs_signin"
         await self.fill("#data-print-book-title", m["title"])
@@ -256,29 +310,26 @@ class Stager:
             await self.click_text("Save categories", 2000)
             self.note(f"categories placed: {done}")
 
-        # series
-        if m["series_title"] and not m["paperback_id"]:
-            await self.click_text("Add to series", 3000)
-            if m["kdp_series_id"]:
-                await self.click_text("Select series", 2500)
-                self.note("existing series: select by hand if not auto-matched")
-            else:
-                await self.click_text("Create series", 2500)
-                await self.click_text("Main content", 2500)
-                await self.click_text("Go to series setup", 4000)
-                await self.fill("#data-series-title", m["series_title"])
-                await p.evaluate("""() => { const r=[...document.querySelectorAll('input[name="data[is_series_ordered]"]')].find(x=>x.value==='true'); r && r.click(); }""")
-                await self.click_text("Submit updates", 5000)
-                sid = p.url.split("/series/")[-1].split("?")[0] if "/series/" in p.url else None
-                if sid:
-                    self._remember({"series_id": sid})
-                await self.shot("series")
-                # back to the title
-                pid = m["paperback_id"] or (p.url.split("attach_item_id=")[-1].split("&")[0] if "attach_item_id=" in p.url else None)
-                if pid:
-                    self._remember({"paperback_id": pid})
-                    await p.goto(f"https://kdp.amazon.com/en_US/title-setup/paperback/{pid}/details",
-                                 timeout=60000, wait_until="domcontentloaded")
+        # series — KDP marks this field "(optional)", and so must we. Series
+        # setup opens its own flow that Amazon reshapes regularly; when it
+        # misbehaves the book itself is still perfectly publishable, so a
+        # failure here reports itself and steps aside rather than taking the
+        # whole upload down. Linking is easy to finish from the Bookshelf.
+        try:
+            await self._series(m)
+        except Exception as e:
+            self.note(f"series not linked ({str(e)[:70]}) — "
+                      f"link '{m['series_title']}' from the Bookshelf")
+            try:                       # leave no dialog covering what follows
+                await p.keyboard.press("Escape")
+                await p.wait_for_timeout(800)
+                # series setup is a page of its own; failing there strands us
+                # away from the title, where the rest of this step cannot work
+                if "/series" in p.url:
+                    await p.go_back(timeout=30000)
+                    await p.wait_for_timeout(1500)
+            except Exception:
+                pass
         # release
         if m["release_mode"] == "scheduled" and m["release_date"]:
             await self.radio_by_label("Schedule my book")
@@ -295,6 +346,46 @@ class Stager:
         if pid and pid != "new":
             self._remember({"paperback_id": pid})
         return "ok"
+
+    async def _series(self, m: dict):
+        """Attach the title to its series. Optional, and isolated for it."""
+        p = self.page
+        # Attach whenever the book belongs to a series and is not yet linked.
+        # Skipping this for any title that already had a draft is what left
+        # The Last Summer and Villa Bellariva on KDP as standalones while the
+        # series existed: they were staged from drafts made before the series
+        # did, so the step never ran for them.
+        linked = bool((self.d.get("kdp") or {}).get("series_id"))
+        if m["series_title"] and not linked:
+            await self.click_text("Add to series", 3000)
+            if m["kdp_series_id"]:
+                await self.click_text("Select series", 2500)
+                self.note("existing series: select by hand if not auto-matched")
+            else:
+                await self.click_text("Create series", 2500)
+                # KDP's dialog used to ask whether the series was main or
+                # low content. It no longer does, and insisting on that step
+                # failed the whole stage on a question Amazon stopped asking.
+                # Anything optional in someone else's UI has to be optional
+                # here too.
+                try:
+                    await self.click_text("Main content", 2500)
+                except Exception:
+                    pass
+                await self.click_text("Go to series setup", 4000)
+                await self.fill("#data-series-title", m["series_title"])
+                await p.evaluate("""() => { const r=[...document.querySelectorAll('input[name="data[is_series_ordered]"]')].find(x=>x.value==='true'); r && r.click(); }""")
+                await self.click_text("Submit updates", 5000)
+                sid = p.url.split("/series/")[-1].split("?")[0] if "/series/" in p.url else None
+                if sid:
+                    self._remember({"series_id": sid})
+                await self.shot("series")
+                # back to the title
+                pid = m["paperback_id"] or (p.url.split("attach_item_id=")[-1].split("&")[0] if "attach_item_id=" in p.url else None)
+                if pid:
+                    self._remember({"paperback_id": pid})
+                    await p.goto(f"https://kdp.amazon.com/en_US/title-setup/paperback/{pid}/details",
+                                 timeout=60000, wait_until="domcontentloaded")
 
     async def content(self, m: dict):
         p = self.page
@@ -316,11 +407,31 @@ class Stager:
             await p.wait_for_timeout(1500)
             clicked = await p.evaluate("""() => { const b=[...document.querySelectorAll('button, [role=button]')].filter(x => x.offsetParent!==null && /assign (me )?(a )?(free )?(kdp )?isbn/i.test(x.innerText||'')); const t=b[b.length-1]; if (t) { t.click(); return t.innerText.trim(); } return null; }""")
             self.note(f"ISBN: clicked {clicked!r}")
+            # Amazon answers that click with a confirmation dialog, and while it
+            # is open every control behind it is unclickable. It has to be
+            # confirmed here — otherwise the next step (trim size) spends its
+            # whole timeout waiting on an element the dialog is covering, and
+            # the stage dies one step after the ISBN was requested.
             for _ in range(10):
                 await p.wait_for_timeout(2000)
                 txt = await p.inner_text("body")
                 if "has been assigned a free KDP ISBN" in txt:
                     break
+                confirmed = await p.evaluate("""() => {
+                    const dlg = [...document.querySelectorAll(
+                        '[role=dialog],[aria-modal=true],.a-modal-content')]
+                        .find(d => d.offsetParent !== null);
+                    if (!dlg) return null;
+                    const b = [...dlg.querySelectorAll('button,[role=button]')]
+                        .find(x => x.offsetParent !== null
+                                && /assign/i.test(x.innerText || '')
+                                && !/cancel/i.test(x.innerText || ''));
+                    if (!b) return null;
+                    b.click();
+                    return (b.innerText || '').trim();
+                }""")
+                if confirmed:
+                    self.note(f"ISBN: confirmed the dialog ({confirmed!r})")
         txt = await p.inner_text("body")
         import re
         isbn = re.search(r"ISBN:\s*(\d{13})", txt)
@@ -346,6 +457,13 @@ class Stager:
         cover_f = out / delivery_name(self.book["title"], "cover")
         digest = _hl.sha1(interior_f.read_bytes() + cover_f.read_bytes()).hexdigest()[:16]
         already = ((get_book_by_catalog(self.catalog)["data"].get("kdp") or {}).get("uploaded_digest"))
+        # The digest says what WE last sent, not what Amazon still holds. When
+        # a file goes missing from a draft that record is the reason we would
+        # never send it again, so an explicit force has to mean "upload it
+        # anyway" — otherwise the only repair is by hand.
+        if self.force and already == digest:
+            self.note("forced: re-uploading manuscript + cover even though they are unchanged")
+            already = None
         if already == digest:
             self.note("manuscript + cover unchanged since the last upload — not re-uploading")
             uploaded_now = False
@@ -363,6 +481,21 @@ class Stager:
         await p.wait_for_timeout(800)
         for field, choice in (("Texts", AI_DEFAULTS["texts"]), ("Images", AI_DEFAULTS["images"]), ("Translations", AI_DEFAULTS["translations"])):
             try:
+                # A set dropdown shows its VALUE, not "Select" — so on a
+                # re-run the click below finds nothing, times out, and reports
+                # a failure indistinguishable from a real one. Read what the
+                # field already says first; a correct field needs no touching,
+                # and anything still logged is then a genuine problem.
+                try:
+                    current = (await p.locator(
+                        f'xpath=//*[normalize-space(text())="{field}"]'
+                        f'/following::*[@mdn-select-value][1]'
+                    ).first.inner_text(timeout=2500)).strip()
+                except Exception:
+                    current = ""
+                if current == choice:
+                    self.note(f"AI field {field}: already {choice!r} — left as is")
+                    continue
                 await p.locator(f'xpath=//*[normalize-space(text())="{field}"]/following::*[normalize-space(text())="Select"][1]').first.click(timeout=5000)
                 await p.wait_for_timeout(600)
                 await p.get_by_text(choice, exact=True).first.click(timeout=5000)
@@ -423,7 +556,10 @@ class Stager:
         if "print-preview" not in p.url:
             await self.shot("previewer-pending")
             self.note("previewer did not open within the wait — KDP may still be converting; run again later")
-            return "preview_issues"
+            # Not the same thing as a rejected file, and it must not be
+            # reported as one: this book is fine and simply needs more time,
+            # while a flagged preview means something is wrong with the PDF.
+            return "preview_pending"
         # the previewer renders the book page by page; wait for its verdict
         for _ in range(30):
             body = await p.inner_text("body")
@@ -494,8 +630,21 @@ class Stager:
     def _remember(self, patch: dict):
         fresh = get_book_by_catalog(self.catalog)
         data = dict(fresh["data"])
-        data["kdp"] = {**(data.get("kdp") or {}), **patch}
+        prev = data.get("kdp") or {}
+        data["kdp"] = {**prev, **patch}
         update_book(fresh["id"], data)
+        # A title id we did not have before means KDP has just minted one,
+        # and that spends one of the ten creations Amazon allows per format
+        # each week — whether or not this run goes on to succeed. A stage
+        # that dies after this point has still cost a slot, which is why it
+        # is counted here rather than at the end of a successful run.
+        new_id = patch.get("paperback_id")
+        if new_id and prev.get("paperback_id") != new_id:
+            try:
+                from .kdp_quota import record_creation
+                record_creation(self.catalog, "paperback", new_id)
+            except Exception:
+                pass
 
     # ── the run ──────────────────────────────────────────────────
     async def run(self) -> dict:
@@ -504,7 +653,7 @@ class Stager:
             return {"ok": False, "stopped_at": "gate", "blocking": gate["blocking_failures"],
                     "message": "The launch gate is not clear — nothing was published."}
         from playwright.async_api import async_playwright
-        from .browser import PROFILE_DIR, UA, _ARGS, _STEALTH
+        from .browser import PROFILE_DIR, _ARGS, _STEALTH, context_kwargs
         # one window at a time: the previous run's window (left open for
         # review) holds the profile lock — close it before we open ours
         global _OPEN
@@ -517,8 +666,8 @@ class Stager:
         _OPEN = None
         pw = await async_playwright().start()
         ctx = await pw.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=False, args=_ARGS, user_agent=UA,
-            viewport={"width": 1400, "height": 900}, locale="en-US")
+            str(PROFILE_DIR), headless=False, args=_ARGS,
+            **context_kwargs(viewport={"width": 1400, "height": 900}))
         await ctx.add_init_script(_STEALTH)
         _OPEN = (ctx, pw)
         self.page = ctx.pages[0] if ctx.pages else await ctx.new_page()
@@ -531,6 +680,11 @@ class Stager:
                 if r == "needs_signin":
                     result.update(ok=False, stopped_at=step,
                                   message="Amazon asked for the password — sign in in the open window, then run again.")
+                    return result
+                if r == "preview_pending":
+                    result.update(ok=False, stopped_at=step, retryable=True,
+                                  message="KDP is still converting the files — nothing is wrong "
+                                          "with the book. Run this again in a few minutes.")
                     return result
                 if r == "preview_issues":
                     result.update(ok=False, stopped_at=step,
@@ -548,7 +702,28 @@ class Stager:
         return result
 
 
-async def stage_paperback(catalog: str, publish: bool = False) -> dict:
+def _already_on_kdp(catalog: str):
+    """Guard against staging a title KDP already has.
+
+    The Botanist's Quiet Ruin was a scheduled release when a stage run tried
+    to refill its form; the title field was locked and the run failed halfway
+    through. Better to refuse with a clear reason than half-edit a live book.
+    """
+    from ..database import get_book_by_catalog
+    b = get_book_by_catalog(catalog) or {}
+    pub = ((b.get("data") or {}).get("publishing") or {})
+    if pub.get("kdp_present"):
+        return pub.get("kdp_status") or "already on KDP"
+    return None
+
+
+async def stage_paperback(catalog: str, publish: bool = False,
+                          force: bool = False) -> dict:
     from .launch_gate import assert_publishable
     assert_publishable(catalog)
-    return await Stager(catalog, publish=publish).run()
+    state = None if force else _already_on_kdp(catalog)
+    if state:
+        return {"catalog": catalog, "ok": False, "skipped": True,
+                "reason": f"already on KDP ({state}) — nothing uploaded. "
+                          f"Pass force to edit it anyway."}
+    return await Stager(catalog, publish=publish, force=force).run()
