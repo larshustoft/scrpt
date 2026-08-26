@@ -286,7 +286,16 @@ class AuthorPenName(BaseModel):
 
 
 class SettingsUpdate(BaseModel):
-    """Partial settings update."""
+    """Partial settings update.
+
+    NOTE: this model is a silent whitelist — any key the frontend sends that
+    is not declared here is dropped without an error, and the setting simply
+    never saves (the office-background picker looked broken for exactly this
+    reason). Declare every settable key.
+    """
+    # Appearance
+    office_background: Optional[str] = None    # "newyork" | "burbank"
+
     # Publisher identity
     publisher_name: Optional[str] = None
     author_name: Optional[str] = None          # legacy / default fallback

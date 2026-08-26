@@ -50,8 +50,16 @@ def _voice_for(book: dict, name: str) -> str:
 
 
 async def _draw_shot_frame(catalog: str, scene_n: int, shot: dict, style: str,
-                           cast: dict) -> Optional[Path]:
-    """A faceless staging frame for one shot — same rule as trailer boards."""
+                           cast: dict, plates: dict = None) -> Optional[Path]:
+    """A staging frame that shows EXACTLY what the finished shot should look
+    like. Lars's law (2026-08-27): no faceless boards — the cast's TRUE faces,
+    composited from their locked photo plates via reference edit, facing the
+    camera whenever the shot has a line. The frame is the shot's target, not a
+    blocking diagram; a faceless frame lets the camera invent a new person.
+
+    If a frame already exists on disk it is reused as the STAGING reference
+    (approved geography and light) while the faces are recast from the plates.
+    """
     import base64
     import httpx
     from ..config import OPENAI_API_KEY
@@ -59,34 +67,72 @@ async def _draw_shot_frame(catalog: str, scene_n: int, shot: dict, style: str,
     out = Path(OUTPUT_DIR) / catalog / "film" / f"scene-{scene_n:02d}"
     out.mkdir(parents=True, exist_ok=True)
     dest = out / f"frame-{shot['k']:02d}.png"
-    if dest.exists():
+    if dest.exists() and not shot.get("reframe"):
         return dest
+
+    # the locked plates of everyone in the shot ride along as image refs
+    files, ref_note, n_ref = [], "", 0
+    for name in (shot.get("characters") or []):
+        rel = (plates or {}).get(name)
+        p = Path(OUTPUT_DIR) / catalog / "trailer" / rel if rel else None
+        if p and p.exists():
+            views = [p] + sorted(p.parent.glob(f"{p.stem}-angle-*.png"))[:3]
+            a = n_ref + 1
+            for v in views:
+                n_ref += 1
+                files.append(("image[]", (f"plate-{n_ref}.png", v.read_bytes(), "image/png")))
+            span = (f"image {a}" if a == n_ref
+                    else f"images {a} through {n_ref} (the same person, different angles)")
+            ref_note += (f"\n{name} IS the person in reference {span} — "
+                         f"reproduce that EXACT face, hair, age and build, "
+                         f"photorealistically, unmistakably the same human.")
+    staging = dest if dest.exists() else None
+    if staging:
+        files.append(("image[]", ("staging.png", staging.read_bytes(), "image/png")))
+        ref_note += ("\nThe LAST reference image is the approved staging: keep its "
+                     "location, architecture, camera angle and light, but restage "
+                     "the people as directed.")
+
+    speaks = bool(((shot.get("line") or {}).get("text") or "").strip())
     who = "".join(f"\n{n}: {cast[n]}" for n in (shot.get("characters") or []) if cast.get(n))
     prompt = (
-        f"A storyboard frame. THE SHOT: {shot.get('framing','')}: {shot.get('action','')}\n"
-        + (f"\nWHO IS IN IT — stage by build, wardrobe and position, every face "
-           f"UNREADABLE (turned, shadowed, or distant): {who}\n" if who else "")
+        f"A cinematic film still — the target frame for a shot. "
+        f"THE SHOT: {shot.get('framing','')}: {shot.get('action','')}\n"
+        + (f"\nWHO IS IN IT: {who}\n{ref_note}\n" if who else "")
+        + ("\nThe speaking character faces the camera directly, eyes to the lens, "
+           "mid-sentence, warm and natural — never turned away, never from behind.\n"
+           if speaks and n_ref else "")
         + f"\nWORLD AND PALETTE: {style}\n\n"
-        "Cinematic film still, 16:9. No readable faces. No text, no borders."
+        "Photorealistic, 16:9. No text, no borders, no captions."
     )
-    async with httpx.AsyncClient(timeout=260) as c:
+    tmp = out / f"frame-{shot['k']:02d}.new.png"
+    async with httpx.AsyncClient(timeout=320) as c:
         model = await _best_image_model(c)
         for _ in range(2):
             try:
-                r = await asyncio.wait_for(c.post(
-                    "https://api.openai.com/v1/images/generations",
-                    headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                    json={"model": model, "prompt": prompt[:3800],
-                          "size": "1536x1024", "quality": "high", "n": 1}),
-                    timeout=240)
+                if files:
+                    r = await c.post(
+                        "https://api.openai.com/v1/images/edits",
+                        headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                        files=files,
+                        data={"model": model, "prompt": prompt[:3800],
+                              "size": "1536x1024", "quality": "high", "n": "1"})
+                else:
+                    r = await c.post(
+                        "https://api.openai.com/v1/images/generations",
+                        headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                        json={"model": model, "prompt": prompt[:3800],
+                              "size": "1536x1024", "quality": "high", "n": 1})
             except Exception:
                 continue
             if r.status_code == 200:
-                dest.write_bytes(base64.b64decode(r.json()["data"][0]["b64_json"]))
+                tmp.write_bytes(base64.b64decode(r.json()["data"][0]["b64_json"]))
+                tmp.replace(dest)
+                shot.pop("reframe", None)
                 return dest
             if r.status_code < 500:
-                return None
-    return None
+                return dest if dest.exists() else None
+    return dest if dest.exists() else None
 
 
 async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
@@ -106,16 +152,26 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
     sdir = Path(OUTPUT_DIR) / catalog / "film" / f"scene-{scene_n:02d}"
     sdir.mkdir(parents=True, exist_ok=True)
 
-    # the cast plates (locked photos), with short-name aliases — as trailers
+    # the cast plates (locked photos), with short-name aliases — as trailers.
+    # A character's bible may hold ANGLE plates beside the locked portrait
+    # (<slug>-angle-*.png — the same person from other angles, Lars's ask):
+    # every one of them rides along, so identity is stated from several views.
     plates = with_short_names((await draw_cast_plates(catalog, handle)).get("plates") or {})
-    char_uris = {}
+    char_uris: dict = {}
     for name, rel in plates.items():
+        if name in char_uris:
+            continue
         p = Path(OUTPUT_DIR) / catalog / "trailer" / rel
-        if p.exists() and name not in char_uris:
+        views = ([p] if p.exists() else []) + sorted(
+            p.parent.glob(f"{p.stem}-angle-*.png"))
+        uris = []
+        for v in views[:4]:
             try:
-                char_uris[name] = await runway.upload_file(p)
+                uris.append(await runway.upload_file(v))
             except Exception:
                 pass
+        if uris:
+            char_uris[name] = uris
 
     credits_before = await runway.credit_balance()
 
@@ -123,7 +179,7 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
     if handle:
         handle.progress(0.10, "board", f"framing scene {scene_n}")
     frames = await asyncio.gather(
-        *[_draw_shot_frame(catalog, scene_n, sh, style, cast) for sh in shots],
+        *[_draw_shot_frame(catalog, scene_n, sh, style, cast, plates) for sh in shots],
         return_exceptions=True)
 
     gate = asyncio.Semaphore(4)
@@ -133,25 +189,66 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
         clip = sdir / f"shot-{sh['k']:02d}.mp4"
         if clip.exists() and clip.stat().st_size > 200_000:
             return clip
-        refs, who = [], ""
-        for name in (sh.get("characters") or []):
-            if char_uris.get(name):
-                refs.append(char_uris[name])
-                who += (f" {name} is the person in reference image {len(refs)} — "
-                        f"exactly the same face, hair and build, in this scene.")
+        # The FRAME leads: it is the shot's target image and now carries the
+        # cast's true faces (composited from the locked plates), so identity
+        # survives even when moderation strips the portrait refs. Plates ride
+        # behind it as reinforcement.
+        frame_ref, who = None, ""
         fr = frames[idx]
         if isinstance(fr, Path) and fr.exists():
             try:
-                refs.append(await runway.upload_file(fr))
-                who += (f" Reference image {len(refs)} is the storyboard frame: match "
-                        f"its composition and light; faces come from the earlier images.")
+                frame_ref = await runway.upload_file(fr)
+                who += (" The FIRST reference image is the target frame for this "
+                        "shot: match it exactly — the people's faces, hair and "
+                        "build, the composition, buildings and light. The video "
+                        "opens on this framing and the same humans.")
             except Exception:
                 pass
+        face_refs = []
+        for name in (sh.get("characters") or []):
+            uris = char_uris.get(name) or []
+            if uris:
+                a = (1 if frame_ref else 0) + len(face_refs) + 1
+                face_refs.extend(uris)
+                b = (1 if frame_ref else 0) + len(face_refs)
+                span = f"image {a}" if a == b else f"images {a} through {b}"
+                who += (f" Reference {span} show {name} from different angles — "
+                        f"one and the same person: exactly that face, hair, age "
+                        f"and build in this scene.")
+        refs = ([frame_ref] if frame_ref else []) + face_refs
         action = apply_cast(f"{sh.get('framing','')}: {sh.get('action','')}", cast)
         snd = (sh.get("sound") or "").strip()
-        prompt = (f"{action} {style} No text or lettering on screen."
-                  + (f" Sound: {snd}. No music, no speech." if snd else "") + who)
-        secs = max(4, min(12, int(sh.get("seconds") or 6)))
+        ln = sh.get("line") or {}
+        speak = bool((ln.get("text") or "").strip())
+        if speak:
+            # Written as SCRPT, spoken as "Script" — house rule since the
+            # commercial. The model reads the line aloud, so the spoken text
+            # gets the pronunciation, never the wordmark's spelling.
+            spoken = ln["text"].replace("SCRPT", "Script")
+            # Her lines are PERFORMED on camera: Seedance generates the voice
+            # and the lip sync together (Lars's law — she speaks to us, face
+            # to the lens, never her back). ElevenLabs cues stay for off-
+            # camera VO only.
+            sh["native_dialogue"] = True
+            # Both the staging sentence and the voice are per-shot overridable:
+            # the guide's default carries the tour, but e.g. the audiobook
+            # narrator speaks on camera too, and he is neither female nor
+            # looking into the lens.
+            stage_sent = sh.get("speech_stage") or (
+                "She looks straight into the camera, smiling warmly, and says clearly:")
+            vdesc = sh.get("voice_desc") or (
+                "a warm friendly professional female voice in her mid-thirties")
+            prompt = (f"{action} {stage_sent} \"{spoken}\" — natural, "
+                      f"accurate lip sync, {vdesc}. {style}"
+                      + (f" Background sound: {snd}. No music." if snd else " No music.")
+                      + " The only visible lettering anywhere is her small brass name badge, which reads exactly: SCRPT — spelled S-C-R-P-T, never \"Script\". No other text on screen." + who)
+        else:
+            prompt = (f"{action} {style} No text or lettering on screen."
+                      + (f" Sound: {snd}. No music, no speech." if snd else "") + who)
+        # Seedance shoots up to 30 s — long enough for a scene to be ONE
+        # continuous take (Lars's cut law: one clip per speaking scene, the
+        # dialogue never chopped across re-castings).
+        secs = max(4, min(30, int(sh.get("seconds") or 6)))
         async with gate:
             if handle:
                 handle.progress(0.2 + 0.5 * idx / max(1, len(shots)), "shooting",
@@ -162,7 +259,7 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
             for attempt in range(16):
                 task = await runway.generate_seedance(prompt, live, seconds=secs,
                                                       ratio="1280:720",
-                                                      model="seedance2_5", audio=False)
+                                                      model="seedance2_5", audio=speak)
                 result = await runway.wait_for(task["id"], timeout_s=1500)
                 url = (result.get("output") or [None])[0] if result.get("status") == "SUCCEEDED" else None
                 if url:
@@ -172,9 +269,18 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
                 fail = json.dumps(result.get("failure") or result.get("failureCode") or "")
                 if "moderation" in fail.lower() or "third_party" in fail.lower():
                     moderation += 1
-                if moderation >= 12 and live:
+                # Degrade in STAGES. Moderation objects to photoreal faces,
+                # not to faceless storyboard frames — dropping everything
+                # threw away the composition too, and the camera invented a
+                # different studio (a mission-revival gate, on our deco lot).
+                # First sacrifice the faces and KEEP the frame; only if the
+                # gate still refuses does the shot fall to words alone.
+                if moderation >= 6 and face_refs and len(live) > (1 if frame_ref else 0):
+                    live = [frame_ref] if frame_ref else []
+                    sh["refs_dropped"] = "faces"
+                elif moderation >= 12 and live:
                     live = []
-                    sh["refs_dropped"] = True
+                    sh["refs_dropped"] = "all"
                 await asyncio.sleep(8 * (attempt + 1))
             raise RuntimeError(f"scene {scene_n} shot {sh['k']} could not be filmed")
 
@@ -189,10 +295,27 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
             W, H = _probe_size(clip)
         need = float(sh.get("seconds") or 6)
         seg = sdir / f"seg-{sh['k']:02d}.mp4"
-        _cut_segment(clip, 0.0, need, seg, W, H)
+        # keep the take's own audio — for dialogue shots it carries her
+        # lip-synced voice; a silent track is laid where none exists
+        raw = sdir / f"segraw-{sh['k']:02d}.mp4"
+        _run(["-y", "-ss", "0.000", "-i", str(clip), "-t", f"{max(0.2, need):.3f}",
+              "-vf", f"scale={W}:{H},fps=24,format=yuv420p",
+              "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+              "-c:a", "aac", "-ar", "48000", "-ac", "2", str(raw)], "cut+audio")
+        import subprocess as _sp
+        import imageio_ffmpeg as _iff
+        probe = _sp.run([_iff.get_ffmpeg_exe(), "-i", str(raw)],
+                        capture_output=True, text=True)
+        if "Audio:" not in probe.stderr:
+            _run(["-y", "-i", str(raw), "-f", "lavfi",
+                  "-i", "anullsrc=r=48000:cl=stereo", "-shortest",
+                  "-c:v", "copy", "-c:a", "aac", "-ar", "48000", str(seg)], "silent track")
+        else:
+            import shutil as _sh
+            _sh.copyfile(raw, seg)
         segs.append(seg)
         ln = sh.get("line")
-        if ln and (ln.get("text") or "").strip():
+        if ln and (ln.get("text") or "").strip() and not sh.get("native_dialogue"):
             voice = _voice_for(book, ln.get("speaker") or "")
             lf = await _record_line(catalog, ln["text"], genre,
                                     f"film-{scene_n}-{sh['k']}-{_h(ln['text'])}",
@@ -208,11 +331,31 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
                 sfx.append((cue, t + 0.1, 0.8))
         t += need
 
+    # A continuous ambience bed under the whole scene — the world breathing,
+    # not just event cues. Outdoors especially: the lot must HUM (Lars).
+    amb = (scene.get("ambience") or "").strip()
+    if amb:
+        alen = min(20.0, max(8.0, t))
+        acue = await _record_sfx(catalog, amb, alen,
+                                 f"film-amb-{_h(amb)}", f"film-amb-{_h(amb)}.mp3")
+        if acue:
+            pos = 0.0
+            while pos < t:
+                sfx.append((acue, pos, 0.7))
+                pos += alen
+
     lst = sdir / "list.txt"
     lst.write_text("".join(f"file '{s}'\n" for s in segs))
-    picture = sdir / "picture.mp4"
+    silent = sdir / "picture-silent.mp4"
     _run(["-y", "-f", "concat", "-safe", "0", "-i", str(lst),
-          "-c", "copy", str(picture)], "scene concat")
+          "-c:v", "copy", "-c:a", "aac", "-ar", "48000", str(silent)], "scene concat")
+    # The segments carry no audio (shots are cut with -an), so the mixer's
+    # ambience input [0:a] would match no stream and the whole mix dies at
+    # the finish line. Lay a silent bed under the picture first — the world's
+    # sound arrives from the per-shot cues, the dialogue from the cast.
+    picture = sdir / "picture.mp4"
+    import shutil as _sh2
+    _sh2.copyfile(silent, picture)      # segments already carry audio tracks
 
     out = sdir / "scene.mp4"
     if handle:
