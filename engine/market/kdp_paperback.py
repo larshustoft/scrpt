@@ -666,7 +666,10 @@ class Stager:
         _OPEN = None
         pw = await async_playwright().start()
         ctx = await pw.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=False, args=_ARGS,
+            str(PROFILE_DIR), headless=False,  # HEADFUL, deliberately: the first headless STAGING run got the
+            # session signed out mid-flight (2026-08-27) — Amazon re-challenges heavy
+            # flows in headless. Reads/scans may run headless; uploads keep a window.
+            args=_ARGS,
             **context_kwargs(viewport={"width": 1400, "height": 900}))
         await ctx.add_init_script(_STEALTH)
         _OPEN = (ctx, pw)

@@ -218,9 +218,25 @@ async def _shoot_veo_chain(sdir: Path, sh: dict, frame: Path, action: str,
     if speak:
         sh["native_dialogue"] = True
 
-    first = _crop_16x9(frame, sdir / f"veo-first-{sh['k']:02d}.png")
+    # Drift guard. A chained take only ever saw "continue seamlessly", so by
+    # take four the world walked: wardrobe morphed, the office went sunset,
+    # the white void collapsed into a western backlot. Two countermeasures:
+    # every take restates the SETTING and wardrobe in full, and long chains
+    # re-anchor on the ORIGINAL frame every third take, resetting accumulated
+    # drift to zero (invisible in a void, a soft matching cut elsewhere).
+    setting = (sh.get("setting") or "").strip()
+    lock = ((f" The setting stays EXACTLY as in the first frame: {setting}." if setting else
+             " The location, background and light stay EXACTLY as in the first frame.")
+            + " She wears exactly the same clothes throughout: a cream silk "
+              "long-sleeved shirt with the small brass SCRPT name badge, dark "
+              "tailored trousers. Never change the setting, the light, or her "
+              "wardrobe.")
+    origin = _crop_16x9(frame, sdir / f"veo-first-{sh['k']:02d}.png")
+    first = origin
     parts = []
     for i, chunk in enumerate(chunks):
+        if i and i % 3 == 0:
+            first = origin          # reset accumulated drift
         part = sdir / f"veopart-{sh['k']:02d}-{i:02d}.mp4"
         if not (part.exists() and part.stat().st_size > 100_000):
             uri = await runway.upload_file(first)
@@ -228,10 +244,10 @@ async def _shoot_veo_chain(sdir: Path, sh: dict, frame: Path, action: str,
                 est = len(chunk.split()) / 2.3 + 1.2
                 dur = 8 if est > 6 else (6 if est > 4 else 4)
                 opener = (action if i == 0 else
-                          "She continues mid-conversation, the same woman, "
+                          "She continues mid-conversation, the same woman in "
                           "the same place, seamlessly from the first frame.")
                 prompt = (f"{opener} {stage_sent} \"{chunk}\" — natural, accurate "
-                          f"lip sync, {vdesc}, the SAME voice throughout. {style}"
+                          f"lip sync, {vdesc}, the SAME voice throughout.{lock} {style}"
                           + (f" Background sound: {snd}. No music." if snd else " No music.")
                           + " The only visible lettering anywhere is her small brass name"
                             " badge, which reads exactly: SCRPT — spelled S-C-R-P-T,"
@@ -239,7 +255,7 @@ async def _shoot_veo_chain(sdir: Path, sh: dict, frame: Path, action: str,
                             " Continue the motion seamlessly from the first frame.")
             else:
                 dur = min(8, max(4, int(sh.get("seconds") or 6)))
-                prompt = (f"{action} {style} No speech, no text on screen."
+                prompt = (f"{action}{lock} {style} No speech, no text on screen."
                           + (f" Sound: {snd}. No music." if snd else " No music.")
                           + " Continue the motion seamlessly from the first frame.")
             ok = False
@@ -376,7 +392,15 @@ async def produce_scene(catalog: str, scene_n: int, handle=None) -> dict:
         action = apply_cast(f"{sh.get('framing','')}: {sh.get('action','')}", cast)
         snd = (sh.get("sound") or "").strip()
         ln = sh.get("line") or {}
-        speak = bool((ln.get("text") or "").strip())
+        # sh["vo"]: the line is NARRATION, not on-camera speech — the footage
+        # shoots silent-of-voices and the line is recorded (one voice, Jessica)
+        # and mixed over it at the cut.
+        speak = bool((ln.get("text") or "").strip()) and not sh.get("vo")
+        if sh.get("no_refs"):
+            # Seedance's provider rejects ANY image containing people — for
+            # department footage we go pure text and skip the doomed uploads.
+            refs = []
+            who = ""
         if speak:
             # Written as SCRPT, spoken as "Script" — house rule since the
             # commercial. The model reads the line aloud, so the spoken text

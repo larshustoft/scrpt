@@ -257,16 +257,24 @@ function releaseLine(book: ScrptBook): string {
 function deriveStatus(book: ScrptBook): ShelfStatus {
   const d = book.data as {
     publishing?: { asin?: string; uploaded_at?: string; released_at?: string };
+    kdp?: { paperback_id?: string; kindle_id?: string; asin?: string; status?: string };
+    release?: { status?: string };
     external?: boolean;
     acceptance?: { verdict?: string };
     manuscript?: { status?: string; chapters?: { blocks: unknown[] }[] };
   };
   const pub = d.publishing || {};
+  const kdp = d.kdp || {};
 
-  // Released — live on Amazon (carries an ASIN, or imported from KDP)
-  if (pub.asin || d.external) return { label: "Released", color: "var(--status-green)" };
-  // Uploaded — submitted to KDP, not yet live
-  if (pub.uploaded_at) return { label: "Uploaded", color: "var(--status-blue)" };
+  // Released — live on Amazon (an ASIN anywhere, an imported KDP title, or a
+  // release record marked released)
+  if (pub.asin || kdp.asin || d.external || d.release?.status === "released" ||
+      kdp.status === "live")
+    return { label: "Released", color: "var(--status-green)" };
+  // Uploaded — a KDP draft exists (either flow records it), not yet live
+  if (pub.uploaded_at || kdp.paperback_id || kdp.kindle_id ||
+      ["submitted", "in_review", "publishing", "draft_complete_awaiting_publish"].includes(kdp.status || ""))
+    return { label: "Uploaded", color: "var(--status-blue)" };
 
   const ms = d.manuscript;
   const finished = ms && (

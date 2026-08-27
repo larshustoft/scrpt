@@ -60,9 +60,14 @@ def ebook_cover_jpg(catalog: str) -> Path:
 
 
 class KindleStager:
-    def __init__(self, catalog: str, publish: bool = False):
+    def __init__(self, catalog: str, publish: bool = False,
+                 force_interior: bool = False):
         self.catalog = catalog
         self.publish = publish
+        # force_interior: re-upload the EPUB even if the page says one is
+        # already there — the antidote to a draft contaminated with another
+        # book's interior (the Lake Como/Villa Bellariva id mixup, 2026-08-27).
+        self.force_interior = force_interior
         self.book = get_book_by_catalog(catalog)
         self.d = self.book["data"]
         self.log: list[str] = []
@@ -223,17 +228,38 @@ class KindleStager:
         if not await self.signed_in():
             return "needs_signin"
         await p.evaluate("""() => { const r=[...document.querySelectorAll('input[name="data[is_drm]-radio"]')].find(x=>x.value==='false'); r && r.click(); }""")
-        body = await p.evaluate("() => document.body.innerText")
+        # Any file chooser the page manages to open gets answered in-process —
+        # a NATIVE macOS picker froze a run dead (2026-08-27): automation
+        # cannot see OS dialogs, so one stray click hangs the line forever.
+        cover_jpg = str(ebook_cover_jpg(self.catalog))
         epub = OUTPUT_DIR / self.catalog / "ebook.epub"
-        if "uploaded successfully" not in body.split("Kindle eBook Cover")[0]:
+        async def _answer_chooser(fc):
+            try:
+                name = ((await fc.element.get_attribute("id")) or "").lower()
+                await fc.set_files(str(epub) if "interior" in name else cover_jpg)
+                self.note(f"file chooser intercepted ({name or 'unknown input'})")
+            except Exception:
+                pass
+        p.on("filechooser", _answer_chooser)
+        body = await p.evaluate("() => document.body.innerText")
+        if self.force_interior or "uploaded successfully" not in body.split("Kindle eBook Cover")[0]:
             await p.locator("#data-assets-interior-file-upload-AjaxInput").set_input_files(str(epub))
             await p.wait_for_timeout(15000)
-            self.note("EPUB uploaded")
+            self.note("EPUB uploaded" + (" (forced re-upload)" if self.force_interior else ""))
+        # RE-READ the page before deciding about the cover: the first body
+        # snapshot goes stale the moment the EPUB upload rewrites the page,
+        # and acting on it made us re-click an upload control that was
+        # already done ("Cover uploaded successfully" was on screen).
+        body = await p.evaluate("() => document.body.innerText")
         if "Cover uploaded successfully" not in body:
-            await p.evaluate("""() => { const el=[...document.querySelectorAll('label, span, div')].find(e => e.children.length<4 && /Upload a cover you already have/i.test(e.innerText||'') && e.offsetParent!==null && (e.innerText||'').length<120); const inp=el && (el.querySelector('input')||el.closest('label')?.querySelector('input')); (inp||el) && (inp||el).click(); }""")
-            await p.wait_for_timeout(1500)
-            await p.locator("#data-assets-cover-file-upload-AjaxInput").set_input_files(str(ebook_cover_jpg(self.catalog)))
+            await p.locator("#data-assets-cover-file-upload-AjaxInput").set_input_files(cover_jpg)
             await p.wait_for_timeout(15000)
+            body = await p.evaluate("() => document.body.innerText")
+            if "Cover uploaded successfully" not in body:
+                await p.evaluate("""() => { const el=[...document.querySelectorAll('label, span, div')].find(e => e.children.length<4 && /Upload a cover you already have/i.test(e.innerText||'') && e.offsetParent!==null && (e.innerText||'').length<120); const inp=el && (el.querySelector('input')||el.closest('label')?.querySelector('input')); (inp||el) && (inp||el).click(); }""")
+                await p.wait_for_timeout(1500)
+                await p.locator("#data-assets-cover-file-upload-AjaxInput").set_input_files(cover_jpg)
+                await p.wait_for_timeout(15000)
             self.note("cover uploaded")
         # AI questionnaire: custom radios, real selects
         q = p.locator(".ditto-questionnaire").first
@@ -258,19 +284,35 @@ class KindleStager:
             if "Processing your file" not in body and "processing" not in body.lower()[:2000]:
                 break
             await p.wait_for_timeout(10000)
-        conf = p.get_by_text("I confirm that my answers are accurate", exact=False)
-        if await conf.count():
-            await conf.first.click(timeout=5000)
+        # A re-uploaded manuscript makes KDP demand the "I confirm that my
+        # answers are accurate" box in EVERY section that shows one (AI +
+        # Accessibility at least). Tick the actual checkboxes, all of them —
+        # clicking the label text toggled nothing and blocked the page.
+        async def _tick_confirms():
+            return await p.evaluate("""() => {
+                let n = 0;
+                for (const box of document.querySelectorAll('input[type=checkbox]')) {
+                    const wrap = box.closest('div, label, section');
+                    const t = wrap ? (wrap.innerText || '') : '';
+                    if (/confirm that my answers are accurate/i.test(t) && !box.checked) {
+                        box.click(); n++;
+                    }
+                }
+                return n;
+            }""")
+        n = await _tick_confirms()
+        if n:
+            self.note(f"confirmation boxes ticked: {n}")
             await p.wait_for_timeout(1200)
         await self.shot("content", full=True)
-        await p.locator("#save-and-continue-announce").click(timeout=10000)
+        await p.locator("#save-and-continue-announce").first.click(timeout=10000)
         await p.wait_for_timeout(10000)
         if "/pricing" not in p.url:
-            # the confirmation toggled the wrong way — once more
-            if await conf.count():
-                await conf.first.click(timeout=5000)
+            n = await _tick_confirms()
+            if n:
+                self.note(f"confirmation boxes ticked (second pass): {n}")
                 await p.wait_for_timeout(1200)
-                await p.locator("#save-and-continue-announce").click(timeout=10000)
+                await p.locator("#save-and-continue-announce").first.click(timeout=10000)
                 await p.wait_for_timeout(10000)
         if "/pricing" not in p.url:
             await self.shot("content-blocked", full=True)
@@ -307,14 +349,16 @@ class KindleStager:
         self.note(f"KDP Select on · 70% · ${price:.2f}")
         await self.shot("pricing", full=True)
         if self.publish:
-            await p.locator("#save-and-publish-announce").click(timeout=10000)
+            # KDP renders sixteen copies of this id; strict mode refuses to
+            # pick — the first visible one is the real button
+            await p.locator("#save-and-publish-announce").first.click(timeout=10000)
             await p.wait_for_timeout(8000)
             await self.shot("published")
             self.note("PUBLISH pressed")
             self._remember({"kindle_status": "submitted_for_publishing",
                             "kindle_submitted_at": dt.datetime.now().isoformat(timespec="minutes")})
         else:
-            await p.locator("#save-announce").click(timeout=10000)
+            await p.locator("#save-announce").first.click(timeout=10000)
             await p.wait_for_timeout(6000)
             self._remember({"kindle_status": "draft_complete_awaiting_publish", "ebook_price": price})
             self.note("saved as draft")
@@ -336,7 +380,10 @@ class KindleStager:
         _pb._OPEN = None
         pw = await async_playwright().start()
         ctx = await pw.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=False, args=_ARGS,
+            str(PROFILE_DIR), headless=False,  # HEADFUL, deliberately: the first headless STAGING run got the
+            # session signed out mid-flight (2026-08-27) — Amazon re-challenges heavy
+            # flows in headless. Reads/scans may run headless; uploads keep a window.
+            args=_ARGS,
             **context_kwargs(viewport={"width": 1400, "height": 900}))
         await ctx.add_init_script(_STEALTH)
         _pb._OPEN = (ctx, pw)
@@ -362,10 +409,12 @@ class KindleStager:
         return result
 
 
-async def stage_kindle(catalog: str, publish: bool = False) -> dict:
+async def stage_kindle(catalog: str, publish: bool = False,
+                       force_interior: bool = False) -> dict:
     from .launch_gate import assert_publishable
     assert_publishable(catalog)
-    return await KindleStager(catalog, publish=publish).run()
+    return await KindleStager(catalog, publish=publish,
+                              force_interior=force_interior).run()
 
 
 async def publish_kindle_only(catalog: str) -> dict:
