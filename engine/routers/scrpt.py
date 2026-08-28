@@ -56,15 +56,24 @@ async def create_workorder(req: WorkOrderRequest):
     if preset["kind"] != req.kind.value:
         raise HTTPException(400, "Genre preset does not match book kind")
 
-    n_books = max(1, req.series_books if req.series_title else 1)
+    n_total = max(1, req.series_books if req.series_title else 1)
+    # the series can be PLANNED at five but COMMISSIONED one at a time —
+    # later books join via /series/{id}/extend (Lars)
+    n_books = n_total if not req.commission_books else max(1, min(n_total, req.commission_books))
     series_id = uuid.uuid4().hex[:8] if req.series_title else ""
     created = []
 
     for book_no in range(1, n_books + 1):
+        # the publisher can hand each book its own plot; the series idea
+        # always rides along as context. An empty slot = SCRPT plots it.
+        per_book = (req.book_ideas[book_no - 1].strip()
+                    if book_no - 1 < len(req.book_ideas) else "")
+        idea = (f"{req.idea}\n\nTHIS BOOK (#{book_no} of the series): {per_book}"
+                if per_book else req.idea)
         ms = Manuscript(
             kind=req.kind,
             genre_preset=req.genre_preset,
-            idea=req.idea,
+            idea=idea,
             target_words=req.target_words or preset["target_words"],
             status=ManuscriptStatus.IDEA,
         )
@@ -101,7 +110,9 @@ async def create_workorder(req: WorkOrderRequest):
                 "series_id": series_id,
                 "series_title": req.series_title,
                 "book_number": book_no,
-                "total_planned": n_books,
+                "total_planned": n_total,
+                "planned_titles": req.book_titles,
+                "planned_ideas": req.book_ideas,
                 "series_bible": "",
             } if series_id else {},
         }

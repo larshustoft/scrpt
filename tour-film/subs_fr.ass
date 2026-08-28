@@ -1,0 +1,50 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Film,SF Pro Display,56,&H00FFFFFF,&H90000000,&H00000000,0,0,1,0,3,2,360,360,92,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:03.19,0:00:06.00,Film,,0,0,0,,Bonjour ! Bienvenue aux\Nstudios SCRPT !
+Dialogue: 0,0:00:06.00,0:00:08.94,Film,,0,0,0,,Vous allez découvrir toute\Nnotre chaîne de production
+Dialogue: 0,0:00:08.94,0:00:11.55,Film,,0,0,0,,— d'une simple idée à\Nchacune de nos créations.
+Dialogue: 0,0:00:12.00,0:00:14.37,Film,,0,0,0,,Commençons ici, au\Ndépartement d'écriture.
+Dialogue: 0,0:00:14.37,0:00:16.91,Film,,0,0,0,,C'est ici que naissent les\Nidées de nouvelles
+Dialogue: 0,0:00:16.91,0:00:19.80,Film,,0,0,0,,histoires, transformées en\Nlivres entiers. Chapitre
+Dialogue: 0,0:00:19.80,0:00:20.53,Film,,0,0,0,,par chapitre.
+Dialogue: 0,0:00:20.53,0:00:22.90,Film,,0,0,0,,Voici le département\Nartistique, où chaque
+Dialogue: 0,0:00:22.90,0:00:25.84,Film,,0,0,0,,livre reçoit son visage —\Ncouvertures, illustrations
+Dialogue: 0,0:00:25.84,0:00:28.77,Film,,0,0,0,,et bible des personnages,\Npour que chaque personnage
+Dialogue: 0,0:00:28.77,0:00:31.60,Film,,0,0,0,,garde le même visage sur\Nla page, la couverture et
+Dialogue: 0,0:00:31.60,0:00:32.16,Film,,0,0,0,,à l'écran.
+Dialogue: 0,0:00:32.16,0:00:35.25,Film,,0,0,0,,Nos studios de livres\Naudio — où les livres
+Dialogue: 0,0:00:35.25,0:00:37.34,Film,,0,0,0,,apprennent à parler.\NÉcoutez…
+Dialogue: 0,0:00:37.24,0:00:42.99,Film,,0,0,0,,La montagne avait pris\Ntrente et un corps du
+Dialogue: 0,0:00:42.99,0:00:47.96,Film,,0,0,0,,vivant de Luc Reyer. Il\Nles avait tous
+Dialogue: 0,0:00:47.96,0:00:49.53,Film,,0,0,0,,redescendus.
+Dialogue: 0,0:00:48.60,0:00:51.86,Film,,0,0,0,,Et voici la partie que je\Npréfère — les studios de
+Dialogue: 0,0:00:51.86,0:00:55.13,Film,,0,0,0,,cinéma. C'est ici que les\Nhistoires deviennent des
+Dialogue: 0,0:00:55.13,0:00:56.89,Film,,0,0,0,,films, sur ce plateau\Nmême.
+Dialogue: 0,0:00:56.89,0:00:59.65,Film,,0,0,0,,Voici l'aile du montage —\Nchaque scène y est montée,
+Dialogue: 0,0:00:59.65,0:01:02.24,Film,,0,0,0,,mise en musique et mixée.\NC'est aussi là que nous
+Dialogue: 0,0:01:02.24,0:01:04.68,Film,,0,0,0,,créons les bandes-annonces\Net tous les visuels
+Dialogue: 0,0:01:04.68,0:01:05.21,Film,,0,0,0,,marketing.
+Dialogue: 0,0:01:05.21,0:01:08.33,Film,,0,0,0,,Et voici notre centre de\Ndistribution. D'ici, tout
+Dialogue: 0,0:01:08.33,0:01:11.45,Film,,0,0,0,,part vers les plateformes\N— les livres chez Amazon
+Dialogue: 0,0:01:11.45,0:01:14.44,Film,,0,0,0,,et Apple Books, les livres\Naudio chez Audible et
+Dialogue: 0,0:01:14.44,0:01:17.62,Film,,0,0,0,,Spotify, et nos films sur\NAmazon Prime et YouTube —
+Dialogue: 0,0:01:17.62,0:01:20.55,Film,,0,0,0,,prêts à rencontrer leur\Npublic en produit fini.
+Dialogue: 0,0:01:19.42,0:01:22.39,Film,,0,0,0,,Tout ce que vous venez de\Nvoir est un monde
+Dialogue: 0,0:01:22.39,0:01:25.43,Film,,0,0,0,,imaginaire — mais il\Nmontre quelque chose de
+Dialogue: 0,0:01:25.43,0:01:28.95,Film,,0,0,0,,réel : ce que SCRPT peut\Nfaire pour vous, créateur.
+Dialogue: 0,0:01:28.95,0:01:32.61,Film,,0,0,0,,Les auteurs, les artistes,\Nles studios, les camions —
+Dialogue: 0,0:01:32.61,0:01:36.00,Film,,0,0,0,,c'est notre logiciel, qui\Naccomplit chacun de ces
+Dialogue: 0,0:01:36.00,0:01:38.90,Film,,0,0,0,,métiers pour vos\Nhistoires. Livres, livres
+Dialogue: 0,0:01:38.90,0:01:41.87,Film,,0,0,0,,audio, films — écrits,\Nproduits, publiés et
+Dialogue: 0,0:01:41.87,0:01:44.53,Film,,0,0,0,,promus. Et tout le studio\Nest à vous dès votre

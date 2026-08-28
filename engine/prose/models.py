@@ -514,7 +514,9 @@ class WorkOrderRequest(BaseModel):
     pen_name: str = ""
     series_title: str = ""                # empty -> standalone
     series_books: int = 1
+    commission_books: int = 0   # 0 = all planned books; 1 = just the first now
     book_titles: List[str] = []           # researched titles, one per series book
+    book_ideas: List[str] = []            # per-book plot/idea; empty slot = SCRPT plots it
     target_words: Optional[int] = None
     trim_size: Optional[str] = None
     paper_type: Optional[str] = None

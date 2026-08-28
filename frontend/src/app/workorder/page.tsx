@@ -76,6 +76,7 @@ export default function WorkOrderPage() {
   const [coverDirection, setCoverDirection] = useState("");
   // researched titles for every series book — books 2+ are named from birth
   const [bookTitles, setBookTitles] = useState<string[]>([]);
+  const [bookIdeas, setBookIdeas] = useState<string[]>([]);
   const [nameSuggestions, setNameSuggestions] = useState<{ name: string; rationale: string }[]>([]);
   const [suggestingNames, setSuggestingNames] = useState(false);
   interface HouseAuthor { name: string; kinds?: string[]; books: { catalog_number: string; title: string; series_title: string; status: string }[] }
@@ -149,6 +150,7 @@ export default function WorkOrderPage() {
     // a title the publisher typed is the title — suggestions never overwrite it
     if (firstBook) setTitle((t) => (t.trim() ? t : firstBook.title));
     setBookTitles((pkg.book_ideas || []).map((b) => b.title));
+    setBookIdeas((pkg.book_ideas || []).map((b) => b.logline || ""));
     if (pkg.pen_name) setPenName((p) => (p.trim() ? p : pkg.pen_name!));
     // format comes from the research too — length and trim
     if (pkg.recommendations?.target_words) setTargetWords(pkg.recommendations.target_words);
@@ -219,7 +221,7 @@ export default function WorkOrderPage() {
     setFont(preset.font);
   }, [genre, genres]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const submit = async () => {
+  const submit = async (commissionCount?: number) => {
     if (!idea.trim()) {
       setError("Describe the book — the idea is the one thing SCRPT can't invent for you.");
       return;
@@ -235,11 +237,13 @@ export default function WorkOrderPage() {
         pen_name: penName.trim(),
         series_title: isSeries ? seriesTitle.trim() : "",
         series_books: isSeries ? seriesBooks : 1,
+        commission_books: isSeries ? (commissionCount ?? seriesBooks) : 1,
         target_words: targetWords === "" ? null : targetWords,
         trim_size: trim || null,
         font_preset: font || null,
         cover_direction: coverDirection,
         book_titles: isSeries ? bookTitles : [],
+        book_ideas: isSeries ? bookIdeas : [],
         generate_plot_options: flow === "options",
         auto_draft: flow === "auto",
       };
@@ -608,6 +612,31 @@ export default function WorkOrderPage() {
             </div>
           </div>
         )}
+        {isSeries && (
+          <div className="mt-5">
+            <div className="label-scrpt">The books — titles and plots</div>
+            <div className="text-[12px] text-text-tertiary mb-3">
+              Fill in what you already know. Anything left empty, SCRPT titles
+              and plots from the series bible.
+            </div>
+            {Array.from({ length: seriesBooks }, (_, i) => (
+              <div key={i} className="grid md:grid-cols-[220px_1fr] gap-3 mb-3">
+                <input className="input-scrpt"
+                       placeholder={`Book ${i + 1} — SCRPT titles it`}
+                       value={bookTitles[i] || ""}
+                       onChange={(e) => setBookTitles((t) => {
+                         const next = [...t]; next[i] = e.target.value; return next;
+                       })} />
+                <textarea className="input-scrpt" rows={1}
+                          placeholder="Plot or idea for this book — leave empty and SCRPT plots it"
+                          value={bookIdeas[i] || ""}
+                          onChange={(e) => setBookIdeas((v) => {
+                            const next = [...v]; next[i] = e.target.value; return next;
+                          })} />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Format overrides */}
@@ -669,9 +698,16 @@ export default function WorkOrderPage() {
 
       <div className="flex items-center gap-4 mt-8">
         <button className="btn-brass text-[14px] px-7 py-3" disabled={submitting || engineOnline === false}
-                onClick={submit}>
-          {submitting ? "Placing the order…" : isSeries ? `Commission ${seriesBooks} books` : "Commission this book"}
+                onClick={() => submit()}>
+          {submitting ? "Placing the order…" : isSeries ? `Commission all ${seriesBooks} books` : "Commission this book"}
         </button>
+        {isSeries && (
+          <button className="btn-ghost text-[14px] px-6 py-3" disabled={submitting || engineOnline === false}
+                  onClick={() => submit(1)}
+                  title="The series is still planned at full length — later books join from the series page.">
+            Commission book one
+          </button>
+        )}
         <span className="text-[12px] text-text-faint">
           {flow === "auto"
             ? "Writing a full book takes roughly 30–60 minutes."

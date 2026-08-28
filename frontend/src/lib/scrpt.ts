@@ -223,12 +223,14 @@ export interface WorkOrderPayload {
   pen_name?: string;
   series_title?: string;
   series_books?: number;
+  commission_books?: number;
   target_words?: number | null;
   trim_size?: string | null;
   paper_type?: string | null;
   font_preset?: string | null;
   cover_direction?: string;
   book_titles?: string[];
+  book_ideas?: string[];
   generate_plot_options?: boolean;
   auto_draft?: boolean;
 }
