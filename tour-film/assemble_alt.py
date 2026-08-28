@@ -203,17 +203,13 @@ s_end = starts[i35] + plan[i35]
 vol = (f"if(lt(t,{s_end:.2f}),{OPEN_V},"
        f"if(lt(t,{s_end+6.0:.2f}),{OPEN_V}+({TALK_V}-{OPEN_V})*(t-{s_end:.2f})/6.0,"
        f"{TALK_V}))")
-f.append(f"[{si}:a]aresample=44100,atrim=0:{min(score_len, t_end):.3f},"
-         f"volume='{vol}':eval=frame[bedA]")
+bedA_end = min(score_len, t_end)
+# the score ends once, gracefully, under her reveal — NEVER restarts quietly
+# to fill time (the restart read as "another piece of music", Lars). Her
+# white-room speech plays intimate; the finale returns on the card.
+f.append(f"[{si}:a]aresample=44100,atrim=0:{bedA_end:.3f},"
+         f"volume='{vol}':eval=frame,afade=t=out:st={bedA_end-5.0:.2f}:d=5.0[bedA]")
 segs = ["[bedA]"]
-pos = min(score_len, t_end)
-n = 0
-while pos < t_end - 1.0:               # quiet middle: the cue's calm interior
-    take = min(score_len - 12.0, t_end - pos)
-    ms = int(pos * 1000)
-    f.append(f"[{si}:a]aresample=44100,atrim=10:{10+take:.3f},asetpts=PTS-STARTPTS,"
-             f"volume={QUIET_V},afade=t=in:d=2.0,adelay={ms}|{ms}[bedQ{n}]")
-    segs.append(f"[bedQ{n}]"); pos += take; n += 1
 msE = int(t_end * 1000)
 f.append(f"[{si}:a]aresample=44100,atrim=0:{END_DUR+1.0:.3f},asetpts=PTS-STARTPTS,"
          f"volume=0.55,afade=t=in:d=0.4,afade=t=out:st={END_DUR-5.5:.2f}:d=5.5,"
