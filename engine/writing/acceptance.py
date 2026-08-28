@@ -43,6 +43,7 @@ READ_TARGETS = {
     # "complicated words" number. Commercial bestsellers run ~6-9%.
     "action_thriller":      {"avg": 15, "long": 0.10, "dialogue": 0.20, "hard": 0.08},
     "conspiracy_thriller":  {"avg": 15, "long": 0.10, "dialogue": 0.20, "hard": 0.08},
+    "superhero":            {"avg": 15, "long": 0.10, "dialogue": 0.22, "hard": 0.08},
     "legal_thriller":       {"avg": 16, "long": 0.12, "dialogue": 0.25, "hard": 0.09},
     "romance":              {"avg": 16, "long": 0.12, "dialogue": 0.25, "hard": 0.09},
     "historical_romance":   {"avg": 16, "long": 0.12, "dialogue": 0.25, "hard": 0.10},

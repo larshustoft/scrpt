@@ -15,7 +15,8 @@ OUT = Path(__file__).parent
 X = 0.55         # cross-dissolve
 LEAD = 0.35      # VO starts this far into its panel
 SCORE = OUT / "score.mp3"
-FINAL = Path.home() / "Desktop" / "SCRPT-TOUR-v2.mp4"
+FINAL = Path(__file__).parent / "tour_v2.mp4"   # local first — a failed render must never truncate the deliverable
+DELIVER = Path.home() / "Desktop" / "SCRPT-TOUR-v2.mp4"
 
 def run(args, label):
     p = subprocess.run([FF, *args], capture_output=True, text=True)
@@ -53,7 +54,7 @@ for t in TK:
         continue
     sibs = [x for x in by_panel[t["panel"]] if not x.get("line")]
     v = OUT / f"vo_{t['panel']:02d}.mp3"
-    need = (dur(v) + LEAD + 0.45) if v.exists() else 0
+    need = (dur(v) + LEAD + 0.45 + X) if v.exists() else 0
     panel_len = max(sum(x["dur"] for x in sibs), need)
     plan.append(panel_len / max(1, len(sibs)))
 
@@ -101,8 +102,8 @@ if not card.exists():
     im.save(card)
 end = OUT / "cut_end.mp4"
 run(["-y", "-loop", "1", "-i", str(card), "-t", f"{END_DUR:.3f}",
-     "-vf", f"fade=t=in:st=0:d=0.9:color=white,fade=t=out:st={END_DUR-1.4:.2f}:d=1.4,fps=24,format=yuv420p",
-     "-c:v", "libx264", "-crf", "16", "-pix_fmt", "yuv420p",
+     "-vf", f"fade=t=out:st={END_DUR-1.4:.2f}:d=1.4,fps=24,format=yuv420p",
+     "-c:v", "libx264", "-crf", "10", "-pix_fmt", "yuv420p",
      str(end), "-loglevel", "error"], "endcard")
 clips.append(end); plan.append(END_DUR)
 
@@ -118,7 +119,8 @@ for c in clips:
 chain, prev, off = [], "0:v", 0.0
 for i in range(1, len(clips)):
     off += plan[i - 1] - X
-    trans = "fadewhite" if i == len(clips) - 1 else "fade"
+    trans = "fade"     # her wall and the card share the same white — a plain
+    # dissolve is seamless; fadewhite overshot to pure 255 (a bright flash)
     chain.append(f"[{prev}][{i}:v]xfade=transition={trans}:duration={X}:"
                  f"offset={off:.3f}[v{i}]")
     prev = f"v{i}"
@@ -142,15 +144,30 @@ for i, t in enumerate(TK):
         vo_at.append((v, starts[i] + LEAD))
         voiced_panels.add(p)
 vo_at.append((OUT / "vo_end.mp3", starts[len(TK)] + 1.2))
+if (OUT / "welcome_is_block.flag").exists():
+    # her VO greeting ends a breath before her on-camera sentence begins —
+    # two sentences that belong together (Lars)
+    i03w = next(i for i, t in enumerate(TK) if t["key"] == "03")
+    vo_at.append((OUT / "vo_hi.mp3",
+                  max(0.4, starts[i03w] - dur(OUT / "vo_hi.mp3") - 0.30)))
+    # and the lot's ambience starts with the film, not at clip 2: the same
+    # world sound fading in under the aerial, handing off at the dissolve
+    if (OUT / "amb_open.mp3").exists():
+        vo_at.append((OUT / "amb_open.mp3", 0.0))
 vo_at = [(f, at) for f, at in vo_at if f.exists()]
 # no colliding voices (Lars): push any cue that would start before the
 # previous one ends, plus a natural breath
 vo_at.sort(key=lambda x: x[1])
 guarded, prev_end = [], -10.0
 for fpath, at in vo_at:
-    at = max(at, prev_end + 0.35)
+    is_bed = Path(fpath).name == "amb_open.mp3"
+    if "na_" in Path(fpath).name or is_bed:
+        pass                       # LIP SYNC IS SACRED — never move take audio
+    else:
+        at = max(at, prev_end + 0.35)
     guarded.append((fpath, at))
-    prev_end = at + dur(fpath)
+    if not is_bed:                 # a bed is not a voice: it must not push cues
+        prev_end = at + dur(fpath)
 vo_at = guarded
 
 args = ["-y", "-i", str(OUT / "picture.mp4")]
@@ -162,22 +179,50 @@ si = len(vo_at) + 1
 f = []
 for i, (_, at) in enumerate(vo_at):
     ms = int(at * 1000)
-    f.append(f"[{i+1}:a]aresample=44100,adelay={ms}|{ms},volume=1.0[n{i}]")
+    nm = Path(vo_at[i][0]).name
+    lvl = 1.22 if nm == "na_03.mp3" else (0.55 if nm == "amb_open.mp3" else 1.0)
+    tail = ""
+    if nm == "na_03.mp3":      # its baked score bed cut dead at the next clip
+        d03 = dur(vo_at[i][0])
+        tail = f",afade=t=out:st={max(0, d03-1.2):.2f}:d=1.2"
+    f.append(f"[{i+1}:a]aresample=44100{tail},adelay={ms}|{ms},volume={lvl}[n{i}]")
 f.append("".join(f"[n{i}]" for i in range(len(vo_at))) +
          f"amix=inputs={len(vo_at)}:normalize=0:dropout_transition=0[vo]")
-f.append("[vo]asplit=2[vomix][vokey]")
+f.append("[vo]asplit=2[vomix][vokeyraw]");
+f.append(f"[vokeyraw]apad=whole_dur={total:.3f}[vokey]")   # self-bounding pad: atrim-after-infinite-apad never EOFs in this split graph
 # FRAME ONE DOWNBEAT, then three movements (Lars): the strong opening calms
 # into her first words; a quiet continuation carries the film; the FINALE
 # returns full at the logo and fades with the black.
-first_voice = min(at for _, at in vo_at) if vo_at else 8.0
-ramp0 = max(0.0, first_voice - 1.2)
 OPEN_V, TALK_V, QUIET_V = 0.42, 0.24, 0.15
 score_len = dur(SCORE)
 t_end = starts[-1]                     # the card appears here
-vol = (f"if(lt(t,{ramp0:.2f}),{OPEN_V},"
-       f"if(lt(t,{first_voice:.2f}),{OPEN_V}+({TALK_V}-{OPEN_V})*(t-{ramp0:.2f})/{max(0.2, first_voice-ramp0):.2f},"
-       f"{TALK_V}))")
+# ONE continuous piece of music, never faded at a cut (Lars). The welcome
+# block's baked bed IS this same cue: cross-correlation puts it at
+# SCORE+5.450s where the film plays SCORE+5.650s — 0.20s apart, which made
+# every hand-off flam and dip. Delaying the mix score 200ms makes the two
+# copies sample-coherent, so the block hand-offs are the same waveform and
+# the ear hears one unbroken score. Levels only settle slowly, mid-scene.
+SCORE_D = 0.20
+i03 = next(i for i, t in enumerate(TK) if t["key"] == "03")
+g0, g1 = starts[i03] - 0.10, starts[i03] + plan[i03] + 0.10
+F = 1.2
+base = (f"if(lt(t,{g1+1.0:.2f}),{OPEN_V},"
+        f"if(lt(t,{g1+7.0:.2f}),{OPEN_V}+({TALK_V}-{OPEN_V})*(t-{g1+1.0:.2f})/6.0,"
+        f"{TALK_V}))")
+if (OUT / "welcome_is_block.flag").exists():
+    # inside the block the baked copy carries the music; the mix copy sits
+    # underneath at 35% (coherent, so this reads as dynamics, not a fade)
+    # the mix copy rises EXACTLY while the baked bed's tail fades (both are
+    # the same aligned waveform, so the linear crossfade sums to a constant
+    # level — no lull at the golf-cart cut)
+    r0, r1 = g1 - 1.41, g1 - 0.21
+    vol = (f"if(between(t,{g0:.2f},{r0:.2f}),({base})*0.35,"
+           f"if(between(t,{g0-F:.2f},{g0:.2f}),({base})*(1-0.65*(t-{g0-F:.2f})/{F}),"
+           f"if(between(t,{r0:.2f},{r1:.2f}),({base})*(0.35+0.65*(t-{r0:.2f})/1.2),{base})))")
+else:
+    vol = base
 f.append(f"[{si}:a]aresample=44100,atrim=0:{min(score_len, t_end):.3f},"
+         f"adelay={int(SCORE_D*1000)}|{int(SCORE_D*1000)},"
          f"volume='{vol}':eval=frame[bedA]")
 segs = ["[bedA]"]
 pos = min(score_len, t_end)
@@ -190,19 +235,23 @@ while pos < t_end - 1.0:               # quiet middle: the cue's calm interior
     segs.append(f"[bedQ{n}]"); pos += take; n += 1
 msE = int(t_end * 1000)
 f.append(f"[{si}:a]aresample=44100,atrim=0:{END_DUR+1.0:.3f},asetpts=PTS-STARTPTS,"
-         f"volume=0.5,afade=t=in:d=0.4,afade=t=out:st={END_DUR-2.2:.2f}:d=2.2,"
+         f"volume=0.55,afade=t=in:d=0.4,afade=t=out:st={END_DUR-5.5:.2f}:d=5.5,"
          f"adelay={msE}|{msE}[bedF]")
 segs.append("[bedF]")
 f.append("".join(segs) + f"amix=inputs={len(segs)}:normalize=0:dropout_transition=0,"
          f"atrim=0:{total:.3f}[bed]")
 f.append("[bed][vokey]sidechaincompress=threshold=0.05:ratio=7:attack=25:release=420[duck]")
 f.append(f"[vomix][duck]amix=inputs=2:normalize=0:dropout_transition=0,"
-         f"atrim=0:{total:.3f},loudnorm=I=-14:TP=-1.5:LRA=11,"
+         f"apad=whole_dur={total:.3f},loudnorm=I=-14:TP=-1.5:LRA=11,"
+         f"afade=t=out:st={max(0, total-3.2):.3f}:d=3.2,"
          f"aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[a]")
 
 run(args + ["-filter_complex", ";".join(f), "-map", "0:v", "-map", "[a]",
             "-c:v", "copy", "-c:a", "aac", "-b:a", "256k", "-ar", "48000",
-            "-ac", "2", "-shortest", str(FINAL), "-loglevel", "error"], "mix")
+            "-ac", "2", str(FINAL), "-loglevel", "error"], "mix")
 
+import shutil
+assert FINAL.exists() and FINAL.stat().st_size > 5_000_000, "mix produced no usable file"
+shutil.copy2(FINAL, DELIVER)
 print(json.dumps({"total_s": round(total, 2), "takes": len(TK),
-                  "out": str(FINAL)}, indent=1))
+                  "out": str(DELIVER)}, indent=1))

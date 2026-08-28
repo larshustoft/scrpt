@@ -12,7 +12,9 @@ from board import takes, FRAMES, CANON_GUIDE, CANON_LOT, STYLE
 OUT = Path(__file__).parent
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 GATE = None
-CREDIT_FLOOR = 2000
+CREDIT_FLOOR = 100
+JOB_BUDGET = 3386          # Lars topped up: the 1080p ending roll, wallet is the cap
+START_BAL = {"v": None}
 
 def crop16x9(src: Path, dest: Path) -> Path:
     from PIL import Image
@@ -29,6 +31,11 @@ def build_prompt(tk):
     head = []
     if "g" in tk.get("canon", ""): head.append(CANON_GUIDE)
     if "l" in tk.get("canon", ""): head.append(CANON_LOT)
+    if tk.get("line") and not tk.get("speech"):
+        # a speaking prompt must contain NO spelled brand for the voice to
+        # trip over — signage lives in the anchor frame's pixels anyway
+        head = [h.replace("SCRPT sign", "studio sign").replace("SCRPT", "Script")
+                for h in head]
     body = f"SHOT: {tk['shot']}"
     if tk.get("line"):
         voice = tk.get("voice") or ("a warm, friendly, professional female voice, "
@@ -39,12 +46,21 @@ def build_prompt(tk):
         else:
             # A friendly host, not a recital: her own conversational words are
             # welcome — the CONTENT is what must land (Lars's direction).
+            # the badge rule must NEVER reach a speaking prompt in its
+            # spelled-out form — the voice model obeys it out loud (the
+            # "S-C-R-P-T" welcome, 2026-08-27). Speech-safe variant:
+            tk = dict(tk)
+            tk["text"] = ("\n\nTEXT: the only lettering visible is her small "
+                          "brass name badge with the studio wordmark. IMPORTANT: "
+                          "whenever she says the studio name out loud she "
+                          "pronounces it as the single word Script, naturally — "
+                          "never spelled letter by letter.")
             body += (f"\n\nTHE GUIDE speaks warmly and naturally straight to the "
-                     f"camera, like a friendly host welcoming visitors and showing "
-                     f"them around — conversational, relaxed, genuinely delighted, "
-                     f"accurate natural lip sync, {voice}. In her own friendly "
-                     f"words she conveys exactly this, in clear English, and "
-                     f"nothing else: \"{tk['line']}\"")
+                     f"camera — friendly, relaxed, genuinely delighted, accurate "
+                     f"natural lip sync, {voice}. She says EXACTLY this, warmly "
+                     f"and conversationally, in clear English — this sentence and "
+                     f"NOTHING else, no extra greetings, no added words: "
+                     f"\"{tk['line']}\"")
     return "\n\n".join(head) + "\n\n" + body + f"\n\nSTYLE: {STYLE}" + tk.get("text", "")
 
 def transcript_ok(clip: Path, expect: str) -> bool:
@@ -67,6 +83,11 @@ def transcript_ok(clip: Path, expect: str) -> bool:
     if not got.strip():
         print("    transcript EMPTY", flush=True)
         return False
+    # deterministic brand gate — the judge let a brandless welcome through:
+    # if the script says the name, the take must say the name. No opinions.
+    if "script" in expect.lower() and "script" not in got.lower():
+        print(f"    transcript [FAIL brand missing]: {got[:80]!r}", flush=True)
+        return False
     # Lars's standard: not her exact words — the same meaning and content,
     # conversational and friendly. A judge answers that; string-diff cannot.
     try:
@@ -78,6 +99,13 @@ def transcript_ok(clip: Path, expect: str) -> bool:
                   "messages": [{"role": "user", "content":
                     "A friendly studio tour host was asked to convey this content "
                     f"in her own words:\n---\n{expect}\n---\nShe said:\n---\n{got}\n---\n"
+                    "NOTE: the transcript comes from speech recognition — phonetic or "
+                    "misspelled renderings of proper names (e.g. Luc Rier for "
+                    "Luc Reyer, Script for SCRPT) are transcription artifacts, NOT "
+                    "errors; judge the meaning as heard. "
+                    "If the intended content includes the studio name, she MUST have "
+                    "spoken it (as the word Script) — a version that avoids or "
+                    "renames the studio FAILS. "
                     "Answer PASS if what she said is clear English, friendly and "
                     "conversational, and carries the same meaning and content "
                     "(her own phrasing is fine; nothing important missing, nothing "
@@ -103,12 +131,36 @@ async def shoot(tk):
         print(f"[{key}] have", flush=True); return True
     prompt = build_prompt(tk)
     speak = bool(tk.get("line"))
-    frame_uri = None
-    if tk.get("frame"):
-        cropped = crop16x9(FRAMES[tk["frame"]], OUT / f"first_{key}.png")
-        frame_uri = await runway.upload_file(cropped)
+    # chained takes open on their parent's LAST frame — a continuous scene
+    # cut into legal take lengths, seams hidden by the void and the dissolve
+    if tk.get("chain_from"):
+        parent = OUT / f"shot_{tk['chain_from']}.mp4"
+        for _ in range(240):
+            if parent.exists() and parent.stat().st_size > 200_000:
+                break
+            await asyncio.sleep(10)
+        else:
+            print(f"[{key}] parent {tk['chain_from']} never arrived", flush=True)
+            return False
+        lastf = OUT / f"first_{key}.png"
+        subprocess.run([FF, "-y", "-v", "error", "-sseof", "-0.1", "-i", str(parent),
+                        "-frames:v", "1", "-update", "1", str(lastf)], capture_output=True)
+        frame_uri = await runway.upload_file(lastf)
+    else:
+        frame_uri = None
+        if tk.get("frame"):
+            cropped = crop16x9(FRAMES[tk["frame"]], OUT / f"first_{key}.png")
+            frame_uri = await runway.upload_file(cropped)
     qc_rolls = 0
+    max_qc = 2 if speak else 3          # speaking takes are the expensive ones
     for a in range(12):
+        # hard spend-brake: check the wallet before EVERY generation —
+        # per-take checks let concurrent re-rolls drain the account (twice)
+        _b = await runway.credit_balance()
+        if _b < CREDIT_FLOOR or (START_BAL["v"] and START_BAL["v"] - _b >= JOB_BUDGET):
+            spent = (START_BAL["v"] - _b) if START_BAL["v"] else 0
+            print(f"[{key}] budget brake — {_b} left, {spent} spent this job — stopped", flush=True)
+            return False
         async with GATE:
             try:
                 if tk["cam"] == "veo":
@@ -127,7 +179,7 @@ async def shoot(tk):
                     if speak and not transcript_ok(dest, tk["line"]):
                         dest.unlink(missing_ok=True)
                         qc_rolls += 1
-                        if qc_rolls > 3:
+                        if qc_rolls > max_qc:
                             print(f"[{key}] transcript QC gave up", flush=True)
                             return False
                         print(f"[{key}] re-roll (speech QC)", flush=True)
@@ -147,10 +199,14 @@ async def main():
     GATE = asyncio.Semaphore(4)
     tks = takes()
     bal = await runway.credit_balance()
+    START_BAL["v"] = bal
     print(f"start credits {bal} · {len(tks)} takes", flush=True)
     res = []
     async def guarded(t):
-        if await runway.credit_balance() < CREDIT_FLOOR:
+        # one balance snapshot at launch — 17 concurrent API checks got
+        # throttled to zero and false-tripped the floor. The per-generation
+        # brake inside shoot() is the real guard.
+        if START_BAL["v"] is not None and START_BAL["v"] < CREDIT_FLOOR:
             print(f"[{t['key']}] CREDIT FLOOR — skipped", flush=True); return False
         return await shoot(t)
     res = await asyncio.gather(*(guarded(t) for t in tks))

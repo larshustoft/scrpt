@@ -95,6 +95,20 @@ GENRE_PRESETS = {
         "structure": "short scene-chapters (3-5 pages), every chapter ends on a hook",
         "font": "garamond",
     },
+    "superhero": {
+        "kind": "fiction", "label": "Superhero",
+        "comps": "cinematic superhero adventure in the grand comic-book tradition — a masked "
+                 "hero with a costly double life, a city under threat, spectacular action "
+                 "set-pieces; heroes, powers, villains and cities are WHOLLY ORIGINAL "
+                 "creations, never existing franchise characters",
+        "trim": "5.5x8.5", "paper": "cream_bw",
+        "target_words": 85000, "min_words": 65000, "chapter_words": 2400, "wpp": 265,
+        "pov": "third limited on the hero, occasional villain interludes",
+        "structure": "origin or call-to-action opening, dual-identity cost subplot, "
+                     "escalating villain scheme, a major action set-piece every 2-3 "
+                     "chapters, city-stakes climax, sequel-hook ending",
+        "font": "garamond",
+    },
     "legal_thriller": {
         "kind": "fiction", "label": "Legal Thriller",
         "comps": "courtroom-driven legal thriller with procedural authenticity and moral stakes",

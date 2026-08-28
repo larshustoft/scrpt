@@ -13,6 +13,7 @@ import { scrpt } from "@/lib/scrpt";
 export const OFFICES = {
   newyork: { label: "New York Office", src: "/hq-background.png" },
   burbank: { label: "The Burbank lot", src: "/hq-background-burbank.png" },
+  maingate: { label: "The Main Gate", src: "/hq-background-maingate.png" },
 } as const;
 
 export type OfficeKey = keyof typeof OFFICES;

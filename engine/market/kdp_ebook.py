@@ -36,6 +36,8 @@ KINDLE_CATEGORY_DEFAULTS = {
     "action_thriller": [["Mystery, Thriller & Suspense", "Thrillers", "Action & Adventure"],
                         ["Mystery, Thriller & Suspense", "Thrillers", "Conspiracy"]],
     "thriller": [["Mystery, Thriller & Suspense", "Thrillers", "Suspense"]],
+    "superhero": [["Science Fiction & Fantasy", "Fantasy", "Superhero"],
+                  ["Science Fiction & Fantasy", "Science Fiction", "Superhero"]],
 }
 EBOOK_PRICE_DEFAULT = 4.99
 

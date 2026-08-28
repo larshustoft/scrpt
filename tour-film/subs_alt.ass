@@ -1,0 +1,54 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, Italic, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Film,SF Pro Display,56,&H00FFFFFF,&H90000000,&H00000000,0,0,1,0,3,2,560,560,92,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:03.19,0:00:06.00,Film,,0,0,0,,Hi! And welcome to SCRPT\NStudios!
+Dialogue: 0,0:00:06.00,0:00:08.93,Film,,0,0,0,,You're about to see our\Nfull production line —
+Dialogue: 0,0:00:08.93,0:00:11.55,Film,,0,0,0,,from one idea to every\Nproduct we create.
+Dialogue: 0,0:00:12.00,0:00:14.74,Film,,0,0,0,,Let's start here, in the\Nwriting department.
+Dialogue: 0,0:00:14.74,0:00:17.73,Film,,0,0,0,,This is where we hatch\Nideas for new stories and
+Dialogue: 0,0:00:17.73,0:00:19.35,Film,,0,0,0,,turn them into full books.
+Dialogue: 0,0:00:19.35,0:00:20.53,Film,,0,0,0,,Chapter by chapter.
+Dialogue: 0,0:00:20.53,0:00:22.25,Film,,0,0,0,,This is the art\Ndepartment,
+Dialogue: 0,0:00:22.25,0:00:24.79,Film,,0,0,0,,where every book gets its\Nface — covers,
+Dialogue: 0,0:00:24.79,0:00:26.82,Film,,0,0,0,,artwork and the character\Nbible,
+Dialogue: 0,0:00:26.82,0:00:30.06,Film,,0,0,0,,so every person in your\Nstory looks the same on the
+Dialogue: 0,0:00:30.06,0:00:30.96,Film,,0,0,0,,page,
+Dialogue: 0,0:00:30.38,0:00:32.16,Film,,0,0,0,,on the cover, and on\Nscreen.
+Dialogue: 0,0:00:32.16,0:00:34.08,Film,,0,0,0,,Our audiobook studios —
+Dialogue: 0,0:00:34.08,0:00:37.34,Film,,0,0,0,,where the books learn to\Nspeak. Listen—
+Dialogue: 0,0:00:37.24,0:00:42.90,Film,,0,0,0,,The mountain had taken\Nthirty-one bodies in Luc
+Dialogue: 0,0:00:42.90,0:00:44.95,Film,,0,0,0,,Reyer's lifetime.
+Dialogue: 0,0:00:44.95,0:00:49.53,Film,,0,0,0,,He had carried down every\None of them.
+Dialogue: 0,0:00:48.60,0:00:52.58,Film,,0,0,0,,And this is the part I\Nlove — the film studios.
+Dialogue: 0,0:00:52.58,0:00:56.89,Film,,0,0,0,,The stories become films\Nhere, right on this stage.
+Dialogue: 0,0:00:56.89,0:00:59.62,Film,,0,0,0,,This is the editing wing —\Nevery scene is cut,
+Dialogue: 0,0:00:59.62,0:01:01.11,Film,,0,0,0,,scored and mixed in here.
+Dialogue: 0,0:01:01.11,0:01:03.31,Film,,0,0,0,,It's also where we make\Nthe trailers,
+Dialogue: 0,0:01:03.31,0:01:05.21,Film,,0,0,0,,and all the marketing\Ncreatives.
+Dialogue: 0,0:01:05.21,0:01:07.43,Film,,0,0,0,,And this is our\Ndistribution centre.
+Dialogue: 0,0:01:07.43,0:01:10.32,Film,,0,0,0,,From here we ship\Neverything to the platforms —
+Dialogue: 0,0:01:10.32,0:01:12.54,Film,,0,0,0,,the books to Amazon and\NApple Books,
+Dialogue: 0,0:01:12.54,0:01:14.88,Film,,0,0,0,,the audiobooks to Audible\Nand Spotify,
+Dialogue: 0,0:01:14.88,0:01:17.53,Film,,0,0,0,,and our films to Amazon\NPrime and YouTube —
+Dialogue: 0,0:01:17.53,0:01:20.55,Film,,0,0,0,,ready to meet the audience\Nas a finished product.
+Dialogue: 0,0:01:19.42,0:01:23.08,Film,,0,0,0,,Everything you've just\Nseen is an imagined world —
+Dialogue: 0,0:01:23.08,0:01:26.73,Film,,0,0,0,,but it shows you something\Nreal: what SCRPT can do
+Dialogue: 0,0:01:26.73,0:01:28.34,Film,,0,0,0,,for you as a creative.
+Dialogue: 0,0:01:28.34,0:01:32.07,Film,,0,0,0,,The writers, the artists,\Nthe studios, the trucks —
+Dialogue: 0,0:01:32.07,0:01:33.53,Film,,0,0,0,,that's our software,
+Dialogue: 0,0:01:33.53,0:01:36.97,Film,,0,0,0,,doing every one of those\Njobs for your stories.
+Dialogue: 0,0:01:36.97,0:01:40.26,Film,,0,0,0,,Books, audiobooks, films —\Nwritten, produced,
+Dialogue: 0,0:01:40.26,0:01:41.94,Film,,0,0,0,,published and promoted.
+Dialogue: 0,0:01:41.94,0:01:45.52,Film,,0,0,0,,And the whole studio is\Nyours the moment you sign
+Dialogue: 0,0:01:45.52,0:01:45.74,Film,,0,0,0,,in.
+Dialogue: 0,0:01:46.00,0:01:49.17,Film,,0,0,0,,SCRPT — One Idea. Every\NFormat.

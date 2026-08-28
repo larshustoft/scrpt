@@ -43,6 +43,8 @@ GENRE_SEEDS = {
     "action_thriller": ["action thriller", "thriller series", "action adventure thriller",
                         "survival thriller", "conspiracy thriller", "suspense thriller"],
     "thriller": ["thriller", "thriller series", "suspense thriller", "psychological thriller"],
+    "superhero": ["superhero novel", "superhero series", "superhero books for adults",
+                  "superhero fantasy", "vigilante superhero", "superhero origin story"],
 }
 
 

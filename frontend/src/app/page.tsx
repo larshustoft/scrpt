@@ -92,12 +92,13 @@ export default function SalesPage() {
         </div>
       </section>
 
-      {/* the film — the whole section, edge to edge, and nothing written on it */}
+      {/* the film — the whole section, edge to edge, and nothing written on it.
+          The studio tour leads; the commercial has its own section below. */}
       <section className="relative w-full">
         <FilmPlayer
-          ambient="/film/scrpt-ambient.mp4"
-          film="/film/scrpt.mp4"
-          poster="/film/poster.jpg"
+          ambient="/film/tour-ambient.mp4"
+          film="/film/tour.mp4"
+          poster="/film/tour-poster.jpg"
         />
       </section>
 
@@ -136,6 +137,15 @@ export default function SalesPage() {
           <Step n="IV" title="Publish"
                 body="Print, ebook, and narrated audiobook masters with listing copy included. Royalty reports flow back into one quiet dashboard." />
         </div>
+      </section>
+
+      {/* the commercial — the other film, in its own quiet frame */}
+      <section className="relative w-full border-t border-border-subtle">
+        <FilmPlayer
+          ambient="/film/scrpt-ambient.mp4"
+          film="/film/scrpt.mp4"
+          poster="/film/poster.jpg"
+        />
       </section>
 
       {/* the front office */}

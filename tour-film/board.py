@@ -37,7 +37,9 @@ FRAMES = {
     "door":    _H / "tour-sb-10.png",
     "white":   _H / "tour-sb-11.png",
     "white2":  _H / "tour-white-photo.png",            # her, in the void — approved
-    "drive":   _B / "film/scene-06/frame-01.png",    # her at the wheel — approved
+    "drive":   _B / "film/scene-06/frame-01.png",
+    "whiteface": _H / "tour-whiteface.png",
+    "booth":     _H / "tour-booth.png",    # her at the wheel — approved
     "master":  _H / "scrpt-lot-photo.png",
 }
 
@@ -82,85 +84,71 @@ TEXT_NONE = ""
 PANELS = [
  # ≤ 2:00 total (Lars). One cart moment. No dock-walk scene. Verbatim where sacred.
  dict(n=1, vo=None, takes=[
-   dict(key="01", dur=4, cam="veo", frame="aerial", canon="l", text=TEXT_SIGN,
+   dict(key="01", dur=6.2, cam="sd", frame="aerial", canon="l", text=TEXT_SIGN,
         shot="High aerial drone over the whole studio lot, slowly descending toward the gate " + "—" + " the deco tower with its rooftop sign, the water tower, the curved stages, trucks at the warehouse, tiny golf carts and crew on the plaza."),
  ]),
  dict(n=2, vo=None, voz="native", takes=[
-   dict(key="03", dur=8, cam="veo", frame="gate", canon="gl", text=TEXT_BADGE,
-        line="Hi! And welcome to Script! We're so thrilled to have you here " + "—" + " you're about to see our full production line, from one idea to every product we create.",
+   dict(key="03", dur=8, cam="sd", frame="gate", canon="gl", text=TEXT_BADGE,
+        line="Hi! And welcome to Script! I'm so glad you're here — let me show you around.",
         shot="Just inside the iron gate by the lit marquee reading MAIN GATE, a white golf cart parked beside her: THE GUIDE stands facing the camera, warm and delighted, welcoming us with easy open gestures. Static camera, calm natural motion only."),
-   dict(key="05", dur=8, cam="veo", frame="gate", canon="gl", text=TEXT_BADGE,
-        line="So first " + "—" + " let's begin at the publisher's office, where every idea starts.",
-        shot="Same framing: THE GUIDE by the cart gestures up toward the deco office tower beside the gate as she speaks to camera, bright and inviting. Static camera."),
+   ]),
+ dict(n=3, vo="You're about to see our full production line — from one idea to every product we create.", takes=[
+   dict(key="35", dur=6, cam="sd", canon="g", text=TEXT_NONE,
+        shot="FROM BEHIND, following: THE GUIDE seen from the back driving the white golf cart away from the camera, in through the studio lane onto the sunlit lot — her dark brown hair and cream shirt from behind, the cart rolling steadily on the ground, palms and the white water tower ahead, crew crossing in the distance. The camera follows behind the cart, a warm follow-along feeling. She does not speak."),
  ]),
- dict(n=4, vo="This is the publisher's office. This is where we hatch out the frameworks and seeds for new stories, that eventually can become books, audiobooks, movie trailers and full films.", takes=[
-   dict(key="06", dur=6, cam="veo", frame="office", canon="", text=TEXT_NONE,
-        shot="A warm corner office high in a heritage tower, empty of people, just-left: slow push across a dark wood desk " + "—" + " brass lamp glowing, an open notebook, a coffee steaming " + "—" + " toward tall windows with the sunlit studio backlot far below. NOBODY in frame."),
-   dict(key="07", dur=6, cam="veo", frame="office", canon="l", text=TEXT_NONE,
-        shot="From inside the empty office, slow push toward the window: far below, the busy studio lot " + "—" + " golf carts crossing the plaza, the water tower, the curved stages in soft afternoon sun. NOBODY inside the room."),
- ]),
- dict(n=5, vo="One floor down is our writing department " + "—" + " where the writers take the idea and turn it into pages. Every book is written here, chapter by chapter.", takes=[
-   dict(key="08", dur=5, cam="veo", frame="writers", canon="", text=TEXT_NONE,
-        shot="A grand heritage writers' hall: slow dolly down the centre aisle between warm lamplit wooden desks, writers absorbed at laptops beside stacked manuscripts, one pinning a card to a corkboard. No face in sharp focus."),
+ dict(n=5, vo="Let's start here, in the writing department. This is where we hatch ideas for new stories and turn them into full books. Chapter by chapter.", takes=[
+   dict(key="08", dur=5, cam="sd", canon="", text=TEXT_NONE,
+        shot="A grand heritage writers' hall: slow dolly down the centre aisle between warm lamplit wooden desks, EVERY desk carrying a modern Apple iMac, writers absorbed at their iMacs beside stacked manuscripts, tall bookshelves and plain cream walls behind them — NO posters or artwork anywhere, a room about writing. No face in sharp focus. Present-day 2026."),
    dict(key="09", dur=4, cam="sd", canon="", text=TEXT_NONE,
         shot="Close over a writer's shoulder: hands typing fast on a laptop beside a tall stack of printed manuscript pages, a brass desk lamp warm, dust in the light. Face out of frame."),
  ]),
  dict(n=6, vo="This is the art department, where every book gets its face " + "—" + " covers, artwork and the character bible, so every person in your story looks the same on the page, on the cover, and on screen.", takes=[
-   dict(key="10", dur=5, cam="veo", frame="art", canon="", text=TEXT_NONE,
+   dict(key="10", dur=5, cam="sd", frame="art", canon="", text=TEXT_NONE,
         shot="A bright modern design studio: slow lateral glide along a row of large screens glowing with dramatic snowy-mountain book cover designs, designers working at pen displays, sunlight through tall industrial windows. Faces soft."),
-   dict(key="11", dur=5, cam="veo", frame="art", canon="", text=TEXT_NONE,
+   dict(key="11", dur=5, cam="sd", frame="art", canon="", text=TEXT_NONE,
         shot="Slow push toward a studio wall gridded with painted character portraits of the same few faces from many angles, a large printed cover proof on a wooden easel beside it. Live faces soft."),
  ]),
- dict(n=7, vo=None, takes=[
-   dict(key="12", dur=4, cam="veo", frame="drive", canon="gl", text=TEXT_BADGE,
-        shot="From the lane's edge: THE GUIDE drives the white golf cart past at an easy pace, eyes on the lane ahead, relaxed small smile, hands on the wheel " + "—" + " palms, crew and the water tower behind her. She does not speak. Simple forward motion, all four wheels on the ground."),
- ]),
- dict(n=8, vo="Our audiobook studios " + "—" + " where the books learn to speak. Listen" + "—", takes=[
-   dict(key="14", dur=6, cam="veo", frame="audio", canon="", text=TEXT_NONE,
-        shot="A windowless audiobook control room in warm low light: an engineer at a large console, a glowing red RECORDING lamp over the double-glass booth door, and behind the glass a silver-haired narrator at a big microphone, headphones on. Interior only, no daylight."),
+  dict(n=8, vo="Our audiobook studios " + "—" + " where the books learn to speak. Listen" + "—", takes=[
+   dict(key="14", dur=6, cam="sd", frame="audio", canon="", text=TEXT_NONE,
+        shot="A windowless audiobook control room in warm low light: an engineer at the console, the red RECORDING lamp glowing over the booth window, and behind the glass the narrator only faintly visible. The monitors show waveforms and level meters — NO faces on any screen. Interior only, no daylight."),
  ]),
  dict(n=9, vo=None, takes=[
-   dict(key="15", dur=8, cam="sd", canon="", text=TEXT_NONE,
+   dict(key="15", dur=12, cam="sd", canon="", text=TEXT_NONE,
         line="The mountain had taken thirty-one bodies in Luc Reyer's lifetime. He had carried down every one of them.",
-        speech=("The narrator, a silver-haired man in his fifties in a padded vocal "
-                "booth, absorbed in his read, speaks slowly and warmly into the microphone"),
+        speech=("The narrator, a silver-haired man in his fifties in PROFILE at a big studio microphone with a pop filter, headphones on, warm reading lamp, dark acoustic foam behind him, absorbed — reads slowly and warmly, lips moving precisely with every word"),
         voice="a deep, warm, measured male narrator voice, clear unhurried American English",
-        shot="Inside the padded vocal booth, close on the silver-haired narrator at the studio microphone with a pop filter, headphones on, warm reading lamp, dark acoustic foam behind him " + "—" + " NO windows, NO glass reflections, no daylight. He is absorbed, reading aloud."),
+        shot="Inside the padded vocal booth: ONE silver-haired narrator in his fifties in profile at the studio microphone, headphones on, warm reading lamp, dark acoustic foam — absorbed in his read. No windows, no reflections, interior only."),
  ]),
- dict(n=11, vo=None, takes=[
-   dict(key="17", dur=4, cam="veo", frame="stagewide", canon="", text=TEXT_NONE,
-        shot="Inside a vast sound stage, mid-take on a mountain-rescue action film: a stunt performer in a red-and-black rescue jacket on ropes over a crevasse set of carved ice, snow machines blowing, a huge LED mountain wall storm-lit, film crew working. Faces incidental."),
- ]),
- dict(n=12, vo=None, voz="native", takes=[
-   dict(key="18", dur=8, cam="veo", frame="stage", canon="gl", text=TEXT_BADGE,
+  dict(n=12, vo=None, voz="native", takes=[
+   dict(key="18", dur=8, cam="sd", frame="stage", canon="gl", text=TEXT_BADGE,
         line="And this is the part I love " + "—" + " the film studios. The stories become films here, right on this stage.",
         shot="Just inside the sound stage: THE GUIDE faces the camera, delighted, the snowy crevasse set and working film crew behind her. Static camera, calm gestures."),
  ]),
  dict(n=13, vo="This is the editing wing " + "—" + " every scene is cut, scored and mixed in here. It's also where we make the trailers, and all the marketing creatives.", takes=[
-   dict(key="20", dur=5, cam="veo", frame="editing", canon="", text=TEXT_NONE,
+   dict(key="20", dur=5, cam="sd", frame="editing", canon="", text=TEXT_NONE,
         shot="A sealed editing suite lit only by its screens: an editor seen from behind at a glowing console, scrubbing a snowy mountain film on a large cinema monitor, timelines and waveforms on side displays. No windows, no daylight, his face away from camera."),
    dict(key="21", dur=4, cam="sd", canon="", text=TEXT_NONE,
         shot="Close on the big edit monitor: a dramatic snowy mountain sequence scrubbing back and forth, a timeline of clips beneath, an editor's hand on a jog wheel in the foreground glow. No readable text on the screens."),
  ]),
  dict(n=14, vo="And this is our distribution centre. From here we ship everything to the platforms " + "—" + " the books to Amazon and Apple Books, the audiobooks to Audible and Spotify, and our films to Amazon Prime and YouTube " + "—" + " ready to meet the audience as a finished product.", takes=[
-   dict(key="23", dur=6, cam="veo", frame="dock", canon="l", text=TEXT_TRUCKS,
-        shot="Bright midday at the distribution centre: slow tracking shot along the loading platform, six white platform trucks backed to the bays, dock workers rolling hand trucks of boxed books up the ramps. EVERY worker a clearly different person " + "—" + " different ages, builds, skin tones, hair and clothing colours, nobody repeated."),
-   dict(key="26", dur=6, cam="veo", frame="dock2", canon="", text=TEXT_TRUCKS,
-        shot="The last bays: the Spotify, Prime Video and YouTube trucks in a row, doors open, workers loading, a hand truck rolling past in the foreground, bright midday sun. EVERY worker a clearly different person, nobody repeated."),
+   dict(key="23", dur=6, cam="sd", frame="dock", canon="l", text=TEXT_TRUCKS,
+        shot="Bright midday at the distribution centre, matching the first frame exactly: slow tracking along the platform, six white platform trucks at the bays, the dock calm and almost empty — just TWO workers, small and far in the distance, one wheeling a hand truck toward a ramp. Nothing else moves."),
+   dict(key="26", dur=5, cam="sd", frame="dock2", canon="", text=TEXT_TRUCKS,
+        shot="The last bays in bright midday sun, matching the first frame: the platform still and quiet, TWO workers only, far in the distance, calmly loading one carton. Nobody else in frame."),
  ]),
  dict(n=15, vo="And that's when our marketing department starts working, adding fuel to the fire.", takes=[
-   dict(key="27", dur=5, cam="veo", frame="mkt", canon="", text=TEXT_NONE,
+   dict(key="27", dur=7, cam="sd", frame="mkt", canon="", text=TEXT_NONE,
         shot="A bright busy marketing floor: a display wall running a snowy-mountain book campaign " + "—" + " cover art as ads in several sizes, a trailer playing, performance curves climbing " + "—" + " a dozen different marketers at work. Faces incidental."),
  ]),
  dict(n=17, vo=None, voz="native", takes=[
    dict(key="30", dur=26, cam="sd", canon="g", text=TEXT_BADGE,
-        line="Everything you've just seen is an imagined world " + "—" + " but it shows you something real: what Script can do for you as a creative. The writers, the artists, the studios, the trucks " + "—" + " that's our software, doing every one of those jobs for your stories. Books, audiobooks, films " + "—" + " written, produced, published and promoted. And the whole studio is yours the moment you sign in.",
-        shot="ONE SINGLE CONTINUOUS TAKE, static camera, no cuts: a real photography-studio white cyclorama " + "—" + " seamless soft white in every direction, a small dark doorway far behind her. THE GUIDE walks toward the camera from the doorway ONCE, arriving at full height in frame near the camera early in the take " + "—" + " and then STANDS STILL, feet planted, speaking the rest warmly and personally straight to camera with only natural small gestures. When she has finished she gives one last warm smile, then turns and WALKS OUT OF FRAME TO THE RIGHT, leaving the empty white void. Real skin texture, soft even light."),
+        line="Everything you've just seen is an imagined world — but it shows you something real: what Script can do for you as a creative. The writers, the artists, the studios, the trucks — that's our software, doing every one of those jobs for your stories. Books, audiobooks, films — written, produced, published and promoted. And the whole studio is yours the moment you sign in.",
+        shot="ONE SINGLE CONTINUOUS TAKE, static camera, no cuts: a COMPLETELY WHITE seamless studio void — soft even white light filling the ENTIRE frame in every direction, no door, no walls, no ceiling, no edges, no dark areas, nothing but white. THE GUIDE walks in toward the camera from the white distance ONCE, arrives at full height early, then STANDS STILL and delivers the rest warmly straight to camera; at the end she turns and WALKS OUT OF FRAME TO THE RIGHT, leaving pure empty white. Her small brass name badge clearly reads exactly SCRPT — five letters, correctly spelled. Real skin texture, photoreal, soft even light."),
  ]),
 ]
 
 END_VO = "Script — One Idea. Every Format."
-END_DUR = 7.0
+END_DUR = 13.0
 
 def takes():
     out = []

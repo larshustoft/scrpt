@@ -294,7 +294,7 @@ class SettingsUpdate(BaseModel):
     reason). Declare every settable key.
     """
     # Appearance
-    office_background: Optional[str] = None    # "newyork" | "burbank"
+    office_background: Optional[str] = None    # "newyork" | "burbank" | "maingate"
 
     # Publisher identity
     publisher_name: Optional[str] = None

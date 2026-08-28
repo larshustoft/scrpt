@@ -41,6 +41,7 @@ CADENCE_DAYS = {            # between books of the same series
     "romance": 28,
     "action_thriller": 35,
     "thriller": 35,
+    "superhero": 35,
     "default": 28,
 }
 MIN_SERIES_GAP = 21

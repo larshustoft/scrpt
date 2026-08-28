@@ -93,6 +93,17 @@ SOUND_RECIPES = {
                  "deep braams, a rising pulse that accelerates, hard rhythmic "
                  "hits, aggressive build to a hard cut",
     },
+    "superhero": {
+        "intro": "heroic cinematic brass fanfare over a deep braam, epic "
+                 "trailer opening",
+        "cut_hit": "single deep hard cinematic drum impact hit, tight and "
+                   "punchy, huge low end",
+        "reveal": "soaring heroic orchestral hit with a sub drop and choir "
+                  "swell, final title reveal",
+        "score": "Epic heroic hybrid trailer score: soaring brass theme, "
+                 "pounding percussion, rising pulse, triumphant build to a "
+                 "hard cut",
+    },
     "romance": {          # provisional — the publisher's romance rules come later
         "intro": "soft warm cinematic swell, gentle piano and strings rising",
         "cut_hit": None,
@@ -106,6 +117,9 @@ SOUND_RECIPES = {
 LOOK_RECIPES = {
     "action_thriller": "moody low-key lighting, deep shadows, restrained color, "
                        "atmospheric haze, anamorphic feel, night or failing light",
+    "superhero": "bold cinematic comic-book energy: saturated color against deep "
+                 "night shadows, neon city glow, rain-slick streets, dramatic rim "
+                 "light, anamorphic flare, monumental low angles",
     "romance": "soft natural light, golden hour and candlelight, warm restrained "
                "palette, gentle haze, shallow depth of field, anamorphic feel",
     "default": "natural cinematic light, restrained palette, atmospheric haze, "
