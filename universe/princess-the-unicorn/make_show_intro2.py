@@ -9,6 +9,7 @@ from pathlib import Path
 import imageio_ffmpeg
 from PIL import Image, ImageChops
 import numpy as np
+sys.path.insert(0, str(Path(__file__).parent))
 
 HERE = Path(__file__).parent
 FF = imageio_ffmpeg.get_ffmpeg_exe()
@@ -43,22 +44,25 @@ def _dur(path):
 
 
 def make(theme: str, out: str) -> str:
-    wm, wm_h = _wordmark()
-    sky_len = min(_dur(HERE / SKY), 5.4)
-    # the wordmark fades in under her during the sky shot's second half
-    wm_y = 1080 - wm_h - 64
-    end_seg = HERE / "_end.mp4"
+    # the sky flight plays LIVE (trimmed before her in-take blink), then the
+    # logo-birth ending takes over: shrink -> stiffen -> song ends -> wink
+    from make_logo_ending import build as build_ending
+    sky_live = min(_dur(HERE / SKY) - 1.8, 3.4)
+    end_seg_a = HERE / "_end_a.mp4"
     subprocess.run([FF, "-y", "-v", "error", "-i", str(HERE / SKY),
-                    "-framerate", "24", "-loop", "1", "-t", f"{sky_len:.2f}",
-                    "-i", str(wm),
-                    "-filter_complex",
-                    ("[0:v]scale=1920:1080:force_original_aspect_ratio=increase,"
-                     "crop=1920:1080,fps=24,setpts=PTS-STARTPTS[bg];"
-                     "[1:v]format=rgba,fade=t=in:st=1.6:d=0.8:alpha=1[wmf];"
-                     f"[bg][wmf]overlay=x=(W-w)/2:y={wm_y}[v]"),
-                    "-map", "[v]", "-an", "-t", f"{sky_len:.2f}",
+                    "-vf", ("scale=1920:1080:force_original_aspect_ratio=increase,"
+                            "crop=1920:1080,fps=24,setpts=PTS-STARTPTS,"
+                            "colorlevels=rimax=0.92:gimax=0.92:bimax=0.92"),
+                    "-an", "-t", f"{sky_live:.2f}",
                     "-c:v", "libx264", "-preset", "fast", "-crf", "16",
-                    str(end_seg)], check=True)
+                    str(end_seg_a)], check=True)
+    end_seg_b, ending_s = build_ending(str(HERE / SKY), "unused")
+    sky_len = sky_live + ending_s
+    end_seg = HERE / "_end.mp4"
+    subprocess.run([FF, "-y", "-v", "error", "-i", str(end_seg_a), "-i", str(end_seg_b),
+                    "-filter_complex", "[0:v][1:v]concat=n=2:v=1:a=0[v]",
+                    "-map", "[v]", "-c:v", "libx264", "-preset", "fast",
+                    "-crf", "16", str(end_seg)], check=True)
     segs = []
     for i, (name, secs) in enumerate(SHOTS):
         seg = HERE / f"_s{i}.mp4"
@@ -81,7 +85,12 @@ def make(theme: str, out: str) -> str:
         f.append(f"[{prev}][{i}:v]xfade=transition=fade:duration={X}:offset={off - X:.2f}[x{i}]")
         prev = f"x{i}"
     f.append(f"[{prev}]fade=t=in:st=0:d=0.2,format=yuv420p[v]")
-    f.append(f"[{n + 1}:a]atrim=0:{total:.2f},afade=t=out:st={total - 0.3:.2f}:d=0.3[a]")
+    # the song ENDS first; the wink happens in the little silence after —
+    # the last thing before the episode (Lars)
+    _music_end = total - 0.8
+    f.append(f"[{n + 1}:a]atrim=0:{_music_end:.2f},"
+             f"afade=t=out:st={_music_end - 0.35:.2f}:d=0.35,"
+             f"apad=whole_dur={total:.2f}[a]")
     args += ["-filter_complex", ";".join(f), "-map", "[v]", "-map", "[a]",
              "-t", f"{total:.2f}", "-c:v", "libx264", "-preset", "fast",
              "-crf", "18", "-c:a", "aac", "-b:a", "192k", str(out)]
@@ -89,7 +98,6 @@ def make(theme: str, out: str) -> str:
     for seg, _ in segs:
         seg.unlink(missing_ok=True)
     end_seg.unlink(missing_ok=True)
-    wm.unlink(missing_ok=True)
     return out
 
 
