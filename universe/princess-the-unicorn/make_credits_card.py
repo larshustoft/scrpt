@@ -19,11 +19,13 @@ DUR = 2.0
 
 
 def _font(size):
-    for fp in ("/System/Library/Fonts/HelveticaNeue.ttc",
-               "/System/Library/Fonts/Helvetica.ttc",
-               "/System/Library/Fonts/Supplemental/Arial.ttf"):
+    # Lars's reference frame (2026-08-30): thin geometric sans, wide
+    # tracking — Futura is the closest system face to the mockup
+    for fp, idx in (("/System/Library/Fonts/Supplemental/Futura.ttc", 0),
+                    ("/System/Library/Fonts/Avenir Next.ttc", 0),
+                    ("/System/Library/Fonts/HelveticaNeue.ttc", 0)):
         try:
-            return ImageFont.truetype(fp, size)
+            return ImageFont.truetype(fp, size, index=idx)
         except OSError:
             continue
     return ImageFont.load_default()
@@ -32,8 +34,8 @@ def _font(size):
 def build(out=HERE / "endcard-tigerworks.mp4"):
     img = Image.new("RGB", (W, H), (0, 0, 0))
     dr = ImageDraw.Draw(img)
-    f = _font(84)
-    text, gap = "TigerWorks", 4          # a whisper of tracking, nothing more
+    f = _font(64)
+    text, gap = "TigerWorks", 40         # wide airy tracking, per the mockup
     tw = sum(dr.textlength(c, font=f) + gap for c in text) - gap
     bb = dr.textbbox((0, 0), text, font=f)
     x, y = (W - tw) / 2, (H - (bb[3] - bb[1])) / 2 - bb[1]

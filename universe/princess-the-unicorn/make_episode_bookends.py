@@ -45,13 +45,14 @@ RATIO = "1280:720"
 VO_SPEED = 0.88
 GAP = 0.5
 LEAD_IN = 3.0
+VOICE_GAIN = {"iCrDUkL56s3C8sCRl7wb": "4dB"}   # Hope records quiet
 
 
 def _book():
     db = sqlite3.connect(f"file:{ROOT}/data/scrpt.db?mode=ro", uri=True)
-    row = db.execute("SELECT id, data FROM books WHERE catalog_number=?",
+    row = db.execute("SELECT id, title, data FROM books WHERE catalog_number=?",
                      (CATALOG,)).fetchone()
-    return {"id": row[0], "data": json.loads(row[1])}
+    return {"id": row[0], "title": row[1], "data": json.loads(row[2])}
 
 
 def _probe_seconds(p: Path) -> float:
@@ -70,11 +71,16 @@ async def _say(book, text: str, filename: str, speed: float,
     """One cached voice line — the producer's TTS verbatim, minus the
     DB ledger write (files with canonical names get grandfathered)."""
     dest = TDIR / filename
-    if dest.exists() and dest.stat().st_size > 10_000:
-        return dest
     from engine.database import get_setting
     voice_id = voice_override or trailer_voice(
         book["data"].get("genre_preset") or "", CATALOG)[0]
+    # a recording is only valid for the voice that made it — the producer
+    # keys this through its take ledger; standalone we use a sidecar.
+    # Caching on words alone is how Tilly kept narrating after the recast.
+    sidecar = dest.with_suffix(".voice")
+    if (dest.exists() and dest.stat().st_size > 10_000
+            and sidecar.exists() and sidecar.read_text().strip() == voice_id):
+        return dest
     api_key = get_setting("elevenlabs_api_key", "")
     async with httpx.AsyncClient(timeout=300) as client:
         resp = await client.post(
@@ -91,6 +97,16 @@ async def _say(book, text: str, filename: str, speed: float,
     if resp.status_code != 200:
         raise RuntimeError(f"voice failed ({resp.status_code}): {resp.text[:200]}")
     dest.write_bytes(resp.content)
+    # some voices record quiet (Hope, Lars 2026-08-30: "volume is a little
+    # low") — lift them at the source so every mix downstream is right
+    gain = VOICE_GAIN.get(voice_id)
+    if gain:
+        raw = dest.with_suffix(".raw.mp3")
+        dest.rename(raw)
+        _run(["-i", str(raw), "-af", f"volume={gain}",
+              "-c:a", "libmp3lame", "-q:a", "2", str(dest)])
+        raw.unlink()
+    sidecar.write_text(voice_id)
     return dest
 
 
@@ -266,16 +282,24 @@ async def opening():
 
 # ── the outro ────────────────────────────────────────────────────
 
+# The arc: awake and snuggling -> heavy-eyed under the song -> asleep on the
+# last note. Every shot gets a DRAWN FRAME first (the style anchor) — the
+# first outro shipped photoreal because it shot from text + plates alone
+# (Lars, 2026-08-30: "don't make her look like a real horse").
+CARTOON = ("Stylized 2D children's animation, a storybook illustration in "
+           "motion, soft painterly cartoon rendering — NEVER photorealistic, "
+           "no real-animal anatomy, no realistic fur or skin texture. ")
 OUTRO_SHOTS = [
     (9, "Wide shot of a cozy woodland bedroom at night, deep velvety blues, "
         "moonlight through a round window. Glitter gently pulls a soft leaf "
-        "blanket over Princess, who is lying in a little moss bed, both "
-        "facing the camera, warm and tender.",
+        "blanket over Princess, who is lying AWAKE in a little moss bed, "
+        "snuggling in happily and looking up at her mother with bright "
+        "eyes, both facing the camera, warm and tender.",
      "hushed night-time room, the soft rustle of a blanket, faint crickets outside"),
     (9, "Medium shot beside the moss bed: Glitter lowers her head close to "
         "Princess and sings softly to her, mouth barely moving, eyes warm "
-        "and loving. Princess blinks slowly, heavy-eyed, snuggled under the "
-        "leaf blanket, both faces visible to the camera.",
+        "and loving. Princess blinks slowly, growing heavy-eyed, snuggled "
+        "under the leaf blanket, both faces visible to the camera.",
      "hushed room tone, faint crickets, the tiniest chime of a silver bell"),
     (10, "Slow close-up of Princess's face on the pillow of moss: her "
          "sparkling violet eyes flutter, close gently, and she drifts to "
@@ -283,6 +307,33 @@ OUTRO_SHOTS = [
          "into frame beside her, watching over her sleeping foal.",
      "hushed night-time room, soft slow breathing, faint crickets"),
 ]
+
+
+async def _outro_frames(book, sb, style, cast):
+    """Draw the three outro frames with the board's own hand, so the shoot
+    carries the same style anchor as every board panel."""
+    import httpx as _hx
+    from engine.trailer.plates import _draw, _panel_prompt
+    from engine.cover.front_cover import _best_image_model
+    takes_dir = HERE / "outro-takes"
+    todo = []
+    for i, (secs, shot, snd) in enumerate(OUTRO_SHOTS, 1):
+        dest = takes_dir / f"frame-{i}.png"
+        if not (dest.exists() and dest.stat().st_size > 10_000):
+            pn = {"shot": shot, "characters": ["Princess", "Glitter"]}
+            todo.append((pn, dest))
+    if todo:
+        async with _hx.AsyncClient(timeout=260) as client:
+            model = await _best_image_model(client)
+            for pn, dest in todo:
+                got = await _draw(client, model,
+                                  _panel_prompt(pn, style, cast, book["title"]),
+                                  dest, size="1536x1024")
+                if not got:
+                    raise RuntimeError(f"frame {dest.name} did not draw")
+                print(f"  drew    {dest.name}")
+    return [HERE / "outro-takes" / f"frame-{i}.png"
+            for i in range(1, len(OUTRO_SHOTS) + 1)]
 
 
 async def outro():
@@ -293,19 +344,26 @@ async def outro():
     takes_dir = HERE / "outro-takes"
     takes_dir.mkdir(exist_ok=True)
 
+    frames = await _outro_frames(book, sb, style, cast)
     char_uris = await _plate_uris(["Princess", "Glitter"])
     b0 = await runway.credit_balance()
     clips = []
-    for secs, shot, snd in OUTRO_SHOTS:
+    for (secs, shot, snd), frame in zip(OUTRO_SHOTS, frames):
         refs, who = [], ""
         for name in ("Princess", "Glitter"):
             if char_uris.get(name):
                 refs.append(char_uris[name])
                 who += (f" {name} is the person in reference image {len(refs)} — "
                         f"exactly the same face, hair and build, in this scene.")
+        refs.append(await runway.upload_file(frame))
+        who += (f" Reference image {len(refs)} is the storyboard frame for "
+                f"this exact shot: match its composition, framing, light, "
+                f"art style and blocking — but every face comes from the "
+                f"earlier reference images, not from this frame.")
         shot_txt = apply_cast(shot, cast)
-        prompt = (f"{shot_txt} {style} No text or lettering on screen. "
-                  f"Sound: {snd}. No music, no speech, no voices.{who}").strip()
+        prompt = (f"{CARTOON}{shot_txt} {style} No text or lettering on "
+                  f"screen. Sound: {snd}. No music, no speech, no voices."
+                  f"{who}").strip()
         clip = takes_dir / f"ot-{_h(prompt + RATIO + str(secs))}.mp4"
         clips.append((clip, secs))
         await _shoot(prompt, refs, secs, clip)

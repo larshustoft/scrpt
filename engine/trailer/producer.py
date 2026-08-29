@@ -1219,7 +1219,8 @@ def _universe_storyteller(catalog: str) -> tuple:
         import json as _json
         from pathlib import Path as _P
         from ..database import get_setting as _gs
-        reg = _json.loads(_gs("universes", "") or "{}")
+        _v = _gs("universes", "")
+        reg = _v if isinstance(_v, dict) else _json.loads(_v or "{}")
         root = _P(__file__).resolve().parents[2]
         for u in reg.values():
             prof = _json.loads((root / u["profile"]).read_text())

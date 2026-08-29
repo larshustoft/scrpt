@@ -596,6 +596,35 @@ FILM_FORMATS = {
 }
 
 
+def _universe_format_rules(catalog: str) -> str:
+    """The series' own FORMAT RULES, if this book belongs to a universe
+    with an episode-format document (Lars, 2026-08-30: a strict format so
+    100 episodes are simple). Returns the injectable rules section only."""
+    try:
+        import json as _json
+        from pathlib import Path as _P
+        from ..database import get_setting as _gs
+        _v = _gs("universes", "")
+        reg = _v if isinstance(_v, dict) else _json.loads(_v or "{}")
+        root = _P(__file__).resolve().parents[2]
+        for u in reg.values():
+            prof = _json.loads((root / u["profile"]).read_text())
+            if catalog not in (prof.get("members") or []):
+                continue
+            fmt_rel = prof.get("episode_format")
+            if not fmt_rel:
+                continue
+            text = (root / u["path"] / fmt_rel).read_text()
+            if "## FORMAT RULES" in text:
+                sec = text.split("## FORMAT RULES", 1)[1]
+                sec = sec.split("\n## ", 1)[0]
+                sec = sec.split("\n", 1)[1] if "\n" in sec else sec
+                return sec.strip()
+    except Exception:
+        pass
+    return ""
+
+
 async def build_film_board(catalog: str, minutes: int = 8, handle=None,
                            format_kind: str = "childrens",
                            premise: str = "") -> dict:
@@ -641,10 +670,17 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
         # roughly a scene every two minutes; features breathe, episodes clip
         n_scenes = max(10, min(60, minutes // 2))
 
+    series_rules = _universe_format_rules(catalog)
+    rules_block = (f"\nTHE SERIES FORMAT (this book belongs to a series — "
+                   f"these rules are LAW for storytelling, structure and "
+                   f"dialogue):\n{series_rules}\n"
+                   if series_rules else "")
+
     # ── stage 1: the adaptation
     adapt_prompt = (
         f"BOOK: \"{book['title']}\" — adapt it into a ~{minutes}-minute "
         f"{fmt['label']} screenplay. REGISTER: {fmt['register']}.\n"
+        + rules_block
         + (f"EPISODE PREMISE (this episode's own story, true to the book's "
            f"world and cast): {premise.strip()}\n" if premise.strip() else "")
         + f"\nTHE BOOK:\n{story}\n\n"
@@ -696,7 +732,8 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
         board_prompt = (
             f"THE SCREENPLAY of \"{book['title']}\" (animated family film):\n"
             f"{scenes_txt}\n\n"
-            f"THE CAST: {', '.join(cast_names)}\n\n"
+            f"THE CAST: {', '.join(cast_names)}\n"
+            + rules_block + "\n"
             f"Break EVERY scene into {shots_per}-4 shots. Rules:\n"
             "1. One composition per shot: framing, what happens, the light. "
             "Characters by cast name only; never invent characters.\n"
@@ -710,7 +747,12 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             "shot only.\n"
             "5. `sound`: one gentle diegetic sound per shot.\n"
             "6. `dur`: 4-8 seconds; a shot with a line runs long enough to "
-            "speak it.\n\n"
+            "speak it.\n"
+            "7. THE FILM'S FIRST SHOT (Lars, 2026-08-30) is always the "
+            "WIDEST view of the story's world — a whole valley, a skyline, "
+            "the land from above — and the camera drifts or zooms IN toward "
+            "where the story is happening. No character is close in shot 1; "
+            "we arrive at them in shot 2.\n\n"
             "Return JSON only: {\"scenes\": [{\"scene\": 1, \"title\": "
             "\"...\", \"shots\": [{\"shot\": \"...\", \"dur\": 6, "
             "\"vo\": \"...\", \"sound\": \"...\", \"characters\": "

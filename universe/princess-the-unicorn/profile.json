@@ -37,7 +37,8 @@
     "desktop_mirror": "/Users/tiger/Desktop/Princess the Unicorn",
     "lullaby_brief": "universe/princess-the-unicorn/unicorn-lullaby-brief.md",
     "credits_card": "credits-card.mp4",
-    "theme_continuation_candidate": "theme/theme-continuation.mp3"
+    "theme_continuation_candidate": "theme/theme-continuation.mp3",
+    "episode_format": "episode-format.md"
   },
   "world": {
     "bible_book": "SC-039",
@@ -62,9 +63,9 @@
       "name": "Tilly - Bright, Spirited, Naive, Scrappy"
     },
     "Glitter": {
-      "id": "7NvpjDFPnyMDGPkjfTaK",
-      "name": "Lullaby Singer (cloned from The Unicorn Lullaby)",
-      "note": "Lars 2026-08-30: Glitter speaks with the lullaby singer's cloned voice, so the mum who talks is the mum who sings. Previous: Autumn Veil (KoVIHoyLDrQyd4pGalbs)."
+      "id": "iCrDUkL56s3C8sCRl7wb",
+      "name": "Hope - soothing narrator",
+      "note": "Lars 2026-08-30: Hope \u2014 closest to the lullaby singer's softness. Her raw output runs quiet: lift her lines ~4dB in the mix (see make_episode_bookends VOICE_GAIN)."
     },
     "Pip": {
       "id": "thfYL0Elyru2qqTtNQsE",
@@ -107,5 +108,6 @@
       "theme/lullaby-harp-3.mp3",
       "theme/lullaby-harp-4.mp3"
     ]
-  }
+  },
+  "episode_format": "episode-format.md"
 }

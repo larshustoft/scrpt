@@ -3177,7 +3177,7 @@ async def redraw_board_frame(catalog: str, body: dict = Body(default={})):
             ticker.cancel()
         if not got:
             raise RuntimeError("The frame refused to draw — try rewording the prompt")
-        return {"panel": n, "frame": f"board/panel-{n}.png"}
+        return {"panel": n, "frame": f"{_subdir}/panel-{n}.png"}
 
     return {"job_id": start_job("board_frame", job, book_catalog=catalog)}
 
@@ -3332,7 +3332,8 @@ async def movie_produce(catalog: str, body: dict = Body(default={})):
             import json as _json, subprocess as _sp
             import imageio_ffmpeg as _iio
             root = Path(__file__).resolve().parents[2]
-            reg = _json.loads(db.get_setting("universes", "") or "{}")
+            _v = db.get_setting("universes", "")
+            reg = _v if isinstance(_v, dict) else _json.loads(_v or "{}")
             intro = None
             outro = None
             for u in reg.values():
