@@ -14,7 +14,7 @@
   "theme_sung": null,
   "intro_builder": "universe/princess-the-unicorn/make_intro.py",
   "music_direction": "Bright storybook orchestra: hummable 8-note glockenspiel motif over pizzicato strings, soft flutes, warm ukulele, gentle sparkle; never dark, never epic. The motif opens every film and belongs to the brand.",
-  "show_intro": "universe/princess-the-unicorn/show-intro-v7.mp4",
+  "show_intro": "universe/princess-the-unicorn/show-intro-v8.mp4",
   "show_intro_builder": "universe/princess-the-unicorn/make_show_intro2.py",
   "leap_take": "universe/princess-the-unicorn/leap-white.mp4",
   "intro_storyboard": "intro-storyboard.json",

@@ -15,7 +15,8 @@ HERE = Path(__file__).parent
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 X = 0.4
 
-ENDING_AT = 17.0        # the logo animation begins ON "Unicoooorn"
+THEME_TRIM = 1.5        # the song's slow intro bar is skipped (Lars)
+ENDING_AT = 17.0 - THEME_TRIM   # "Unicoooorn" sings here in the trimmed song
 SHOT_NAMES = ["intro-s1.mp4", "test-gallop.mp4", "intro-s3.mp4",
               "intro-rainbow.mp4", "intro-friends.mp4"]
 
@@ -46,20 +47,17 @@ def _dur(path):
 def make(theme: str, out: str) -> str:
     # the body carries five shots to EXACTLY 17.0s, and the logo animation
     # begins on the word "Unicoooorn"; the whole song plays untouched
-    theme_len = _dur(theme)
+    theme_len = _dur(theme) - THEME_TRIM
 
     # each shot contributes what it truly HAS; a gentle stretch (max 15%
     # slow-motion, invisible in this register) lands the body on exactly
     # ENDING_AT so the logo begins on the word
     avails = []
     for name in SHOT_NAMES:
-        a = max(1.5, _dur(HERE / name) - 0.35)
-        if name == "intro-s1.mp4":
-            a = min(a, 1.4)     # a quick glimpse of the world, then ACTION
-        avails.append(a)
+        avails.append(max(1.5, _dur(HERE / name) - 0.35))
     nsh = len(SHOT_NAMES)
     raw_net = sum(avails) - (nsh - 1) * X
-    stretch = min(1.2, max(1.0, ENDING_AT / raw_net))
+    stretch = min(1.15, max(1.0, ENDING_AT / raw_net))
     segs = []
     for i, (name, avail) in enumerate(zip(SHOT_NAMES, avails)):
         seg = HERE / f"_s{i}.mp4"
@@ -92,7 +90,8 @@ def make(theme: str, out: str) -> str:
     f.append(f"[{prev}]fade=t=in:st=0:d=0.2,format=yuv420p[v]")
     # the FULL song, untouched — it ends naturally, then the wink and the
     # one-second hold close the intro (Lars: no cutting)
-    f.append(f"[{n + 1}:a]apad=whole_dur={total:.2f}[a]")
+    f.append(f"[{n + 1}:a]atrim=start={THEME_TRIM:.2f},asetpts=PTS-STARTPTS,"
+             f"afade=t=in:st=0:d=0.15,apad=whole_dur={total:.2f}[a]")
     args += ["-filter_complex", ";".join(f), "-map", "[v]", "-map", "[a]",
              "-t", f"{total:.2f}", "-c:v", "libx264", "-preset", "fast",
              "-crf", "18", "-c:a", "aac", "-b:a", "192k", str(out)]
