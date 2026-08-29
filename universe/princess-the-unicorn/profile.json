@@ -1,79 +1,105 @@
 {
- "name": "Princess the Unicorn",
- "kind": "childrens_universe",
- "domain": "princesstheunicorn.com",
- "tagline": "Come along with me \u2014 through the Rainbow Forest, magic wild and free!",
- "creatives": {
-  "logo": "universe/princess-the-unicorn/logo.png",
-  "logo_alternates": [
-   "universe/princess-the-unicorn/logo-2.png",
-   "universe/princess-the-unicorn/logo-3.png",
-   "universe/princess-the-unicorn/logo-4.png"
+  "name": "Princess the Unicorn",
+  "kind": "childrens_universe",
+  "domain": "princesstheunicorn.com",
+  "tagline": "Come along with me \u2014 through the Rainbow Forest, magic wild and free!",
+  "creatives": {
+    "logo": "universe/princess-the-unicorn/logo.png",
+    "logo_alternates": [
+      "universe/princess-the-unicorn/logo-2.png",
+      "universe/princess-the-unicorn/logo-3.png",
+      "universe/princess-the-unicorn/logo-4.png"
+    ],
+    "theme_instrumental": "universe/princess-the-unicorn/theme/theme-instrumental.mp3",
+    "theme_sung": null,
+    "intro_builder": "universe/princess-the-unicorn/make_intro.py",
+    "music_direction": "Bright storybook orchestra: hummable 8-note glockenspiel motif over pizzicato strings, soft flutes, warm ukulele, gentle sparkle; never dark, never epic. The motif opens every film and belongs to the brand.",
+    "show_intro": "universe/princess-the-unicorn/show-intro-v8.mp4",
+    "show_intro_builder": "universe/princess-the-unicorn/make_show_intro2.py",
+    "leap_take": "universe/princess-the-unicorn/leap-white.mp4",
+    "intro_storyboard": "intro-storyboard.json",
+    "logo_blink": "universe/princess-the-unicorn/logo-blink.png",
+    "intro_takes": [
+      "intro-s1.mp4",
+      "test-gallop.mp4",
+      "intro-s3.mp4",
+      "intro-s4.mp4",
+      "intro-sky.mp4"
+    ],
+    "logo_ending": "universe/princess-the-unicorn/make_logo_ending.py",
+    "logo_twins": [
+      "logo-textonly.png",
+      "logo-wink.png",
+      "logo-blink.png"
+    ],
+    "show_outro": "universe/princess-the-unicorn/outro.mp4",
+    "show_intro_4k": "universe/princess-the-unicorn/show-intro-4K.mp4",
+    "desktop_mirror": "/Users/tiger/Desktop/Princess the Unicorn",
+    "lullaby_brief": "universe/princess-the-unicorn/unicorn-lullaby-brief.md",
+    "credits_card": "credits-card.mp4",
+    "theme_continuation_candidate": "theme/theme-continuation.mp3"
+  },
+  "world": {
+    "bible_book": "SC-039",
+    "register": "magical wonder \u2014 Disney-family warmth, nothing scary",
+    "cast": [
+      "Princess",
+      "Glitter",
+      "Pip",
+      "Moss"
+    ]
+  },
+  "members": [
+    "SC-039"
   ],
-  "theme_instrumental": "universe/princess-the-unicorn/theme/theme-instrumental.mp3",
-  "theme_sung": null,
-  "intro_builder": "universe/princess-the-unicorn/make_intro.py",
-  "music_direction": "Bright storybook orchestra: hummable 8-note glockenspiel motif over pizzicato strings, soft flutes, warm ukulele, gentle sparkle; never dark, never epic. The motif opens every film and belongs to the brand.",
-  "show_intro": "universe/princess-the-unicorn/show-intro-v8.mp4",
-  "show_intro_builder": "universe/princess-the-unicorn/make_show_intro2.py",
-  "leap_take": "universe/princess-the-unicorn/leap-white.mp4",
-  "intro_storyboard": "intro-storyboard.json",
-  "logo_blink": "universe/princess-the-unicorn/logo-blink.png",
-  "intro_takes": [
-   "intro-s1.mp4",
-   "test-gallop.mp4",
-   "intro-s3.mp4",
-   "intro-s4.mp4",
-   "intro-sky.mp4"
-  ],
-  "logo_ending": "universe/princess-the-unicorn/make_logo_ending.py",
-  "logo_twins": [
-   "logo-textonly.png",
-   "logo-wink.png",
-   "logo-blink.png"
-  ],
-  "show_outro": "universe/princess-the-unicorn/outro.mp4",
-  "show_intro_4k": "universe/princess-the-unicorn/show-intro-4K.mp4",
-  "desktop_mirror": "/Users/tiger/Desktop/Princess the Unicorn",
-  "lullaby_brief": "universe/princess-the-unicorn/unicorn-lullaby-brief.md"
- },
- "world": {
-  "bible_book": "SC-039",
-  "register": "magical wonder \u2014 Disney-family warmth, nothing scary",
-  "cast": [
-   "Princess",
-   "Glitter",
-   "Pip",
-   "Moss"
-  ]
- },
- "members": [
-  "SC-039"
- ],
- "channels": {
-  "youtube": null,
-  "site": "https://princesstheunicorn.com"
- },
- "voice_cast": {
-  "Princess": {
-   "id": "MkTSSXNgnBULS6ek4pon",
-   "name": "Tilly - Bright, Spirited, Naive, Scrappy"
+  "channels": {
+    "youtube": null,
+    "site": "https://princesstheunicorn.com"
   },
-  "Glitter": {
-   "id": "KoVIHoyLDrQyd4pGalbs",
-   "name": "Autumn Veil - Warm and Reflective"
+  "voice_cast": {
+    "Princess": {
+      "id": "MkTSSXNgnBULS6ek4pon",
+      "name": "Tilly - Bright, Spirited, Naive, Scrappy"
+    },
+    "Glitter": {
+      "id": "KoVIHoyLDrQyd4pGalbs",
+      "name": "Autumn Veil - Warm and Reflective"
+    },
+    "Pip": {
+      "id": "thfYL0Elyru2qqTtNQsE",
+      "name": "Aurelia - High Quality Realistic Princess "
+    },
+    "Moss": {
+      "id": "loY1uopAz31XyhAEhNSa",
+      "name": "Valf - Young, Playful & Sarcastic"
+    },
+    "Fireflies": {
+      "id": "d8WcCpplp8meHt10UhL8",
+      "name": "Emily - Bright & Energetic"
+    }
   },
-  "Pip": {
-   "id": "thfYL0Elyru2qqTtNQsE",
-   "name": "Aurelia - High Quality Realistic Princess "
+  "episode_sound_structure": {
+    "note": "Lars 2026-08-29 \u2014 the fixed musical arc of every episode",
+    "1_intro": "show-intro-v8.mp4 (sung theme)",
+    "2_opening_underscore": "instrumental continuation of the theme, no vocals, bridges intro into the first section of the story (candidate: theme/theme-continuation.mp3)",
+    "3_score": "additional moods/alternatives added as the library grows",
+    "4_ending_scene": "Princess falls asleep while Glitter sings The Unicorn Lullaby (short sung version) \u2014 TO BE SHOT once lullaby take is chosen",
+    "5_credits": "credits-card.mp4 \u2014 minimal TigerWorks wordmark, year, princesstheunicorn.com, fades to black"
   },
-  "Moss": {
-   "id": "loY1uopAz31XyhAEhNSa",
-   "name": "Valf - Young, Playful & Sarcastic"
-  },
-  "Fireflies": {
-   "id": "d8WcCpplp8meHt10UhL8",
-   "name": "Emily - Bright & Energetic"
+  "lullaby": {
+    "rule": "MAJOR KEY ONLY \u2014 bright, warm, safe; never minor (Lars 2026-08-29)",
+    "frontrunner": "theme/lullaby-short-harp.mp3 (the first harp version)",
+    "candidates": [
+      "theme/lullaby-short-harp.mp3",
+      "theme/lullaby-harp-5.mp3",
+      "theme/lullaby-harp-6.mp3",
+      "theme/lullaby-harp-7.mp3"
+    ],
+    "retired": [
+      "theme/lullaby-short-try.mp3 (no harp)",
+      "theme/lullaby-harp-2.mp3",
+      "theme/lullaby-harp-3.mp3",
+      "theme/lullaby-harp-4.mp3"
+    ]
   }
- }
 }
