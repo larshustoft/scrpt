@@ -3231,15 +3231,18 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
                                  voice_cast?: Record<string, { id: string; name: string }> } | null>(null);
   const [castFor, setCastFor] = useState<string | null>(null);
   const [castQ, setCastQ] = useState("");
+  const [castGender, setCastGender] = useState("");
+  const [castAccent, setCastAccent] = useState("");
+  const [castSearched, setCastSearched] = useState(false);
   const [castResults, setCastResults] = useState<{ id: string; name: string; description?: string; preview_url?: string }[]>([]);
   const [castBusy, setCastBusy] = useState(false);
   const searchCastVoice = async () => {
-    setCastBusy(true); setCastResults([]);
+    setCastBusy(true); setCastResults([]); setCastSearched(false);
     try {
-      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/voice-library/search?q=${encodeURIComponent(castQ)}`);
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/voice-library/search?q=${encodeURIComponent(castQ)}&gender=${castGender}&accent=${castAccent}`);
       const d = await r.json();
-      if (r.ok) setCastResults((d.voices || []).slice(0, 8));
-    } finally { setCastBusy(false); }
+      if (r.ok) setCastResults((d.voices || []).slice(0, 10));
+    } finally { setCastBusy(false); setCastSearched(true); }
   };
   const castVoice = async (character: string, v: { id: string; name: string }) => {
     await fetch(`${scrpt.engineUrl}/api/scrpt/movie/voice-cast/${catalog}`, {
@@ -3423,14 +3426,35 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
                 </div>
                 {castFor === name && (
                   <div className="mt-2">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                      {[["female", "Female"], ["male", "Male"]].map(([v, label]) => (
+                        <button key={v}
+                                className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                                  castGender === v ? "border-accent text-accent" : "border-border-subtle text-text-tertiary hover:text-text-secondary"}`}
+                                onClick={() => setCastGender(castGender === v ? "" : v)}>{label}</button>
+                      ))}
+                      <span className="w-1.5" />
+                      {[["american", "American"], ["british", "British"]].map(([v, label]) => (
+                        <button key={v}
+                                className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                                  castAccent === v ? "border-accent text-accent" : "border-border-subtle text-text-tertiary hover:text-text-secondary"}`}
+                                onClick={() => setCastAccent(castAccent === v ? "" : v)}>{label}</button>
+                      ))}
+                    </div>
                     <div className="flex items-center gap-2">
                       <input value={castQ} onChange={(e) => setCastQ(e.target.value)}
                              onKeyDown={(e) => { if (e.key === "Enter") searchCastVoice(); }}
                              placeholder="small brave dragon, cheeky bird, warm young unicorn…"
                              className="flex-1 rounded-[6px] border border-border-subtle bg-transparent px-2.5 py-1 text-[12px]" />
-                      <button className="btn-ghost text-[11px]" disabled={castBusy || !castQ.trim()}
+                      <button className="btn-ghost text-[11px]" disabled={castBusy || (!castQ.trim() && !castGender && !castAccent)}
                               onClick={searchCastVoice}>{castBusy ? "…" : "Search"}</button>
                     </div>
+                    {castSearched && castResults.length === 0 && (
+                      <div className="text-[10px] text-text-faint mt-1.5">
+                        No voices matched — describe the SOUND (&quot;bright playful child&quot;,
+                        &quot;gentle shy young voice&quot;); trademarked names find nothing.
+                      </div>
+                    )}
                     {castResults.map((v) => (
                       <div key={v.id} className="flex items-center gap-2 flex-wrap mt-1.5 rounded-[6px] border border-border-subtle px-2 py-1.5">
                         <div className="flex-1 min-w-[140px]">
