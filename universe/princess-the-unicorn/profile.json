@@ -1,0 +1,35 @@
+{
+ "name": "Princess the Unicorn",
+ "kind": "childrens_universe",
+ "domain": "princesstheunicorn.com",
+ "tagline": "Come along with me \u2014 through the Rainbow Forest, magic wild and free!",
+ "creatives": {
+  "logo": "universe/princess-the-unicorn/logo.png",
+  "logo_alternates": [
+   "universe/princess-the-unicorn/logo-2.png",
+   "universe/princess-the-unicorn/logo-3.png",
+   "universe/princess-the-unicorn/logo-4.png"
+  ],
+  "theme_instrumental": "universe/princess-the-unicorn/theme/theme-instrumental.mp3",
+  "theme_sung": null,
+  "intro_builder": "universe/princess-the-unicorn/make_intro.py",
+  "music_direction": "Bright storybook orchestra: hummable 8-note glockenspiel motif over pizzicato strings, soft flutes, warm ukulele, gentle sparkle; never dark, never epic. The motif opens every film and belongs to the brand."
+ },
+ "world": {
+  "bible_book": "SC-039",
+  "register": "magical wonder \u2014 Disney-family warmth, nothing scary",
+  "cast": [
+   "Princess",
+   "Glitter",
+   "Pip",
+   "Moss"
+  ]
+ },
+ "members": [
+  "SC-039"
+ ],
+ "channels": {
+  "youtube": null,
+  "site": "https://princesstheunicorn.com"
+ }
+}
