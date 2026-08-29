@@ -3265,9 +3265,11 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
       {!mv ? (
         <div className="mt-3">
           <p className="text-[12px] text-text-tertiary leading-relaxed">
-            Every spread becomes a scene, narrated by the book&apos;s own words —
-            the film IS the book. Build the board (script + a frame per shot;
-            no video is shot yet).
+            The book is ADAPTED into a screenplay that works on film: the
+            story told through the characters&apos; dialogue and action, the
+            storyteller&apos;s narration kept for openings and turns. Then the
+            screenplay breaks into shots with a frame each. No video is shot
+            yet.
           </p>
           <div className="flex items-center gap-2 mt-3">
             {[5, 8, 12].map((m) => (

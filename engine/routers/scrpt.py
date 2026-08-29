@@ -3217,6 +3217,43 @@ async def movie_board(catalog: str, body: dict = Body(default={})):
     return {"job_id": start_job("movie_board", job, book_catalog=catalog)}
 
 
+@router.post("/movie/voice-cast/{catalog}")
+def movie_voice_cast(catalog: str, body: dict = Body(default={})):
+    """Cast a character's speaking voice for the film: every line that
+    character speaks records in it. body: {character, voice_id, voice_name}"""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    character = str(body.get("character") or "").strip()
+    if not character:
+        raise HTTPException(400, "character is required")
+    data = dict(book["data"]); mv = dict(data.get("movie") or {})
+    vc = dict(mv.get("voice_cast") or {})
+    if body.get("voice_id"):
+        vc[character] = {"id": str(body["voice_id"]),
+                         "name": str(body.get("voice_name") or "")[:80]}
+    else:
+        vc.pop(character, None)
+    mv["voice_cast"] = vc
+    data["movie"] = mv
+    db.update_book(book["id"], data)
+    return {"voice_cast": vc}
+
+
+def _stamp_line_voices(book: dict, sb: dict) -> dict:
+    """Every dialogue line carries its speaker's cast voice into recording."""
+    vc = ((book["data"].get("movie") or {}).get("voice_cast")) or {}
+    if not vc:
+        return sb
+    import copy
+    sb2 = copy.deepcopy(sb)
+    for pn in (sb2.get("panels") or []):
+        ln = pn.get("line")
+        if isinstance(ln, dict) and ln.get("speaker") in vc:
+            ln["voice"] = vc[ln["speaker"]]["id"]
+    return sb2
+
+
 @router.post("/movie/produce/{catalog}")
 async def movie_produce(catalog: str, body: dict = Body(default={})):
     """Shoot and cut the FILM from its board. Quotes first; nothing rolls
@@ -3238,6 +3275,8 @@ async def movie_produce(catalog: str, body: dict = Body(default={})):
                 "seconds": int(total_s), "shots": len(panels),
                 "note": "Ceiling at ~60 cr/s; cached takes are reused free. "
                         "Pass confirm:true to roll."}
+
+    sb = _stamp_line_voices(book, sb)
 
     async def job(handle):
         return await produce_storyboard(
@@ -3265,6 +3304,8 @@ async def trailer_rerecord(catalog: str, body: dict = Body(default={})):
     if not (sb.get("panels") if isinstance(sb, dict) else sb):
         raise HTTPException(400, "No storyboard yet — build it first")
     _is_movie = body.get("board") == "movie"
+    if _is_movie:
+        sb = _stamp_line_voices(book, sb)
     _maxs = (int(sum(float(p.get("dur") or 6) for p in (sb.get("panels") or []))) + 30) if _is_movie else 0
 
     async def job(handle):
