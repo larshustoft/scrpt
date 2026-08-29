@@ -53,10 +53,13 @@ def make(theme: str, out: str) -> str:
     # ENDING_AT so the logo begins on the word
     avails = []
     for name in SHOT_NAMES:
-        avails.append(max(1.5, _dur(HERE / name) - 0.35))
+        a = max(1.5, _dur(HERE / name) - 0.35)
+        if name == "intro-s1.mp4":
+            a = min(a, 1.4)     # a quick glimpse of the world, then ACTION
+        avails.append(a)
     nsh = len(SHOT_NAMES)
     raw_net = sum(avails) - (nsh - 1) * X
-    stretch = min(1.15, max(1.0, ENDING_AT / raw_net))
+    stretch = min(1.2, max(1.0, ENDING_AT / raw_net))
     segs = []
     for i, (name, avail) in enumerate(zip(SHOT_NAMES, avails)):
         seg = HERE / f"_s{i}.mp4"
