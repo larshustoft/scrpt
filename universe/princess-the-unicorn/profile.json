@@ -31,7 +31,10 @@
    "logo-textonly.png",
    "logo-wink.png",
    "logo-blink.png"
-  ]
+  ],
+  "show_outro": "universe/princess-the-unicorn/outro.mp4",
+  "show_intro_4k": "universe/princess-the-unicorn/show-intro-4K.mp4",
+  "desktop_mirror": "/Users/tiger/Desktop/Princess the Unicorn"
  },
  "world": {
   "bible_book": "SC-039",

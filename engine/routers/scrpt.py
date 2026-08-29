@@ -3323,30 +3323,38 @@ async def movie_produce(catalog: str, body: dict = Body(default={})):
             root = Path(__file__).resolve().parents[2]
             reg = _json.loads(db.get_setting("universes", "") or "{}")
             intro = None
+            outro = None
             for u in reg.values():
                 prof = _json.loads((root / u["profile"]).read_text())
                 if catalog in (prof.get("members") or []):
                     ip = prof.get("creatives", {}).get("show_intro")
                     if ip and (root / ip).exists():
                         intro = root / ip
+                    op = prof.get("creatives", {}).get("show_outro")
+                    outro = (root / op) if op and (root / op).exists() else None
                     break
             film = Path(OUTPUT_DIR) / catalog / str(r.get("file") or "trailer.mp4")
-            if intro and film.exists():
+            if (intro or outro) and film.exists():
                 if handle:
-                    handle.progress(0.98, "premiere", "attaching the show intro")
+                    handle.progress(0.98, "premiere", "attaching intro and outro")
                 FF = _iio.get_ffmpeg_exe()
-                merged = film.with_name("film-with-intro.mp4")
-                _sp.run([FF, "-y", "-v", "error", "-i", str(intro), "-i", str(film),
-                         "-filter_complex",
-                         "[0:v]scale=1920:1080,fps=24,format=yuv420p[v0];"
-                         "[1:v]scale=1920:1080,fps=24,format=yuv420p[v1];"
-                         "[0:a]aresample=48000[a0];[1:a]aresample=48000[a1];"
-                         "[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]",
+                parts = [pp for pp in (intro, film, outro) if pp]
+                merged = film.with_name("film-with-bookends.mp4")
+                ins, fc, labels = [], [], ""
+                for i, pp in enumerate(parts):
+                    ins += ["-i", str(pp)]
+                    fc.append(f"[{i}:v]scale=1920:1080,fps=24,format=yuv420p[v{i}]")
+                    fc.append(f"[{i}:a]aresample=48000[a{i}]")
+                    labels += f"[v{i}][a{i}]"
+                fc.append(f"{labels}concat=n={len(parts)}:v=1:a=1[v][a]")
+                _sp.run([FF, "-y", "-v", "error", *ins,
+                         "-filter_complex", ";".join(fc),
                          "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
                          "-preset", "fast", "-crf", "18", "-c:a", "aac",
-                         "-b:a", "192k", str(merged)], check=True, timeout=1800)
+                         "-b:a", "192k", str(merged)], check=True, timeout=2400)
                 merged.replace(film)
-                r["intro_attached"] = True
+                r["intro_attached"] = bool(intro)
+                r["outro_attached"] = bool(outro)
         except Exception as e:
             r["intro_attached"] = f"failed: {str(e)[:120]}"
         return r
