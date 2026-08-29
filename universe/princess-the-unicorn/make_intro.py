@@ -1,55 +1,67 @@
-"""The Princess the Unicorn film intro: the logo blooms on soft white,
-the episode name appears beneath, the theme plays. Usage:
-    python3 make_intro.py "The Hidden Spring" [theme.mp3] [out.mp4]
+"""The Princess the Unicorn film intro: the logo blooms on soft white and
+the FULL theme plays. No episode title — titling gets its own card after
+the intro, like real shows. Usage:
+    python3 make_intro.py [theme.mp3] [out.mp4]
 """
 import subprocess, sys
 from pathlib import Path
 import imageio_ffmpeg
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 HERE = Path(__file__).parent
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 
-def make_intro(episode: str, theme: str = "", out: str = "intro.mp4",
-               seconds: float = 6.0) -> str:
+
+def _theme_seconds(theme: str) -> float:
+    import re
+    r = subprocess.run([FF, "-i", theme], capture_output=True, text=True)
+    m = re.search(r"Duration: (\d+):(\d+):([\d.]+)", r.stderr)
+    if not m:
+        return 20.0
+    h, mi, se = m.groups()
+    return int(h) * 3600 + int(mi) * 60 + float(se)
+
+
+def make_intro(theme: str = "", out: str = "intro.mp4") -> str:
+    from PIL import ImageChops
     logo = Image.open(HERE / "logo.png").convert("RGB")
-    W, H = 1920, 1080
+    # trim the artwork's uneven whitespace so it centres BY EYE, not by file
+    bg = Image.new("RGB", logo.size, (255, 255, 255))
+    bbox = ImageChops.difference(logo, bg).getbbox()
+    if bbox:
+        logo = logo.crop(bbox)
+    # supersampled 4K card: zoompan's integer rounding is what wobbles at
+    # 1080p — at double resolution the drift halves below visibility
+    W, H = 3840, 2160
     card = Image.new("RGB", (W, H), (253, 251, 249))
-    lw = int(W * 0.46); lh = int(logo.height * lw / logo.width)
-    card.paste(logo.resize((lw, lh), Image.LANCZOS), ((W - lw) // 2, int(H * 0.16)))
-    dr = ImageDraw.Draw(card)
-    for fp in ("/System/Library/Fonts/Supplemental/Didot.ttc",
-               "/System/Library/Fonts/Supplemental/Georgia.ttf"):
-        try:
-            font = ImageFont.truetype(fp, 74); break
-        except Exception:
-            continue
-    tw = dr.textlength(episode, font=font)
-    while tw > W * 0.7 and font.size > 30:
-        font = font.font_variant(size=font.size - 4)
-        tw = dr.textlength(episode, font=font)
-    dr.text(((W - tw) / 2, int(H * 0.16) + lh + int(H * 0.05)), episode,
-            font=font, fill=(214, 130, 160))
+    lw = int(W * 0.5); lh = int(logo.height * lw / logo.width)
+    if lh > int(H * 0.72):
+        lh = int(H * 0.72); lw = int(logo.width * lh / logo.height)
+    card.paste(logo.resize((lw, lh), Image.LANCZOS),
+               ((W - lw) // 2, (H - lh) // 2))
     still = HERE / "_intro_card.png"
     card.save(still)
+    seconds = max(6.0, min(30.0, _theme_seconds(theme) if theme else 20.0))
     frames = int(seconds * 24)
-    vf = (f"zoompan=z=\'min(1.06,1+0.06*on/{frames})\':d={frames}:"
-          f"x=\'iw/2-(iw/zoom/2)\':y=\'ih/2-(ih/zoom/2)\':s={W}x{H}:fps=24,"
-          f"fade=t=in:st=0:d=0.6,fade=t=out:st={seconds-0.7:.2f}:d=0.7,format=yuv420p")
+    vf = (f"zoompan=z='min(1.05,1+0.05*on/{frames})':d={frames}:"
+          f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=1920x1080:fps=24,"
+          f"fade=t=in:st=0:d=0.8,fade=t=out:st={seconds-0.8:.2f}:d=0.8,"
+          f"format=yuv420p")
     cmd = [FF, "-y", "-v", "error", "-loop", "1", "-i", str(still)]
     if theme and Path(theme).exists():
         cmd += ["-i", str(theme),
-                "-af", f"atrim=0:{seconds:.2f},afade=t=out:st={seconds-1.2:.2f}:d=1.2"]
+                "-af", f"atrim=0:{seconds:.2f},afade=t=out:st={seconds-0.6:.2f}:d=0.6"]
     else:
         cmd += ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"]
-    cmd += ["-vf", vf, "-t", f"{seconds:.2f}", "-c:v", "libx264", "-preset", "fast",
-            "-crf", "18", "-c:a", "aac", "-b:a", "192k", "-shortest", str(out)]
+    cmd += ["-vf", vf, "-t", f"{seconds:.2f}", "-c:v", "libx264",
+            "-preset", "fast", "-crf", "18", "-c:a", "aac", "-b:a", "192k",
+            "-shortest", str(out)]
     subprocess.run(cmd, check=True)
     still.unlink(missing_ok=True)
     return out
 
+
 if __name__ == "__main__":
-    ep = sys.argv[1] if len(sys.argv) > 1 else "The Hidden Spring"
-    theme = sys.argv[2] if len(sys.argv) > 2 else str(HERE / "theme/theme-instrumental.mp3")
-    out = sys.argv[3] if len(sys.argv) > 3 else str(HERE / f"intro-sample.mp4")
-    print(make_intro(ep, theme, out))
+    theme = sys.argv[1] if len(sys.argv) > 1 else str(HERE / "theme/theme-instrumental.mp3")
+    out = sys.argv[2] if len(sys.argv) > 2 else str(HERE / "intro-full.mp4")
+    print(make_intro(theme, out))
