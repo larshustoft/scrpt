@@ -2803,7 +2803,8 @@ def _cap_to_house_length(panels: list, handle=None) -> list:
 
 
 async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide",
-                             handle=None, version_label: str = "storyboard") -> dict:
+                             handle=None, version_label: str = "storyboard",
+                             reshoot=None) -> dict:
     import datetime
     import shutil
     book = get_book_by_catalog(catalog)
@@ -2974,6 +2975,11 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         snd_txt = f" Sound: {snd}. No music, no speech, no voices." if snd else ""
         prompt = f"{shot_txt} {style} No text or lettering on screen.{snd_txt}{who}".strip()
         clip = tdir / f"sb-{_h(prompt + ratio + str(secs))}.mp4"
+        if reshoot and str(pn.get("n")) in {str(x) for x in reshoot} and clip.exists():
+            # the publisher asked for a fresh take of THIS scene — the old
+            # take is banked, never destroyed, and only this panel re-shoots
+            import shutil as _sh
+            _sh.move(str(clip), str(clip.with_suffix(".prev.mp4")))
         plans.append({"i": i, "pn": pn, "prompt": prompt, "refs": refs,
                       "secs": secs, "clip": clip, "need": need, "off": off,
                       "lf": lf, "lgap": lgap})

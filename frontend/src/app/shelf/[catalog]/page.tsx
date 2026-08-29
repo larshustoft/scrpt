@@ -1995,10 +1995,29 @@ function CastAndBoard({ st, catalog, onChanged }: {
                       <div className="text-[10px] text-text-faint">no cast referenced</div>
                     )}
                     {p.vo ? <div className="text-[10px] text-text-secondary italic leading-snug">“{p.vo}”</div> : null}
-                    <button className="text-[10px] text-text-faint hover:text-accent mt-0.5"
-                            onClick={() => { setRedoPanel(String(p.n)); setRedoPrompt(""); }}>
-                      Redraw this frame…
-                    </button>
+                    <div className="flex gap-2">
+                      <button className="text-[10px] text-text-faint hover:text-accent mt-0.5"
+                              onClick={() => { setRedoPanel(String(p.n)); setRedoPrompt(""); }}>
+                        Redraw this frame…
+                      </button>
+                      <button className="text-[10px] text-text-faint hover:text-accent mt-0.5"
+                              onClick={async () => {
+                                const q = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`, {
+                                  method: "POST", headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ panel: String(p.n) }),
+                                }).then((r) => r.json());
+                                if (!window.confirm(
+                                  `Re-shoot scene ${p.n} (${q.seconds}s)?\n\nEstimated up to ${q.estimate_credits_max} credits. ` +
+                                  `Every other take, the voice and the music are reused; the re-cut is free.`)) return;
+                                const d = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`, {
+                                  method: "POST", headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ panel: String(p.n), confirm: true }),
+                                }).then((r) => r.json());
+                                if (d.job_id) { await pollJob(d.job_id, () => {}); onChanged(); }
+                              }}>
+                        Re-shoot this scene…
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

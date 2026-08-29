@@ -599,6 +599,84 @@ def _snapshot_manuscript(book: dict, reason: str = "edit") -> str:
     return f.name
 
 
+@router.post("/books/{catalog}/import-docx")
+async def import_docx(catalog: str, file: UploadFile = File(...)):
+    """Bring a manuscript home from Word / Google Docs / Pages (.docx).
+    Heading 1 starts a chapter; italics survive; everything else arrives as
+    clean paragraphs. The previous manuscript state is snapshotted first —
+    switching to SCRPT must be simple AND safe (Lars, 2026-08-29)."""
+    import io as _io, uuid as _uuid
+    from docx import Document
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    d = book["data"]
+    ms0 = d.get("manuscript") or {}
+    if (ms0.get("chapters") and d.get("authorship") != "author"):
+        raise HTTPException(400, (
+            "This house-written book already has a manuscript. Imports "
+            "replace the text, so they are allowed only on author-mode "
+            "books or empty ones."))
+    content = await file.read()
+    try:
+        doc = Document(_io.BytesIO(content))
+    except Exception:
+        raise HTTPException(400, "That file does not read as a .docx")
+
+    def _runs_to_text(para):
+        out = []
+        for r in para.runs:
+            t = r.text
+            if not t:
+                continue
+            out.append(f"*{t}*" if r.italic else t)
+        return "".join(out).strip() or para.text.strip()
+
+    chapters, cur = [], None
+    def _new_chapter(title=""):
+        return {"id": _uuid.uuid4().hex[:12], "index": len(chapters) + 1,
+                "title": title, "blocks": [], "status": "drafted",
+                "word_count": 0}
+    for para in doc.paragraphs:
+        style = (para.style.name or "").lower() if para.style else ""
+        text = _runs_to_text(para)
+        if style.startswith("heading 1") or style == "title":
+            if cur and (cur["blocks"] or cur["title"]):
+                chapters.append(cur)
+            cur = _new_chapter(para.text.strip())
+            continue
+        if not text:
+            continue
+        if cur is None:
+            cur = _new_chapter()
+        if style.startswith("heading"):
+            cur["blocks"].append({"id": _uuid.uuid4().hex[:12],
+                                  "type": "heading", "text": text, "level": 2})
+        else:
+            cur["blocks"].append({"id": _uuid.uuid4().hex[:12],
+                                  "type": "paragraph", "text": text})
+    if cur and (cur["blocks"] or cur["title"]):
+        chapters.append(cur)
+    if not chapters:
+        raise HTTPException(400, "No readable text found in the document")
+    for i, c in enumerate(chapters, 1):
+        c["index"] = i
+        c["word_count"] = sum(len(b.get("text", "").split()) for b in c["blocks"])
+
+    _snapshot_manuscript(book, reason="before-docx-import")
+    data = dict(d)
+    ms = dict(ms0)
+    ms["chapters"] = chapters
+    ms["word_count"] = sum(c["word_count"] for c in chapters)
+    ms["status"] = "drafting"
+    data["manuscript"] = ms
+    data.setdefault("authorship", "author")
+    db.update_book(book["id"], data)
+    _snapshot_manuscript(db.get_book_by_catalog(catalog), reason="docx-imported")
+    return {"chapters": len(chapters), "words": ms["word_count"],
+            "titles": [c["title"] or f"Chapter {c['index']}" for c in chapters][:30]}
+
+
 @router.get("/books/{catalog}/versions")
 def list_versions(catalog: str):
     """The version ledger — newest first."""
@@ -3030,6 +3108,45 @@ async def redraw_board_frame(catalog: str, body: dict = Body(default={})):
         return {"panel": n, "frame": f"board/panel-{n}.png"}
 
     return {"job_id": start_job("board_frame", job, book_catalog=catalog)}
+
+
+@router.post("/trailer/reshoot-scene/{catalog}")
+async def reshoot_scene(catalog: str, body: dict = Body(default={})):
+    """Re-shoot ONE storyboard scene and re-cut the trailer. Everything else
+    — takes, voice, music — is reused from cache. Without confirm:true this
+    only QUOTES the estimate; nothing spends until the publisher approves
+    (the money contract, as product)."""
+    from ..trailer.producer import produce_storyboard
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    tr = book["data"].get("trailer") or {}
+    sb = tr.get("storyboard") or {}
+    panels = (sb.get("panels") if isinstance(sb, dict) else sb) or []
+    n = str(body.get("panel") or "")
+    pn = next((p for p in panels if str(p.get("n")) == n), None)
+    if not pn:
+        raise HTTPException(404, f"Panel {n} not found on the storyboard")
+    try:
+        secs = max(3.0, min(8.0, float(pn.get("dur") or 4)))
+    except (TypeError, ValueError):
+        secs = 4.0
+    # conservative ceiling: Seedance ~60 cr/s at 1080p; the draft ratio is
+    # cheaper, so the real bill usually lands under this number
+    estimate = int(secs * 60)
+    if not body.get("confirm"):
+        return {"estimate_credits_max": estimate, "seconds": secs,
+                "note": "One scene re-shoots; every other take, the voice and "
+                        "the music are reused. Re-cut is free. Pass "
+                        "confirm:true to roll."}
+    board = sb if isinstance(sb, dict) else {"panels": panels}
+
+    async def job(handle):
+        return await produce_storyboard(catalog, board, format_name="wide",
+                                        handle=handle, reshoot=[n])
+
+    return {"job_id": start_job("trailer_produce", job, book_catalog=catalog),
+            "estimate_credits_max": estimate}
 
 
 @router.post("/trailer/storyboard/upload/{catalog}")
