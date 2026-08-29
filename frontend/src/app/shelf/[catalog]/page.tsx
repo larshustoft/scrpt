@@ -3362,10 +3362,31 @@ function TrailerVoiceCard({ catalog, onCast }: { catalog: string; onCast: () => 
       });
       if (r.ok) {
         setCurrent({ id: sel.id, name: sel.name });
-        setMsg(`${sel.name.split(" - ")[0].split(" – ")[0]} is on the mic — next production re-records every line.`);
+        setMsg(`${sel.name.split(" - ")[0].split(" – ")[0]} is on the mic.`);
         onCast();
       } else setMsg("Could not cast the voice");
     } catch { setMsg("Could not cast the voice"); } finally { setBusy(false); }
+  };
+
+  const [rrPct, setRrPct] = useState<number | null>(null);
+  const rerecord = async () => {
+    setBusy(true); setMsg("");
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/rerecord/${catalog}`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) { setMsg(d.detail || "Could not start"); return; }
+      setMsg("Re-recording every line in the new voice…");
+      setRrPct(0.03);
+      const job = await pollJob(d.job_id, (j) => {
+        setRrPct(Number(j.progress) || 0.03);
+        setMsg(j.detail || j.stage || "Re-recording…");
+      });
+      setRrPct(null);
+      setMsg(job.status === "done"
+        ? "Done — the trailer is re-cut with the new voice. No footage was re-shot."
+        : `Failed: ${(job.error || "").split("\n")[0]}`);
+      onCast();
+    } catch { setMsg("Could not start"); } finally { setBusy(false); }
   };
 
   if (voices.length === 0) return null;
@@ -3455,6 +3476,24 @@ function TrailerVoiceCard({ catalog, onCast }: { catalog: string; onCast: () => 
         <button className="btn-brass text-[12px]" disabled={busy || !sel || sel.id === current?.id} onClick={cast}>
           Cast this voice
         </button>
+        <button className="btn-ghost text-[12px]" disabled={busy} onClick={rerecord}
+                title="Re-records every narration line in the cast voice and re-cuts the trailer. Reuses all footage and music — cannot shoot video.">
+          Re-record VO &amp; re-cut
+        </button>
+        {rrPct !== null && (
+          <svg width="38" height="38" viewBox="0 0 38 38" className="shrink-0">
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--line)" strokeWidth="3" />
+            <circle cx="19" cy="19" r="15" fill="none" stroke="var(--accent, #c9a96a)"
+                    strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${Math.max(4, rrPct * 94)} 94`}
+                    transform="rotate(-90 19 19)"
+                    style={{ transition: "stroke-dasharray 0.6s ease" }} />
+            <text x="19" y="22.5" textAnchor="middle" fontSize="10"
+                  fill="var(--text-secondary, #bbb)">
+              {Math.round(rrPct * 100)}%
+            </text>
+          </svg>
+        )}
       </div>
       {sel?.preview_url && (
         <audio key={sel.id} controls preload="none" src={sel.preview_url} className="mt-3 h-8" style={{ maxWidth: 360 }} />

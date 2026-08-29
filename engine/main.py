@@ -95,7 +95,31 @@ async def lifespan(app: FastAPI):
     # the engine last stopped (crash, reboot, upgrade) resumes automatically.
     # Chapters already written are on disk; drafting picks up at the next one.
     async def _resume_interrupted():
-        import asyncio as _aio
+        # ── SCRPT backs ITSELF up: the engine runs with the user's own file
+    # permissions, so the nightly backup cannot fail the way cron did
+    # ("authorization denied" every 03:00, discovered 2026-08-29). Runs the
+    # proven additive script (sqlite .backup + rsync, never --delete) and
+    # the guarded git push, once per night around 03:00.
+    import asyncio as _aio
+
+    async def _nightly_backup():
+        import datetime as _dt, subprocess as _sp
+        while True:
+            now = _dt.datetime.now()
+            target = now.replace(hour=3, minute=0, second=0, microsecond=0)
+            if target <= now:
+                target += _dt.timedelta(days=1)
+            await _aio.sleep((target - now).total_seconds())
+            for script in ("backup-books.sh", "push-scrpt.sh"):
+                f = Path.home() / ".scrpt" / script
+                if f.exists():
+                    try:
+                        _sp.run(["zsh", str(f)], timeout=3600,
+                                capture_output=True)
+                    except Exception as e:
+                        print(f"  nightly {script} failed: {e}")
+
+
         await _aio.sleep(5)  # let the server settle first
         try:
             from . import database as _db
@@ -123,6 +147,7 @@ async def lifespan(app: FastAPI):
 
     import asyncio as _aio
     _aio.get_event_loop().create_task(_resume_interrupted())
+    _aio.get_event_loop().create_task(_nightly_backup())
 
     # the growth engine runs the business on a daily cycle when enabled
     from .market.autopilot import scheduler as _autopilot

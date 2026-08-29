@@ -3162,6 +3162,28 @@ async def redraw_board_frame(catalog: str, body: dict = Body(default={})):
     return {"job_id": start_job("board_frame", job, book_catalog=catalog)}
 
 
+@router.post("/trailer/rerecord/{catalog}")
+async def trailer_rerecord(catalog: str):
+    """Re-record the narration in the CURRENTLY CAST voice and re-cut the
+    trailer. Every video take and the music are reused; this path is
+    structurally incapable of shooting video (Lars, 2026-08-29). Costs only
+    ElevenLabs characters."""
+    from ..trailer.producer import produce_storyboard
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    sb = (book["data"].get("trailer") or {}).get("storyboard") or {}
+    if not (sb.get("panels") if isinstance(sb, dict) else sb):
+        raise HTTPException(400, "No storyboard yet — build the trailer first")
+
+    async def job(handle):
+        return await produce_storyboard(catalog, sb, format_name="wide",
+                                        handle=handle, no_new_shots=True,
+                                        version_label="revoice")
+
+    return {"job_id": start_job("trailer_produce", job, book_catalog=catalog)}
+
+
 @router.post("/trailer/reshoot-scene/{catalog}")
 async def reshoot_scene(catalog: str, body: dict = Body(default={})):
     """Re-shoot ONE storyboard scene and re-cut the trailer. Everything else

@@ -588,9 +588,11 @@ def build_end_card(catalog: str, end_line: str, cta: str,
         hook = _font("SourceSerif4-Italic.ttf", int(44 * k))
         # the CTA is a quiet label under the tagline — never a headline
         # competing with the cover (Lars, 2026-08-29, all trailers)
-        small = _font("SourceSerif4-Regular.ttf", int(13 * k))
+        # the CTA between whispers and shouts: a clear label under the
+        # tagline, a touch larger when it stands alone (Lars, 2026-08-29)
+        small = _font("SourceSerif4-Regular.ttf", int(16 * k if hook_txt else 21 * k))
         cta_s = " ".join(cta.upper()) if cta else ""
-        while cta_s and draw.textlength(cta_s, font=small) > col_w * 0.8 and small.size > 12:
+        while cta_s and draw.textlength(cta_s, font=small) > col_w * 0.9 and small.size > 12:
             small = _font("SourceSerif4-Regular.ttf", small.size - 1)
         lines = wrap_lines(hook_txt, hook, col_w) if hook_txt else []
         lh = int(hook.size * 1.22)
@@ -2804,7 +2806,7 @@ def _cap_to_house_length(panels: list, handle=None) -> list:
 
 async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide",
                              handle=None, version_label: str = "storyboard",
-                             reshoot=None) -> dict:
+                             reshoot=None, no_new_shots: bool = False) -> dict:
     import datetime
     import shutil
     book = get_book_by_catalog(catalog)
@@ -2986,6 +2988,36 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
 
     done_n = [0]
     shoot_gate = asyncio.Semaphore(4)
+
+    if no_new_shots:
+        # GUARANTEED free of video generation. A scene without a take gets a
+        # placeholder cut from its own storyboard frame — a slow push-in, the
+        # classic animatic — so a voice change is never held hostage by a
+        # missing shot (Lars, 2026-08-29). The real take replaces it whenever
+        # that scene is shot.
+        for pl in plans:
+            clip = pl["clip"]
+            if clip.exists() and clip.stat().st_size > 200_000:
+                continue
+            n_p = str(pl["pn"].get("n"))
+            frame = OUTPUT_DIR / catalog / "trailer" / "board" / f"panel-{n_p}.png"
+            if not frame.exists():
+                raise RuntimeError(
+                    f"Scene {n_p} has no take and no storyboard frame — "
+                    "shoot it or redraw its frame first.")
+            secs_p = pl["secs"]
+            frames_n = max(12, int(round(secs_p * 24)))
+            W2, H2 = (1280, 720)
+            vf = (f"scale={W2*2}:{H2*2}:force_original_aspect_ratio=increase,"
+                  f"crop={W2*2}:{H2*2},"
+                  f"zoompan=z='min(1+0.10*on/{frames_n},1.10)':d={frames_n}:"
+                  f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W2}x{H2}:fps=24,"
+                  f"format=yuv420p")
+            _run(["-y", "-loop", "1", "-i", str(frame),
+                  "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+                  "-vf", vf, "-frames:v", str(frames_n), "-t", f"{secs_p:.2f}",
+                  "-shortest", "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+                  "-c:a", "aac", "-b:a", "96k", str(clip)], f"animatic {n_p}")
 
     async def shoot_panel(pl):
         i, pn, clip = pl["i"], pl["pn"], pl["clip"]
