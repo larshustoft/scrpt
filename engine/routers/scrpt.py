@@ -45,6 +45,17 @@ def presets():
             "fonts": FONT_PRESETS}
 
 
+def _assert_machine_writable(book: dict):
+    """An author-mode manuscript is the HUMAN's. Every machine writing door
+    checks here first and refuses — a hard gate like the retired trailer
+    lines, not a convention ([[scrpt-dual-paths]], Lars 2026-08-29)."""
+    if (book.get("data") or {}).get("authorship") == "author":
+        raise HTTPException(status_code=423, detail=(
+            "This is the author's manuscript — SCRPT does not write, rewrite "
+            "or restructure it. AI help arrives only as suggestions the "
+            "author explicitly accepts."))
+
+
 # ── work orders ──────────────────────────────────────────────────
 
 @router.post("/workorder")
@@ -96,6 +107,7 @@ async def create_workorder(req: WorkOrderRequest):
         data = {
             "kind": req.kind.value,
             "book_type": req.kind.value,          # legacy field compatibility
+            "authorship": "author" if req.authorship == "author" else "house",
             "genre_preset": req.genre_preset,
             "author_name": req.pen_name,
             "cover_direction": req.cover_direction,
@@ -120,6 +132,12 @@ async def create_workorder(req: WorkOrderRequest):
 
     first = created[0]
     job_id = None
+    if req.authorship == "author":
+        # the author's book: SCRPT starts NO writing. The manuscript belongs
+        # to the human ([[scrpt-dual-paths]]); covers and everything
+        # downstream still serve them.
+        req.auto_draft = False
+        req.generate_plot_options = False
     if req.auto_draft:
         catalog = first["catalog_number"]
         if req.kind == BookKind.CHILDRENS:
@@ -145,7 +163,8 @@ async def create_workorder(req: WorkOrderRequest):
     # flow always provides one.
     cover_job_id = None
     title_ok = (first["title"] and not first["title"].lower().startswith("untitled")
-                and len(first["title"]) <= 120)
+                and len(first["title"]) <= 120
+                and 1 not in req.covers_uploaded)   # the publisher's own cover wins
     if title_ok:
         from ..cover.front_cover import generate_cover_variants
         catalog = first["catalog_number"]
@@ -364,6 +383,25 @@ def get_book(catalog: str):
     return book
 
 
+@router.post("/books/{catalog}/draft")
+async def draft_book(catalog: str):
+    """Start the full draft directly — the write-immediately path for a book
+    commissioned as part of a series (books 2+ have their plot already)."""
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    _assert_machine_writable(book)
+    ms = (book["data"].get("manuscript") or {})
+    if (ms.get("chapters") or []):
+        raise HTTPException(400, "This book already has a draft")
+    if [j for j in list_jobs(catalog, active_only=True) if j["kind"] == "full_draft"]:
+        raise HTTPException(400, "A draft is already running for this book")
+    job_id = start_job("full_draft",
+                       lambda h, c=catalog: wp.full_draft_job(h, c),
+                       book_catalog=catalog)
+    return {"job_id": job_id}
+
+
 @router.post("/plot-options/{catalog}")
 async def regenerate_plot_options(catalog: str):
     job_id = start_job("plot_options",
@@ -377,6 +415,7 @@ async def choose_plot(req: PlotChoiceRequest):
     book = db.get_book_by_catalog(req.catalog_number)
     if not book:
         raise HTTPException(404, "Book not found")
+    _assert_machine_writable(book)
     job_id = start_job(
         "full_draft",
         lambda h: wp.full_draft_job(h, req.catalog_number, req.chosen_plot, req.edits),
@@ -406,6 +445,7 @@ async def run_acceptance(catalog: str):
     book = db.get_book_by_catalog(catalog)
     if not book:
         raise HTTPException(404, "Book not found")
+    _assert_machine_writable(book)
 
     async def job(handle):
         from ..writing.acceptance import acceptance_job
@@ -493,6 +533,7 @@ async def rewrite_book(catalog: str):
     book = db.get_book_by_catalog(catalog)
     if not book:
         raise HTTPException(404, "Book not found")
+    _assert_machine_writable(book)
     if [j for j in list_jobs(catalog, active_only=True) if j["kind"] == "full_draft"]:
         raise HTTPException(409, "This book is already being written")
 
@@ -540,12 +581,70 @@ async def resume_draft(catalog: str):
     return {"job_id": job_id}
 
 
+def _snapshot_manuscript(book: dict, reason: str = "edit") -> str:
+    """Append-only manuscript snapshot — NOTHING is ever overwritten. Every
+    save banks the PREVIOUS state first; restores bank too, so even a
+    restore cannot destroy anything ([[scrpt-dual-paths]])."""
+    import datetime as _dt, json as _json
+    d = book.get("data") or {}
+    vdir = Path(OUTPUT_DIR) / book["catalog_number"] / "versions"
+    vdir.mkdir(parents=True, exist_ok=True)
+    ts = _dt.datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+    f = vdir / f"ms-{ts}-{reason[:24]}.json"
+    ms = d.get("manuscript") or {}
+    f.write_text(_json.dumps(
+        {"saved_at": ts, "reason": reason, "title": book.get("title"),
+         "word_count": ms.get("word_count"), "manuscript": ms},
+        ensure_ascii=False))
+    return f.name
+
+
+@router.get("/books/{catalog}/versions")
+def list_versions(catalog: str):
+    """The version ledger — newest first."""
+    import json as _json
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    vdir = Path(OUTPUT_DIR) / catalog / "versions"
+    out = []
+    for f in sorted(vdir.glob("ms-*.json"), reverse=True)[:200]:
+        try:
+            head = _json.loads(f.read_text())
+            out.append({"file": f.name, "saved_at": head.get("saved_at"),
+                        "reason": head.get("reason"),
+                        "word_count": head.get("word_count")})
+        except Exception:
+            continue
+    return {"versions": out}
+
+
+@router.post("/books/{catalog}/versions/restore")
+def restore_version(catalog: str, body: dict = Body(default={})):
+    """Restore a snapshot — which itself snapshots the current state first."""
+    import json as _json
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    name = str(body.get("file") or "")
+    f = Path(OUTPUT_DIR) / catalog / "versions" / name
+    if not (name.startswith("ms-") and name.endswith(".json") and f.exists()):
+        raise HTTPException(404, "Version not found")
+    snap = _json.loads(f.read_text())
+    _snapshot_manuscript(book, reason="before-restore")
+    data = dict(book["data"])
+    data["manuscript"] = snap.get("manuscript") or {}
+    db.update_book(book["id"], data)
+    return {"restored": name}
+
+
 @router.put("/chapter")
 def save_chapter(req: ChapterEditRequest):
     """Persist studio edits to one chapter (full block replacement)."""
     book = db.get_book_by_catalog(req.catalog_number)
     if not book:
         raise HTTPException(404, "Book not found")
+    _snapshot_manuscript(book, reason=f"chapter-{req.chapter_id[:8]}")
     ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
     ch = next((c for c in ms.chapters if c.id == req.chapter_id), None)
     if not ch:
@@ -1253,9 +1352,32 @@ class SelectVariantRequest(BaseModel):
 def select_variant(catalog: str, req: SelectVariantRequest):
     from ..cover.front_cover import select_cover_variant
     try:
-        return select_cover_variant(catalog, req.index)
+        result = select_cover_variant(catalog, req.index)
     except ValueError as e:
         raise HTTPException(404, str(e))
+    # a children's book with unillustrated spreads starts drawing the moment
+    # the cover is picked — the cover sets the look, so nothing blocks the
+    # interior any more and the publisher should not need a second click (Lars)
+    book = db.get_book_by_catalog(catalog)
+    d = (book or {}).get("data", {})
+    kind = d.get("kind") or d.get("book_type")
+    spreads = ((d.get("childrens") or {}).get("spreads")
+               or d.get("spreads") or [])
+    undrawn = [sp for sp in spreads
+               if not ((sp.get("illustration") or {}).get("path") or sp.get("illustrated"))]
+    if kind == "childrens" and spreads and undrawn:
+        from ..writing.childrens import illustrate
+        from ..writing.childrens_bible import build_bible
+
+        async def _bible_then_draw(h, c=catalog):
+            # the pipeline's own order: the bible reads the approved cover,
+            # then every spread is drawn against the bible
+            await build_bible(c, h)
+            return await illustrate(c, None, h)
+
+        result["illustrate_job_id"] = start_job(
+            "childrens_art", _bible_then_draw, book_catalog=catalog)
+    return result
 
 
 # ── audiobook ────────────────────────────────────────────────────
@@ -1654,8 +1776,26 @@ async def trailer_status(catalog: str):
     }
 
 
+@router.post("/trailer/script/{catalog}")
+async def trailer_script(catalog: str, body: dict = Body(default={})):
+    """Rewrite the storyboard's WORDS (vo, lines, sounds, music) from the
+    book — shots stay locked. The storyboard-first meaning of 'rewrite
+    full script'."""
+    from ..trailer.bible import rewrite_board_script
+    if not db.get_book_by_catalog(catalog):
+        raise HTTPException(404, "Book not found")
+    brief = str(body.get("brief") or "")
+    return {"job_id": start_job("trailer_script",
+                                lambda h: rewrite_board_script(catalog, brief, h),
+                                book_catalog=catalog)}
+
+
 @router.post("/trailer/treatment/{catalog}")
 async def trailer_treatment(catalog: str, body: dict = Body(default={})):
+    raise HTTPException(status_code=410, detail=(
+        "Retired. Trailers have ONE production line: character bible from "
+        "plot + cover, then the storyboard, then the shoot from board + "
+        "bible, closing on the cover."))
     """(Re)write the treatment — reviewable before any credits are spent.
     An optional `brief` is the publisher's own description of the trailer
     they want; the director follows it over everything else."""
@@ -1738,6 +1878,12 @@ async def trailer_produce(catalog: str, body: dict = Body(default={})):
     if not _runway.configured():
         raise HTTPException(status_code=400, detail="Runway is not connected")
     tr = book["data"].get("trailer") or {}
+    # ── RETIRED LINE (Lars, 2026-08-29): this endpoint fed the treatment
+    # production line, which invents its own script. Closed, no override.
+    raise HTTPException(status_code=410, detail=(
+        "The treatment production line is retired. Trailers are built ONLY "
+        "from the book's storyboard — use the trailer work-order / "
+        "storyboard path."))
     if tr.get("treatment") and not tr.get("approved") and not body.get("force"):
         raise HTTPException(status_code=400,
                             detail="The script is not approved yet — okay the "
@@ -2843,6 +2989,49 @@ async def trailer_reference(catalog: str, body: dict = Body(default={})):
     return {"job_id": job_id}
 
 
+@router.post("/trailer/board-frame/{catalog}")
+async def redraw_board_frame(catalog: str, body: dict = Body(default={})):
+    """Redraw ONE storyboard frame — optionally from the publisher's own
+    prompt. Only the image changes; the board's shot text stays unless the
+    publisher edits it separately (Lars, 2026-08-29)."""
+    from ..trailer.plates import _draw, _panel_prompt, _dir
+    from ..trailer.bible import cast_of
+    from ..cover.front_cover import _best_image_model
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    tr = book["data"].get("trailer") or {}
+    sb = tr.get("storyboard") or {}
+    panels = (sb.get("panels") if isinstance(sb, dict) else sb) or []
+    n = str(body.get("panel") or "")
+    pn = next((p for p in panels if str(p.get("n")) == n), None)
+    if not pn:
+        raise HTTPException(404, f"Panel {n} not found on the storyboard")
+    custom = str(body.get("prompt") or "").strip()
+
+    async def job(handle):
+        import httpx, shutil as _sh
+        style = (sb.get("style") if isinstance(sb, dict) else "") or ""
+        cast = cast_of(book)
+        out = _dir(catalog, "board")
+        dest = out / f"panel-{n}.png"
+        if dest.exists():   # the old frame is banked, never destroyed
+            _sh.copy2(dest, out / f"panel-{n}-prev.png")
+        draw_pn = {**pn, "shot": custom} if custom else pn
+        if handle:
+            handle.progress(0.2, "board", f"redrawing panel {n}")
+        async with httpx.AsyncClient(timeout=260) as client:
+            model = await _best_image_model(client)
+            got = await _draw(client, model,
+                              _panel_prompt(draw_pn, style, cast, book["title"]),
+                              dest, size="1536x1024")
+        if not got:
+            raise RuntimeError("The frame refused to draw — try rewording the prompt")
+        return {"panel": n, "frame": f"board/panel-{n}.png"}
+
+    return {"job_id": start_job("board_frame", job, book_catalog=catalog)}
+
+
 @router.post("/trailer/storyboard/upload/{catalog}")
 async def trailer_storyboard_upload(catalog: str, file: UploadFile = File(...)):
     """Upload a storyboard sheet (an image of numbered panels with shot
@@ -2961,6 +3150,10 @@ def trailer_reset(catalog: str):
 
 @router.post("/trailer/like-this/{catalog}")
 async def trailer_like_this(catalog: str, body: dict = Body(default={})):
+    raise HTTPException(status_code=410, detail=(
+        "Retired. Trailers have ONE production line: character bible from "
+        "plot + cover, then the storyboard, then the shoot from board + "
+        "bible, closing on the cover."))
     """One click: study a reference trailer, write this book's script in its
     rhythm and register, and shoot it (draft by default)."""
     from ..trailer.reference import analyze_reference

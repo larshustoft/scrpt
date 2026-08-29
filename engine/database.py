@@ -215,20 +215,39 @@ def list_books(
         conn.close()
 
 
-def update_book(book_id: str, updates: dict) -> Optional[dict]:
-    """Update a book's fields. Handles both top-level and data (JSON) fields."""
+def update_book(book_id: str, updates: dict,
+                sections: Optional[list] = None) -> Optional[dict]:
+    """Update a book's fields. Handles both top-level and data (JSON) fields.
+
+    sections: the keys of `updates` this caller actually owns. A long-running
+    job reads the book at job start and writes at job end — passing its full
+    (by then stale) data dict would clobber every key another writer touched
+    mid-job. With sections given, only the named keys are taken from
+    `updates`; every other key keeps the value read fresh here. "title" and
+    "status" count as sections too when a job means to set them.
+
+    The read-merge-write holds the write lock for its whole span (BEGIN
+    IMMEDIATE), so two concurrent updates serialize instead of the later
+    read overwriting the earlier commit.
+    """
     conn = get_connection()
     try:
+        conn.execute("BEGIN IMMEDIATE")
         existing = conn.execute(
             "SELECT * FROM books WHERE id = ?", (book_id,)
         ).fetchone()
 
         if existing is None:
+            conn.rollback()
             return None
 
         # Parse existing data
         data = json.loads(existing["data"])
         now = datetime.utcnow().isoformat()
+
+        updates = dict(updates)  # never mutate the caller's dict
+        if sections is not None:
+            updates = {k: v for k, v in updates.items() if k in sections}
 
         # Top-level fields
         title = updates.pop("title", None) or existing["title"]

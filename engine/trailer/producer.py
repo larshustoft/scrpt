@@ -104,6 +104,17 @@ SOUND_RECIPES = {
                  "pounding percussion, rising pulse, triumphant build to a "
                  "hard cut",
     },
+    "childrens": {
+        "intro": "warm gentle storybook sparkle, soft glockenspiel and light "
+                 "strings, a kind and playful opening — nothing dramatic",
+        "cut_hit": None,
+        "reveal": "gentle magical chime bloom with soft bells, warm and "
+                  "friendly, final title reveal",
+        "score": "Bright, playful children's-show score: light glockenspiel, "
+                 "pizzicato strings, soft woodwinds, a skipping gentle rhythm, "
+                 "kind and cozy throughout, warm sunny ending — never dark, "
+                 "never epic",
+    },
     "romance": {          # provisional — the publisher's romance rules come later
         "intro": "soft warm cinematic swell, gentle piano and strings rising",
         "cut_hit": None,
@@ -117,6 +128,9 @@ SOUND_RECIPES = {
 LOOK_RECIPES = {
     "action_thriller": "moody low-key lighting, deep shadows, restrained color, "
                        "atmospheric haze, anamorphic feel, night or failing light",
+    "childrens": "bright soft storybook light, warm pastel palette, gentle "
+                 "sunny watercolor feel, friendly and inviting, nothing dark "
+                 "or menacing",
     "superhero": "bold cinematic comic-book energy: saturated color against deep "
                  "night shadows, neon city glow, rain-slick streets, dramatic rim "
                  "light, anamorphic flare, monumental low angles",
@@ -127,17 +141,25 @@ LOOK_RECIPES = {
 }
 
 
+def _is_childrens(d: dict) -> bool:
+    return (d.get("kind") or d.get("book_type") or "") == "childrens" or            (d.get("genre_preset") or "") in ("picture_book", "early_reader",
+                                             "chapter_book")
+
+
 def look_for(d: dict) -> str:
     """The director's look if a brief exists, else the genre recipe."""
     dr = (d.get("trailer") or {}).get("direction") or {}
     if (dr.get("look") or "").strip():
         return dr["look"].strip()
+    if _is_childrens(d):
+        return LOOK_RECIPES["childrens"]
     return look_recipe(d.get("genre_preset") or "")
 
 
 def sound_for(d: dict) -> dict:
     """The director's sound design if a brief exists, else the genre recipe."""
-    base = dict(sound_recipe(d.get("genre_preset") or ""))
+    base = dict(SOUND_RECIPES["childrens"] if _is_childrens(d)
+                else sound_recipe(d.get("genre_preset") or ""))
     dr = (d.get("trailer") or {}).get("direction") or {}
     snd = dr.get("sound") or {}
     if snd:
@@ -550,20 +572,26 @@ def build_end_card(catalog: str, end_line: str, cta: str,
     hook_txt = f"\u201c{end_line.strip().rstrip('.')}.\u201d" if end_line else ""
     if portrait:
         hook = _font("SourceSerif4-Italic.ttf", int(30 * k))
-        small = _font("SourceSerif4-Regular.ttf", int(22 * k))
+        small = _font("SourceSerif4-Regular.ttf", int(14 * k))   # quiet CTA — it
+        # labels the card, it does not compete with the cover (Lars)
         if hook_txt:
             f = fit(hook_txt, hook, W * 0.92)
             tw = draw.textlength(hook_txt, font=f)
             draw.text(((W - tw) / 2, max(int(20 * k), gy - int(64 * k))), hook_txt, font=f, fill=(222, 224, 228))
         cta_s = " ".join(cta.upper())
-        f2 = fit(cta_s, small, W * 0.92)
+        f2 = fit(cta_s, small, W * 0.58)
         draw.text(((W - draw.textlength(cta_s, font=f2)) / 2, gy + ch + int(44 * k)), cta_s, font=f2, fill=(176, 182, 192))
     else:
         # left column: tagline large, CTA beneath, vertically centred on the cover
         col_x = int(W * 0.07)
         col_w = gx - int(W * 0.06) - col_x
         hook = _font("SourceSerif4-Italic.ttf", int(44 * k))
-        small = _font("SourceSerif4-Regular.ttf", int(30 * k if hook_txt else 40 * k))
+        # the CTA is a quiet label under the tagline — never a headline
+        # competing with the cover (Lars, 2026-08-29, all trailers)
+        small = _font("SourceSerif4-Regular.ttf", int(13 * k))
+        cta_s = " ".join(cta.upper()) if cta else ""
+        while cta_s and draw.textlength(cta_s, font=small) > col_w * 0.8 and small.size > 12:
+            small = _font("SourceSerif4-Regular.ttf", small.size - 1)
         lines = wrap_lines(hook_txt, hook, col_w) if hook_txt else []
         lh = int(hook.size * 1.22)
         block_h = len(lines) * lh + (int(40 * k) + small.size if cta else 0)
@@ -572,9 +600,9 @@ def build_end_card(catalog: str, end_line: str, cta: str,
             draw.text((col_x, y), ln, font=hook, fill=(226, 228, 232)); y += lh
         if cta:
             y += int(40 * k)
-            rule_w = int(72 * k)
-            draw.rectangle([col_x, y - int(18 * k), col_x + rule_w, y - int(16 * k)], fill=(201, 169, 106))
-            draw.text((col_x, y), " ".join(cta.upper()), font=small, fill=(190, 194, 202))
+            rule_w = int(56 * k)
+            draw.rectangle([col_x, y - int(16 * k), col_x + rule_w, y - int(14 * k)], fill=(201, 169, 106))
+            draw.text((col_x, y), cta_s, font=small, fill=(176, 182, 192))
 
     out = OUTPUT_DIR / catalog / "trailer" / "end-card.png"
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -1173,6 +1201,8 @@ _VOICE_GATE = asyncio.Semaphore(2)
 TRAILER_VOICES = {
     "action_thriller": ("fCxG8OHm4STbIsWe4aT9", "Harrison Gale"),   # the velvet voice
     "romance":         ("pFZP5JQG7iQjIQuC4Bku", "Lily"),
+    "childrens":       ("pFZP5JQG7iQjIQuC4Bku", "Lily"),            # happy storyteller,
+                                                                     # never movie-drama
     "default":         ("nPczCjzI2devNBz1zQrb", "Brian"),
 }
 
@@ -1187,6 +1217,12 @@ def trailer_voice(genre_preset: str, catalog: str = "") -> tuple:
     override = (get_setting("trailer_voice_id", "") or "").strip()
     if override:
         return override, get_setting("trailer_voice_name", "") or "Custom voice"
+    if catalog:
+        d = (book or {}).get("data", {})
+        if _is_childrens(d):
+            return TRAILER_VOICES["childrens"]
+    if (genre_preset or "") in ("picture_book", "early_reader", "chapter_book"):
+        return TRAILER_VOICES["childrens"]
     for key, v in TRAILER_VOICES.items():
         if key in (genre_preset or ""):
             return v
@@ -1518,6 +1554,12 @@ def _assemble(catalog: str, shot_files: list, end_card: Path,
 async def produce(catalog: str, mode_name: str = "full",
                   format_name: str = "wide", fresh: bool = False,
                   handle=None) -> dict:
+    raise RuntimeError(
+        "RETIRED (Lars, 2026-08-29): the treatment production line is closed "
+        "for good — it invents its own script and ignores the book's "
+        "storyboard, cast plates and VO. Trailers are built ONLY from the "
+        "book's storyboard (the work-order / storyboard path). There is no "
+        "override.")
     """The whole shoot: treatment -> shots -> voice -> score -> cut.
     fresh=True re-rolls EVERY take from the same script — new footage, new
     recordings, new sound — keeping only a score the publisher pinned."""

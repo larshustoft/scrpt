@@ -198,6 +198,23 @@ def _story_digest(book: dict, limit: int = 6000) -> str:
                 bits.append("CHARACTERS FROM THE STORY BIBLE:\n" + "\n".join(lines))
         if sb.get("style_notes"):
             bits.append("STYLE NOTES: " + str(sb["style_notes"])[:400])
+    # A CHILDREN'S BOOK lives in its spreads, not in chapters — without this
+    # the writers received nothing and invented a story from the title
+    # (the phantom princess, 2026-08-29)
+    ch = d.get("childrens") or {}
+    spreads = ch.get("spreads") or []
+    if spreads:
+        story = " ".join(str(sp.get("text") or "").strip()
+                         for sp in spreads if sp.get("text"))
+        if story:
+            bits.append("THE COMPLETE STORY (every spread, in order):\n" + story)
+        bible = ch.get("bible") or {}
+        cast = bible.get("characters") or []
+        if cast:
+            lines = [f"  - {c.get('name','')}: {str(c.get('look') or c.get('description') or '')[:200]}"
+                     for c in cast if isinstance(c, dict)]
+            if lines:
+                bits.append("THE CAST (the ONLY characters that exist):\n" + "\n".join(lines))
     if not bits and ms.get("idea"):
         bits.append("IDEA:\n" + str(ms["idea"]))
     return "\n\n".join(bits)[:limit]
@@ -338,8 +355,12 @@ async def auto_storyboard(catalog: str, panels: int = 9, handle=None) -> dict:
     # thing (study: Mission: Impossible and Jack Ryan cut 25–40 shots a
     # minute, accelerating to under a second, with the CHARACTERS carrying
     # the story and the narrator almost silent).
-    _fast = any(k in (book["data"].get("genre_preset") or "").lower()
-                for k in ("thriller", "crime", "action", "mystery"))
+    _kids = ((book["data"].get("kind") or book["data"].get("book_type") or "")
+             == "childrens" or (book["data"].get("genre_preset") or "")
+             in ("picture_book", "early_reader", "chapter_book"))
+    _fast = (not _kids) and any(
+        k in (book["data"].get("genre_preset") or "").lower()
+        for k in ("thriller", "crime", "action", "mystery"))
     if _fast:
         panels = max(panels, 13)
     action_rules = (
@@ -357,6 +378,28 @@ async def auto_storyboard(catalog: str, panels: int = 9, handle=None) -> dict:
         "D. One panel of near-silence directly before the montage — a held "
         "breath. Its `sound` is a single quiet detail.\n"
     ) if _fast else ""
+    kids_rules = (
+        "\nMAGICAL WONDER GRAMMAR — this is a children's book, so the trailer "
+        "is a family-movie trailer in the classic Disney register: a warm, "
+        "wonder-filled invitation into a magical world.\n"
+        "A. The NARRATOR is a beloved storyteller opening a storybook: warm, "
+        "smiling, full of wonder — never dramatic, never urgent. Lines like "
+        "'In a forest where rainbows are born...' — enchantment, plain warm "
+        "words, gentle humor welcome.\n"
+        "B. NOTHING is scary. Stakes are matters of the heart (finding home, "
+        "helping a friend, being brave), phrased with hope — 'and maybe, just "
+        "maybe...' — never as danger or threat. A dark moment is a gentle "
+        "mystery, on at most ONE panel, resolved by warmth in the next.\n"
+        "C. Build as: WELCOME to the world (panels 1-2, wide wonder), MEET "
+        "the friends (each introduced doing something delightful), the "
+        "ADVENTURE begins (the wish or the little problem), a JOYFUL MONTAGE "
+        "of magical moments (2-3 quick panels of pure delight), then a warm "
+        "closing promise.\n"
+        "D. `sound` is gentle magic: chimes, birdsong, a bell, giggles, "
+        "sparkling water — never rumbles, impacts or braams.\n"
+        "E. `line` on one or two panels: something kind, funny or brave a "
+        "character says — the sort of line a child repeats afterwards.\n"
+    ) if _kids else ""
 
     prompt = (
         f"BOOK: \"{book['title']}\" — a {genre} novel.\n\n"
@@ -395,7 +438,7 @@ async def auto_storyboard(catalog: str, panels: int = 9, handle=None) -> dict:
         "siren. One concrete sound per panel, five to ten words, no music and no "
         "voices. This is what makes the film feel real rather than scored "
         "silence, so give every panel one.\n"
-        + action_rules +
+        + action_rules + kids_rules +
         "\nReturn JSON only:\n"
         '{"panels": [{"n": "1", "title": "3 words", "dur": 4, "shot": "...", '
         '"characters": ["Cast Name"], "sound": "...", '
@@ -454,3 +497,83 @@ async def auto_storyboard(catalog: str, panels: int = 9, handle=None) -> dict:
     d["trailer"] = tr
     update_book(fresh["id"], d)
     return board
+
+
+async def rewrite_board_script(catalog: str, brief: str = "", handle=None) -> dict:
+    """Rewrite ONLY the words of the stored storyboard — vo, lines, sounds,
+    music — from the book itself. Every shot, duration and cast list is
+    LOCKED. This is what 'Rewrite full script' means in a storyboard-first
+    house (Lars, 2026-08-29)."""
+    from ..writing.client import complete, extract_json, set_model_override, writing_model
+    from ..database import get_book_by_catalog, update_book
+    import json as _json
+    book = get_book_by_catalog(catalog)
+    if not book:
+        raise RuntimeError("Book not found")
+    d = book["data"]
+    tr = dict(d.get("trailer") or {})
+    sb = tr.get("storyboard") or {}
+    panels = (sb.get("panels") if isinstance(sb, dict) else sb) or []
+    if not panels:
+        raise RuntimeError("No storyboard yet — board the trailer first")
+    _kids = ((d.get("kind") or d.get("book_type") or "") == "childrens"
+             or (d.get("genre_preset") or "") in ("picture_book", "early_reader", "chapter_book"))
+    register = (
+        "REGISTER: a family-movie trailer in the classic Disney spirit — the "
+        "narrator is a warm storyteller full of wonder, never dramatic. "
+        "Nothing scary; stakes are matters of the heart phrased with hope. "
+        "Character lines are kind, funny or brave — the sort a child repeats."
+        if _kids else
+        "REGISTER: spoken sentences, plain words, no rhetorical flourish; "
+        "narration sparse and under 20 words a line.")
+    locked = [{"n": p.get("n"), "title": p.get("title"), "shot": p.get("shot"),
+               "dur": p.get("dur"), "characters": p.get("characters") or []}
+              for p in panels]
+    prompt = (
+        f"BOOK: \"{book['title']}\"\n\n{_story_digest(book, 4500)}\n\n"
+        "THE STORYBOARD (shots are LOCKED — do not change, reorder or "
+        f"re-describe them):\n{_json.dumps(locked, indent=1)}\n\n"
+        + register + "\n"
+        + (f"\nTHE PUBLISHER'S DIRECTION: {brief.strip()}\n" if brief.strip() else "")
+        + "\nWrite the WORDS for these exact panels: `vo` per panel (may be "
+        "empty), at most two `line`s across the whole board (speaker must be "
+        "a listed character of that panel), one diegetic `sound` per panel "
+        "(five to ten words, no music, no voices), and one `music` brief. "
+        "Everything must come from the book above — never invent characters, "
+        "places or events.\n\nReturn JSON only: "
+        '{"panels": [{"n": "1", "vo": "...", "sound": "...", '
+        '"line": {"speaker": "Name", "text": "..."}}], "music": "..."}')
+    if handle:
+        handle.progress(0.3, "script", "rewriting the words on the locked board")
+    set_model_override(writing_model())
+    try:
+        raw = await complete(
+            "You are a trailer narrator's writer. The shots are locked; you "
+            "write only the spoken and heard words, faithful to the book.",
+            prompt, max_tokens=4000)
+    finally:
+        set_model_override(None)
+    out = extract_json(raw) or {}
+    by_n = {str(p.get("n")): p for p in (out.get("panels") or []) if isinstance(p, dict)}
+    changed = 0
+    for p in panels:
+        new = by_n.get(str(p.get("n")))
+        if not new:
+            continue
+        p["vo"] = str(new.get("vo") or "").strip()
+        p["sound"] = str(new.get("sound") or p.get("sound") or "").strip()[:160]
+        ln = new.get("line")
+        if isinstance(ln, dict) and (ln.get("text") or "").strip():
+            p["line"] = {"speaker": str(ln.get("speaker") or "")[:60],
+                         "text": str(ln["text"]).strip()[:200]}
+        else:
+            p.pop("line", None)
+        changed += 1
+    if isinstance(sb, dict) and out.get("music"):
+        sb["music"] = str(out["music"])[:400]
+    fresh = get_book_by_catalog(catalog)
+    fd = dict(fresh["data"]); ftr = dict(fd.get("trailer") or {})
+    ftr["storyboard"] = sb if isinstance(sb, dict) else {"panels": panels}
+    fd["trailer"] = ftr
+    update_book(fresh["id"], fd)
+    return {"panels_rewritten": changed, "music": out.get("music")}

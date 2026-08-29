@@ -517,6 +517,8 @@ class WorkOrderRequest(BaseModel):
     commission_books: int = 0   # 0 = all planned books; 1 = just the first now
     book_titles: List[str] = []           # researched titles, one per series book
     book_ideas: List[str] = []            # per-book plot/idea; empty slot = SCRPT plots it
+    covers_uploaded: List[int] = []       # book numbers whose cover the publisher supplies
+    authorship: str = "house"             # "house" = SCRPT writes; "author" = the human writes
     target_words: Optional[int] = None
     trim_size: Optional[str] = None
     paper_type: Optional[str] = None

@@ -231,6 +231,7 @@ export interface WorkOrderPayload {
   cover_direction?: string;
   book_titles?: string[];
   book_ideas?: string[];
+  covers_uploaded?: number[];
   generate_plot_options?: boolean;
   auto_draft?: boolean;
 }

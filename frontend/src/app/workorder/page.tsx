@@ -77,6 +77,7 @@ export default function WorkOrderPage() {
   // researched titles for every series book — books 2+ are named from birth
   const [bookTitles, setBookTitles] = useState<string[]>([]);
   const [bookIdeas, setBookIdeas] = useState<string[]>([]);
+  const [coverFiles, setCoverFiles] = useState<Record<number, File | null>>({});
   const [nameSuggestions, setNameSuggestions] = useState<{ name: string; rationale: string }[]>([]);
   const [suggestingNames, setSuggestingNames] = useState(false);
   interface HouseAuthor { name: string; kinds?: string[]; books: { catalog_number: string; title: string; series_title: string; status: string }[] }
@@ -242,18 +243,35 @@ export default function WorkOrderPage() {
         trim_size: trim || null,
         font_preset: font || null,
         cover_direction: coverDirection,
-        book_titles: isSeries ? bookTitles : [],
-        book_ideas: isSeries ? bookIdeas : [],
+        // sparse slots (book 1 lives in the working-title field) must reach
+        // the API as "" — a hole serializes to null and fails validation
+        book_titles: isSeries
+          ? Array.from({ length: seriesBooks }, (_, i) => bookTitles[i] || "") : [],
+        book_ideas: isSeries
+          ? Array.from({ length: seriesBooks }, (_, i) => bookIdeas[i] || "") : [],
+        covers_uploaded: Object.entries(coverFiles)
+          .filter(([, f]) => f).map(([n]) => Number(n)),
         generate_plot_options: flow === "options",
         auto_draft: flow === "auto",
       };
       const result = await scrpt.createWorkOrder(payload);
+      // publisher-supplied covers install right after the books are born;
+      // any book without one gets SCRPT's own cover flow
+      for (const [no, f] of Object.entries(coverFiles)) {
+        const book = result.books[Number(no) - 1];
+        if (!f || !book) continue;
+        const fd = new FormData();
+        fd.append("file", f);
+        await fetch(`${scrpt.engineUrl}/api/scrpt/cover/install-art/${book.catalog_number}`,
+                    { method: "POST", body: fd }).catch(() => {});
+      }
       // covers start painting the moment the book is commissioned — land the
       // publisher on the Cover tab to pick from the four alternatives
       const coverStarted = (result as { cover_job_id?: string }).cover_job_id;
       router.push(`/shelf/${result.books[0].catalog_number}${coverStarted ? "?tab=cover" : ""}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg.includes("[object") ? "The engine rejected the order — try again, and tell the assistant if it repeats." : msg);
       setSubmitting(false);
     }
   };
@@ -614,13 +632,24 @@ export default function WorkOrderPage() {
         )}
         {isSeries && (
           <div className="mt-5">
-            <div className="label-scrpt">The books — titles and plots</div>
+            <div className="label-scrpt">Books 2–{seriesBooks} — titles and plots</div>
             <div className="text-[12px] text-text-tertiary mb-3">
-              Fill in what you already know. Anything left empty, SCRPT titles
-              and plots from the series bible.
+              Book 1 is the working title above. Fill in what you already know
+              for the rest — anything left empty, SCRPT titles and plots from
+              the series bible.
             </div>
-            {Array.from({ length: seriesBooks }, (_, i) => (
-              <div key={i} className="grid md:grid-cols-[220px_1fr] gap-3 mb-3">
+            <div className="grid md:grid-cols-[220px_1fr_auto] gap-3 mb-3 items-center">
+              <div className="text-[13px] text-text-secondary truncate px-1">
+                Book 1 — {title.trim() || "the working title above"}
+              </div>
+              <div className="text-[12px] text-text-faint px-1">
+                Plotted from the idea above.
+              </div>
+              <CoverPick file={coverFiles[1]}
+                         onPick={(f) => setCoverFiles((c) => ({ ...c, 1: f }))} />
+            </div>
+            {Array.from({ length: Math.max(0, seriesBooks - 1) }, (_, n) => n + 1).map((i) => (
+              <div key={i} className="grid md:grid-cols-[220px_1fr_auto] gap-3 mb-3 items-center">
                 <input className="input-scrpt"
                        placeholder={`Book ${i + 1} — SCRPT titles it`}
                        value={bookTitles[i] || ""}
@@ -633,6 +662,8 @@ export default function WorkOrderPage() {
                           onChange={(e) => setBookIdeas((v) => {
                             const next = [...v]; next[i] = e.target.value; return next;
                           })} />
+                <CoverPick file={coverFiles[i + 1]}
+                           onPick={(f) => setCoverFiles((c) => ({ ...c, [i + 1]: f }))} />
               </div>
             ))}
           </div>
@@ -642,6 +673,15 @@ export default function WorkOrderPage() {
       {/* Format overrides */}
       <section className="card mt-5">
         <div className="label-scrpt">Format — researched market defaults for this genre, edit only with reason</div>
+        {!isSeries && (
+          <div className="flex items-center justify-between mt-3 mb-1">
+            <div className="text-[13px] text-text-secondary">
+              Cover — upload your own finished front cover, or leave it and SCRPT designs one.
+            </div>
+            <CoverPick file={coverFiles[1]}
+                       onPick={(f) => setCoverFiles((c) => ({ ...c, 1: f }))} />
+          </div>
+        )}
         <div className="grid md:grid-cols-3 gap-4 mt-2">
           <div>
             <div className="label-scrpt">Target length</div>
@@ -715,6 +755,18 @@ export default function WorkOrderPage() {
         </span>
       </div>
     </div>
+  );
+}
+
+/** A small cover picker: the publisher's file, or SCRPT designs one. */
+function CoverPick({ file, onPick }: { file: File | null | undefined; onPick: (f: File | null) => void }) {
+  return (
+    <label className="btn-ghost text-[12px] px-3 py-2 cursor-pointer whitespace-nowrap"
+           title="Upload a finished front cover — or leave empty and SCRPT designs one">
+      {file ? `✓ ${file.name.length > 18 ? file.name.slice(0, 16) + "…" : file.name}` : "Cover…"}
+      <input type="file" accept="image/png,image/jpeg" className="hidden"
+             onChange={(e) => onPick(e.target.files?.[0] || null)} />
+    </label>
   );
 }
 

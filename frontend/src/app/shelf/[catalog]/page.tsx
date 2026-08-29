@@ -1904,6 +1904,24 @@ function CastAndBoard({ st, catalog, onChanged }: {
   };
 
   const frames = panels.filter((p) => p.frame_url);
+  const [redoPanel, setRedoPanel] = useState<string | null>(null);
+  const [redoPrompt, setRedoPrompt] = useState("");
+  const [redoBusy, setRedoBusy] = useState(false);
+  const redrawFrame = async () => {
+    if (!redoPanel) return;
+    setRedoBusy(true);
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/board-frame/${catalog}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ panel: redoPanel, prompt: redoPrompt }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setRedoPrompt(d.detail || "Could not redraw"); return; }
+      await pollJob(d.job_id, () => {});
+      setRedoPanel(null); setRedoPrompt("");
+      onChanged();
+    } finally { setRedoBusy(false); }
+  };
 
   return (
     <div className="mt-4 border-t border-line pt-3">
@@ -1977,9 +1995,31 @@ function CastAndBoard({ st, catalog, onChanged }: {
                       <div className="text-[10px] text-text-faint">no cast referenced</div>
                     )}
                     {p.vo ? <div className="text-[10px] text-text-secondary italic leading-snug">“{p.vo}”</div> : null}
+                    <button className="text-[10px] text-text-faint hover:text-accent mt-0.5"
+                            onClick={() => { setRedoPanel(String(p.n)); setRedoPrompt(""); }}>
+                      Redraw this frame…
+                    </button>
                   </div>
                 ))}
               </div>
+              {redoPanel && (
+                <div className="mt-3 p-3 rounded-[8px] border border-border-subtle">
+                  <div className="text-[11px] text-text-secondary mb-1.5">
+                    Redraw panel {redoPanel} — describe the image you want, or leave
+                    empty to redraw from the board&apos;s own shot description.
+                  </div>
+                  <textarea value={redoPrompt} onChange={(e) => setRedoPrompt(e.target.value)}
+                            rows={2} className="w-full rounded-[6px] border border-border-subtle bg-transparent p-2 text-[12px]"
+                            placeholder="e.g. Closer on Princess, waterfall behind, warmer evening light" />
+                  <div className="flex gap-2 mt-2">
+                    <button className="btn-brass text-[12px]" disabled={redoBusy} onClick={redrawFrame}>
+                      {redoBusy ? "Redrawing…" : "Redraw frame"}
+                    </button>
+                    <button className="btn-ghost text-[12px]" disabled={redoBusy}
+                            onClick={() => setRedoPanel(null)}>Cancel</button>
+                  </div>
+                </div>
+              )}
               {st.storyboard?.music ? (
                 <div className="text-[10px] text-text-faint mt-2">Score: {st.storyboard.music}</div>
               ) : null}
@@ -2290,7 +2330,7 @@ function TrailerCard({ catalog, title }: { catalog: string; title?: string }) {
     setBusy(true);
     setMsg(useBrief ? "The director develops your idea…" : "The director rewrites from the book…");
     try {
-      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/treatment/${catalog}`, {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/script/${catalog}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(useBrief ? { brief } : {}),
       });

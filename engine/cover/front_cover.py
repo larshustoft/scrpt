@@ -227,7 +227,7 @@ def _store_series_thread(book: dict, response_id: str):
             ds = dict(d.get("series") or {})
             ds["cover_thread_id"] = response_id
             d["series"] = ds
-            update_book(member["id"], d)
+            update_book(member["id"], d, sections=["series"])
 
 
 def _series_reference_cover(book: dict):
@@ -287,7 +287,7 @@ async def _cover_summary(book: dict, ms: Manuscript) -> str:
     cov = dict(data.get("cover") or {})
     cov["summary"] = summary
     data["cover"] = cov
-    update_book(fresh["id"], data)
+    update_book(fresh["id"], data, sections=["cover"])
     return summary
 
 
@@ -418,8 +418,11 @@ def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
     preview_path = out_dir / "cover-front.png"
     preview.save(preview_path, optimize=True)
 
-    data = dict(book["data"])
-    cover = data.get("cover") or {}
+    # `book` was read before minutes of image work — re-read so the cover
+    # section merges onto the current record, and touch only that section
+    fresh = get_book_by_catalog(catalog)
+    data = dict(fresh["data"])
+    cover = dict(data.get("cover") or {})
     cover.update({
         "mode": mode,
         "status": "draft",
@@ -430,7 +433,7 @@ def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
     if brief:
         cover["art_brief"] = brief
     data["cover"] = cover
-    update_book(book["id"], data)
+    update_book(fresh["id"], data, sections=["cover"])
     return {"artwork": str(art_path), "ebook_cover": str(ebook_path),
             "preview": str(preview_path), "brief": brief}
 
@@ -595,10 +598,10 @@ async def generate_cover_variants(catalog: str, count: int = 4,
         raise RuntimeError(f"All variants failed: {first_err}")
 
     data = dict(get_book_by_catalog(catalog)["data"])
-    cover = data.get("cover") or {}
+    cover = dict(data.get("cover") or {})
     cover["variants"] = variants
     data["cover"] = cover
-    update_book(book["id"], data)
+    update_book(book["id"], data, sections=["cover"])
     return {"variants": variants}
 
 
@@ -684,8 +687,9 @@ def select_cover_variant(catalog: str, index: int) -> dict:
                  ((book["data"].get("cover") or {}).get("art_brief")) or "")
     result = _install_cover(catalog, vpath.read_bytes(), brief)
     data = dict(get_book_by_catalog(catalog)["data"])
+    data["cover"] = dict(data.get("cover") or {})
     data["cover"]["selected_variant"] = index
-    update_book(book["id"], data)
+    update_book(book["id"], data, sections=["cover"])
     # a chosen series cover becomes part of the series' design conversation:
     # advance the thread head so the next installment is designed with this
     # cover (and every one before it) in context

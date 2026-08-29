@@ -293,7 +293,7 @@ def _sample_palette(art_png: bytes, white_house_style: bool = True) -> dict:
             "dark": False}
 
 
-def _wrap_text(text: str, font, size, max_width, canv):
+def _wrap_text(text: str, font, size, max_width, canv, min_last: int = 5):
     words, lines, line = text.split(), [], ""
     for w in words:
         trial = (line + " " + w).strip()
@@ -305,6 +305,20 @@ def _wrap_text(text: str, font, size, max_width, canv):
             line = w
     if line:
         lines.append(line)
+    # THE ORPHAN RULE (Lars, 2026-08-29): a paragraph must never end on a
+    # line of one to four words — it reads as a design mistake. Words are
+    # pulled down from the line above until the last line carries at least
+    # `min_last`, without starving the line above or overflowing the column.
+    if len(lines) >= 2:
+        while len(lines[-1].split()) < min_last:
+            prev = lines[-2].split()
+            if len(prev) <= min_last:
+                break
+            cand = prev[-1] + " " + lines[-1]
+            if canv.stringWidth(cand, font, size) > max_width:
+                break
+            lines[-2] = " ".join(prev[:-1])
+            lines[-1] = cand
     return lines
 
 

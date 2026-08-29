@@ -67,6 +67,63 @@ COL_NAMES = [("left", 0), ("right", 1), ("centre", 2)]
 WIDTH_NAMES = [("wide", 0), ("column", 1), ("narrow", 2)]
 
 
+def _subject_mask(img):
+    """Characters at 1/8 scale: pixels unlike the border palette, largest
+    connected clump, grown through same-colored flesh, dilated for margin.
+    Shared by the zone scorer and the paper wash — one definition of
+    "someone is standing here"."""
+    import numpy as _np
+    from collections import deque
+    sm = img.resize((max(1, img.width // 8), max(1, img.height // 8)))
+    arr = _np.asarray(sm.convert("RGB"), dtype=_np.float32)
+    bpx = max(2, sm.height // 14)
+    border = _np.concatenate([arr[:bpx].reshape(-1, 3), arr[-bpx:].reshape(-1, 3),
+                              arr[:, :bpx].reshape(-1, 3), arr[:, -bpx:].reshape(-1, 3)])
+    rs = _np.random.RandomState(7)
+    pal = border[rs.choice(len(border), min(48, len(border)), replace=False)]
+    dist = _np.sqrt(_np.min(((arr[:, :, None, :] - pal[None, None, :, :]) ** 2)
+                            .sum(-1), axis=2))
+    hot = dist >= max(float(_np.percentile(dist, 65)), 25.0)
+    lab = _np.zeros(hot.shape, dtype=_np.int32)
+    cur = 0
+    Hs, Ws = hot.shape
+    for yy in range(Hs):
+        for xx in range(Ws):
+            if hot[yy, xx] and not lab[yy, xx]:
+                cur += 1
+                q = deque([(yy, xx)]); lab[yy, xx] = cur
+                while q:
+                    cy, cx = q.popleft()
+                    for dy, dx in ((1,0),(-1,0),(0,1),(0,-1)):
+                        ny, nx = cy+dy, cx+dx
+                        if 0 <= ny < Hs and 0 <= nx < Ws and hot[ny, nx] and not lab[ny, nx]:
+                            lab[ny, nx] = cur; q.append((ny, nx))
+    char_mask = _np.zeros(hot.shape, dtype=bool)
+    if cur:
+        sizes = _np.bincount(lab.ravel())[1:]
+        big = int(sizes.argmax()) + 1
+        char_mask = lab == big
+        blob_px = arr[char_mask]
+        centres = blob_px[rs.choice(len(blob_px), min(24, len(blob_px)), replace=False)]
+        near = _np.sqrt(_np.min(((arr[:, :, None, :] - centres[None, None, :, :]) ** 2)
+                                .sum(-1), axis=2)) < 30.0
+        q = deque(map(tuple, _np.argwhere(char_mask)))
+        while q:
+            cy, cx = q.popleft()
+            for dy, dx in ((1,0),(-1,0),(0,1),(0,-1)):
+                ny, nx = cy+dy, cx+dx
+                if 0 <= ny < Hs and 0 <= nx < Ws and near[ny, nx] and not char_mask[ny, nx]:
+                    char_mask[ny, nx] = True; q.append((ny, nx))
+        grown = char_mask.copy()
+        for _ in range(2):
+            g = grown.copy()
+            g[1:, :] |= grown[:-1, :]; g[:-1, :] |= grown[1:, :]
+            g[:, 1:] |= grown[:, :-1]; g[:, :-1] |= grown[:, 1:]
+            grown = g
+        char_mask = grown
+    return dist, char_mask
+
+
 def zone_candidates(img, safe_px: int, n_lines: int, line_px: int,
                     prefs: Optional[dict] = None) -> list:
     """Every sensible place the words could sit on this picture, ranked.
@@ -78,14 +135,19 @@ def zone_candidates(img, safe_px: int, n_lines: int, line_px: int,
     alternatives, best first.
     """
     from PIL import ImageFilter, ImageStat
+    import numpy as _np
     W, H = img.size
-    block_h = min(int(n_lines * line_px * 1.55) + int(safe_px * 0.5), int(H * 0.40))
+    # a page with real paper takes the WHOLE passage — capping the block at
+    # 40% forced half the words onto the facing art (Lars, 2026-08-29)
+    block_h = min(int(n_lines * line_px * 1.55) + int(safe_px * 0.5), int(H * 0.62))
     edges = img.convert("L").filter(ImageFilter.FIND_EDGES)
     grey = img.convert("L")
     prefs = prefs or {}
 
+    dist, char_mask = _subject_mask(img)
+
     avail = W - 2 * safe_px
-    widths = {"wide": avail, "column": int(avail * 0.62), "narrow": int(avail * 0.48)}
+    widths = {"wide": avail, "column": int(avail * 0.74), "narrow": int(avail * 0.60)}
     bands = {"top": safe_px, "upper": int(H * 0.36),
              "lower": int(H * 0.58), "foot": H - safe_px - block_h}
 
@@ -99,18 +161,46 @@ def zone_candidates(img, safe_px: int, n_lines: int, line_px: int,
                 box = (x2, y, x2 + bw, y + block_h)
                 e = ImageStat.Stat(edges.crop(box))
                 g = ImageStat.Stat(grey.crop(box))
-                score = (e.mean[0] + e.stddev[0] * 0.8       # busy art
-                         + g.stddev[0] * 0.35                 # mottled tone
-                         + (bw / avail) * 6.0)                # prefer a column
+                sx0, sy0 = box[0] // 8, box[1] // 8
+                sx1, sy1 = max(sx0 + 1, box[2] // 8), max(sy0 + 1, box[3] // 8)
+                subj = float(dist[sy0:sy1, sx0:sx1].mean())   # off-palette art
+                on_char = float(char_mask[sy0:sy1, sx0:sx1].mean())  # veto weight
+                bcx = (box[0] + box[2]) / 2 / W - 0.5
+                bcy = (box[1] + box[3]) / 2 / H - 0.5
+                central = max(0.0, 1.0 - 2.2 * (bcx * bcx + bcy * bcy) ** 0.5)
+                # busy background is workable UNDER A SCRIM — cap its
+                # penalty so a flowery corner beats a character's flank
+                will_scrim = e.mean[0] > 14
+                busy_pen = e.mean[0] + e.stddev[0] * 0.8
+                # panels are banned, so busy or mottled ground can no longer
+                # be rescued — it must simply lose to flat paper
+                will_scrim = False
+                # the words belong on PAPER, full stop — a zone that is not
+                # clean bright paper is a last resort, never a preference
+                is_paper = (g.mean[0] > 215 and g.stddev[0] < 20
+                            and on_char < 0.02)
+                score = ((0 if is_paper else 200.0)           # paper or bust
+                         + busy_pen                            # busy art
+                         + g.stddev[0] * 1.1                  # mottled tone kills bare ink
+                         + subj * 0.65                        # off-palette art
+                         + on_char * 420.0                    # NEVER on a character
+                         + central * 16.0                     # subjects live mid-frame
+                         + (bw / avail) * 2.0)                # longer lines are
+                                                              # welcome on open paper (Lars)
                 key = f"{bname}-{cname}-{wname}"
                 score -= float(prefs.get(key, 0.0)) * 3.0     # what we learned
-                light = g.mean[0] < 128
-                contrast_ok = abs(g.mean[0] - (255 if light else 0)) > 105
+                # painterly art has soft edges even where it is loud — the
+                # tonal spread betrays a flower bed at any resolution. White
+                # type only on genuinely DARK ground; anything mottled or
+                # midtone gets the panel.
+                light = g.mean[0] < 100
+                contrast_ok = abs(g.mean[0] - (255 if light else 30)) > 120
                 out.append({
                     "key": key, "band": bname, "column": cname, "width": wname,
                     "box": list(box), "score": round(score, 2),
                     "light_text": light,
-                    "scrim": (not contrast_ok) or e.mean[0] > 14,
+                    "scrim": (not contrast_ok) or e.mean[0] > 14
+                             or g.stddev[0] > 26,
                 })
     out.sort(key=lambda d: d["score"])
     return out
@@ -124,7 +214,8 @@ def _quiet_zone(img, safe_px: int, n_lines: int, line_px: int,
     if force_key:
         pick = next((c for c in cands if c["key"] == force_key), None)
     pick = pick or cands[0]
-    return tuple(pick["box"]), pick["light_text"], pick["scrim"], pick["key"]
+    return (tuple(pick["box"]), pick["light_text"], pick["scrim"], pick["key"],
+            pick["score"])
 
 
 async def build_interior(catalog: str, handle=None) -> dict:
@@ -186,13 +277,7 @@ def _build_interior(catalog: str, handle=None) -> dict:
     except Exception:                       # pragma: no cover - always present
         serif = serif_bold = "Helvetica"
 
-    def draw_text(text: str, box_pt, light_text: bool, scrim: bool):
-        """The words, set inside the chosen box."""
-        if not text.strip():
-            return
-        bx, by, bw, _bh = box_pt
-        size = max(13.0, min(26.0, (sp["trim_w"] * PT) / 26))
-        lead = size * 1.34
+    def wrap_lines(text: str, bw: float, size: float):
         words, lines, cur = text.split(), [], ""
         for w in words:
             trial = f"{cur} {w}".strip()
@@ -204,21 +289,44 @@ def _build_interior(catalog: str, handle=None) -> dict:
                 cur = w
         if cur:
             lines.append(cur)
+        return lines
+
+    def draw_block(lines, size: float, box_pt, light_text: bool, scrim: bool):
+        """The words, set inside the chosen box."""
+        if not lines:
+            return
+        bx, by, bw, _bh = box_pt
+        lead = size * 1.62
         block_h = len(lines) * lead
-        if scrim:                    # only where the picture would swallow letters
-            c.saveState()
-            if light_text:
-                c.setFillColorRGB(0, 0, 0, alpha=0.38)
-            else:
-                c.setFillColorRGB(1, 1, 1, alpha=0.55)
-            c.roundRect(bx - 12, by - 10, bw + 24, block_h + 20, 12, stroke=0, fill=1)
-            c.restoreState()
+        # NO white panels — ever (Lars, 2026-08-29). The composition reserves
+        # paper for the words; the zone scorer must find it. Ink goes on bare.
         c.setFillColorRGB(*( (1, 1, 1) if light_text else (0.07, 0.06, 0.05) ))
         c.setFont(serif, size)
         y = by + block_h - lead * 0.8
         for ln in lines:
             c.drawString(bx, y, ln)
             y -= lead
+
+    def split_to_fit(text: str, box_pt):
+        """The words that FIT the box — shrinking a step at a time first —
+        and the remainder that must continue on the facing page. Text must
+        never run off a page (Lars, 2026-08-28: the first spread's opening
+        lines were drawn above the page top)."""
+        if not text.strip():
+            return None, ""
+        bx, by, bw, bh = box_pt
+        size = max(13.0, min(26.0, (sp["trim_w"] * PT) / 26))
+        while size >= 13.0:
+            lines = wrap_lines(text, bw, size)
+            if len(lines) * size * 1.62 <= bh + 0.01:
+                return (lines, size), ""
+            size -= 1.0
+        size = 13.0
+        lines = wrap_lines(text, bw, size)
+        n_fit = max(1, int(bh / (size * 1.62)))
+        shown = lines[:n_fit]
+        used = sum(len(ln.split()) for ln in shown)
+        return (shown, size), " ".join(text.split()[used:])
 
     def white_page():
         c.setFillColorRGB(1, 1, 1)
@@ -229,8 +337,13 @@ def _build_interior(catalog: str, handle=None) -> dict:
         c.setFillColorRGB(1, 1, 1); c.rect(0, 0, page_w, page_h, stroke=0, fill=1)
         c.setFillColorRGB(*colour)
         y = page_h * start_frac
+        # nothing on these pages comes closer than 2cm to a page edge — a
+        # long title steps its size down until it honours the margin
+        max_w = page_w - 2 * (0.787 * 72)
         for ln, (fnt, sz) in zip(lines, sizes):
             if ln:
+                while sz > 10 and c.stringWidth(ln, fnt, sz) > max_w:
+                    sz -= 1
                 c.setFont(fnt, sz)
                 c.drawCentredString(page_w / 2, y, ln)
             y -= sz * 1.9
@@ -253,8 +366,37 @@ def _build_interior(catalog: str, handle=None) -> dict:
     c.setFillColorRGB(1, 1, 1); c.rect(0, 0, page_w, page_h, stroke=0, fill=1)
     c.setFillColorRGB(0.08, 0.07, 0.06)
     y = page_h * 0.70
-    c.setFont(serif_bold, 30)
-    c.drawCentredString(page_w / 2, y, title)
+    # THE TITLE RULE (Lars, 2026-08-29): generous margins on both sides —
+    # the title lives inside a comfortable measure (72% of the page). Too
+    # long for one line? It breaks at the most BALANCED natural word
+    # boundary into two lines; the size only shrinks if even two lines
+    # cannot hold it.
+    t_size = 30
+    max_tw = page_w * 0.72
+    def _balanced_title(txt, size):
+        if c.stringWidth(txt, serif_bold, size) <= max_tw:
+            return [txt]
+        ws = txt.split()
+        best, gap = None, None
+        for i in range(1, len(ws)):
+            a, b = " ".join(ws[:i]), " ".join(ws[i:])
+            wa = c.stringWidth(a, serif_bold, size)
+            wb = c.stringWidth(b, serif_bold, size)
+            if wa <= max_tw and wb <= max_tw:
+                d = abs(wa - wb)
+                if gap is None or d < gap:
+                    best, gap = [a, b], d
+        return best
+    t_lines = _balanced_title(title, t_size)
+    while t_lines is None and t_size > 14:
+        t_size -= 1
+        t_lines = _balanced_title(title, t_size)
+    t_lines = t_lines or [title]
+    c.setFont(serif_bold, t_size)
+    for _i, ln in enumerate(t_lines):
+        c.drawCentredString(page_w / 2, y, ln)
+        if _i < len(t_lines) - 1:
+            y -= t_size * 1.25
     if subtitle:
         y -= 34
         c.setFont(serif, 14)
@@ -332,6 +474,9 @@ def _build_interior(catalog: str, handle=None) -> dict:
     chosen: dict = {}
     from ..database import get_setting as _gs
     house_prefs = _gs("childrens_layout_prefs", {}) or {}
+    wash_left = {}
+    wash_aw = {}
+    crowded = []
     for i, s_ in enumerate(spreads):
         n = s_["n"]
         rel = art.get(str(n))
@@ -349,10 +494,74 @@ def _build_interior(catalog: str, handle=None) -> dict:
         # line, nothing shown twice.
         spread_w = px_w * 2
         im = _fit_cover(im, spread_w, px_h)
+        # GUARANTEED AIR (Lars, 2026-08-29): generation obeyed the reserved
+        # text region only ~40% of the time, even with retries. So the paper
+        # is composited deterministically — a feathered white wash over the
+        # planned side, the art dissolving into it like a true vignette. The
+        # words always get real paper; the art keeps its soft edge.
+        import numpy as _np2
+        _arr = _np2.asarray(im).astype(_np2.float32)
+        _W2, _H2 = im.size
+        _words = len((s_.get("text") or "").split())
+        _fw = 0.47 if _words >= 45 else 0.34
+        # THE WASH MUST NEVER ERASE A CHARACTER (Lars, 2026-08-29): measure
+        # who stands in each page's air region; the wash contracts to stop
+        # short of them, and flips to the other page when that side offers
+        # more clean room. The text follows the wash.
+        _halfL = im.crop((0, 0, _W2 // 2, _H2))
+        _halfR = im.crop((_W2 // 2, 0, _W2, _H2))
+        def _clean_air(is_left):
+            # PAPER is measured directly — bright, flat columns running in
+            # from the page's outer edge. (The character mask color-grows
+            # through a flower field and cried wolf on real paper.)
+            half = _halfL if is_left else _halfR
+            g = _np2.asarray(half.convert("L").resize(
+                (max(1, half.width // 8), max(1, half.height // 8))),
+                dtype=_np2.float32)
+            rows = g[: max(1, int(g.shape[0] * 0.60)), :]
+            ok = (rows.mean(axis=0) > 224) & (rows.std(axis=0) < 32)
+            idx = range(len(ok)) if is_left else range(len(ok) - 1, -1, -1)
+            w = 0
+            for j in idx:
+                if ok[j]:
+                    w += 1
+                else:
+                    break
+            return w * 8
+        _plan_left = (n % 2 == 1)
+        _margin = int(0.035 * _W2)
+        _clean_p = _clean_air(_plan_left) - _margin
+        _aw_want = int(_W2 * _fw)
+        _aw = min(_aw_want, max(0, _clean_p))
+        if _aw < int(0.18 * _W2):
+            _clean_o = _clean_air(not _plan_left) - _margin
+            if _clean_o > _clean_p:
+                _plan_left = not _plan_left
+                _aw = min(_aw_want, max(0, _clean_o))
+        if _aw < int(0.24 * _W2):
+            # both pages crowded: the art left no honest room — flag the
+            # spread for a hard-air redraw instead of contorting the layout
+            crowded.append(n)
+        _aw = max(_aw, int(0.16 * _W2))      # some paper must always exist
+        wash_left[str(n)] = _plan_left
+        wash_aw[str(n)] = _aw
+        _x = _np2.arange(_W2, dtype=_np2.float32)
+        if _plan_left:
+            _gx = _np2.clip((_aw - _x) / (_aw * 0.45), 0, 1)
+        else:
+            _gx = _np2.clip((_x - (_W2 - _aw)) / (_aw * 0.45), 0, 1)
+        _y = _np2.arange(_H2, dtype=_np2.float32)
+        _gy = _np2.clip((_H2 * 0.88 - _y) / (_H2 * 0.26), 0, 1)
+        _alpha = (_np2.minimum(_gx[None, :], _gy[:, None]) * 0.96)[..., None]
+        _paper = _np2.array([252, 251, 249], dtype=_np2.float32)
+        _arr = _arr * (1 - _alpha) + _paper * _alpha
+        im = Image.fromarray(_arr.astype("uint8"))
         left_im = im.crop((0, 0, px_w, px_h))
         right_im = im.crop((px_w, 0, spread_w, px_h))
 
         safe_px = int((sp["bleed"] + sp["safe"]) * dpi)
+        # text never closer than 2cm to the page edge (Lars, 2026-08-29)
+        text_safe = max(safe_px, int(0.787 * dpi))
         size = max(13.0, min(26.0, (sp["trim_w"] * PT) / 26))
         est_lines = max(1, int(len(s_.get("text", "").split()) / 7) + 1)
         # the words go on whichever page has the quieter picture
@@ -362,36 +571,102 @@ def _build_interior(catalog: str, handle=None) -> dict:
         prefs = dict(house_prefs)
         for k, v in (rec.get("layout_prefs") or {}).items():
             prefs[k] = float(prefs.get(k, 0.0)) + float(v)
-        lpx = int(size * 1.34 * dpi / PT)
-        zone_l, light_l, scrim_l, key_l = _quiet_zone(
-            left_im, safe_px, est_lines, lpx, prefs,
+        lpx = int(size * 1.62 * dpi / PT)
+        zone_l, light_l, scrim_l, key_l, score_l = _quiet_zone(
+            left_im, text_safe, est_lines, lpx, prefs,
             lay.get("key") if lay.get("page") == "left" else "")
-        zone_r, light_r, scrim_r, key_r = _quiet_zone(
-            right_im, safe_px, est_lines, lpx, prefs,
+        zone_r, light_r, scrim_r, key_r, score_r = _quiet_zone(
+            right_im, text_safe, est_lines, lpx, prefs,
             lay.get("key") if lay.get("page") == "right" else "")
         from PIL import ImageFilter, ImageStat
         busy = lambda img, z: ImageStat.Stat(
             img.convert("L").filter(ImageFilter.FIND_EDGES).crop(z)).mean[0]
-        on_left = (lay.get("page") == "left") if lay.get("page") else (
-            busy(left_im, zone_l) <= busy(right_im, zone_r))
+        # the WASHED STRIP is guaranteed paper — offer it as the primary
+        # zone on its page, however slim; a tall narrow column beats any
+        # placement on art (Lars: the white field must never sit on a
+        # character, and the text follows the wash)
+        _wl = wash_left.get(str(n))
+        _wa = wash_aw.get(str(n), 0)
+        _solid = int(_wa * 0.55)
+        if _wl is True:
+            bx1 = _solid - int(0.10 * dpi)
+            if bx1 - text_safe >= int(1.1 * dpi):
+                zone_l = (text_safe, text_safe, bx1, int(px_h * 0.86))
+                light_l, scrim_l, key_l, score_l = False, False, "wash", -1000.0
+        elif _wl is False:
+            bx0 = max(text_safe, px_w - _solid + int(0.10 * dpi))
+            if px_w - text_safe - bx0 >= int(1.1 * dpi):
+                zone_r = (bx0, text_safe, px_w - text_safe, int(px_h * 0.86))
+                light_r, scrim_r, key_r, score_r = False, False, "wash", -1000.0
+        # the illustration RESERVED a side for these words (odd spreads
+        # left, even right) — honour the plan unless that side's best zone
+        # is clearly worse (old full-bleed art, or the model ignored us)
+        planned_left = wash_left.get(str(n), n % 2 == 1)
+        if lay.get("page"):
+            on_left = lay.get("page") == "left"
+        elif (score_l - score_r <= 35) if planned_left else (score_r - score_l > 35):
+            on_left = True
+        else:
+            on_left = False
         chosen[str(n)] = {"page": "left" if on_left else "right",
                           "key": key_l if on_left else key_r,
                           "manual": bool(lay.get("key"))}
 
-        for side, (im_half, zone, lite, scrim) in enumerate((
-                (left_im, zone_l, light_l, scrim_l),
-                (right_im, zone_r, light_r, scrim_r))):
+        def to_box(zone):
+            x0, y0, x1, y1 = zone
+            return (x0 * PT / dpi, (px_h - y1) * PT / dpi,
+                    (x1 - x0) * PT / dpi, (y1 - y0) * PT / dpi)
+
+        # the words go on the chosen page IF they fit; a spread with more to
+        # say flows across both pages in reading order instead of overflowing
+        text_all = s_.get("text", "")
+        assign = {}
+        fitted, rest = split_to_fit(text_all, to_box(zone_l if on_left else zone_r))
+        if fitted and not rest:
+            key0 = "left" if on_left else "right"
+            assign[key0] = (fitted, to_box(zone_l if on_left else zone_r),
+                            (light_l if on_left else light_r),
+                            (scrim_l if on_left else scrim_r))
+        elif fitted:
+            # balance the spread: break near the midpoint at a sentence end,
+            # so neither page carries an orphan line of two or three words
+            import re as _re
+            sents = _re.split(r'(?<=[.!?\"]) +', text_all)
+            if len(sents) >= 2:
+                total_w = len(text_all.split())
+                best, best_diff = 1, float("inf")
+                for i in range(1, len(sents)):
+                    diff = abs(len(" ".join(sents[:i]).split()) - total_w / 2)
+                    if diff < best_diff:
+                        best_diff, best = diff, i
+                left_txt = " ".join(sents[:best])
+                right_txt = " ".join(sents[best:])
+            else:
+                left_txt, right_txt = text_all, ""
+            fit_l, rest_l = split_to_fit(left_txt, to_box(zone_l))
+            assign["left"] = (fit_l, to_box(zone_l), light_l, scrim_l)
+            rest_l = (rest_l + " " + right_txt).strip()
+            if rest_l:
+                fit_r, rest_r = split_to_fit(rest_l, to_box(zone_r))
+                if rest_r:
+                    # final guarantee: the right page opens its full safe
+                    # column behind a scrim — everything fits at floor size
+                    full = (text_safe, text_safe, px_w - text_safe, px_h - text_safe)
+                    fit_r, _ = split_to_fit(rest_l, to_box(full))
+                    assign["right"] = (fit_r, to_box(full), light_r, True)
+                else:
+                    assign["right"] = (fit_r, to_box(zone_r), light_r, scrim_r)
+
+        for im_half, key in ((left_im, "left"), (right_im, "right")):
             buf = io.BytesIO()
             im_half.save(buf, format="JPEG", quality=92, optimize=True)
             buf.seek(0)
             c.drawImage(ImageReader(buf), 0, 0, width=page_w, height=page_h)
-            if (side == 0) == on_left:
-                x0, y0, x1, y1 = zone
-                box_pt = (x0 * PT / dpi,
-                          (px_h - y1) * PT / dpi,
-                          (x1 - x0) * PT / dpi,
-                          (y1 - y0) * PT / dpi)
-                draw_text(s_.get("text", ""), box_pt, lite, scrim)
+            if key in assign:
+                (lines_and_size, box_pt, lite2, scrim2) = assign[key]
+                if lines_and_size:
+                    draw_block(lines_and_size[0], lines_and_size[1],
+                               box_pt, lite2, scrim2)
             c.showPage(); pages_written += 1
 
     # ── BACK MATTER: at least one white page, then up to the binder's count
@@ -406,7 +681,7 @@ def _build_interior(catalog: str, handle=None) -> dict:
     frec["layout_used"] = chosen
     fd["childrens"] = frec
     from ..database import update_book as _ub
-    _ub(fresh["id"], fd)
+    _ub(fresh["id"], fd, sections=["childrens"])
 
     return {
         "pdf": str(pdf_path),
@@ -417,4 +692,5 @@ def _build_interior(catalog: str, handle=None) -> dict:
         "divisible_by_8": pages_written % 8 == 0,
         "spreads": len(spreads),
         "undrawn": [s["n"] for s in spreads if not art.get(str(s["n"]))],
+        "crowded": crowded,
     }

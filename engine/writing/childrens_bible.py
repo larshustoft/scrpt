@@ -257,9 +257,16 @@ async def build_bible(catalog: str, handle=None, rebuild: bool = False) -> dict:
         bible.setdefault("style", {})["source"] = "approved front cover"
     bible["_text"] = _compact(bible)
 
-    rec["bible"] = bible
-    d["childrens"] = rec
-    update_book(book["id"], d)
+    # re-read before writing: `d` predates a long model call, and this job
+    # only owns the bible (and the premise default) inside `childrens`
+    fresh = get_book_by_catalog(catalog)
+    fd = dict(fresh["data"])
+    frec = dict(fd.get("childrens") or {})
+    if rec.get("premise"):
+        frec.setdefault("premise", rec["premise"])
+    frec["bible"] = bible
+    fd["childrens"] = frec
+    update_book(fresh["id"], fd, sections=["childrens"])
     if handle:
         handle.progress(0.95, "bible",
                         f"{len(bible.get('characters') or [])} characters · "
@@ -427,7 +434,12 @@ async def draw_plates(catalog: str, only: Optional[str] = None, handle=None) -> 
                                    return_exceptions=True)
     drawn += [g for g in got if isinstance(g, str)]
 
-    rec["plates"] = drawn
-    d["childrens"] = rec
-    update_book(book["id"], d)
+    # re-read before writing: `d` predates minutes of image work, and this
+    # job only owns the plates list inside `childrens`
+    fresh = get_book_by_catalog(catalog)
+    fd = dict(fresh["data"])
+    frec = dict(fd.get("childrens") or rec)
+    frec["plates"] = drawn
+    fd["childrens"] = frec
+    update_book(fresh["id"], fd, sections=["childrens"])
     return {"drawn": drawn, "count": len(drawn)}

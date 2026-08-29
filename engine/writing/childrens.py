@@ -242,10 +242,16 @@ async def write_childrens_book(catalog: str, handle=None) -> dict:
            "spreads": out, "characters": cast, "art_style": style,
            "value_shift": str(data.get("value_shift") or "")[:120],
            "words": words, "target_words": p["target_words"]}
-    d["childrens"] = rec
-    ms.word_count = words
-    d["manuscript"] = ms.model_dump(mode="json")
-    update_book(book["id"], d)
+    # `d` was read before minutes of writing — re-read and touch only the
+    # sections this job owns, so cover/interior writes that landed mid-job
+    # survive
+    fresh = get_book_by_catalog(catalog)
+    fd = dict(fresh["data"])
+    fd["childrens"] = rec
+    fresh_ms = Manuscript.model_validate(fd.get("manuscript", {}))
+    fresh_ms.word_count = words
+    fd["manuscript"] = fresh_ms.model_dump(mode="json")
+    update_book(fresh["id"], fd, sections=["childrens", "manuscript"])
     if handle:
         handle.progress(0.9, "written", f"{len(out)} spreads · {words} words")
     return rec
@@ -259,7 +265,8 @@ async def write_childrens_book(catalog: str, handle=None) -> dict:
 # first and becomes the REFERENCE: every later spread is generated as an EDIT
 # against it, which carries the character design and the palette forward.
 
-async def illustrate(catalog: str, only: Optional[int] = None, handle=None) -> dict:
+async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
+                    hard_air: bool = False) -> dict:
     """Draw the spreads. Spread 1 sets the look; the rest follow it."""
     import asyncio, base64
     from pathlib import Path
@@ -308,6 +315,24 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None) -> d
 
     from ..cover.front_cover import _best_image_model
 
+    def air_ok(png: bytes, n: int, words: int) -> bool:
+        """The AIR QC GATE: the region reserved for text must actually BE
+        light empty paper in the finished art — measured, not assumed. A
+        spread that ignored the reservation gets redrawn (Lars, 2026-08-29:
+        a full-bleed spread left the words with nowhere readable to go)."""
+        from PIL import Image
+        import io as _io
+        im = Image.open(_io.BytesIO(png)).convert("L")
+        W, H = im.size
+        left = (n % 2 == 1)
+        frac_w = 0.47 if words >= 45 else 0.34
+        x0, x1 = (int(W*0.03), int(W*frac_w)) if left else (int(W*(1-frac_w)), int(W*0.97))
+        region = im.crop((x0, int(H*0.04), x1, int(H*0.46))).resize((60, 40))
+        px = list(region.getdata())
+        mean = sum(px)/len(px)
+        var = sum((v-mean)**2 for v in px)/len(px)
+        return mean > 218 and var ** 0.5 < 30
+
     async def draw(prompt: str, reference: Optional[bytes]) -> bytes:
         async with httpx.AsyncClient(timeout=300) as c:
             model = await _best_image_model(c)
@@ -345,7 +370,31 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None) -> d
     def prompt_for(s):
         n = s["n"]
         canon = canon_block(bible, f"{s.get('picture','')} {s.get('text','')}")
-        head = "\n\n".join(x for x in (art_direction, canon) if x)
+        # THE AIR RULE (Lars, from the Nordqvist books): the illustration is a
+        # vignette that leaves the paper itself as the text's home. One region
+        # per spread stays pure white; the side alternates so the book
+        # breathes left-right as it turns.
+        side = "LEFT" if n % 2 else "RIGHT"
+        w = len((s.get("text") or "").split())
+        area = ("half" if w >= 85 else "third" if w >= 45 else "quarter")
+        air = (f"COMPOSITION: a generous picture-book illustration that FILLS "
+               f"most of the image with life, story and detail — the scene is "
+               f"large and immersive, never a small drawing lost on a white "
+               f"page. It is still a vignette: its outer edges dissolve "
+               f"softly into the paper instead of ending in a hard rectangle. "
+               f"The {side} {area} of the image — the upper {side} region — "
+               f"stays as light open air: white paper with at most the "
+               f"faintest wash, reserved for the story text. One or two tiny "
+               f"story details (a butterfly, a flower sprig, a small side "
+               f"character) may sit near the margins so no corner feels "
+               f"empty. In the spirit of classic Scandinavian picture books.")
+        if hard_air:
+            air += (f" CRITICAL, NON-NEGOTIABLE: the {side} half of the image "
+                    f"is completely EMPTY pale watercolor paper — no "
+                    f"characters, no animals, no objects, no flowers there at "
+                    f"all. Every character stands in the "
+                    f"{'RIGHT' if side == 'LEFT' else 'LEFT'} half only.")
+        head = "\n\n".join(x for x in (art_direction, air, canon) if x)
         if n == 1:
             prompt = (f"A children's picture-book illustration, landscape, for a book for ages "
                       f"{rec.get('age','3-5')}. {s['art_prompt']}")
@@ -374,7 +423,13 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None) -> d
         if handle:
             handle.progress(0.1, "illustrating", "drawing spread 1 — the reference")
         pr, ref = prompt_for(s)
-        (art_dir / "spread-01.png").write_bytes(await draw(pr, ref))
+        w1 = len((s.get("text") or "").split())
+        png = await draw(pr, ref)
+        for _retry in range(2):
+            if air_ok(png, 1, w1):
+                break
+            png = await draw(pr, ref)
+        (art_dir / "spread-01.png").write_bytes(png)
         done.append(1)
 
     if rest:
@@ -386,6 +441,10 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None) -> d
                 try:
                     pr, ref = prompt_for(s)
                     png = await draw(pr, ref)
+                    for _retry in range(2):
+                        if air_ok(png, s["n"], len((s.get("text") or "").split())):
+                            break
+                        png = await draw(pr, ref)
                 except Exception:
                     return None          # a refused spread must not kill the book
                 (art_dir / f"spread-{s['n']:02d}.png").write_bytes(png)
@@ -398,9 +457,15 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None) -> d
         got = await asyncio.gather(*(one(s) for s in rest), return_exceptions=True)
         done += [g for g in got if isinstance(g, int)]
 
-    rec["art"] = {str(s["n"]): f"spreads/spread-{s['n']:02d}.png"
-                  for s in spreads if (art_dir / f"spread-{s['n']:02d}.png").exists()}
+    art_map = {str(s["n"]): f"spreads/spread-{s['n']:02d}.png"
+               for s in spreads if (art_dir / f"spread-{s['n']:02d}.png").exists()}
+    rec["art"] = art_map
+    # merge onto the freshly-read childrens record — `rec` is from job start,
+    # and this job only owns the art map
     fresh = get_book_by_catalog(catalog)
-    d = dict(fresh["data"]); d["childrens"] = rec
-    update_book(fresh["id"], d)
-    return {"drawn": done, "total": len(spreads), "art": rec["art"]}
+    d = dict(fresh["data"])
+    frec = dict(d.get("childrens") or rec)
+    frec["art"] = art_map
+    d["childrens"] = frec
+    update_book(fresh["id"], d, sections=["childrens"])
+    return {"drawn": done, "total": len(spreads), "art": art_map}
