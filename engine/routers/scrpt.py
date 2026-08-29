@@ -1842,6 +1842,18 @@ async def trailer_status(catalog: str):
             "music": (t.get("storyboard") or {}).get("music") or "",
             "count": len((t.get("storyboard") or {}).get("panels") or []),
         } if t.get("storyboard") else None),
+        "movie": ({
+            "panels": [
+                {**p, "frame_url": ((lambda fp: f"/api/files/{catalog}/trailer/{p['frame']}?v="
+                                    + str(int(fp.stat().st_mtime)) if fp.exists()
+                                    else None)(Path(OUTPUT_DIR) / catalog / "trailer" / p["frame"])
+                                    if p.get("frame") else None)}
+                for p in (((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels") or [])
+            ],
+            "music": ((book["data"].get("movie") or {}).get("storyboard") or {}).get("music") or "",
+            "minutes": ((book["data"].get("movie") or {}).get("storyboard") or {}).get("minutes"),
+            "count": len((((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels")) or []),
+        } if ((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels") else None),
         "versions": versions,
         "has_video": (out / latest_file).exists(),
         # the latest reel is a mutable file: stamp its address with the
@@ -3102,6 +3114,7 @@ async def trailer_reference(catalog: str, body: dict = Body(default={})):
 
 @router.post("/trailer/board-frame/{catalog}")
 async def redraw_board_frame(catalog: str, body: dict = Body(default={})):
+    """board:"movie" edits the film board; default edits the trailer's."""
     """Redraw ONE storyboard frame — optionally from the publisher's own
     prompt. Only the image changes; the board's shot text stays unless the
     publisher edits it separately (Lars, 2026-08-29)."""
@@ -3111,8 +3124,13 @@ async def redraw_board_frame(catalog: str, body: dict = Body(default={})):
     book = db.get_book_by_catalog(catalog)
     if not book:
         raise HTTPException(404, "Book not found")
-    tr = book["data"].get("trailer") or {}
-    sb = tr.get("storyboard") or {}
+    if body.get("board") == "movie":
+        sb = _movie_board(book)
+        _subdir = "board-film"
+    else:
+        tr = book["data"].get("trailer") or {}
+        sb = tr.get("storyboard") or {}
+        _subdir = "board"
     panels = (sb.get("panels") if isinstance(sb, dict) else sb) or []
     n = str(body.get("panel") or "")
     pn = next((p for p in panels if str(p.get("n")) == n), None)
@@ -3124,7 +3142,7 @@ async def redraw_board_frame(catalog: str, body: dict = Body(default={})):
         import httpx, shutil as _sh
         style = (sb.get("style") if isinstance(sb, dict) else "") or ""
         cast = cast_of(book)
-        out = _dir(catalog, "board")
+        out = _dir(catalog, _subdir)
         dest = out / f"panel-{n}.png"
         if dest.exists():   # the old frame is banked, never destroyed
             _sh.copy2(dest, out / f"panel-{n}-prev.png")
@@ -3162,8 +3180,76 @@ async def redraw_board_frame(catalog: str, body: dict = Body(default={})):
     return {"job_id": start_job("board_frame", job, book_catalog=catalog)}
 
 
+def _movie_board(book: dict) -> dict:
+    sb = (book["data"].get("movie") or {}).get("storyboard") or {}
+    return sb if (sb.get("panels") if isinstance(sb, dict) else None) else {}
+
+
+@router.post("/movie/board/{catalog}")
+async def movie_board(catalog: str, body: dict = Body(default={})):
+    """Build the FILM board: every spread a scene narrated by the book's own
+    words, then draw every shot's frame. LLM + frame images only — no video."""
+    from ..trailer.bible import build_film_board, ensure_bibles
+    from ..trailer.plates import draw_board_plates
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    minutes = max(4, min(15, int(body.get("minutes") or 8)))
+
+    async def job(handle):
+        await ensure_bibles(catalog, handle)
+        r = await build_film_board(catalog, minutes=minutes, handle=handle)
+        fresh = db.get_book_by_catalog(catalog)
+        sb = _movie_board(fresh)
+        frames = await draw_board_plates(catalog, sb, handle=handle,
+                                         subdir="board-film")
+        panels = sb.get("panels") or []
+        fmap = frames.get("frames") or {}
+        for pn in panels:
+            if fmap.get(str(pn.get("n"))):
+                pn["frame"] = fmap[str(pn.get("n"))]
+        fd = dict(fresh["data"]); mv = dict(fd.get("movie") or {})
+        mv["storyboard"] = sb
+        fd["movie"] = mv
+        db.update_book(fresh["id"], fd)
+        return {**r, "frames": len(fmap)}
+
+    return {"job_id": start_job("movie_board", job, book_catalog=catalog)}
+
+
+@router.post("/movie/produce/{catalog}")
+async def movie_produce(catalog: str, body: dict = Body(default={})):
+    """Shoot and cut the FILM from its board. Quotes first; nothing rolls
+    without confirm + the estimate shown (the money contract as product)."""
+    from ..trailer.producer import produce_storyboard
+    book = db.get_book_by_catalog(catalog)
+    if not book:
+        raise HTTPException(404, "Book not found")
+    sb = _movie_board(book)
+    if not sb:
+        raise HTTPException(400, "Build the film board first")
+    panels = sb.get("panels") or []
+    total_s = sum(float(p.get("dur") or 6) for p in panels)
+    # only UNSHOT footage costs anything: count missing takes the same way
+    # the producer will (cached takes are free)
+    estimate = int(total_s * 60)
+    if not body.get("confirm"):
+        return {"estimate_credits_max": estimate,
+                "seconds": int(total_s), "shots": len(panels),
+                "note": "Ceiling at ~60 cr/s; cached takes are reused free. "
+                        "Pass confirm:true to roll."}
+
+    async def job(handle):
+        return await produce_storyboard(
+            catalog, sb, format_name="wide", handle=handle,
+            version_label="film", max_seconds=int(total_s) + 30)
+
+    return {"job_id": start_job("movie_produce", job, book_catalog=catalog),
+            "estimate_credits_max": estimate}
+
+
 @router.post("/trailer/rerecord/{catalog}")
-async def trailer_rerecord(catalog: str):
+async def trailer_rerecord(catalog: str, body: dict = Body(default={})):
     """Re-record the narration in the CURRENTLY CAST voice and re-cut the
     trailer. Every video take and the music are reused; this path is
     structurally incapable of shooting video (Lars, 2026-08-29). Costs only
@@ -3172,14 +3258,20 @@ async def trailer_rerecord(catalog: str):
     book = db.get_book_by_catalog(catalog)
     if not book:
         raise HTTPException(404, "Book not found")
-    sb = (book["data"].get("trailer") or {}).get("storyboard") or {}
+    if body.get("board") == "movie":
+        sb = _movie_board(book)
+    else:
+        sb = (book["data"].get("trailer") or {}).get("storyboard") or {}
     if not (sb.get("panels") if isinstance(sb, dict) else sb):
-        raise HTTPException(400, "No storyboard yet — build the trailer first")
+        raise HTTPException(400, "No storyboard yet — build it first")
+    _is_movie = body.get("board") == "movie"
+    _maxs = (int(sum(float(p.get("dur") or 6) for p in (sb.get("panels") or []))) + 30) if _is_movie else 0
 
     async def job(handle):
         return await produce_storyboard(catalog, sb, format_name="wide",
                                         handle=handle, no_new_shots=True,
-                                        version_label="revoice")
+                                        version_label="film" if _is_movie else "revoice",
+                                        max_seconds=_maxs)
 
     return {"job_id": start_job("trailer_produce", job, book_catalog=catalog)}
 
@@ -3194,8 +3286,11 @@ async def reshoot_scene(catalog: str, body: dict = Body(default={})):
     book = db.get_book_by_catalog(catalog)
     if not book:
         raise HTTPException(404, "Book not found")
-    tr = book["data"].get("trailer") or {}
-    sb = tr.get("storyboard") or {}
+    if body.get("board") == "movie":
+        sb = _movie_board(book)
+    else:
+        tr = book["data"].get("trailer") or {}
+        sb = tr.get("storyboard") or {}
     panels = (sb.get("panels") if isinstance(sb, dict) else sb) or []
     n = str(body.get("panel") or "")
 
@@ -3228,9 +3323,14 @@ async def reshoot_scene(catalog: str, body: dict = Body(default={})):
                         + " Pass confirm:true to roll."}
     board = sb if isinstance(sb, dict) else {"panels": panels}
 
+    _is_movie = body.get("board") == "movie"
+    _maxs = (int(sum(_secs(p) for p in panels)) + 30) if _is_movie else 0
+
     async def job(handle):
         return await produce_storyboard(catalog, board, format_name="wide",
-                                        handle=handle, reshoot=targets)
+                                        handle=handle, reshoot=targets,
+                                        version_label="film" if _is_movie else "storyboard",
+                                        max_seconds=_maxs)
 
     return {"job_id": start_job("trailer_produce", job, book_catalog=catalog),
             "estimate_credits_max": estimate}

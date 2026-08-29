@@ -3224,11 +3224,170 @@ const MOVIE_PIPELINE = [
 function FullMovieTab({ book }: { book: ScrptBook }) {
   const [screen, setScreen] = useState<"cinema" | "tv">("cinema");
   const [format, setFormat] = useState("feature");
+  const catalog = book.catalog_number;
+  type MoviePanel = { n?: string | number; title?: string; dur?: number; vo?: string;
+                      frame_url?: string | null; characters?: string[] };
+  const [mv, setMv] = useState<{ panels: MoviePanel[]; count: number; minutes?: number; music?: string } | null>(null);
+  const [mvKey, setMvKey] = useState(0);
+  const [minutes, setMinutes] = useState(8);
+  const [mvMsg, setMvMsg] = useState("");
+  const [mvJob, setMvJob] = useState<{ what: string; pct: number } | null>(null);
+  const [mvRedo, setMvRedo] = useState<string | null>(null);
+  const [mvPrompt, setMvPrompt] = useState("");
+  useEffect(() => {
+    fetch(`${scrpt.engineUrl}/api/scrpt/trailer/${catalog}`)
+      .then((r) => r.json()).then((d) => setMv(d.movie || null)).catch(() => {});
+  }, [catalog, mvKey]);
+  const runJob = async (url: string, bodyObj: object, what: string) => {
+    setMvMsg("");
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
+                                 body: JSON.stringify(bodyObj) });
+    const d = await r.json();
+    if (!r.ok) { setMvMsg(d.detail || "Could not start"); return null; }
+    if (!d.job_id) return d;
+    setMvJob({ what, pct: 0.02 });
+    try {
+      const job = await pollJob(d.job_id, (j) => setMvJob({ what, pct: Number(j.progress) || 0.02 }));
+      if (job.status !== "done") setMvMsg(`Failed: ${(job.error || "").split("\n")[0]}`);
+    } finally { setMvJob(null); }
+    setMvKey((k) => k + 1);
+    return d;
+  };
   // The screening room shows the FILM. The trailer lives on the Trailer tab —
   // this screen stays dark until the movie engine ships.
 
+  const filmBoard = (
+    <div className="card">
+      <div className="flex items-baseline justify-between flex-wrap gap-2">
+        <div className="serif-display text-[17px] font-semibold">The film board</div>
+        {mv && <div className="text-[11px] text-text-faint">{mv.count} shots · ~{mv.minutes} min</div>}
+      </div>
+      {!mv ? (
+        <div className="mt-3">
+          <p className="text-[12px] text-text-tertiary leading-relaxed">
+            Every spread becomes a scene, narrated by the book&apos;s own words —
+            the film IS the book. Build the board (script + a frame per shot;
+            no video is shot yet).
+          </p>
+          <div className="flex items-center gap-2 mt-3">
+            {[5, 8, 12].map((m) => (
+              <button key={m}
+                      className={`text-[11px] px-2.5 py-1 rounded-full border ${
+                        minutes === m ? "border-accent text-accent" : "border-border-subtle text-text-tertiary"}`}
+                      onClick={() => setMinutes(m)}>~{m} min</button>
+            ))}
+            <button className="btn-brass text-[12px]" disabled={!!mvJob}
+                    onClick={() => runJob(`${scrpt.engineUrl}/api/scrpt/movie/board/${catalog}`,
+                                          { minutes }, "Boarding the film")}>
+              Build the film board
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            <button className="btn-brass text-[12px]" disabled={!!mvJob}
+                    onClick={async () => {
+                      const q = await fetch(`${scrpt.engineUrl}/api/scrpt/movie/produce/${catalog}`, {
+                        method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+                      }).then((r) => r.json());
+                      if (!window.confirm(
+                        `Shoot the film? ${q.shots} shots · ~${Math.round((q.seconds || 0) / 60)} min.\n\n` +
+                        `Estimated up to ${q.estimate_credits_max} credits (cached takes are free).`)) return;
+                      await runJob(`${scrpt.engineUrl}/api/scrpt/movie/produce/${catalog}`,
+                                   { confirm: true }, "Shooting the film");
+                    }}>
+              Shoot the film…
+            </button>
+            <button className="btn-ghost text-[12px]" disabled={!!mvJob}
+                    onClick={() => runJob(`${scrpt.engineUrl}/api/scrpt/trailer/rerecord/${catalog}`,
+                                          { board: "movie" }, "Re-recording")}>
+              Re-record VO &amp; re-cut
+            </button>
+            <button className="btn-ghost text-[12px]" disabled={!!mvJob}
+                    onClick={() => { if (window.confirm("Rebuild the board from the book? Frames redraw; shot takes stay cached.")) runJob(`${scrpt.engineUrl}/api/scrpt/movie/board/${catalog}`, { minutes: mv.minutes || 8 }, "Re-boarding"); }}>
+              Rebuild board
+            </button>
+            {mvJob && (
+              <span className="flex items-center gap-2 text-[11px] text-text-faint">
+                <svg width="30" height="30" viewBox="0 0 30 30">
+                  <circle cx="15" cy="15" r="12" fill="none" stroke="var(--line)" strokeWidth="2.5" />
+                  <circle cx="15" cy="15" r="12" fill="none" stroke="var(--accent, #c9a96a)"
+                          strokeWidth="2.5" strokeLinecap="round"
+                          strokeDasharray={`${Math.max(3, mvJob.pct * 75)} 75`}
+                          transform="rotate(-90 15 15)"
+                          style={{ transition: "stroke-dasharray 0.6s ease" }} />
+                  <text x="15" y="18.5" textAnchor="middle" fontSize="8.5"
+                        fill="var(--text-secondary, #bbb)">{Math.round(mvJob.pct * 100)}%</text>
+                </svg>
+                {mvJob.what}…
+              </span>
+            )}
+          </div>
+          <div className="grid gap-2 mt-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
+            {mv.panels.map((p, i) => (
+              <div key={String(p.n ?? i)}>
+                {p.frame_url ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={`${scrpt.engineUrl}${p.frame_url}`} alt={String(p.title || p.n)}
+                       className="w-full rounded" style={{ aspectRatio: "16/9", objectFit: "cover", border: "1px solid var(--line)" }} />
+                ) : (
+                  <div className="w-full rounded flex items-center justify-center text-[10px] text-text-faint"
+                       style={{ aspectRatio: "16/9", border: "1px dashed var(--line)" }}>
+                    shot {String(p.n ?? i + 1)}
+                  </div>
+                )}
+                <div className="text-[11px] text-text mt-1">{p.n}. {p.title}
+                  {p.dur ? <span className="text-text-faint"> · {p.dur}s</span> : null}</div>
+                {p.vo ? <div className="text-[10px] text-text-secondary italic leading-snug">“{p.vo}”</div> : null}
+                <div className="flex gap-1.5 mt-1">
+                  <button className="btn-ghost text-[10px] px-2 py-0.5" disabled={!!mvJob}
+                          onClick={() => { setMvRedo(String(p.n)); setMvPrompt(""); }}>
+                    Redraw image
+                  </button>
+                  <button className="btn-ghost text-[10px] px-2 py-0.5" disabled={!!mvJob}
+                          onClick={async () => {
+                            const q = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`, {
+                              method: "POST", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ panel: String(p.n), board: "movie" }),
+                            }).then((r) => r.json());
+                            if (!window.confirm(`Re-shoot shot ${p.n} (${q.seconds}s)?\n\nEstimated up to ${q.estimate_credits_max} credits.`)) return;
+                            await runJob(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`,
+                                         { panel: String(p.n), board: "movie", confirm: true }, `Shooting ${p.n}`);
+                          }}>
+                    Re-shoot shot
+                  </button>
+                </div>
+                {mvRedo === String(p.n) && (
+                  <div className="mt-1.5 p-2 rounded-[6px] border border-border-subtle">
+                    <textarea value={mvPrompt} onChange={(e) => setMvPrompt(e.target.value)} rows={3} autoFocus
+                              className="w-full rounded-[5px] border border-border-subtle bg-transparent p-1.5 text-[11px] leading-snug"
+                              placeholder="Describe the image — or leave empty for the shot description." />
+                    <div className="flex gap-1.5 mt-1.5">
+                      <button className="btn-brass text-[10px] px-2 py-0.5" disabled={!!mvJob}
+                              onClick={async () => {
+                                const panel = String(p.n);
+                                setMvRedo(null);
+                                await runJob(`${scrpt.engineUrl}/api/scrpt/trailer/board-frame/${catalog}`,
+                                             { panel, prompt: mvPrompt, board: "movie" }, `Painting ${panel}`);
+                              }}>Redraw</button>
+                      <button className="btn-ghost text-[10px] px-2 py-0.5" onClick={() => setMvRedo(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {mv.music && <div className="text-[10px] text-text-faint mt-2">Score: {mv.music}</div>}
+        </>
+      )}
+      {mvMsg && <div className="text-[12px] mt-2" style={{ color: "var(--status-red)" }}>{mvMsg}</div>}
+    </div>
+  );
+
   return (
     <div className="mt-6 space-y-5">
+      {filmBoard}
       {/* The screening room */}
       <div className="card">
         <div className="flex items-baseline justify-between flex-wrap gap-2">

@@ -580,3 +580,108 @@ async def rewrite_board_script(catalog: str, brief: str = "", handle=None) -> di
     fd["trailer"] = ftr
     update_book(fresh["id"], fd)
     return {"panels_rewritten": changed, "music": out.get("music")}
+
+
+async def build_film_board(catalog: str, minutes: int = 8, handle=None) -> dict:
+    """The FILM board for a children's book: every spread becomes a SCENE,
+    narrated by the book's own words VERBATIM (the film IS the book — no
+    script drift possible), broken into shots under the wonder grammar.
+    Stored at data.movie.storyboard in the same shape as a trailer board, so
+    every scene tool — frame redraw, per-scene reshoot, re-record — works on
+    films unchanged (Lars, 2026-08-29)."""
+    from ..writing.client import complete, extract_json, set_model_override, writing_model
+    from ..database import get_book_by_catalog, update_book
+    import json as _json
+    book = get_book_by_catalog(catalog)
+    if not book:
+        raise RuntimeError("Book not found")
+    d = book["data"]
+    ch = d.get("childrens") or {}
+    spreads = ch.get("spreads") or []
+    if not spreads:
+        raise RuntimeError("The film board needs a children's book with spreads")
+    bible = (d.get("bibles") or {}).get("main") or {}
+    cast_names = [c.get("name") for c in (ch.get("bible") or {}).get("characters") or []
+                  if isinstance(c, dict) and c.get("name")]
+    # pacing: minutes -> seconds per scene, 2-3 shots each of 4-8s
+    total_s = max(240, min(900, minutes * 60))
+    per_scene = max(12.0, (total_s - 20) / max(1, len(spreads)))
+    shots_per = 3 if per_scene >= 18 else 2
+    scenes_txt = "\n\n".join(
+        f"SCENE {sp.get('n')}: NARRATION (verbatim, do not change): "
+        f"\"{(sp.get('text') or '').strip()}\"\nPICTURE: {(sp.get('picture') or '').strip()}"
+        for sp in spreads)
+    prompt = (
+        f"BOOK: \"{book['title']}\" — an animated children's film, "
+        f"about {minutes} minutes.\n\n"
+        f"{_story_digest(book, 3000)}\n\n"
+        f"THE SCENES (one per book spread, in order):\n{scenes_txt}\n\n"
+        f"Break EVERY scene into exactly {shots_per} shots. Rules:\n"
+        "1. Shots are single compositions: framing (wide/medium/close), what "
+        "happens, the light. Characters by cast name only: "
+        + ", ".join(cast_names) + ". NEVER invent characters.\n"
+        "2. We SEE faces: front or three-quarter views, expressions carrying "
+        "the feeling — never a whole shot of backs.\n"
+        "3. The narration is the book's text and is LOCKED — split each "
+        "scene's narration across its shots naturally (field `vo`, verbatim "
+        "fragments in order, together covering the whole scene text).\n"
+        "4. `line` (optional, at most one per scene): dialogue a character "
+        "speaks, drawn from or true to the book.\n"
+        "5. `sound`: one gentle diegetic sound per shot (chimes, birdsong, "
+        "water) — never dramatic.\n"
+        "6. `dur`: 4 to 8 seconds per shot.\n"
+        "7. `characters`: exact cast names visible in the shot.\n\n"
+        "Return JSON only: {\"scenes\": [{\"scene\": 1, \"title\": \"...\", "
+        "\"shots\": [{\"shot\": \"...\", \"dur\": 6, \"vo\": \"...\", "
+        "\"sound\": \"...\", \"characters\": [\"...\"], "
+        "\"line\": {\"speaker\": \"...\", \"text\": \"...\"}}]}], "
+        "\"music\": \"a film score brief: warm, playful, three gentle "
+        "movements, no vocals\"}")
+    if handle:
+        handle.progress(0.15, "board", "breaking the book into scenes and shots")
+    set_model_override(writing_model())
+    try:
+        raw = await complete(
+            "You are an animation director adapting a picture book faithfully. "
+            "The book's words are sacred; your shots serve them.",
+            prompt, max_tokens=12000)
+    finally:
+        set_model_override(None)
+    data_out = extract_json(raw) or {}
+    panels, idx = [], 0
+    known = {n.lower(): n for n in cast_names}
+    for sc in (data_out.get("scenes") or []):
+        for sh in (sc.get("shots") or []):
+            if not (sh.get("shot") or "").strip():
+                continue
+            idx += 1
+            try:
+                dur = max(4.0, min(8.0, float(sh.get("dur") or 6)))
+            except (TypeError, ValueError):
+                dur = 6.0
+            pn = {"n": str(idx), "scene": sc.get("scene"),
+                  "title": f"{sc.get('scene')}. {str(sc.get('title') or '')[:40]}",
+                  "dur": dur, "shot": str(sh["shot"]).strip(),
+                  "vo": str(sh.get("vo") or "").strip(),
+                  "sound": str(sh.get("sound") or "").strip()[:160]}
+            picked = [known[str(x).strip().lower()] for x in (sh.get("characters") or [])
+                      if isinstance(x, str) and str(x).strip().lower() in known]
+            if picked:
+                pn["characters"] = list(dict.fromkeys(picked))
+            ln = sh.get("line")
+            if isinstance(ln, dict) and (ln.get("text") or "").strip():
+                pn["line"] = {"speaker": str(ln.get("speaker") or "")[:60],
+                              "text": str(ln["text"]).strip()[:200]}
+            panels.append(pn)
+    if len(panels) < len(spreads):
+        raise RuntimeError("The film board came back too thin — try again")
+    sb = {"panels": panels, "music": str(data_out.get("music") or "")[:400],
+          "style": bible.get("style") or "", "kind": "film", "minutes": minutes}
+    fresh = get_book_by_catalog(catalog)
+    fd = dict(fresh["data"])
+    mv = dict(fd.get("movie") or {})
+    mv["storyboard"] = sb
+    fd["movie"] = mv
+    update_book(fresh["id"], fd)
+    return {"scenes": len(spreads), "shots": len(panels),
+            "estimated_seconds": int(sum(p["dur"] for p in panels))}

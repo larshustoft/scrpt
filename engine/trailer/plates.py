@@ -562,7 +562,7 @@ def _panel_prompt(pn: dict, style: str, cast: dict, title: str) -> str:
 
 
 async def draw_board_plates(catalog: str, board: dict, handle=None,
-                            redraw: bool = False) -> dict:
+                            redraw: bool = False, subdir: str = "board") -> dict:
     """Draw one frame per storyboard panel, so the board can be seen."""
     import httpx
     from ..cover.front_cover import _best_image_model
@@ -579,7 +579,7 @@ async def draw_board_plates(catalog: str, board: dict, handle=None,
     style = (board.get("style") or ""
              or ((book["data"].get("bibles") or {}).get("main") or {}).get("style") or "")
     cast = cast_of(book)
-    out = _dir(catalog, "board")
+    out = _dir(catalog, subdir)
 
     frames = {}
     todo = []
@@ -587,7 +587,7 @@ async def draw_board_plates(catalog: str, board: dict, handle=None,
         n = str(pn.get("n") or i + 1)
         f = out / f"panel-{n}.png"
         if f.exists() and not redraw:
-            frames[n] = f"board/panel-{n}.png"
+            frames[n] = f"{subdir}/panel-{n}.png"
         else:
             todo.append((n, pn, f))
 
@@ -604,7 +604,7 @@ async def draw_board_plates(catalog: str, board: dict, handle=None,
                 if handle:
                     handle.progress(0.1 + 0.8 * done[0] / max(1, len(todo)),
                                     "board", f"drew panel {n}")
-                return (n, f"board/panel-{n}.png") if got else None
+                return (n, f"{subdir}/panel-{n}.png") if got else None
 
         async with httpx.AsyncClient(timeout=260) as client:
             model = await _best_image_model(client)

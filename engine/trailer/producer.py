@@ -2806,7 +2806,8 @@ def _cap_to_house_length(panels: list, handle=None) -> list:
 
 async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide",
                              handle=None, version_label: str = "storyboard",
-                             reshoot=None, no_new_shots: bool = False) -> dict:
+                             reshoot=None, no_new_shots: bool = False,
+                             max_seconds: int = 0) -> dict:
     import datetime
     import shutil
     book = get_book_by_catalog(catalog)
@@ -2913,7 +2914,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     # could never work. Trim here, before the shoot, so Runway is not paid for
     # panels that would be dropped afterwards. Middle panels go first: the
     # opening establishes and the last one carries the title card.
-    _budget = MAX_TRAILER_SECONDS - END_CARD_SECONDS
+    _budget = (max_seconds or MAX_TRAILER_SECONDS) - END_CARD_SECONDS
     _idx = list(range(len(panels)))
     while len(_idx) > 3 and sum(_panel_seconds(i, panels[i]) for i in _idx) > _budget:
         _idx.pop(len(_idx) // 2)
