@@ -3248,9 +3248,34 @@ def movie_voice_cast(catalog: str, body: dict = Body(default={})):
     return {"voice_cast": vc}
 
 
+def _universe_voice_cast(book: dict) -> dict:
+    """The universe's STANDARD voices — the template every member book
+    inherits until cast otherwise (Lars, 2026-08-29: Tilly is Princess,
+    Autumn Veil is Glitter)."""
+    import json as _json
+    from pathlib import Path as _P
+    try:
+        reg = _json.loads(db.get_setting("universes", "") or "{}")
+        cat = book.get("catalog_number")
+        for u in reg.values():
+            prof_path = _P(u.get("profile") or "")
+            if not prof_path.is_absolute():
+                prof_path = _P(__file__).resolve().parents[2] / prof_path
+            if not prof_path.exists():
+                continue
+            prof = _json.loads(prof_path.read_text())
+            if cat in (prof.get("members") or []):
+                return prof.get("voice_cast") or {}
+    except Exception:
+        pass
+    return {}
+
+
 def _stamp_line_voices(book: dict, sb: dict) -> dict:
-    """Every dialogue line carries its speaker's cast voice into recording."""
-    vc = ((book["data"].get("movie") or {}).get("voice_cast")) or {}
+    """Every dialogue line carries its speaker's cast voice into recording.
+    Book-level casting wins; the UNIVERSE template fills every gap."""
+    vc = dict(_universe_voice_cast(book))
+    vc.update(((book["data"].get("movie") or {}).get("voice_cast")) or {})
     if not vc:
         return sb
     import copy

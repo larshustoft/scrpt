@@ -49,5 +49,27 @@
  "channels": {
   "youtube": null,
   "site": "https://princesstheunicorn.com"
+ },
+ "voice_cast": {
+  "Princess": {
+   "id": "MkTSSXNgnBULS6ek4pon",
+   "name": "Tilly - Bright, Spirited, Naive, Scrappy"
+  },
+  "Glitter": {
+   "id": "KoVIHoyLDrQyd4pGalbs",
+   "name": "Autumn Veil - Warm and Reflective"
+  },
+  "Pip": {
+   "id": "thfYL0Elyru2qqTtNQsE",
+   "name": "Aurelia - High Quality Realistic Princess "
+  },
+  "Moss": {
+   "id": "loY1uopAz31XyhAEhNSa",
+   "name": "Valf - Young, Playful & Sarcastic"
+  },
+  "Fireflies": {
+   "id": "d8WcCpplp8meHt10UhL8",
+   "name": "Emily - Bright & Energetic"
+  }
  }
 }
