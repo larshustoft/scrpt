@@ -114,11 +114,13 @@ def build(seconds: float, out_path: Path) -> float:
     for f in frames_dir.glob("*.png"):
         f.unlink()
     n_total = int(seconds * FPS)
-    n_enter = int(1.3 * FPS)
-    n_settle = int(0.35 * FPS)
+    n_enter = int(1.05 * FPS)
+    n_hop2 = int(0.45 * FPS)
+    n_settle = int(0.3 * FPS)
     n_wink = 8
     n_after_wink = FPS               # the wink, hold ONE second, episode
-    n_hold = max(6, n_total - n_enter - n_settle - n_wink - n_after_wink)
+    n_hold = max(4, n_total - n_enter - n_hop2 - n_settle - n_wink
+                 - n_after_wink - int(0.8 * FPS))
     idx = 0
 
     def emit(im, times=1):
@@ -140,9 +142,9 @@ def build(seconds: float, out_path: Path) -> float:
         # ALIVE: she pitches with the arc (nose up rising, level at the top,
         # nose down landing) and squash-stretches like a real jump
         vel = 1 - 2 * t                          # +1 rising … -1 falling
-        angle = 14.0 * vel                       # degrees, nose-up positive
-        stretch = 1.0 + 0.10 * arc               # longest at the apex
-        squash = 1.0 - 0.08 * (1 - arc) * (1 if t > 0.5 else 0.4)
+        angle = 22.0 * vel                       # a real leap, not a glide
+        stretch = 1.0 + 0.16 * arc               # long at the apex
+        squash = 1.0 - 0.12 * (1 - arc) * (1 if t > 0.5 else 0.4)
         fw = max(2, int(sp.width * (2 - stretch) * (1 / squash) * squash))
         fw = max(2, int(sp.width / stretch ** 0.5))
         fh = max(2, int(sp.height * stretch * squash))
@@ -155,6 +157,24 @@ def build(seconds: float, out_path: Path) -> float:
         fr = Image.blend(white_bg, card_text, min(1.0, ta))
         fr.paste(frame_sp, (int(cx - frame_sp.width / 2),
                             int(cy - frame_sp.height / 2)), frame_sp)
+        emit(fr)
+    # a happy second bounce before she settles — she is ALIVE
+    hop2_x0 = tx - int(sp.width * 0.06)
+    for i in range(n_hop2):
+        t2 = (i + 1) / n_hop2
+        arc2 = 4 * t2 * (1 - t2)
+        x = int(hop2_x0 + (tx - hop2_x0) * t2)
+        y = int(ty - 90 * arc2)
+        angle2 = 10.0 * (1 - 2 * t2)
+        st2 = 1.0 + 0.08 * arc2
+        fw = max(2, int(sp.width / st2 ** 0.5))
+        fh = max(2, int(sp.height * st2))
+        fsp = sp.resize((fw, fh), Image.BILINEAR).rotate(
+            angle2, expand=True, resample=Image.BILINEAR)
+        ta2 = min(1.0, 0.85 + 0.15 * t2)
+        fr = Image.blend(white_bg, card_text, ta2)
+        fr.paste(fsp, (int(x + sp.width / 2 - fsp.width / 2),
+                       int(y + sp.height / 2 - fsp.height / 2)), fsp)
         emit(fr)
     for i in range(n_settle):                    # landing: squash then rise
         k = (i + 1) / n_settle

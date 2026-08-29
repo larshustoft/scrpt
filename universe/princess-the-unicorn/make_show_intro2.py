@@ -15,9 +15,9 @@ HERE = Path(__file__).parent
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 X = 0.4
 
-SHOTS = [("intro-s1.mp4", 2.6), ("test-gallop.mp4", 3.2),
-         ("intro-s3.mp4", 3.2), ("intro-rainbow.mp4", 3.0)]
-SKY = "intro-sky.mp4"
+ENDING_AT = 17.0        # the logo animation begins ON "Unicoooorn"
+SHOT_NAMES = ["intro-s1.mp4", "test-gallop.mp4", "intro-s3.mp4",
+              "intro-rainbow.mp4", "intro-friends.mp4"]
 
 
 def _wordmark():
@@ -44,42 +44,38 @@ def _dur(path):
 
 
 def make(theme: str, out: str) -> str:
-    # the sky flight plays LIVE (trimmed before her in-take blink), then the
-    # logo-birth ending takes over: shrink -> stiffen -> song ends -> wink
-    sky_live = min(_dur(HERE / SKY) - 1.8, 3.4)
-    end_seg_a = HERE / "_end_a.mp4"
-    subprocess.run([FF, "-y", "-v", "error", "-i", str(HERE / SKY),
-                    "-vf", ("scale=1920:1080:force_original_aspect_ratio=increase,"
-                            "crop=1920:1080,fps=24,setpts=PTS-STARTPTS,"
-                            "colorlevels=rimax=0.92:gimax=0.92:bimax=0.92"),
-                    "-an", "-t", f"{sky_live:.2f}",
-                    "-c:v", "libx264", "-preset", "fast", "-crf", "16",
-                    str(end_seg_a)], check=True)
-    # the WHOLE song plays — the ending stretches so the song finishes
-    # before the wink, and the intro ends 1s after it
+    # the body carries five shots to EXACTLY 17.0s, and the logo animation
+    # begins on the word "Unicoooorn"; the whole song plays untouched
     theme_len = _dur(theme)
-    body_net = sum(sec for _, sec in SHOTS)
-    need_ending = max(4.5, theme_len + 1.45 - body_net - sky_live)
-    end_seg_b = HERE / "_logoending2.mp4"
-    from make_logo_ending2 import build as _build_le
-    ending_s = _build_le(need_ending, end_seg_b)
-    sky_len = sky_live + ending_s
-    end_seg = HERE / "_end.mp4"
-    subprocess.run([FF, "-y", "-v", "error", "-i", str(end_seg_a), "-i", str(end_seg_b),
-                    "-filter_complex", "[0:v][1:v]concat=n=2:v=1:a=0[v]",
-                    "-map", "[v]", "-c:v", "libx264", "-preset", "fast",
-                    "-crf", "16", str(end_seg)], check=True)
+
+    # each shot contributes what it truly HAS; a gentle stretch (max 15%
+    # slow-motion, invisible in this register) lands the body on exactly
+    # ENDING_AT so the logo begins on the word
+    avails = []
+    for name in SHOT_NAMES:
+        avails.append(max(1.5, _dur(HERE / name) - 0.35))
+    nsh = len(SHOT_NAMES)
+    raw_net = sum(avails) - (nsh - 1) * X
+    stretch = min(1.15, max(1.0, ENDING_AT / raw_net))
     segs = []
-    for i, (name, secs) in enumerate(SHOTS):
+    for i, (name, avail) in enumerate(zip(SHOT_NAMES, avails)):
         seg = HERE / f"_s{i}.mp4"
-        subprocess.run([FF, "-y", "-v", "error", "-ss", "0.2",
-                        "-t", f"{secs + X:.2f}", "-i", str(HERE / name),
-                        "-vf", "scale=1920:1080:force_original_aspect_ratio=increase,"
-                               "crop=1920:1080,fps=24,setpts=PTS-STARTPTS",
+        out_len = avail * stretch
+        subprocess.run([FF, "-y", "-v", "error", "-ss", "0.15",
+                        "-t", f"{avail:.2f}", "-i", str(HERE / name),
+                        "-vf", ("scale=1920:1080:force_original_aspect_ratio=increase,"
+                                f"crop=1920:1080,setpts={stretch:.4f}*PTS,fps=24"),
                         "-an", "-c:v", "libx264", "-preset", "fast", "-crf", "16",
                         str(seg)], check=True)
-        segs.append((seg, secs))
-    total = sum(s for _, s in segs) + sky_len
+        segs.append((seg, out_len - X))     # net contribution per shot
+    body_net = sum(sec for _, sec in segs) + X   # last shot keeps its tail
+    need_ending = max(4.2, theme_len + 2.1 - body_net)
+    end_seg = HERE / "_logoending2.mp4"
+    from make_logo_ending2 import build as _build_le
+    ending_s = _build_le(need_ending, end_seg)
+    sky_len = ending_s
+
+    total = sum(s for _, s in segs) + X + sky_len - X   # body_net + ending
     args = ["-y", "-v", "error"]
     for seg, _ in segs:
         args += ["-i", str(seg)]
