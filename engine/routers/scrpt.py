@@ -3198,26 +3198,39 @@ async def reshoot_scene(catalog: str, body: dict = Body(default={})):
     sb = tr.get("storyboard") or {}
     panels = (sb.get("panels") if isinstance(sb, dict) else sb) or []
     n = str(body.get("panel") or "")
-    pn = next((p for p in panels if str(p.get("n")) == n), None)
-    if not pn:
-        raise HTTPException(404, f"Panel {n} not found on the storyboard")
-    try:
-        secs = max(3.0, min(8.0, float(pn.get("dur") or 4)))
-    except (TypeError, ValueError):
-        secs = 4.0
+
+    def _secs(pn_):
+        try:
+            return max(3.0, min(8.0, float(pn_.get("dur") or 4)))
+        except (TypeError, ValueError):
+            return 4.0
+
+    if n == "all":
+        # the full re-shoot: every scene rolls fresh; old takes are banked
+        targets = [str(p.get("n")) for p in panels]
+        secs = sum(_secs(p) for p in panels)
+    else:
+        pn = next((p for p in panels if str(p.get("n")) == n), None)
+        if not pn:
+            raise HTTPException(404, f"Panel {n} not found on the storyboard")
+        targets = [n]
+        secs = _secs(pn)
     # conservative ceiling: Seedance ~60 cr/s at 1080p; the draft ratio is
     # cheaper, so the real bill usually lands under this number
     estimate = int(secs * 60)
     if not body.get("confirm"):
         return {"estimate_credits_max": estimate, "seconds": secs,
-                "note": "One scene re-shoots; every other take, the voice and "
-                        "the music are reused. Re-cut is free. Pass "
-                        "confirm:true to roll."}
+                "scenes": len(targets),
+                "note": ("Every scene re-shoots fresh; voice and music are "
+                         "reused." if n == "all" else
+                         "One scene re-shoots; every other take, the voice "
+                         "and the music are reused. Re-cut is free.")
+                        + " Pass confirm:true to roll."}
     board = sb if isinstance(sb, dict) else {"panels": panels}
 
     async def job(handle):
         return await produce_storyboard(catalog, board, format_name="wide",
-                                        handle=handle, reshoot=[n])
+                                        handle=handle, reshoot=targets)
 
     return {"job_id": start_job("trailer_produce", job, book_catalog=catalog),
             "estimate_credits_max": estimate}

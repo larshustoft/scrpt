@@ -549,10 +549,11 @@ def _panel_prompt(pn: dict, style: str, cast: dict, title: str) -> str:
     return (
         f"A storyboard frame for an animated family film.\n{world}\n"
         f"THE SHOT: {pn.get('shot') or pn.get('title') or ''}\n"
-        + (f"\nWHO IS IN IT — stage these people by build, wardrobe and "
-           f"position, but keep every face UNREADABLE: turned away, in "
-           f"shadow, or too distant to resolve. This frame directs the "
-           f"composition; the faces are cast elsewhere.{who}\n" if who else "")
+        + (f"\nWHO IS IN IT — and we SEE them: faces visible and expressive, "
+           f"in three-quarter or front view wherever the shot allows, matched "
+           f"EXACTLY to the cast sheet below — never a new design, never a "
+           f"character shown only from behind (Lars, 2026-08-29: the audience "
+           f"meets the faces).{who}\n" if who else "")
         + f"\nWORLD AND PALETTE (match exactly): {style}\n\n"
         "Cinematic film still, 16:9 composition, natural light for the scene. "
         "No readable faces anywhere in the frame. "

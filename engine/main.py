@@ -94,8 +94,7 @@ async def lifespan(app: FastAPI):
     # The production line survives restarts: any book that was mid-draft when
     # the engine last stopped (crash, reboot, upgrade) resumes automatically.
     # Chapters already written are on disk; drafting picks up at the next one.
-    async def _resume_interrupted():
-        # ── SCRPT backs ITSELF up: the engine runs with the user's own file
+    # ── SCRPT backs ITSELF up: the engine runs with the user's own file
     # permissions, so the nightly backup cannot fail the way cron did
     # ("authorization denied" every 03:00, discovered 2026-08-29). Runs the
     # proven additive script (sqlite .backup + rsync, never --delete) and
@@ -119,7 +118,7 @@ async def lifespan(app: FastAPI):
                     except Exception as e:
                         print(f"  nightly {script} failed: {e}")
 
-
+    async def _resume_interrupted():
         await _aio.sleep(5)  # let the server settle first
         try:
             from . import database as _db

@@ -399,6 +399,9 @@ async def auto_storyboard(catalog: str, panels: int = 9, handle=None) -> dict:
         "sparkling water — never rumbles, impacts or braams.\n"
         "E. `line` on one or two panels: something kind, funny or brave a "
         "character says — the sort of line a child repeats afterwards.\n"
+        "F. We SEE the characters' faces: stage shots in front or "
+        "three-quarter views, expressions carrying the feeling — never a "
+        "whole scene of backs.\n"
     ) if _kids else ""
 
     prompt = (

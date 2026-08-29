@@ -1995,8 +1995,47 @@ function CastAndBoard({ st, catalog, onChanged }: {
 
           {panels.length > 0 && (
             <>
-              <div className="text-[11px] uppercase tracking-[0.14em] text-text-faint mt-4 mb-2">
-                Storyboard
+              <div className="flex items-center gap-3 mt-4 mb-2">
+                <div className="text-[11px] uppercase tracking-[0.14em] text-text-faint">
+                  Storyboard
+                </div>
+                <button className="btn-ghost text-[10px] px-2 py-0.5" disabled={!!frameJob}
+                        onClick={async () => {
+                          const q = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`, {
+                            method: "POST", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ panel: "all" }),
+                          }).then((r) => r.json());
+                          if (!window.confirm(
+                            `Re-shoot ALL ${q.scenes} scenes (${Math.round(q.seconds)}s of footage)?\n\n` +
+                            `Estimated up to ${q.estimate_credits_max} credits. Voice and music are reused; ` +
+                            `every old take is kept on disk.`)) return;
+                          const d = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`, {
+                            method: "POST", headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ panel: "all", confirm: true }),
+                          }).then((r) => r.json());
+                          if (d.job_id) {
+                            setFrameJob({ panel: "all", pct: 0.02 });
+                            try {
+                              await pollJob(d.job_id, (j) => setFrameJob({ panel: "all", pct: Number(j.progress) || 0.02 }));
+                            } finally { setFrameJob(null); }
+                            setBust(Date.now());
+                            onChanged();
+                          }
+                        }}>
+                  Re-shoot all scenes…
+                </button>
+                {frameJob?.panel === "all" && (
+                  <svg width="30" height="30" viewBox="0 0 30 30">
+                    <circle cx="15" cy="15" r="12" fill="none" stroke="var(--line)" strokeWidth="2.5" />
+                    <circle cx="15" cy="15" r="12" fill="none" stroke="var(--accent, #c9a96a)"
+                            strokeWidth="2.5" strokeLinecap="round"
+                            strokeDasharray={`${Math.max(3, frameJob.pct * 75)} 75`}
+                            transform="rotate(-90 15 15)"
+                            style={{ transition: "stroke-dasharray 0.6s ease" }} />
+                    <text x="15" y="18.5" textAnchor="middle" fontSize="8.5"
+                          fill="var(--text-secondary, #bbb)">{Math.round(frameJob.pct * 100)}%</text>
+                  </svg>
+                )}
               </div>
               <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
                 {panels.map((p, i) => (
