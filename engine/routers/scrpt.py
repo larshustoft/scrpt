@@ -3311,6 +3311,17 @@ async def movie_produce(catalog: str, body: dict = Body(default={})):
 
     sb = _stamp_line_voices(book, sb)
 
+    # Faces travel with the film exactly as with the trailer: the movie board
+    # carries no characters map of its own, and without one the shoot rolls
+    # with zero references — every scene re-invents the cast. Plates are
+    # cached, so this is free once the bible is drawn.
+    from ..trailer.plates import draw_cast_plates
+    try:
+        _plates = (await draw_cast_plates(catalog)).get("plates") or {}
+    except Exception:
+        _plates = {}
+    sb["characters"] = {**(sb.get("characters") or {}), **_plates}
+
     async def job(handle):
         r = await produce_storyboard(
             catalog, sb, format_name="wide", handle=handle,

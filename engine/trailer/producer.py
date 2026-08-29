@@ -1209,6 +1209,29 @@ TRAILER_VOICES = {
 }
 
 
+def _universe_storyteller(catalog: str) -> tuple:
+    """The universe's standing narrator, if this book belongs to one.
+    A universe speaks with ONE storyteller across every episode (Lars,
+    2026-08-30: Sarah for Princess the Unicorn, until told otherwise);
+    a hand-cast book-level voice still outranks it — that is the
+    'choose a different voice' path in the UI."""
+    try:
+        import json as _json
+        from pathlib import Path as _P
+        from ..database import get_setting as _gs
+        reg = _json.loads(_gs("universes", "") or "{}")
+        root = _P(__file__).resolve().parents[2]
+        for u in reg.values():
+            prof = _json.loads((root / u["profile"]).read_text())
+            if catalog in (prof.get("members") or []):
+                st = (prof.get("voice_cast") or {}).get("Storyteller") or {}
+                if st.get("id"):
+                    return st["id"], st.get("name") or "Universe storyteller"
+    except Exception:
+        pass
+    return ()
+
+
 def trailer_voice(genre_preset: str, catalog: str = "") -> tuple:
     from ..database import get_setting, get_book_by_catalog as _gb
     if catalog:
@@ -1216,6 +1239,9 @@ def trailer_voice(genre_preset: str, catalog: str = "") -> tuple:
         cast = ((book or {}).get("data", {}).get("trailer") or {}).get("voice") or {}
         if cast.get("id"):
             return cast["id"], cast.get("name") or "Cast voice"
+        st = _universe_storyteller(catalog)
+        if st:
+            return st
     override = (get_setting("trailer_voice_id", "") or "").strip()
     if override:
         return override, get_setting("trailer_voice_name", "") or "Custom voice"

@@ -62,8 +62,9 @@
       "name": "Tilly - Bright, Spirited, Naive, Scrappy"
     },
     "Glitter": {
-      "id": "KoVIHoyLDrQyd4pGalbs",
-      "name": "Autumn Veil - Warm and Reflective"
+      "id": "7NvpjDFPnyMDGPkjfTaK",
+      "name": "Lullaby Singer (cloned from The Unicorn Lullaby)",
+      "note": "Lars 2026-08-30: Glitter speaks with the lullaby singer's cloned voice, so the mum who talks is the mum who sings. Previous: Autumn Veil (KoVIHoyLDrQyd4pGalbs)."
     },
     "Pip": {
       "id": "thfYL0Elyru2qqTtNQsE",
@@ -76,6 +77,11 @@
     "Fireflies": {
       "id": "d8WcCpplp8meHt10UhL8",
       "name": "Emily - Bright & Energetic"
+    },
+    "Storyteller": {
+      "id": "EXAVITQu4vr4xnSDxMaL",
+      "name": "Sarah - Mature, Reassuring, Confident (American)",
+      "note": "Lars 2026-08-30: the episode storyteller \u2014 female, American, safe and warm. Standing until told otherwise; a book-level narrator cast in the UI still wins for that book."
     }
   },
   "episode_sound_structure": {
