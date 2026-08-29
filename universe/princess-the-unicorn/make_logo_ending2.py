@@ -16,9 +16,9 @@ W, H = 1920, 1080
 
 def _card(img_name):
     logo = Image.open(HERE / img_name).convert("RGB")
-    s = min(W * 0.86 / logo.width, H * 0.92 / logo.height)
+    s = min(W * 0.86 / logo.width, H * 0.92 / logo.height) * 0.9
     lw, lh = int(logo.width * s), int(logo.height * s)
-    ox, oy = (W - lw) // 2, (H - lh) // 2
+    ox, oy = (W - lw) // 2, (H - lh) // 2 - int(H * 0.025)
     card = Image.new("RGB", (W, H), (255, 255, 255))
     card.paste(logo.resize((lw, lh), Image.LANCZOS), (ox, oy))
     return card, s, ox, oy
@@ -127,24 +127,52 @@ def build(seconds: float, out_path: Path) -> float:
             im.save(frames_dir / f"f{idx:04d}.png")
             idx += 1
 
+    import math as _m
+    white_bg = Image.new("RGB", (W, H), (255, 255, 255))
     start_x = W + 40
-    arc_h = 260.0
+    arc_h = 300.0
     for i in range(n_enter):
         t = (i + 1) / n_enter
         e = t * t * (3 - 2 * t)
-        x = int(start_x + (tx - start_x) * e)
-        y = int(ty - arc_h * 4 * t * (1 - t))        # parabolic hop
-        fr = card_text.copy()
-        fr.paste(sp, (x, y), sp)
+        x = start_x + (tx - start_x) * e
+        arc = 4 * t * (1 - t)
+        y = ty - arc_h * arc
+        # ALIVE: she pitches with the arc (nose up rising, level at the top,
+        # nose down landing) and squash-stretches like a real jump
+        vel = 1 - 2 * t                          # +1 rising … -1 falling
+        angle = 14.0 * vel                       # degrees, nose-up positive
+        stretch = 1.0 + 0.10 * arc               # longest at the apex
+        squash = 1.0 - 0.08 * (1 - arc) * (1 if t > 0.5 else 0.4)
+        fw = max(2, int(sp.width * (2 - stretch) * (1 / squash) * squash))
+        fw = max(2, int(sp.width / stretch ** 0.5))
+        fh = max(2, int(sp.height * stretch * squash))
+        frame_sp = sp.resize((fw, fh), Image.BILINEAR).rotate(
+            angle, expand=True, resample=Image.BILINEAR)
+        cx = x + sp.width / 2
+        cy = y + sp.height / 2
+        # the lettering appears only as she is almost in place (Lars)
+        ta = 0.0 if t < 0.72 else ((t - 0.72) / 0.28) ** 1.2
+        fr = Image.blend(white_bg, card_text, min(1.0, ta))
+        fr.paste(frame_sp, (int(cx - frame_sp.width / 2),
+                            int(cy - frame_sp.height / 2)), frame_sp)
         emit(fr)
-    for i in range(n_settle):                        # soft landing bounce
-        dy = int(6 * (1 - (i + 1) / n_settle))
+    for i in range(n_settle):                    # landing: squash then rise
+        k = (i + 1) / n_settle
+        sq = 1.0 - 0.10 * _m.sin(_m.pi * min(1.0, k * 1.4))
+        fh = max(2, int(sp.height * sq))
+        fw = max(2, int(sp.width * (2 - sq) ** 0.5))
+        frame_sp = sp.resize((fw, fh), Image.BILINEAR)
         fr = card_text.copy()
-        fr.paste(sp, (tx, ty + dy), sp)
+        fr.paste(frame_sp, (int(tx + (sp.width - fw) / 2),
+                            int(ty + (sp.height - fh))), frame_sp)
         emit(fr)
     emit(card_open, n_hold)                          # in place — the logo
     emit(card_wink, n_wink)                          # the one-eye wink
-    emit(card_open, n_after_wink)                    # hold 1s — then the episode
+    emit(card_open, n_after_wink)                    # hold 1s
+    white = Image.new("RGB", (W, H), (255, 255, 255))
+    n_fade = int(0.8 * FPS)                          # …then a soft white-out
+    for i in range(n_fade):
+        emit(Image.blend(card_open, white, (i + 1) / n_fade))
     seg = out_path
     subprocess.run([FF, "-y", "-v", "error", "-framerate", str(FPS),
                     "-i", str(frames_dir / "f%04d.png"),

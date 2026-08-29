@@ -16,7 +16,7 @@ FF = imageio_ffmpeg.get_ffmpeg_exe()
 X = 0.4
 
 SHOTS = [("intro-s1.mp4", 2.6), ("test-gallop.mp4", 3.2),
-         ("intro-s3.mp4", 3.2), ("intro-s4.mp4", 3.0)]
+         ("intro-s3.mp4", 3.2), ("intro-rainbow.mp4", 3.0)]
 SKY = "intro-sky.mp4"
 
 
