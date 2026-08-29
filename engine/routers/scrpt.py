@@ -1830,7 +1830,12 @@ async def trailer_status(catalog: str):
         },
         "storyboard": ({
             "panels": [
-                {**p, "frame_url": (f"/api/files/{catalog}/trailer/{p['frame']}"
+                # the URL carries the file's own mtime, so a redrawn frame can
+                # NEVER display stale from the browser cache (Lars, 2026-08-29:
+                # three "failed" redraws were all cache)
+                {**p, "frame_url": ((lambda fp: f"/api/files/{catalog}/trailer/{p['frame']}?v="
+                                    + str(int(fp.stat().st_mtime)) if fp.exists()
+                                    else None)(Path(OUTPUT_DIR) / catalog / "trailer" / p["frame"])
                                     if p.get("frame") else None)}
                 for p in ((t.get("storyboard") or {}).get("panels") or [])
             ],
@@ -2638,25 +2643,53 @@ async def trailer_score_status(catalog: str):
 # ── voice search (the whole ElevenLabs library) ──────────────────
 
 @router.get("/voice-library/search")
-async def trailer_voice_search(q: str = ""):
-    """Search the full ElevenLabs voice library by description — "deep
-    movie trailer", "warm french female", whatever the film needs."""
+async def trailer_voice_search(q: str = "", gender: str = "", accent: str = ""):
+    """Search the full ElevenLabs voice library — free text ("Disney",
+    "warm storyteller") plus real filters: gender and accent."""
     import httpx
     api_key = db.get_setting("elevenlabs_api_key", "")
     if not api_key:
         raise HTTPException(status_code=400, detail="ElevenLabs is not configured")
+    # search EVERY available voice: the full shared library (biggest page the
+    # API allows), plus the account's own bank matched locally
+    params = {"search": q, "page_size": 100, "language": "en"}
+    if gender in ("female", "male"):
+        params["gender"] = gender
+    if accent in ("american", "british"):
+        params["accent"] = accent
     async with httpx.AsyncClient(timeout=30) as c:
         resp = await c.get("https://api.elevenlabs.io/v1/shared-voices",
-                           params={"search": q, "page_size": 12},
+                           params=params,
                            headers={"xi-api-key": api_key})
     if resp.status_code != 200:
         raise HTTPException(status_code=502, detail="Voice library unreachable")
-    return {"voices": [{
+    out = [{
         "id": v["voice_id"], "name": v["name"],
         "description": (v.get("description") or "")[:140],
         "preview_url": v.get("preview_url"),
         "owner_id": v.get("public_owner_id"),
-    } for v in resp.json().get("voices", [])]}
+    } for v in resp.json().get("voices", [])]
+    # the publisher's own bank + ElevenLabs premades, matched on the same terms
+    try:
+        async with httpx.AsyncClient(timeout=20) as c:
+            mine = await c.get("https://api.elevenlabs.io/v1/voices",
+                               headers={"xi-api-key": api_key})
+        needle = (q or "").lower()
+        for v in (mine.json().get("voices") or []):
+            labels = " ".join(str(x) for x in (v.get("labels") or {}).values()).lower()
+            hay = f"{v.get('name','')} {v.get('description') or ''} {labels}".lower()
+            if gender and gender not in labels:
+                continue
+            if accent and accent not in labels:
+                continue
+            if needle and needle not in hay:
+                continue
+            out.insert(0, {"id": v["voice_id"], "name": f"{v['name']} (your bank)",
+                           "description": (v.get("description") or labels)[:140],
+                           "preview_url": v.get("preview_url"), "owner_id": None})
+    except Exception:
+        pass
+    return {"voices": out[:40]}
 
 
 @router.post("/trailer/voice/hire/{catalog}")
@@ -3096,13 +3129,32 @@ async def redraw_board_frame(catalog: str, body: dict = Body(default={})):
         if dest.exists():   # the old frame is banked, never destroyed
             _sh.copy2(dest, out / f"panel-{n}-prev.png")
         draw_pn = {**pn, "shot": custom} if custom else pn
-        if handle:
-            handle.progress(0.2, "board", f"redrawing panel {n}")
-        async with httpx.AsyncClient(timeout=260) as client:
-            model = await _best_image_model(client)
-            got = await _draw(client, model,
-                              _panel_prompt(draw_pn, style, cast, book["title"]),
-                              dest, size="1536x1024")
+        # the image API gives no progress signal — advance the ring on the
+        # clock so the wait reads as motion, not a hang (typical draw ~60s)
+        import asyncio as _aio
+        done_flag = {"v": False}
+
+        async def _tick():
+            t = 0.0
+            while not done_flag["v"]:
+                await _aio.sleep(3)
+                t += 3
+                if handle:
+                    handle.progress(min(0.92, 0.15 + t / 75.0), "board",
+                                    f"redrawing panel {n}")
+
+        ticker = _aio.create_task(_tick())
+        try:
+            async with httpx.AsyncClient(timeout=260) as client:
+                model = await _best_image_model(client)
+                got = await _draw(client, model,
+                                  _panel_prompt(draw_pn, style, cast, book["title"]),
+                                  dest, size="1536x1024", quality="medium",
+                                  on_stage=lambda f: handle and handle.progress(
+                                      f, "board", f"painting panel {n}"))
+        finally:
+            done_flag["v"] = True
+            ticker.cancel()
         if not got:
             raise RuntimeError("The frame refused to draw — try rewording the prompt")
         return {"panel": n, "frame": f"board/panel-{n}.png"}

@@ -739,6 +739,16 @@ async def generate_blurb(catalog: str) -> dict:
 
 async def full_draft_job(handle: JobHandle, catalog: str, chosen_plot: int = 0,
                          edits: str = "") -> dict:
+    # ── THE AUTHOR LOCK, at the deepest level (Lars, 2026-08-29): the
+    # boot-time auto-resume walked around every endpoint guard and expanded
+    # a human's imported chapters. No caller — present or future — gets past
+    # this line on an author-mode book.
+    from ..database import get_book_by_catalog as _gbc
+    _b = _gbc(catalog)
+    if _b and (_b.get("data") or {}).get("authorship") == "author":
+        raise RuntimeError(
+            "This is the author's manuscript — SCRPT does not write it. "
+            "(author-mode lock)")
     """market check -> bible -> outline -> every chapter -> blurb."""
     book, ms = _load(catalog)
     from .client import set_model_override

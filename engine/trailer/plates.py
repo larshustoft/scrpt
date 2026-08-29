@@ -81,24 +81,64 @@ def _dir(catalog: str, leaf: str) -> Path:
 
 
 async def _draw(client, model: str, prompt: str, dest: Path,
-                size: str = "1024x1024", tries: int = 3) -> Optional[Path]:
-    """One picture, retried, never allowed to hang the whole run."""
-    import httpx
+                size: str = "1024x1024", tries: int = 3,
+                quality: str = "high", on_stage=None) -> Optional[Path]:
+    """One picture, retried, never allowed to hang the whole run.
+
+    With `on_stage`, the image STREAMS: partial renders arrive as the model
+    paints, each written to dest and reported as real progress — the ring
+    moves with the generation itself, and the last partial's replacement by
+    the final frame is the honest 100% (Lars, 2026-08-29)."""
+    import httpx, json as _json
     for _ in range(tries):
         try:
-            r = await asyncio.wait_for(client.post(
-                "https://api.openai.com/v1/images/generations",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                json={"model": model, "prompt": prompt[:3800],
-                      "size": size, "quality": "high", "n": 1}),
-                timeout=240)
+            if on_stage is None:
+                r = await asyncio.wait_for(client.post(
+                    "https://api.openai.com/v1/images/generations",
+                    headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                    json={"model": model, "prompt": prompt[:3800],
+                          "size": size, "quality": quality, "n": 1}),
+                    timeout=240)
+                if r.status_code == 200:
+                    dest.write_bytes(base64.b64decode(r.json()["data"][0]["b64_json"]))
+                    return dest
+                if r.status_code < 500:
+                    return None          # refused: skip rather than hang
+                continue
+            # streaming: real milestones from the paint itself
+            got_final = False
+            async with client.stream(
+                    "POST", "https://api.openai.com/v1/images/generations",
+                    headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                    json={"model": model, "prompt": prompt[:3800],
+                          "size": size, "quality": quality, "n": 1,
+                          "stream": True, "partial_images": 2},
+                    timeout=240) as r:
+                if r.status_code != 200:
+                    if r.status_code < 500:
+                        return None
+                    continue
+                async for line in r.aiter_lines():
+                    if not line.startswith("data:"):
+                        continue
+                    try:
+                        ev = _json.loads(line[5:].strip())
+                    except Exception:
+                        continue
+                    b64 = ev.get("b64_json")
+                    t = ev.get("type") or ""
+                    if b64 and "partial" in t:
+                        dest.write_bytes(base64.b64decode(b64))
+                        idx = int(ev.get("partial_image_index") or 0)
+                        on_stage(0.45 + 0.25 * idx)
+                    elif b64:
+                        dest.write_bytes(base64.b64decode(b64))
+                        got_final = True
+                        on_stage(0.98)
+            if got_final or dest.exists():
+                return dest
         except (asyncio.TimeoutError, httpx.HTTPError):
             continue
-        if r.status_code == 200:
-            dest.write_bytes(base64.b64decode(r.json()["data"][0]["b64_json"]))
-            return dest
-        if r.status_code < 500:
-            return None          # refused: skip this one rather than hang
     return None
 
 
@@ -494,8 +534,20 @@ def _panel_prompt(pn: dict, style: str, cast: dict, title: str) -> str:
     for name in (pn.get("characters") or []):
         if cast.get(name):
             who += f"\n{name}: {cast[name]}"
+    # WORLD RULES: the title is context, never content. Without this, a
+    # no-cast establishing frame for "Princess and the Hidden Spring" grew a
+    # human princess and a castle from the title alone (2026-08-29).
+    world = ("\nWORLD RULES: the ONLY characters that exist in this world "
+             "are: " + ", ".join(f"{n2} ({str(v)[:80]})" for n2, v in list(cast.items())[:8])
+             + ". NEVER add people, characters or creatures that are not "
+             "listed in THE SHOT — a shot with no one named shows only the "
+             "world itself. Words in the title are NOT scene content.\n"
+             ) if cast else ""
+    # the TITLE never enters the prompt: "Princess and the Hidden Spring"
+    # grew a human princess in two consecutive establishing frames. The shot
+    # text and cast sheet carry all real content; the title carries traps.
     return (
-        f"A storyboard frame for the film of \"{title}\".\n\n"
+        f"A storyboard frame for an animated family film.\n{world}\n"
         f"THE SHOT: {pn.get('shot') or pn.get('title') or ''}\n"
         + (f"\nWHO IS IN IT — stage these people by build, wardrobe and "
            f"position, but keep every face UNREADABLE: turned away, in "

@@ -201,6 +201,119 @@ def assistant_model() -> str:
     return db.get_setting("assistant_model", "") or ASSISTANT_MODEL_DEFAULT
 
 
+# ── the operations desk ──────────────────────────────────────────
+# The assistant OPERATES the house through this fixed whitelist and nothing
+# else. There is deliberately no filesystem, shell, or code capability here:
+# "the assistant can never change SCRPT's functions" is enforced by absence,
+# not by instruction (Lars, 2026-08-29). Anything that spends money is
+# exposed in QUOTE form only — the human confirms spends in the app, never
+# the model.
+_OPS_BASE = "http://127.0.0.1:8000/api/scrpt"
+
+OPS_TOOLS = [
+    {"name": "list_books",
+     "description": "The shelf: every book with catalog number, title, status.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "book_status",
+     "description": "One book's full production status: manuscript, cover, "
+                    "interior, audio, trailer, publishing.",
+     "input_schema": {"type": "object", "properties": {
+         "catalog": {"type": "string"}}, "required": ["catalog"]}},
+    {"name": "jobs_status",
+     "description": "What the house is doing right now — running and recent jobs.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "production_queue",
+     "description": "The release queue with due dates and readiness.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "create_work_order",
+     "description": "Commission a new book or series. authorship 'house' means "
+                    "SCRPT writes it; 'author' means the human will write it.",
+     "input_schema": {"type": "object", "properties": {
+         "kind": {"type": "string", "enum": ["fiction", "nonfiction", "childrens"]},
+         "genre_preset": {"type": "string"},
+         "idea": {"type": "string"}, "title": {"type": "string"},
+         "pen_name": {"type": "string"},
+         "authorship": {"type": "string", "enum": ["house", "author"]},
+         "series_title": {"type": "string"}, "series_books": {"type": "integer"}},
+         "required": ["kind", "genre_preset", "idea"]}},
+    {"name": "start_draft",
+     "description": "Start writing a house book's full draft. Refused on "
+                    "author-mode books — their manuscript belongs to the human.",
+     "input_schema": {"type": "object", "properties": {
+         "catalog": {"type": "string"}}, "required": ["catalog"]}},
+    {"name": "list_versions",
+     "description": "A book's manuscript version ledger, newest first.",
+     "input_schema": {"type": "object", "properties": {
+         "catalog": {"type": "string"}}, "required": ["catalog"]}},
+    {"name": "quote_scene_reshoot",
+     "description": "QUOTE the credit cost of re-shooting one trailer scene. "
+                    "This never spends — the human confirms any spend in the app.",
+     "input_schema": {"type": "object", "properties": {
+         "catalog": {"type": "string"}, "panel": {"type": "string"}},
+         "required": ["catalog", "panel"]}},
+]
+
+async def _run_op(name: str, args: dict) -> str:
+    """Execute one whitelisted operation against the app's own API."""
+    import httpx, json as _json
+    try:
+        async with httpx.AsyncClient(timeout=60) as c:
+            if name == "list_books":
+                r = await c.get(f"{_OPS_BASE}/books")
+                books = (r.json() or {}).get("books", [])
+                return _json.dumps([{ "catalog": b.get("catalog_number"),
+                                      "title": b.get("title"),
+                                      "status": (b.get("data") or {}).get("status")
+                                                 or b.get("status")}
+                                    for b in books][:120])
+            if name == "book_status":
+                r = await c.get(f"{_OPS_BASE}/books/{args['catalog']}")
+                if r.status_code != 200:
+                    return f"error: {r.text[:200]}"
+                d = (r.json() or {}).get("data", {})
+                ms = d.get("manuscript") or {}
+                return _json.dumps({
+                    "title": r.json().get("title"),
+                    "authorship": d.get("authorship", "house"),
+                    "words": ms.get("word_count"),
+                    "chapters": len(ms.get("chapters") or []),
+                    "cover": bool((d.get("cover") or {}).get("cover_front_png")),
+                    "series": (d.get("series") or {}).get("series_title"),
+                })
+            if name == "jobs_status":
+                r = await c.get(f"{_OPS_BASE}/jobs")
+                js = (r.json() or {}).get("jobs", [])[:12]
+                return _json.dumps([{ "kind": j.get("kind"), "status": j.get("status"),
+                                      "book": j.get("book_catalog"),
+                                      "detail": (j.get("detail") or "")[:80]} for j in js])
+            if name == "production_queue":
+                r = await c.get(f"{_OPS_BASE}/queue")
+                return _json.dumps((r.json() or {}).get("queue", []))[:4000]
+            if name == "create_work_order":
+                payload = {"kind": args.get("kind"), "genre_preset": args.get("genre_preset"),
+                           "idea": args.get("idea"), "title": args.get("title") or "",
+                           "pen_name": args.get("pen_name") or "",
+                           "authorship": args.get("authorship") or "house",
+                           "series_title": args.get("series_title") or "",
+                           "series_books": int(args.get("series_books") or 1),
+                           "auto_draft": False, "generate_plot_options": False}
+                r = await c.post(f"{_OPS_BASE}/workorder", json=payload)
+                return r.text[:800]
+            if name == "start_draft":
+                r = await c.post(f"{_OPS_BASE}/books/{args['catalog']}/draft")
+                return r.text[:400]
+            if name == "list_versions":
+                r = await c.get(f"{_OPS_BASE}/books/{args['catalog']}/versions")
+                return r.text[:3000]
+            if name == "quote_scene_reshoot":
+                r = await c.post(f"{_OPS_BASE}/trailer/reshoot-scene/{args['catalog']}",
+                                 json={"panel": args.get("panel")})
+                return r.text[:400]
+    except Exception as e:
+        return f"error: {str(e)[:200]}"
+    return "error: unknown operation"
+
+
 @router.post("/chat")
 async def chat(req: ChatRequest):
     if not req.messages:

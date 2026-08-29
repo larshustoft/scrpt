@@ -102,6 +102,8 @@ async def lifespan(app: FastAPI):
             from .jobs import list_jobs, start_job
             from .writing import pipeline as _wp
             for b in _db.list_books(per_page=500)["books"]:
+                if (b.get("data") or {}).get("authorship") == "author":
+                    continue  # the human's book — never auto-resume a machine draft
                 ms = (b.get("data") or {}).get("manuscript") or {}
                 if ms.get("status") != "drafting":
                     continue

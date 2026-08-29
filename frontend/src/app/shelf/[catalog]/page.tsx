@@ -211,7 +211,13 @@ export default function BookWorkspace({ params }: { params: Promise<{ catalog: s
         {((book.data.kind === "childrens"
             ? ["spreads", "cover", "audiobook", "trailer", "movie", "publishing"]
             : ["manuscript", "cover", "audiobook", "trailer", "movie", "publishing"]) as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
+          <button key={t} onClick={() => {
+                    setTab(t);
+                    // the tab survives a refresh: it lives in the URL
+                    const u = new URL(window.location.href);
+                    u.searchParams.set("tab", t);
+                    window.history.replaceState(null, "", u.toString());
+                  }}
                   className={`px-4 h-8 rounded-md text-[13px] font-medium capitalize transition-all ${
                     tab === t ? "text-text-primary" : "text-text-tertiary hover:text-text-secondary"
                   }`}
@@ -1907,20 +1913,48 @@ function CastAndBoard({ st, catalog, onChanged }: {
   const [redoPanel, setRedoPanel] = useState<string | null>(null);
   const [redoPrompt, setRedoPrompt] = useState("");
   const [redoBusy, setRedoBusy] = useState(false);
+  // which panel has a job running, and how far along it is (0..1)
+  const [frameJob, setFrameJob] = useState<{ panel: string; pct: number } | null>(null);
+  // bumps after every redraw/reshoot so the browser refetches frame images
+  const [bust, setBust] = useState(0);
   const redrawFrame = async () => {
     if (!redoPanel) return;
     setRedoBusy(true);
+    const panel = redoPanel;
     try {
       const r = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/board-frame/${catalog}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ panel: redoPanel, prompt: redoPrompt }),
+        body: JSON.stringify({ panel, prompt: redoPrompt }),
       });
       const d = await r.json();
       if (!r.ok) { setRedoPrompt(d.detail || "Could not redraw"); return; }
-      await pollJob(d.job_id, () => {});
       setRedoPanel(null); setRedoPrompt("");
+      setFrameJob({ panel, pct: 0.05 });
+      await pollJob(d.job_id, (j) => setFrameJob({ panel, pct: Number(j.progress) || 0.05 }));
+      setBust(Date.now());
       onChanged();
-    } finally { setRedoBusy(false); }
+    } finally { setRedoBusy(false); setFrameJob(null); }
+  };
+  const reshootScene = async (panel: string, secsLabel: string) => {
+    const q = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ panel }),
+    }).then((r) => r.json());
+    if (!window.confirm(
+      `Re-shoot scene ${panel} (${q.seconds ?? secsLabel}s)?\n\nEstimated up to ${q.estimate_credits_max} credits. ` +
+      `Every other take, the voice and the music are reused; the re-cut is free.`)) return;
+    const d = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ panel, confirm: true }),
+    }).then((r) => r.json());
+    if (d.job_id) {
+      setFrameJob({ panel, pct: 0.03 });
+      try {
+        await pollJob(d.job_id, (j) => setFrameJob({ panel, pct: Number(j.progress) || 0.03 }));
+      } finally { setFrameJob(null); }
+      setBust(Date.now());
+      onChanged();
+    }
   };
 
   return (
@@ -1968,17 +2002,38 @@ function CastAndBoard({ st, catalog, onChanged }: {
                 {panels.map((p, i) => (
                   <div key={String(p.n ?? i)}>
                     {p.frame_url ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={`${scrpt.engineUrl}${p.frame_url}`} alt={String(p.title || p.n || i + 1)}
-                           onClick={() => openRun({
-                             index: frames.findIndex((f) => f.n === p.n),
-                             frames: frames.map((f) => ({
-                               label: `Panel ${f.n} · ${f.title || ""}`,
-                               srcs: [`${scrpt.engineUrl}${f.frame_url}`],
-                             })),
-                           }, `Panel ${p.n}`)}
-                           className="w-full rounded cursor-zoom-in"
-                           style={{ aspectRatio: "16/9", objectFit: "cover", border: "1px solid var(--line)" }} />
+                      <div className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`${scrpt.engineUrl}${p.frame_url}`} alt={String(p.title || p.n || i + 1)}
+                             onClick={() => openRun({
+                               index: frames.findIndex((f) => f.n === p.n),
+                               frames: frames.map((f) => ({
+                                 label: `Panel ${f.n} · ${f.title || ""}`,
+                                 srcs: [`${scrpt.engineUrl}${f.frame_url}`],
+                               })),
+                             }, `Panel ${p.n}`)}
+                             className="w-full rounded cursor-zoom-in"
+                             style={{ aspectRatio: "16/9", objectFit: "cover", border: "1px solid var(--line)",
+                                      opacity: frameJob?.panel === String(p.n) ? 0.35 : 1 }} />
+                        {frameJob?.panel === String(p.n) && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <svg width="44" height="44" viewBox="0 0 44 44">
+                              <circle cx="22" cy="22" r="18" fill="none"
+                                      stroke="var(--line)" strokeWidth="3" />
+                              <circle cx="22" cy="22" r="18" fill="none"
+                                      stroke="var(--accent, #c9a96a)" strokeWidth="3"
+                                      strokeLinecap="round"
+                                      strokeDasharray={`${Math.max(4, frameJob.pct * 113)} 113`}
+                                      transform="rotate(-90 22 22)"
+                                      style={{ transition: "stroke-dasharray 0.6s ease" }} />
+                              <text x="22" y="26" textAnchor="middle" fontSize="10"
+                                    fill="var(--text-secondary, #bbb)">
+                                {Math.round(frameJob.pct * 100)}%
+                              </text>
+                            </svg>
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <div className="w-full rounded flex items-center justify-center text-[10px] text-text-faint"
                            style={{ aspectRatio: "16/9", border: "1px dashed var(--line)" }}>
@@ -1995,50 +2050,38 @@ function CastAndBoard({ st, catalog, onChanged }: {
                       <div className="text-[10px] text-text-faint">no cast referenced</div>
                     )}
                     {p.vo ? <div className="text-[10px] text-text-secondary italic leading-snug">“{p.vo}”</div> : null}
-                    <div className="flex gap-2">
-                      <button className="text-[10px] text-text-faint hover:text-accent mt-0.5"
+                    <div className="flex gap-1.5 mt-1">
+                      <button className="btn-ghost text-[10px] px-2 py-0.5"
+                              disabled={!!frameJob}
                               onClick={() => { setRedoPanel(String(p.n)); setRedoPrompt(""); }}>
-                        Redraw this frame…
+                        Redraw image
                       </button>
-                      <button className="text-[10px] text-text-faint hover:text-accent mt-0.5"
-                              onClick={async () => {
-                                const q = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`, {
-                                  method: "POST", headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ panel: String(p.n) }),
-                                }).then((r) => r.json());
-                                if (!window.confirm(
-                                  `Re-shoot scene ${p.n} (${q.seconds}s)?\n\nEstimated up to ${q.estimate_credits_max} credits. ` +
-                                  `Every other take, the voice and the music are reused; the re-cut is free.`)) return;
-                                const d = await fetch(`${scrpt.engineUrl}/api/scrpt/trailer/reshoot-scene/${catalog}`, {
-                                  method: "POST", headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ panel: String(p.n), confirm: true }),
-                                }).then((r) => r.json());
-                                if (d.job_id) { await pollJob(d.job_id, () => {}); onChanged(); }
-                              }}>
-                        Re-shoot this scene…
+                      <button className="btn-ghost text-[10px] px-2 py-0.5"
+                              disabled={!!frameJob}
+                              onClick={() => reshootScene(String(p.n), String(p.dur || 4))}>
+                        Re-shoot scene
                       </button>
                     </div>
+                    {redoPanel === String(p.n) && (
+                      <div className="mt-1.5 p-2 rounded-[6px] border border-border-subtle">
+                        <textarea value={redoPrompt} onChange={(e) => setRedoPrompt(e.target.value)}
+                                  rows={3} autoFocus
+                                  className="w-full rounded-[5px] border border-border-subtle bg-transparent p-1.5 text-[11px] leading-snug"
+                                  placeholder="Describe the image you want — or leave empty to redraw from the shot description." />
+                        <div className="flex gap-1.5 mt-1.5">
+                          <button className="btn-brass text-[10px] px-2 py-0.5" disabled={redoBusy}
+                                  onClick={redrawFrame}>
+                            {redoBusy ? "Starting…" : "Redraw"}
+                          </button>
+                          <button className="btn-ghost text-[10px] px-2 py-0.5" disabled={redoBusy}
+                                  onClick={() => setRedoPanel(null)}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-              {redoPanel && (
-                <div className="mt-3 p-3 rounded-[8px] border border-border-subtle">
-                  <div className="text-[11px] text-text-secondary mb-1.5">
-                    Redraw panel {redoPanel} — describe the image you want, or leave
-                    empty to redraw from the board&apos;s own shot description.
-                  </div>
-                  <textarea value={redoPrompt} onChange={(e) => setRedoPrompt(e.target.value)}
-                            rows={2} className="w-full rounded-[6px] border border-border-subtle bg-transparent p-2 text-[12px]"
-                            placeholder="e.g. Closer on Princess, waterfall behind, warmer evening light" />
-                  <div className="flex gap-2 mt-2">
-                    <button className="btn-brass text-[12px]" disabled={redoBusy} onClick={redrawFrame}>
-                      {redoBusy ? "Redrawing…" : "Redraw frame"}
-                    </button>
-                    <button className="btn-ghost text-[12px]" disabled={redoBusy}
-                            onClick={() => setRedoPanel(null)}>Cancel</button>
-                  </div>
-                </div>
-              )}
+
               {st.storyboard?.music ? (
                 <div className="text-[10px] text-text-faint mt-2">Score: {st.storyboard.music}</div>
               ) : null}
@@ -2096,7 +2139,7 @@ function TrailerCard({ catalog, title }: { catalog: string; title?: string }) {
   const [watching, setWatching] = useState<number | "latest">("latest");
   const [format, setFormat] = useState<"wide" | "vertical" | "ad">("wide");
   const [quality, setQuality] = useState<"draft" | "full" | "seedance" | "seedance_master">("seedance");   // drafts first; master the approved cut
-  const [desk, setDesk] = useState(false);
+  const [desk] = useState(true);   // the director's desk stays open (Lars, 2026-08-29)
   const [shooting, setShooting] = useState<{ stage: string; detail: string; progress: number; started: number; total: number } | null>(null);
   const [brief, setBrief] = useState("");
   const [voEdits, setVoEdits] = useState<Record<number, string>>({});
@@ -2601,10 +2644,10 @@ function TrailerCard({ catalog, title }: { catalog: string; title?: string }) {
         )}
       </div>
 
-      <button onClick={() => setDesk((v) => !v)} className="text-[11px] uppercase tracking-[0.14em] text-text-faint hover:text-text-secondary self-start"
-              style={{ background: "none", border: "none", padding: "4px 0", cursor: "pointer" }}>
-        {desk ? "Close the director\u2019s desk" : "Open the director\u2019s desk \u2014 script, narrator, score, format"}
-      </button>
+      <div className="text-[11px] uppercase tracking-[0.14em] text-text-faint self-start"
+           style={{ padding: "4px 0" }}>
+        The director&apos;s desk
+      </div>
       <div style={{ display: desk ? "contents" : "none" }}>
       {/* The screenplay */}
       <div className="card">
@@ -3266,10 +3309,12 @@ function TrailerVoiceCard({ catalog, onCast }: { catalog: string; onCast: () => 
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<(BenchVoice & { description?: string; owner_id?: string })[]>([]);
 
+  const [vGender, setVGender] = useState("");
+  const [vAccent, setVAccent] = useState("");
   const search = async () => {
     setSearching(true); setResults([]);
     try {
-      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/voice-library/search?q=${encodeURIComponent(query)}`);
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/voice-library/search?q=${encodeURIComponent(query)}&gender=${vGender}&accent=${vAccent}`);
       const d = await r.json();
       if (r.ok) setResults(d.voices || []);
       else setMsg(d.detail || "Search failed");
@@ -3341,15 +3386,42 @@ function TrailerVoiceCard({ catalog, onCast }: { catalog: string; onCast: () => 
         nothing else is re-made.
       </p>
 
-      <div className="flex items-center gap-2 mt-3">
+      <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+        {[["female", "Female"], ["male", "Male"]].map(([v, label]) => (
+          <button key={v}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border ${
+                    vGender === v ? "border-accent text-accent" : "border-border-subtle text-text-tertiary hover:text-text-secondary"}`}
+                  onClick={() => setVGender(vGender === v ? "" : v)}>
+            {label}
+          </button>
+        ))}
+        <span className="w-2" />
+        {[["american", "American"], ["british", "British"]].map(([v, label]) => (
+          <button key={v}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border ${
+                    vAccent === v ? "border-accent text-accent" : "border-border-subtle text-text-tertiary hover:text-text-secondary"}`}
+                  onClick={() => setVAccent(vAccent === v ? "" : v)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 mt-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)}
                onKeyDown={(e) => { if (e.key === "Enter") search(); }}
-               placeholder="deep movie trailer, warm storyteller, icy villain…"
+               placeholder="Disney, deep movie trailer, warm storyteller…"
                className="flex-1 rounded-[6px] border border-border-subtle bg-transparent px-3 py-1.5 text-[13px]" />
-        <button className="btn-ghost text-[12px] shrink-0" disabled={busy || !query.trim()} onClick={search}>
+        <button className="btn-ghost text-[12px] shrink-0"
+                disabled={busy || (!query.trim() && !vGender && !vAccent)} onClick={search}>
           {searching ? "Searching…" : "Search"}
         </button>
       </div>
+      {!searching && results.length === 0 && query.trim() && (
+        <div className="text-[11px] text-text-faint mt-2">
+          No voices matched. The library has no trademarked names (searching
+          &quot;Disney&quot; finds nothing) — describe the SOUND instead:
+          &quot;warm animated storyteller&quot;, &quot;bright playful narrator&quot;.
+        </div>
+      )}
       {results.length > 0 && (
         <div className="mt-2 space-y-2">
           {results.map((v) => (
