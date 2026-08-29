@@ -1852,6 +1852,7 @@ async def trailer_status(catalog: str):
             ],
             "music": ((book["data"].get("movie") or {}).get("storyboard") or {}).get("music") or "",
             "minutes": ((book["data"].get("movie") or {}).get("storyboard") or {}).get("minutes"),
+            "voice_cast": (book["data"].get("movie") or {}).get("voice_cast") or {},
             "count": len((((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels")) or []),
         } if ((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels") else None),
         "versions": versions,

@@ -3227,7 +3227,28 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
   const catalog = book.catalog_number;
   type MoviePanel = { n?: string | number; title?: string; dur?: number; vo?: string;
                       frame_url?: string | null; characters?: string[] };
-  const [mv, setMv] = useState<{ panels: MoviePanel[]; count: number; minutes?: number; music?: string } | null>(null);
+  const [mv, setMv] = useState<{ panels: MoviePanel[]; count: number; minutes?: number; music?: string;
+                                 voice_cast?: Record<string, { id: string; name: string }> } | null>(null);
+  const [castFor, setCastFor] = useState<string | null>(null);
+  const [castQ, setCastQ] = useState("");
+  const [castResults, setCastResults] = useState<{ id: string; name: string; description?: string; preview_url?: string }[]>([]);
+  const [castBusy, setCastBusy] = useState(false);
+  const searchCastVoice = async () => {
+    setCastBusy(true); setCastResults([]);
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/voice-library/search?q=${encodeURIComponent(castQ)}`);
+      const d = await r.json();
+      if (r.ok) setCastResults((d.voices || []).slice(0, 8));
+    } finally { setCastBusy(false); }
+  };
+  const castVoice = async (character: string, v: { id: string; name: string }) => {
+    await fetch(`${scrpt.engineUrl}/api/scrpt/movie/voice-cast/${catalog}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ character, voice_id: v.id, voice_name: v.name }),
+    });
+    setCastFor(null); setCastQ(""); setCastResults([]);
+    setMvKey((k) => k + 1);
+  };
   const [mvKey, setMvKey] = useState(0);
   const [minutes, setMinutes] = useState(8);
   const [mvMsg, setMvMsg] = useState("");
@@ -3381,6 +3402,51 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
             ))}
           </div>
           {mv.music && <div className="text-[10px] text-text-faint mt-2">Score: {mv.music}</div>}
+          <div className="text-[11px] uppercase tracking-[0.14em] text-text-faint mt-5 mb-2">
+            The voice cast
+          </div>
+          <div className="space-y-2">
+            {Array.from(new Set(mv.panels.map((p: MoviePanel & { line?: { speaker?: string } }) =>
+                (p as { line?: { speaker?: string } }).line?.speaker).filter(Boolean))).map((name) => (
+              <div key={String(name)} className="rounded-[8px] border border-border-subtle px-3 py-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="text-[13px] font-medium min-w-[110px]">{String(name)}</div>
+                  <div className="text-[11px] text-text-faint flex-1">
+                    {mv.voice_cast?.[String(name)]
+                      ? `voiced by ${mv.voice_cast[String(name)].name}`
+                      : "no voice cast — lines fall back to the narrator"}
+                  </div>
+                  <button className="btn-ghost text-[11px] px-2 py-0.5"
+                          onClick={() => { setCastFor(castFor === name ? null : String(name)); setCastQ(""); setCastResults([]); }}>
+                    {castFor === name ? "Close" : "Cast voice…"}
+                  </button>
+                </div>
+                {castFor === name && (
+                  <div className="mt-2">
+                    <div className="flex items-center gap-2">
+                      <input value={castQ} onChange={(e) => setCastQ(e.target.value)}
+                             onKeyDown={(e) => { if (e.key === "Enter") searchCastVoice(); }}
+                             placeholder="small brave dragon, cheeky bird, warm young unicorn…"
+                             className="flex-1 rounded-[6px] border border-border-subtle bg-transparent px-2.5 py-1 text-[12px]" />
+                      <button className="btn-ghost text-[11px]" disabled={castBusy || !castQ.trim()}
+                              onClick={searchCastVoice}>{castBusy ? "…" : "Search"}</button>
+                    </div>
+                    {castResults.map((v) => (
+                      <div key={v.id} className="flex items-center gap-2 flex-wrap mt-1.5 rounded-[6px] border border-border-subtle px-2 py-1.5">
+                        <div className="flex-1 min-w-[140px]">
+                          <div className="text-[12px]">{v.name}</div>
+                          {v.description && <div className="text-[10px] text-text-faint">{v.description.slice(0, 90)}</div>}
+                        </div>
+                        {v.preview_url && <audio controls preload="none" src={v.preview_url} className="h-6" style={{ maxWidth: 180 }} />}
+                        <button className="btn-brass text-[10px] px-2 py-0.5"
+                                onClick={() => castVoice(String(name), v)}>Cast</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </>
       )}
       {mvMsg && <div className="text-[12px] mt-2" style={{ color: "var(--status-red)" }}>{mvMsg}</div>}
