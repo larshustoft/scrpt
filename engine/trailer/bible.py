@@ -582,7 +582,23 @@ async def rewrite_board_script(catalog: str, brief: str = "", handle=None) -> di
     return {"panels_rewritten": changed, "music": out.get("music")}
 
 
-async def build_film_board(catalog: str, minutes: int = 8, handle=None) -> dict:
+FILM_FORMATS = {
+    # what the top-of-page choice MEANS: lengths, scene math, register
+    "childrens": {"label": "Animated Children's", "minutes": [5, 8, 12],
+                  "register": "a beloved family film: warm, playful, nothing scary"},
+    "feature":   {"label": "Feature Film", "minutes": [30, 60, 75, 90, 120],
+                  "register": "a cinematic feature in the book's own genre: "
+                              "three acts, rising stakes, earned climax"},
+    "series":    {"label": "TV Series episode", "minutes": [12, 22, 44, 60],
+                  "register": "a television episode: a teaser cold open, an "
+                              "A-plot and a lighter B-plot, act breaks, and a "
+                              "closing tag"},
+}
+
+
+async def build_film_board(catalog: str, minutes: int = 8, handle=None,
+                           format_kind: str = "childrens",
+                           premise: str = "") -> dict:
     """Adapt the book into a FILM — two stages, like a real production:
 
     1. ADAPTATION: the book becomes a screenplay. The story is told through
@@ -600,21 +616,38 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None) -> dict:
     if not book:
         raise RuntimeError("Book not found")
     d = book["data"]
+    fmt = FILM_FORMATS.get(format_kind) or FILM_FORMATS["childrens"]
     ch = d.get("childrens") or {}
     spreads = ch.get("spreads") or []
-    if not spreads:
-        raise RuntimeError("The film board needs a children's book with spreads")
     bible = (d.get("bibles") or {}).get("main") or {}
-    cast_names = [c.get("name") for c in (ch.get("bible") or {}).get("characters") or []
-                  if isinstance(c, dict) and c.get("name")]
-    story = " ".join(str(sp.get("text") or "").strip() for sp in spreads)
-    n_scenes = max(6, min(12, minutes + 2))
+    if format_kind == "childrens":
+        if not spreads:
+            raise RuntimeError("An animated children's film needs a book with spreads")
+        cast_names = [c.get("name") for c in (ch.get("bible") or {}).get("characters") or []
+                      if isinstance(c, dict) and c.get("name")]
+        story = " ".join(str(sp.get("text") or "").strip() for sp in spreads)
+        n_scenes = max(6, min(12, minutes + 2))
+    else:
+        ms = d.get("manuscript") or {}
+        if not (ms.get("chapters") or []):
+            raise RuntimeError("A feature or episode needs a written manuscript")
+        _cast_map = cast_of(book) or {}
+        cast_names = list(_cast_map.keys())
+        if not cast_names:
+            sbc = (ms.get("story_bible") or {}).get("characters") or []
+            cast_names = [c.get("name") for c in sbc
+                          if isinstance(c, dict) and c.get("name")][:10]
+        story = _story_digest(book, 6000)
+        # roughly a scene every two minutes; features breathe, episodes clip
+        n_scenes = max(10, min(60, minutes // 2))
 
     # ── stage 1: the adaptation
     adapt_prompt = (
         f"BOOK: \"{book['title']}\" — adapt it into a ~{minutes}-minute "
-        f"animated children's film screenplay.\n\n"
-        f"THE COMPLETE BOOK TEXT:\n{story}\n\n"
+        f"{fmt['label']} screenplay. REGISTER: {fmt['register']}.\n"
+        + (f"EPISODE PREMISE (this episode's own story, true to the book's "
+           f"world and cast): {premise.strip()}\n" if premise.strip() else "")
+        + f"\nTHE BOOK:\n{story}\n\n"
         f"THE CAST (the only characters that exist): {', '.join(cast_names)}\n\n"
         "ADAPTATION CRAFT:\n"
         "1. The story is TOLD THROUGH THE CHARACTERS: dialogue and on-screen "
@@ -628,8 +661,10 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None) -> dict:
         f"4. Structure ~{n_scenes} scenes: a cold open full of wonder, the "
         "want and the problem early, rising adventure with humor, one gentle "
         "peril, a warm resolution, and a small button of joy at the end.\n"
-        "5. Nothing scary; the register is a beloved family film.\n\n"
-        "Return JSON only: {\"scenes\": [{\"n\": 1, \"title\": \"...\", "
+        + ("5. Nothing scary; the register is a beloved family film.\n\n"
+           if format_kind == "childrens" else
+           "5. Honour the book's genre register throughout.\n\n")
+        + "Return JSON only: {\"scenes\": [{\"n\": 1, \"title\": \"...\", "
         "\"setting\": \"where and when\", \"action\": \"what happens on "
         "screen, 2-4 sentences\", \"narration\": \"storyteller line or "
         "empty\", \"dialogue\": [{\"speaker\": \"Name\", \"line\": "
@@ -712,7 +747,8 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None) -> dict:
     if len(panels) < len(scenes):
         raise RuntimeError("The board came back too thin — try again")
     sb = {"panels": panels, "music": str(data_out.get("music") or "")[:400],
-          "style": bible.get("style") or "", "kind": "film", "minutes": minutes}
+          "style": bible.get("style") or "", "kind": "film",
+          "format": format_kind, "minutes": minutes}
     fresh = get_book_by_catalog(catalog)
     fd = dict(fresh["data"])
     mv = dict(fd.get("movie") or {})

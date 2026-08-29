@@ -1853,6 +1853,7 @@ async def trailer_status(catalog: str):
             "music": ((book["data"].get("movie") or {}).get("storyboard") or {}).get("music") or "",
             "minutes": ((book["data"].get("movie") or {}).get("storyboard") or {}).get("minutes"),
             "voice_cast": (book["data"].get("movie") or {}).get("voice_cast") or {},
+            "format": ((book["data"].get("movie") or {}).get("storyboard") or {}).get("format") or "childrens",
             "count": len((((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels")) or []),
         } if ((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels") else None),
         "versions": versions,
@@ -3195,11 +3196,17 @@ async def movie_board(catalog: str, body: dict = Body(default={})):
     book = db.get_book_by_catalog(catalog)
     if not book:
         raise HTTPException(404, "Book not found")
-    minutes = max(4, min(15, int(body.get("minutes") or 8)))
+    fmtk = str(body.get("format") or "childrens")
+    if fmtk not in ("childrens", "feature", "series"):
+        raise HTTPException(400, "format must be childrens, feature or series")
+    _caps = {"childrens": 15, "feature": 120, "series": 60}
+    minutes = max(4, min(_caps[fmtk], int(body.get("minutes") or 8)))
+    premise = str(body.get("premise") or "")
 
     async def job(handle):
         await ensure_bibles(catalog, handle)
-        r = await build_film_board(catalog, minutes=minutes, handle=handle)
+        r = await build_film_board(catalog, minutes=minutes, handle=handle,
+                                   format_kind=fmtk, premise=premise)
         fresh = db.get_book_by_catalog(catalog)
         sb = _movie_board(fresh)
         frames = await draw_board_plates(catalog, sb, handle=handle,

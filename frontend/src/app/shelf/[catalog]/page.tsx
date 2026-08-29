@@ -3253,7 +3253,12 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
     setMvKey((k) => k + 1);
   };
   const [mvKey, setMvKey] = useState(0);
+  const [mvFormat, setMvFormat] = useState<"childrens" | "feature" | "series">(
+    book.data.kind === "childrens" ? "childrens" : "feature");
   const [minutes, setMinutes] = useState(8);
+  const [premise, setPremise] = useState("");
+  const FORMAT_MINUTES: Record<string, number[]> = {
+    childrens: [5, 8, 12], feature: [30, 60, 75, 90, 120], series: [12, 22, 44, 60] };
   const [mvMsg, setMvMsg] = useState("");
   const [mvJob, setMvJob] = useState<{ what: string; pct: number } | null>(null);
   const [mvRedo, setMvRedo] = useState<string | null>(null);
@@ -3288,15 +3293,32 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
       </div>
       {!mv ? (
         <div className="mt-3">
-          <p className="text-[12px] text-text-tertiary leading-relaxed">
-            The book is ADAPTED into a screenplay that works on film: the
-            story told through the characters&apos; dialogue and action, the
-            storyteller&apos;s narration kept for openings and turns. Then the
-            screenplay breaks into shots with a frame each. No video is shot
-            yet.
+          <div className="grid grid-cols-3 gap-3">
+            {([["childrens", "Animated Children's", "5–12 min, storybook wonder"],
+               ["feature", "Feature Film", "30–120 min, the book's own genre"],
+               ["series", "TV Series", "an episode, 12–60 min, own premise"]] as const).map(([k, label, sub]) => (
+              <button key={k}
+                      onClick={() => { setMvFormat(k); setMinutes(FORMAT_MINUTES[k][1] ?? FORMAT_MINUTES[k][0]); }}
+                      className={`text-left rounded-[10px] border p-3 ${
+                        mvFormat === k ? "border-accent" : "border-border-subtle hover:border-border"}`}>
+                <div className={`text-[13px] font-semibold ${mvFormat === k ? "text-accent" : ""}`}>{label}</div>
+                <div className="text-[11px] text-text-faint mt-0.5">{sub}</div>
+              </button>
+            ))}
+          </div>
+          <p className="text-[12px] text-text-tertiary leading-relaxed mt-3">
+            The book is ADAPTED into a screenplay for the chosen format —
+            dialogue and action carry the story; narration is a storyteller&apos;s
+            spice. Then the screenplay breaks into shots with a frame each. No
+            video is shot yet.
           </p>
-          <div className="flex items-center gap-2 mt-3">
-            {[5, 8, 12].map((m) => (
+          {mvFormat === "series" && (
+            <input value={premise} onChange={(e) => setPremise(e.target.value)}
+                   placeholder="This episode's premise (optional) — e.g. Princess and Moss get lost in the winter caves"
+                   className="w-full rounded-[6px] border border-border-subtle bg-transparent px-3 py-1.5 text-[12px] mt-2" />
+          )}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            {FORMAT_MINUTES[mvFormat].map((m) => (
               <button key={m}
                       className={`text-[11px] px-2.5 py-1 rounded-full border ${
                         minutes === m ? "border-accent text-accent" : "border-border-subtle text-text-tertiary"}`}
@@ -3304,7 +3326,7 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
             ))}
             <button className="btn-brass text-[12px]" disabled={!!mvJob}
                     onClick={() => runJob(`${scrpt.engineUrl}/api/scrpt/movie/board/${catalog}`,
-                                          { minutes }, "Boarding the film")}>
+                                          { minutes, format: mvFormat, premise }, "Boarding the film")}>
               Build the film board
             </button>
           </div>
