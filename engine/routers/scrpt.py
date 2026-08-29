@@ -3312,9 +3312,44 @@ async def movie_produce(catalog: str, body: dict = Body(default={})):
     sb = _stamp_line_voices(book, sb)
 
     async def job(handle):
-        return await produce_storyboard(
+        r = await produce_storyboard(
             catalog, sb, format_name="wide", handle=handle,
             version_label="film", max_seconds=int(total_s) + 30)
+        # THE INTRO OPENS EVERY FILM (Lars): if the book's universe has a
+        # show intro, prepend it to the finished cut — free ffmpeg
+        try:
+            import json as _json, subprocess as _sp
+            import imageio_ffmpeg as _iio
+            root = Path(__file__).resolve().parents[2]
+            reg = _json.loads(db.get_setting("universes", "") or "{}")
+            intro = None
+            for u in reg.values():
+                prof = _json.loads((root / u["profile"]).read_text())
+                if catalog in (prof.get("members") or []):
+                    ip = prof.get("creatives", {}).get("show_intro")
+                    if ip and (root / ip).exists():
+                        intro = root / ip
+                    break
+            film = Path(OUTPUT_DIR) / catalog / str(r.get("file") or "trailer.mp4")
+            if intro and film.exists():
+                if handle:
+                    handle.progress(0.98, "premiere", "attaching the show intro")
+                FF = _iio.get_ffmpeg_exe()
+                merged = film.with_name("film-with-intro.mp4")
+                _sp.run([FF, "-y", "-v", "error", "-i", str(intro), "-i", str(film),
+                         "-filter_complex",
+                         "[0:v]scale=1920:1080,fps=24,format=yuv420p[v0];"
+                         "[1:v]scale=1920:1080,fps=24,format=yuv420p[v1];"
+                         "[0:a]aresample=48000[a0];[1:a]aresample=48000[a1];"
+                         "[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]",
+                         "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
+                         "-preset", "fast", "-crf", "18", "-c:a", "aac",
+                         "-b:a", "192k", str(merged)], check=True, timeout=1800)
+                merged.replace(film)
+                r["intro_attached"] = True
+        except Exception as e:
+            r["intro_attached"] = f"failed: {str(e)[:120]}"
+        return r
 
     return {"job_id": start_job("movie_produce", job, book_catalog=catalog),
             "estimate_credits_max": estimate}

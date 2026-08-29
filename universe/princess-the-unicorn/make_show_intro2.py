@@ -46,7 +46,6 @@ def _dur(path):
 def make(theme: str, out: str) -> str:
     # the sky flight plays LIVE (trimmed before her in-take blink), then the
     # logo-birth ending takes over: shrink -> stiffen -> song ends -> wink
-    from make_logo_ending import build as build_ending
     sky_live = min(_dur(HERE / SKY) - 1.8, 3.4)
     end_seg_a = HERE / "_end_a.mp4"
     subprocess.run([FF, "-y", "-v", "error", "-i", str(HERE / SKY),
@@ -56,7 +55,14 @@ def make(theme: str, out: str) -> str:
                     "-an", "-t", f"{sky_live:.2f}",
                     "-c:v", "libx264", "-preset", "fast", "-crf", "16",
                     str(end_seg_a)], check=True)
-    end_seg_b, ending_s = build_ending(str(HERE / SKY), "unused")
+    # the WHOLE song plays — the ending stretches so the song finishes
+    # before the wink, and the intro ends 1s after it
+    theme_len = _dur(theme)
+    body_net = sum(sec for _, sec in SHOTS)
+    need_ending = max(4.5, theme_len + 1.45 - body_net - sky_live)
+    end_seg_b = HERE / "_logoending2.mp4"
+    from make_logo_ending2 import build as _build_le
+    ending_s = _build_le(need_ending, end_seg_b)
     sky_len = sky_live + ending_s
     end_seg = HERE / "_end.mp4"
     subprocess.run([FF, "-y", "-v", "error", "-i", str(end_seg_a), "-i", str(end_seg_b),
@@ -85,12 +91,9 @@ def make(theme: str, out: str) -> str:
         f.append(f"[{prev}][{i}:v]xfade=transition=fade:duration={X}:offset={off - X:.2f}[x{i}]")
         prev = f"x{i}"
     f.append(f"[{prev}]fade=t=in:st=0:d=0.2,format=yuv420p[v]")
-    # the song ENDS first; the wink happens in the little silence after —
-    # the last thing before the episode (Lars)
-    _music_end = total - 0.8
-    f.append(f"[{n + 1}:a]atrim=0:{_music_end:.2f},"
-             f"afade=t=out:st={_music_end - 0.35:.2f}:d=0.35,"
-             f"apad=whole_dur={total:.2f}[a]")
+    # the FULL song, untouched — it ends naturally, then the wink and the
+    # one-second hold close the intro (Lars: no cutting)
+    f.append(f"[{n + 1}:a]apad=whole_dur={total:.2f}[a]")
     args += ["-filter_complex", ";".join(f), "-map", "[v]", "-map", "[a]",
              "-t", f"{total:.2f}", "-c:v", "libx264", "-preset", "fast",
              "-crf", "18", "-c:a", "aac", "-b:a", "192k", str(out)]

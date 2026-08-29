@@ -3559,7 +3559,8 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
         </div>
       </div>
 
-      {/* Format */}
+      {/* Format (legacy) — gone once the choice above is made */}
+      {!mv && (<>
       <div className="card">
         <div className="serif-display text-[17px] font-semibold">The production</div>
         <p className="text-[12px] text-text-tertiary mt-1 leading-relaxed">
@@ -3603,6 +3604,7 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
           ))}
         </div>
       </div>
+      </>)}
     </div>
   );
 }
