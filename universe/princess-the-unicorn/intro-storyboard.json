@@ -1,0 +1,45 @@
+{
+ "name": "Princess the Unicorn \u2014 show intro",
+ "seconds": 20,
+ "shots": [
+  {
+   "n": 1,
+   "dur": 2.6,
+   "shot": "Aerial sweep at sunrise over Rainbow Forest \u2014 golden light, two soft rainbows arcing through the mist above the canopy, the sparkling stream winding below. No characters."
+  },
+  {
+   "n": 2,
+   "dur": 3.2,
+   "shot": "Princess gallops TOWARD the camera down a flower-lined path, mane streaming, laughing with joy, petals swirling around her.",
+   "ref": "princess"
+  },
+  {
+   "n": 3,
+   "dur": 3.2,
+   "shot": "Princess leaps over the sparkling stream in one joyful arc while Pip the bluebird swoops alongside her, both facing camera as they land.",
+   "ref": "princess"
+  },
+  {
+   "n": 4,
+   "dur": 3.0,
+   "shot": "Princess spins and dances in the glowing mushroom glade, Moss the little dragon bouncing beside her, fireflies rising like confetti.",
+   "ref": "princess"
+  },
+  {
+   "n": 5,
+   "dur": 2.6,
+   "shot": "Princess runs toward camera and LEAPS up and to the left, springing out of frame with her tail trailing sparkles \u2014 the background brightens toward white as she jumps.",
+   "ref": "princess"
+  },
+  {
+   "n": 6,
+   "dur": 5.0,
+   "shot": "ENDING (composited, not generated): her leap carries into pure white, dissolving into THE LOGO exactly as drawn; on the final note the logo's Princess blinks (logo-blink.png frame swap) and holds."
+  }
+ ],
+ "ending_assets": [
+  "logo.png",
+  "logo-blink.png"
+ ],
+ "consistency": "every character shot carries the cast plate as reference"
+}
