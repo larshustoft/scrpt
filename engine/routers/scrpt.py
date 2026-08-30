@@ -3200,7 +3200,7 @@ async def movie_board(catalog: str, body: dict = Body(default={})):
     if fmtk not in ("childrens", "feature", "series"):
         raise HTTPException(400, "format must be childrens, feature or series")
     _caps = {"childrens": 15, "feature": 120, "series": 60}
-    minutes = max(4, min(_caps[fmtk], int(body.get("minutes") or 8)))
+    minutes = max(4, min(_caps[fmtk], int(body.get("minutes") or (12 if fmtk == "childrens" else 8))))
     premise = str(body.get("premise") or "")
 
     async def job(handle):
