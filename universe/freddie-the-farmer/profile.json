@@ -18,7 +18,8 @@
   "creatives": {
     "book1_cover": "book1-cover.png",
     "universe_bible": "universe-bible.pdf",
-    "plates_dir": "plates"
+    "plates_dir": "plates",
+    "logo": "logo-transparent.png"
   },
   "cast": {
     "Freddie": {
