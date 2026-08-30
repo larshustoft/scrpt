@@ -929,6 +929,60 @@ async def _sectioned_score(catalog: str, cues: dict, turn_at: float, total: floa
     return dest
 
 
+async def _film_score(catalog: str, plan: list, panel_starts: list,
+                      total: float, prefix: str):
+    """A film is scored in emotional CHAPTERS, never wallpaper (Lars,
+    2026-08-30: the score creates the feeling and underlines the story —
+    one looped cue was the opposite). Each chapter of the plan gets its
+    own cue held to its scene-span; a chapter longer than its cue loops
+    the cue INSIDE the chapter only; chapters join on gentle fades."""
+    tdir = OUTPUT_DIR / catalog / "trailer"
+    scene_start = {}
+    for _i, pn, start in panel_starts:
+        sc = pn.get("scene")
+        if sc is not None and sc not in scene_start:
+            scene_start[sc] = float(start)
+    chapters = []
+    for ch in plan:
+        scs = [s for s in (ch.get("scenes") or []) if s in scene_start]
+        mood = (ch.get("mood") or "").strip()
+        if scs and mood:
+            chapters.append({"start": min(scene_start[s] for s in scs),
+                             "mood": mood})
+    chapters.sort(key=lambda c: c["start"])
+    if not chapters:
+        return None
+    chapters[0]["start"] = 0.0
+    for k, ch in enumerate(chapters):
+        ch["end"] = (chapters[k + 1]["start"] if k + 1 < len(chapters)
+                     else float(total))
+    parts = []
+    for k, ch in enumerate(chapters):
+        span = max(6.0, ch["end"] - ch["start"])
+        bed = await _record_music(catalog, ch["mood"], min(span + 4, 85),
+                                  f"{prefix}-ch{k}-{_h(ch['mood'])[:6]}")
+        if bed:
+            parts.append((bed, span))
+    if not parts:
+        return None
+    key = _h("|".join(f"{b.name}:{round(s, 1)}" for b, s in parts))
+    dest = tdir / f"score-film-{key}.mp3"
+    if dest.exists():
+        return dest
+    ins, fc, labels = [], "", ""
+    for k, (bed, span) in enumerate(parts):
+        ins += ["-stream_loop", "-1", "-i", str(bed)]
+        fo = min(2.2, span / 3)
+        fc += (f"[{k}:a]atrim=0:{span:.2f},asetpts=PTS-STARTPTS,"
+               f"afade=t=in:st=0:d={0.05 if k == 0 else 1.4:.2f},"
+               f"afade=t=out:st={max(0.0, span - fo):.2f}:d={fo:.2f}[c{k}];")
+        labels += f"[c{k}]"
+    fc += f"{labels}concat=n={len(parts)}:v=0:a=1[out]"
+    _run(["-y", *ins, "-filter_complex", fc, "-map", "[out]",
+          "-c:a", "libmp3lame", "-b:a", "192k", str(dest)], "film score")
+    return dest if dest.exists() else None
+
+
 async def review_cut(catalog: str, video: Path, treatment: dict) -> dict:
     """The director watches the cut: a contact sheet of the assembled
     trailer goes to the vision model, which judges it as a trailer — not
@@ -3186,12 +3240,21 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     card_at = take_s - XF
     if handle:
         handle.progress(0.9, "score", "composing the score")
-    score = series_theme(book)
-    if score:
+    score = None
+    _plan = board.get("score_plan") or []
+    if _plan:
         if handle:
-            handle.progress(0.9, "score", "using the series theme")
-    else:
-        score = await _record_music(catalog, (board.get("music") or "").strip() or score_brief_for(book), total + 15, "storyboard")
+            handle.progress(0.9, "score",
+                            f"composing the score in {len(_plan)} chapters")
+        score = await _film_score(catalog, _plan, panel_starts, total,
+                                  version_label)
+    if not score:
+        score = series_theme(book)
+        if score:
+            if handle:
+                handle.progress(0.9, "score", "using the series theme")
+        else:
+            score = await _record_music(catalog, (board.get("music") or "").strip() or score_brief_for(book), total + 15, "storyboard")
     if not score:
         raise RuntimeError("No usable score came back from the music model")
     # ── sound design: every panel's key sound, rendered and placed ──

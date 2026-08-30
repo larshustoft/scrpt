@@ -753,7 +753,14 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             "the land from above — and the camera drifts or zooms IN toward "
             "where the story is happening. No character is close in shot 1; "
             "we arrive at them in shot 2.\n\n"
-            "Return JSON only: {\"scenes\": [{\"scene\": 1, \"title\": "
+            "7b. THE SCORE PLAN: also return \"score_plan\" — the film's "
+            "music in 5-9 emotional chapters covering every scene once, "
+            "each {\"scenes\": [..], \"mood\": \"an instrumental brief in "
+            "one sentence — instruments and feeling\"}. The score follows "
+            "the STORY's feeling (warm, curious, lonely, brave, homecoming) "
+            "— concerned is allowed, scary never. It thins to near-silence "
+            "for the saddest beat and settles toward sleep at the end.\n"
+            "Return JSON only: {\"score_plan\": [...], \"scenes\": [{\"scene\": 1, \"title\": "
             "\"...\", \"shots\": [{\"shot\": \"...\", \"dur\": 6, "
             "\"vo\": \"...\", \"sound\": \"...\", \"characters\": "
             "[\"...\"], \"line\": {\"speaker\": \"...\", \"text\": "
@@ -794,6 +801,11 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
     if len(panels) < len(scenes):
         raise RuntimeError("The board came back too thin — try again")
     sb = {"panels": panels, "music": str(data_out.get("music") or "")[:400],
+          "score_plan": [
+              {"scenes": [int(s) for s in (ch.get("scenes") or []) if str(s).isdigit() or isinstance(s, int)],
+               "mood": str(ch.get("mood") or "")[:300]}
+              for ch in (data_out.get("score_plan") or [])
+              if isinstance(ch, dict)][:9],
           "style": bible.get("style") or "", "kind": "film",
           "format": format_kind, "minutes": minutes}
     fresh = get_book_by_catalog(catalog)
