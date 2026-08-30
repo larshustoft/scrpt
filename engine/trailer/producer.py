@@ -3269,7 +3269,10 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     if intro:
         sfx.append((intro, 0.0, 0.85))
     for i, pn, start in panel_starts:
-        snd = (pn.get("sound") or "").strip()
+        # `sfx` overrides `sound` for the MIXED cue only — so sound design
+        # can be recut after the shoot without touching the take prompt
+        # (whose hash includes `sound`) and forcing a re-shoot
+        snd = (pn.get("sfx") or pn.get("sound") or "").strip()
         if not snd:
             continue
         cue = await _record_sfx(catalog, snd, min(4.0, float(pn.get("dur") or 4)),
