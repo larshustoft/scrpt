@@ -61,8 +61,10 @@ S5. LEARNER BECOMES TEACHER: the emotional high point is Princess using
     learned. Mastery is shown, never announced.
 S6. THE ARC: ordinary morning → the wobble (a small thing goes wrong or
     a wonder appears) → strategy introduced → the ladder (three tries or
-    three steps — kids count in threes) → Princess teaches it → home,
-    calmer than we left → bedtime.
+    three steps — kids count in threes; the FIRST try may fail — plan B
+    calmly) → Princess teaches it → home, calmer than we left → bedtime.
+    If someone caused the wobble, they help mend it and are thanked,
+    never shamed — a mistake is met with kindness and a job to do.
 S7. STAKES stay small and warm: no villains, no danger of harm — only
     mishaps, weather, distances, waiting and misunderstandings. The
     disruption is EMOTIONAL (worry, impatience, missing someone) and
@@ -105,4 +107,11 @@ S14. BEDTIME IS SACRED: the last story beat settles everything. No
   `show_outro` / `lullaby_endings` rotation once the variants exist).
 - Episode pairing (series craft): teach a strategy in one episode,
   generalize it in a sibling episode later in the season.
-- Reference analysis: research/daniel-tiger-structure.md.
+- YouTube unit = BOTH: single episodes AND stitched compilations
+  (~40–90 min, the watch-time format — Lars 2026-08-30, confirmed by
+  Rainbow Ruby/Daniel Tiger channels). In a compilation only the first
+  episode carries the show intro and only the last the end card;
+  episodes chain lullaby → next valley opening, seamlessly. Per-episode
+  rituals still repeat — rituals are retention; repeated intros are churn.
+- Reference analyses: research/daniel-tiger-structure.md,
+  research/rainbow-ruby-structure.md.
