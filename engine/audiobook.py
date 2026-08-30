@@ -48,10 +48,15 @@ def opening_text(catalog: str, max_chars: int = TARGET_CHARS) -> dict:
     ms = Manuscript.model_validate(book["data"].get("manuscript") or {})
     first = next((c for c in ms.chapters if c.blocks), None)
     if not first:
-        raise ValueError("The book has no written chapters yet")
-
-    paras = [b.text for b in first.blocks
-             if b.type == BlockType.PARAGRAPH and (b.text or "").strip()]
+        # a picture book's story lives in spreads, not chapters
+        _sp = ((book["data"].get("childrens") or {}).get("spreads")) or []
+        paras = [(s.get("text") or "").strip() for s in _sp
+                 if (s.get("text") or "").strip()]
+        if not paras:
+            raise ValueError("The book has no written chapters yet")
+    else:
+        paras = [b.text for b in first.blocks
+                 if b.type == BlockType.PARAGRAPH and (b.text or "").strip()]
     text = ""
     for p in paras:
         if text and len(text) + len(p) + 2 > max_chars:
@@ -63,6 +68,11 @@ def opening_text(catalog: str, max_chars: int = TARGET_CHARS) -> dict:
                   text.rfind("? ", 0, max_chars))
         text = text[:cut + 1] if cut > 200 else text[:max_chars]
 
+    if first is None:
+        # a picture book reads straight through — title, then the story
+        return {"chapter_title": "The story",
+                "text": f"{book['title']}.\n\n{text}",
+                "words": len(text.split())}
     intro = f"{book['title']}. Chapter one"
     if first.title:
         intro += f": {first.title}"
@@ -127,7 +137,15 @@ def chapter_text(catalog: str) -> dict:
     ms = Manuscript.model_validate(book["data"].get("manuscript") or {})
     first = next((c for c in ms.chapters if c.blocks), None)
     if not first:
-        raise ValueError("The book has no written chapters yet")
+        _sp = ((book["data"].get("childrens") or {}).get("spreads")) or []
+        paras = [(s.get("text") or "").strip() for s in _sp
+                 if (s.get("text") or "").strip()]
+        if not paras:
+            raise ValueError("The book has no written chapters yet")
+        # a picture book reads straight through — no chapter announcement
+        text = f"{book['title']}.\n\n" + "\n\n".join(paras)
+        return {"chapter_title": "The story", "text": text,
+                "words": len(text.split()), "chars": len(text)}
     paras = [b.text.strip() for b in first.blocks
              if b.type == BlockType.PARAGRAPH and (b.text or "").strip()]
     intro = f"{book['title']}. Chapter one"

@@ -70,6 +70,23 @@ def build_narration_script(book: dict, ms: Manuscript, voice_name: str) -> list[
         "title": "Opening credits",
         "text": f"{title}. Written by {author}.",
     }]
+    # A PICTURE BOOK has no chapters — its story lives in spreads
+    # (Lars, 2026-08-30: "it says no chapter is written yet"). The
+    # audiobook is one straight read-through: no chapter announcements,
+    # just the story, told once, gently.
+    _spreads = ((book["data"].get("childrens") or {}).get("spreads")) or []
+    _sp_text = "\n\n".join((s.get("text") or "").strip()
+                            for s in _spreads if (s.get("text") or "").strip())
+    if _sp_text and not any(ch.blocks for ch in ms.chapters):
+        segments.append({"index": 3, "title": "The story",
+                         "text": _clean_for_narration(_sp_text, pron),
+                         "first_chapter": True})
+        segments.append({"index": 4, "title": "Closing credits",
+                         "text": (f"This has been {title}, written by {author}. "
+                                  f"Narrated by {voice_name}. "
+                                  f"Thank you for listening. Sleep tight.")})
+        return segments
+
     written = 0
     for ch in ms.chapters:
         # an outlined-but-unwritten chapter has no text: narrating it would
