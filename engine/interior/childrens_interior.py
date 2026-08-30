@@ -595,13 +595,14 @@ def _build_interior(catalog: str, handle=None) -> dict:
             occ_p, occ_o = (occ_l, occ_r) if _plan_left else (occ_r, occ_l)
             if occ_p > occ_o + 0.02:
                 _plan_left = not _plan_left
-        album = bool(text_all) and min(occ_l, occ_r) > 0.10
-        if album:
-            # the art left no honest room on either page. A wash here can
-            # only bury someone (it kept dissolving the foal on the rain
-            # spread — Lars, 2026-08-30), so these spreads become ALBUM
-            # pages: the WHOLE artwork, uncropped, framed on one page with
-            # a soft edge; the words on a pure-paper page beside it.
+        # NEVER the framed-art page (Lars, 2026-08-30: "this kind of lazy
+        # solution is not acceptable — the previous look was better"). A
+        # spread whose art cannot host the field keeps the full-bleed look
+        # and goes on the REDRAW QUEUE: its illustration is re-created
+        # with a real built-in white field (illustrate(only=n,
+        # hard_air=True)), then the interior rebuilds on honest air.
+        album = False
+        if bool(text_all) and min(occ_l, occ_r) > 0.10:
             crowded.append(n)
         wash_left[str(n)] = _plan_left
         wash_aw[str(n)] = aw
