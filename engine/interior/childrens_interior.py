@@ -67,6 +67,40 @@ COL_NAMES = [("left", 0), ("right", 1), ("centre", 2)]
 WIDTH_NAMES = [("wide", 0), ("column", 1), ("narrow", 2)]
 
 
+def _dash_dialogue(text: str) -> list:
+    """Traditional dialogue setting (Lars, 2026-08-30): every spoken line
+    begins its own line with a plain dash and no quote marks (Lars: the em dash is too long) — the classic
+    picture-book convention, and easier for small readers to follow.
+    Returns the text as paragraphs: narration blocks and dash lines."""
+    import re
+    parts = (text or "").split('"')
+    if len(parts) < 3:
+        return [text.strip()] if (text or "").strip() else []
+    paras, narr, i = [], parts[0].strip(), 1
+    while i < len(parts):
+        quoted = parts[i].strip()
+        after = parts[i + 1] if i + 1 < len(parts) else ""
+        m = re.match(r"\s*([^.!?]*[.!?])(.*)", after, re.S)
+        attach, rest = "", after.strip()
+        if m and quoted and len(m.group(1).strip()) <= 70:
+            cand = m.group(1).strip()
+            head = " ".join(cand.split()[:5]).lower()
+            _verbs = ("said", "cried", "asked", "called", "whispered",
+                      "answered", "shouted", "sang", "replied", "chirped",
+                      "puffed", "wobbl", "added", "sniff", "laughed")
+            if cand[:1].islower() or any(v in head for v in _verbs):
+                attach, rest = cand, m.group(2).strip()
+        if narr:
+            paras.append(narr)
+        if quoted:
+            paras.append(("- " + quoted + (" " + attach if attach else "")).strip())
+        narr = rest
+        i += 2
+    if narr:
+        paras.append(narr)
+    return [x for x in paras if x]
+
+
 def _subject_mask(img):
     """Characters at 1/8 scale: pixels unlike the border palette, largest
     connected clump, grown through same-colored flesh, dilated for margin.
@@ -103,6 +137,15 @@ def _subject_mask(img):
         sizes = _np.bincount(lab.ravel())[1:]
         big = int(sizes.argmax()) + 1
         char_mask = lab == big
+        # EVERY character counts (Lars, 2026-08-30): keeping only the
+        # largest blob protected Glitter and let the field bury Princess.
+        # Any blob at least a fifth of the largest is somebody.
+        # a fifth of the largest blob missed Pip — a bird is a character
+        # too. Anyone bigger than a few cells counts (Lars, 2026-08-30).
+        floor = max(9, int(sizes.max() * 0.06))
+        for bi, sz in enumerate(sizes, start=1):
+            if bi != big and sz >= floor:
+                char_mask |= (lab == bi)
         blob_px = arr[char_mask]
         centres = blob_px[rs.choice(len(blob_px), min(24, len(blob_px)), replace=False)]
         near = _np.sqrt(_np.min(((arr[:, :, None, :] - centres[None, None, :, :]) ** 2)
@@ -307,6 +350,12 @@ def _build_interior(catalog: str, handle=None) -> dict:
             c.drawString(bx, y, ln)
             y -= lead
 
+    def wrap_paras(text: str, bw: float, size: float):
+        lines = []
+        for para in _dash_dialogue(text):
+            lines.extend(wrap_lines(para, bw, size))
+        return lines
+
     def split_to_fit(text: str, box_pt):
         """The words that FIT the box — shrinking a step at a time first —
         and the remainder that must continue on the facing page. Text must
@@ -317,12 +366,12 @@ def _build_interior(catalog: str, handle=None) -> dict:
         bx, by, bw, bh = box_pt
         size = max(13.0, min(26.0, (sp["trim_w"] * PT) / 26))
         while size >= 13.0:
-            lines = wrap_lines(text, bw, size)
+            lines = wrap_paras(text, bw, size)
             if len(lines) * size * 1.62 <= bh + 0.01:
                 return (lines, size), ""
             size -= 1.0
         size = 13.0
-        lines = wrap_lines(text, bw, size)
+        lines = wrap_paras(text, bw, size)
         n_fit = max(1, int(bh / (size * 1.62)))
         shown = lines[:n_fit]
         used = sum(len(ln.split()) for ln in shown)
@@ -520,13 +569,13 @@ def _build_interior(catalog: str, handle=None) -> dict:
         fit_frac, fit_lines = 0.50, None
         for frac in (0.32, 0.36, 0.40, 0.44, 0.48, 0.50):
             col_pt = (px_w - 2 * text_safe - 2 * pad_px) * frac * PT / dpi
-            lines_try = wrap_lines(text_all, col_pt, size) if text_all else []
+            lines_try = wrap_paras(text_all, col_pt, size) if text_all else []
             if len(lines_try) * size * 1.62 <= usable_h_pt * 0.80:
                 fit_frac, fit_lines = frac, lines_try
                 break
         if fit_lines is None and text_all:
             col_pt = (px_w - 2 * text_safe - 2 * pad_px) * 0.50 * PT / dpi
-            fit_lines = wrap_lines(text_all, col_pt, size)
+            fit_lines = wrap_paras(text_all, col_pt, size)
 
         col_px = int((px_w - 2 * text_safe - 2 * pad_px) * fit_frac)
         aw = min(int(px_w * 0.62), text_safe + col_px + 2 * pad_px)
@@ -535,7 +584,8 @@ def _build_interior(catalog: str, handle=None) -> dict:
         # that matters — characters, not brightness)
         _, _char = _subject_mask(im)
         _cw = _char.shape[1]
-        _aw8 = max(1, int(aw / (im.width / _cw)))
+        _reach = aw + int(0.6 * max(int(0.5 * dpi), int(0.42 * aw)))
+        _aw8 = max(1, int(_reach / (im.width / _cw)))
         occ_l = float(_char[:, :_aw8].mean())
         occ_r = float(_char[:, _cw - _aw8:].mean())
         if lay.get("page"):
@@ -612,7 +662,44 @@ def _build_interior(catalog: str, handle=None) -> dict:
                                box_pt, lite2, scrim2)
             c.showPage(); pages_written += 1
 
-    # ── BACK MATTER: at least one white page, then up to the binder's count
+    # ── BACK MATTER: the binder's padding, EARNED (Lars, 2026-08-30:
+    # "why are there so many white pages?"). If the book belongs to a
+    # universe, the spare leaves become a lullaby sing-along page and a
+    # series page before the final blanks.
+    def _universe_profile():
+        try:
+            import json as _json
+            from ..database import get_setting as _gs
+            _v = _gs("universes", "")
+            reg = _v if isinstance(_v, dict) else _json.loads(_v or "{}")
+            root = Path(__file__).resolve().parents[2]
+            for u in reg.values():
+                prof = _json.loads((root / u["profile"]).read_text())
+                if catalog in (prof.get("members") or []):
+                    return prof
+        except Exception:
+            pass
+        return {}
+
+    _prof = _universe_profile()
+    _spare = (8 - (pages_written % 8)) % 8
+    if _prof and _spare >= 3:
+        _lyr = _prof.get("lullaby_lyrics_short") or []
+        if _lyr:
+            centred(["The Unicorn Lullaby", ""] + list(_lyr)
+                    + ["", "Sung at the end of every episode."],
+                    [(serif, 22), (serif, 14)] + [(serif, 15)] * len(_lyr)
+                    + [(serif, 14), (serif, 12)], start_frac=0.68)
+            pages_written += 1
+        _ttl = _prof.get("season_titles") or []
+        if _ttl:
+            centred(["More adventures in Rainbow Forest", ""] + list(_ttl)
+                    + ["", "...and many more.",
+                       str(_prof.get("domain") or "")],
+                    [(serif, 20), (serif, 14)] + [(serif, 14)] * len(_ttl)
+                    + [(serif, 12), (serif, 13), (serif, 13)],
+                    start_frac=0.72)
+            pages_written += 1
     white_page(); pages_written += 1
     while pages_written % 8 != 0:
         white_page(); pages_written += 1

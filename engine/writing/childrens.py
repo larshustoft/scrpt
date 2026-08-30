@@ -327,11 +327,13 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
         left = (n % 2 == 1)
         frac_w = 0.47 if words >= 45 else 0.34
         x0, x1 = (int(W*0.03), int(W*frac_w)) if left else (int(W*(1-frac_w)), int(W*0.97))
-        region = im.crop((x0, int(H*0.04), x1, int(H*0.46))).resize((60, 40))
+        region = im.crop((x0, int(H*0.04), x1, int(H*0.60))).resize((60, 40))
         px = list(region.getdata())
         mean = sum(px)/len(px)
         var = sum((v-mean)**2 for v in px)/len(px)
-        return mean > 218 and var ** 0.5 < 30
+        # tightened 2026-08-30 (Lars: never a white layer OVER art again —
+        # the air must be real, so the interior's field barely has to exist)
+        return mean > 222 and var ** 0.5 < 26
 
     async def draw(prompt: str, reference: Optional[bytes]) -> bytes:
         async with httpx.AsyncClient(timeout=300) as c:
@@ -367,7 +369,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
     if only is not None and only != 1 and not ref_path.exists():
         targets = [spreads[0]] + targets
 
-    def prompt_for(s):
+    def prompt_for(s, force_air: bool = False):
         n = s["n"]
         canon = canon_block(bible, f"{s.get('picture','')} {s.get('text','')}")
         # THE AIR RULE (Lars, from the Nordqvist books): the illustration is a
@@ -388,7 +390,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                f"story details (a butterfly, a flower sprig, a small side "
                f"character) may sit near the margins so no corner feels "
                f"empty. In the spirit of classic Scandinavian picture books.")
-        if hard_air:
+        if hard_air or force_air:
             air += (f" CRITICAL, NON-NEGOTIABLE: the {side} half of the image "
                     f"is completely EMPTY pale watercolor paper — no "
                     f"characters, no animals, no objects, no flowers there at "
@@ -428,6 +430,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
         for _retry in range(2):
             if air_ok(png, 1, w1):
                 break
+            pr, ref = prompt_for(s, force_air=True)
             png = await draw(pr, ref)
         (art_dir / "spread-01.png").write_bytes(png)
         done.append(1)
@@ -444,6 +447,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                     for _retry in range(2):
                         if air_ok(png, s["n"], len((s.get("text") or "").split())):
                             break
+                        pr, ref = prompt_for(s, force_air=True)
                         png = await draw(pr, ref)
                 except Exception:
                     return None          # a refused spread must not kill the book

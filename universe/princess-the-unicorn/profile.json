@@ -109,5 +109,21 @@
       "theme/lullaby-harp-4.mp3"
     ]
   },
-  "episode_format": "episode-format.md"
+  "episode_format": "episode-format.md",
+  "lullaby_lyrics_short": [
+    "Sleep now... sleep now...",
+    "the forest holds you near.",
+    "Sleep now... sleep now...",
+    "your dreams are safe in here.",
+    "Goodnight, goodnight, little unicorn...",
+    "sleep tight."
+  ],
+  "season_titles": [
+    "Princess and the Hidden Spring",
+    "Princess and the Thunder Sky",
+    "Princess and the Broken Wing",
+    "Princess and the Waiting Seed",
+    "Princess and the Tangled Truth",
+    "Princess and the Sharing Tree"
+  ]
 }
