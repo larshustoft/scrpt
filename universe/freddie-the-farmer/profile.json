@@ -1,0 +1,83 @@
+{
+  "name": "Freddie the Farmer",
+  "tagline": "Adventure first. Learning through discovery.",
+  "world": "Sunnybrook Farm \u2014 a warm, slightly magical place where every ordinary farm job can become an adventure.",
+  "guiding_message": "We can understand the world when we stop, look, listen and think.",
+  "learning_pillars": [
+    "Nature",
+    "Feelings",
+    "Letters",
+    "Numbers",
+    "Discovery"
+  ],
+  "members": [
+    "SC-041"
+  ],
+  "domain": "freddiethefarmer.com",
+  "episode_length": "8-11 min (set in the universe bible)",
+  "creatives": {
+    "book1_cover": "book1-cover.png",
+    "universe_bible": "universe-bible.pdf",
+    "plates_dir": "plates"
+  },
+  "cast": {
+    "Freddie": {
+      "plate": "plates/freddie.png",
+      "role": "Farmer, explorer and central character",
+      "line": "Let's stop, look, listen and think."
+    },
+    "Tilly the Tractor": {
+      "plate": "plates/tilly.png",
+      "role": "Freddie's best friend \u2014 persistence and patience",
+      "line": "Start me up, Freddie!"
+    },
+    "Pip the Sheepdog": {
+      "plate": "plates/pip.png",
+      "role": "Courage and self-control",
+      "line": "I'll find it! Which way did it go?"
+    },
+    "Daisy the Cow": {
+      "plate": "plates/daisy.png",
+      "role": "Emotional heart and musical friend",
+      "line": "(sings only a few notes, beautifully)"
+    },
+    "Cluckles the Hen": {
+      "plate": "plates/cluckles.png",
+      "role": "Numbers, sorting and planning",
+      "line": "According to my calculations..."
+    },
+    "Milo the Mole": {
+      "plate": "plates/milo.png",
+      "role": "Inventor \u2014 science and experimentation",
+      "line": "It almost worked, which means we learned something!"
+    },
+    "Rosie the Rabbit": {
+      "plate": "plates/rosie.png",
+      "role": "Nature explorer",
+      "line": "But why does it do that?"
+    },
+    "Ollie the Owl": {
+      "plate": "plates/ollie.png",
+      "role": "Letters, phonics and storytelling",
+      "line": "Listen to the sound. What letter have we found?"
+    },
+    "Old Oak": {
+      "plate": "plates/oldoak.png",
+      "role": "Wise guardian \u2014 feelings and seasons",
+      "line": "Feelings are visitors. Let's listen to this one."
+    }
+  },
+  "locations": [
+    "The Big Red Barn",
+    "The Story Barn",
+    "The Market Garden",
+    "Wildflower Meadow",
+    "Pebblebrook River",
+    "Milo's Workshop",
+    "The Apple Orchard",
+    "Windmill Hill",
+    "Old Oak",
+    "Sunnybrook Village"
+  ],
+  "note": "Seeded 2026-08-30 from Lars's 16-page universe bible + 9 character plates + book 1 cover (Freddie the Farmer and the Missing Buzz)."
+}
