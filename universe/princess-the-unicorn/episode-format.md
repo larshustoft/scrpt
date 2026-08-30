@@ -114,7 +114,7 @@ V3. She adds FEELING to the picture, never description of what we can
 
 ## Production notes (for the pipeline, not the prompts)
 
-- Target length: 12 minutes (board at minutes=12; ~10 scenes, ~40 shots).
+- Target length: 12 minutes (board at minutes=12). Boards tend to come back short (episode one planned ~6.5 min of picture → ~10 min cut; accepted by Lars 2026-08-30, episode one only). FROM EPISODE TWO: if a board's estimated seconds land under ~80% of target, extend the repetition ladder with one more situation AND the wonder interlude before accepting the board.
 - Storyteller voice: profile `voice_cast.Storyteller` (Sarah). Character
   voices: profile `voice_cast`; book-level overrides win.
 - Strategy songs: sung by the cast's voices; each episode's line + recap
