@@ -494,168 +494,104 @@ def _build_interior(catalog: str, handle=None) -> dict:
         # line, nothing shown twice.
         spread_w = px_w * 2
         im = _fit_cover(im, spread_w, px_h)
-        # GUARANTEED AIR (Lars, 2026-08-29): generation obeyed the reserved
-        # text region only ~40% of the time, even with retries. So the paper
-        # is composited deterministically — a feathered white wash over the
-        # planned side, the art dissolving into it like a true vignette. The
-        # words always get real paper; the art keeps its soft edge.
+        # TEXT ONLY ON WHITE FIELDS (Lars, 2026-08-30). The old wash
+        # measured "clean air" by column brightness, so bright mist read as
+        # paper: the wash landed on characters, shrank to a sliver, and the
+        # words fell back onto art. The contract is now word-first and
+        # absolute: measure the WORDS, wash a true-paper field wide enough
+        # for them on the page whose outer column holds the fewest
+        # character pixels, and set the words inside the field — never
+        # anywhere else.
         import numpy as _np2
-        _arr = _np2.asarray(im).astype(_np2.float32)
-        _W2, _H2 = im.size
-        _words = len((s_.get("text") or "").split())
-        _fw = 0.47 if _words >= 45 else 0.34
-        # THE WASH MUST NEVER ERASE A CHARACTER (Lars, 2026-08-29): measure
-        # who stands in each page's air region; the wash contracts to stop
-        # short of them, and flips to the other page when that side offers
-        # more clean room. The text follows the wash.
-        _halfL = im.crop((0, 0, _W2 // 2, _H2))
-        _halfR = im.crop((_W2 // 2, 0, _W2, _H2))
-        def _clean_air(is_left):
-            # PAPER is measured directly — bright, flat columns running in
-            # from the page's outer edge. (The character mask color-grows
-            # through a flower field and cried wolf on real paper.)
-            half = _halfL if is_left else _halfR
-            g = _np2.asarray(half.convert("L").resize(
-                (max(1, half.width // 8), max(1, half.height // 8))),
-                dtype=_np2.float32)
-            rows = g[: max(1, int(g.shape[0] * 0.60)), :]
-            ok = (rows.mean(axis=0) > 224) & (rows.std(axis=0) < 32)
-            idx = range(len(ok)) if is_left else range(len(ok) - 1, -1, -1)
-            w = 0
-            for j in idx:
-                if ok[j]:
-                    w += 1
-                else:
-                    break
-            return w * 8
-        _plan_left = (n % 2 == 1)
-        _margin = int(0.035 * _W2)
-        _clean_p = _clean_air(_plan_left) - _margin
-        _aw_want = int(_W2 * _fw)
-        _aw = min(_aw_want, max(0, _clean_p))
-        if _aw < int(0.18 * _W2):
-            _clean_o = _clean_air(not _plan_left) - _margin
-            if _clean_o > _clean_p:
-                _plan_left = not _plan_left
-                _aw = min(_aw_want, max(0, _clean_o))
-        if _aw < int(0.24 * _W2):
-            # both pages crowded: the art left no honest room — flag the
-            # spread for a hard-air redraw instead of contorting the layout
-            crowded.append(n)
-        _aw = max(_aw, int(0.16 * _W2))      # some paper must always exist
-        wash_left[str(n)] = _plan_left
-        wash_aw[str(n)] = _aw
-        _x = _np2.arange(_W2, dtype=_np2.float32)
-        if _plan_left:
-            _gx = _np2.clip((_aw - _x) / (_aw * 0.45), 0, 1)
-        else:
-            _gx = _np2.clip((_x - (_W2 - _aw)) / (_aw * 0.45), 0, 1)
-        _y = _np2.arange(_H2, dtype=_np2.float32)
-        _gy = _np2.clip((_H2 * 0.88 - _y) / (_H2 * 0.26), 0, 1)
-        _alpha = (_np2.minimum(_gx[None, :], _gy[:, None]) * 0.96)[..., None]
-        _paper = _np2.array([252, 251, 249], dtype=_np2.float32)
-        _arr = _arr * (1 - _alpha) + _paper * _alpha
-        im = Image.fromarray(_arr.astype("uint8"))
-        left_im = im.crop((0, 0, px_w, px_h))
-        right_im = im.crop((px_w, 0, spread_w, px_h))
-
+        text_all = (s_.get("text") or "").strip()
         safe_px = int((sp["bleed"] + sp["safe"]) * dpi)
         # text never closer than 2cm to the page edge (Lars, 2026-08-29)
         text_safe = max(safe_px, int(0.787 * dpi))
         size = max(13.0, min(26.0, (sp["trim_w"] * PT) / 26))
-        est_lines = max(1, int(len(s_.get("text", "").split()) / 7) + 1)
-        # the words go on whichever page has the quieter picture
         lay = (rec.get("layout") or {}).get(str(n)) or {}
-        # this book's corrections sit on top of what the house has learned
-        # across every book before it — otherwise book two starts from zero
-        prefs = dict(house_prefs)
-        for k, v in (rec.get("layout_prefs") or {}).items():
-            prefs[k] = float(prefs.get(k, 0.0)) + float(v)
-        lpx = int(size * 1.62 * dpi / PT)
-        zone_l, light_l, scrim_l, key_l, score_l = _quiet_zone(
-            left_im, text_safe, est_lines, lpx, prefs,
-            lay.get("key") if lay.get("page") == "left" else "")
-        zone_r, light_r, scrim_r, key_r, score_r = _quiet_zone(
-            right_im, text_safe, est_lines, lpx, prefs,
-            lay.get("key") if lay.get("page") == "right" else "")
-        from PIL import ImageFilter, ImageStat
-        busy = lambda img, z: ImageStat.Stat(
-            img.convert("L").filter(ImageFilter.FIND_EDGES).crop(z)).mean[0]
-        # the WASHED STRIP is guaranteed paper — offer it as the primary
-        # zone on its page, however slim; a tall narrow column beats any
-        # placement on art (Lars: the white field must never sit on a
-        # character, and the text follows the wash)
-        _wl = wash_left.get(str(n))
-        _wa = wash_aw.get(str(n), 0)
-        _solid = int(_wa * 0.55)
-        if _wl is True:
-            bx1 = _solid - int(0.10 * dpi)
-            if bx1 - text_safe >= int(1.1 * dpi):
-                zone_l = (text_safe, text_safe, bx1, int(px_h * 0.86))
-                light_l, scrim_l, key_l, score_l = False, False, "wash", -1000.0
-        elif _wl is False:
-            bx0 = max(text_safe, px_w - _solid + int(0.10 * dpi))
-            if px_w - text_safe - bx0 >= int(1.1 * dpi):
-                zone_r = (bx0, text_safe, px_w - text_safe, int(px_h * 0.86))
-                light_r, scrim_r, key_r, score_r = False, False, "wash", -1000.0
-        # the illustration RESERVED a side for these words (odd spreads
-        # left, even right) — honour the plan unless that side's best zone
-        # is clearly worse (old full-bleed art, or the model ignored us)
-        planned_left = wash_left.get(str(n), n % 2 == 1)
+        chosen[str(n)] = {"page": "", "key": "wash", "manual": bool(lay.get("page"))}
+
+        text_safe_pt = text_safe * PT / dpi
+        usable_h_pt = page_h - 2 * text_safe_pt
+        pad_px = int(0.32 * dpi)              # air between field edge and ink
+
+        # the narrowest column the words genuinely fit at full size wins —
+        # longer lines where space allows (Lars), never a cramped sliver
+        fit_frac, fit_lines = 0.50, None
+        for frac in (0.32, 0.36, 0.40, 0.44, 0.48, 0.50):
+            col_pt = (px_w - 2 * text_safe - 2 * pad_px) * frac * PT / dpi
+            lines_try = wrap_lines(text_all, col_pt, size) if text_all else []
+            if len(lines_try) * size * 1.62 <= usable_h_pt * 0.80:
+                fit_frac, fit_lines = frac, lines_try
+                break
+        if fit_lines is None and text_all:
+            col_pt = (px_w - 2 * text_safe - 2 * pad_px) * 0.50 * PT / dpi
+            fit_lines = wrap_lines(text_all, col_pt, size)
+
+        col_px = int((px_w - 2 * text_safe - 2 * pad_px) * fit_frac)
+        aw = min(int(px_w * 0.62), text_safe + col_px + 2 * pad_px)
+
+        # who is standing in each candidate field? (the one measurement
+        # that matters — characters, not brightness)
+        _, _char = _subject_mask(im)
+        _cw = _char.shape[1]
+        _aw8 = max(1, int(aw / (im.width / _cw)))
+        occ_l = float(_char[:, :_aw8].mean())
+        occ_r = float(_char[:, _cw - _aw8:].mean())
         if lay.get("page"):
-            on_left = lay.get("page") == "left"
-        elif (score_l - score_r <= 35) if planned_left else (score_r - score_l > 35):
-            on_left = True
+            _plan_left = lay.get("page") == "left"
         else:
-            on_left = False
-        chosen[str(n)] = {"page": "left" if on_left else "right",
-                          "key": key_l if on_left else key_r,
-                          "manual": bool(lay.get("key"))}
+            _plan_left = (n % 2 == 1)
+            occ_p, occ_o = (occ_l, occ_r) if _plan_left else (occ_r, occ_l)
+            if occ_p > occ_o + 0.02:
+                _plan_left = not _plan_left
+        if min(occ_l, occ_r) > 0.10 and text_all:
+            # the art left no honest room on either page — the field still
+            # wins (text only on white), but the spread is flagged for a
+            # hard-air redraw
+            crowded.append(n)
+        wash_left[str(n)] = _plan_left
+        wash_aw[str(n)] = aw
+        chosen[str(n)]["page"] = "left" if _plan_left else "right"
 
-        def to_box(zone):
-            x0, y0, x1, y1 = zone
-            return (x0 * PT / dpi, (px_h - y1) * PT / dpi,
-                    (x1 - x0) * PT / dpi, (y1 - y0) * PT / dpi)
-
-        # the words go on the chosen page IF they fit; a spread with more to
-        # say flows across both pages in reading order instead of overflowing
-        text_all = s_.get("text", "")
-        assign = {}
-        fitted, rest = split_to_fit(text_all, to_box(zone_l if on_left else zone_r))
-        if fitted and not rest:
-            key0 = "left" if on_left else "right"
-            assign[key0] = (fitted, to_box(zone_l if on_left else zone_r),
-                            (light_l if on_left else light_r),
-                            (scrim_l if on_left else scrim_r))
-        elif fitted:
-            # balance the spread: break near the midpoint at a sentence end,
-            # so neither page carries an orphan line of two or three words
-            import re as _re
-            sents = _re.split(r'(?<=[.!?\"]) +', text_all)
-            if len(sents) >= 2:
-                total_w = len(text_all.split())
-                best, best_diff = 1, float("inf")
-                for i in range(1, len(sents)):
-                    diff = abs(len(" ".join(sents[:i]).split()) - total_w / 2)
-                    if diff < best_diff:
-                        best_diff, best = diff, i
-                left_txt = " ".join(sents[:best])
-                right_txt = " ".join(sents[best:])
+        if text_all:
+            # the field: solid true paper under every line, a wide cosine
+            # feather dissolving into the art — a paper edge, never a panel
+            _W2, _H2 = im.size
+            _arr = _np2.asarray(im).astype(_np2.float32)
+            feather = max(int(0.5 * dpi), int(0.42 * aw))
+            _x = _np2.arange(_W2, dtype=_np2.float32)
+            if _plan_left:
+                _t = _np2.clip((_x - aw) / feather, 0, 1)
             else:
-                left_txt, right_txt = text_all, ""
-            fit_l, rest_l = split_to_fit(left_txt, to_box(zone_l))
-            assign["left"] = (fit_l, to_box(zone_l), light_l, scrim_l)
-            rest_l = (rest_l + " " + right_txt).strip()
-            if rest_l:
-                fit_r, rest_r = split_to_fit(rest_l, to_box(zone_r))
-                if rest_r:
-                    # final guarantee: the right page opens its full safe
-                    # column behind a scrim — everything fits at floor size
-                    full = (text_safe, text_safe, px_w - text_safe, px_h - text_safe)
-                    fit_r, _ = split_to_fit(rest_l, to_box(full))
-                    assign["right"] = (fit_r, to_box(full), light_r, True)
-                else:
-                    assign["right"] = (fit_r, to_box(zone_r), light_r, scrim_r)
+                _t = _np2.clip(((_W2 - aw) - _x) / feather, 0, 1)
+            _alpha = (0.5 + 0.5 * _np2.cos(_np2.pi * (1 - _t)))[None, :, None]
+            _alpha = 1.0 - _alpha            # 1 inside the field, 0 in the art
+            _paper = _np2.array([253, 252, 250], dtype=_np2.float32)
+            _arr = _arr * (1 - _alpha) + _paper * _alpha
+            im = Image.fromarray(_arr.astype("uint8"))
+
+        left_im = im.crop((0, 0, px_w, px_h))
+        right_im = im.crop((px_w, 0, spread_w, px_h))
+
+        # the words, set inside the field core — top third, breathing room
+        assign = {}
+        if text_all:
+            x0 = text_safe + pad_px
+            box_px = (x0, text_safe, x0 + col_px, px_h - text_safe)
+            bx0, by0, bx1, by1 = box_px
+            box_pt0 = (bx0 * PT / dpi, (px_h - by1) * PT / dpi,
+                       (bx1 - bx0) * PT / dpi, (by1 - by0) * PT / dpi)
+            fitted, rest = split_to_fit(text_all, box_pt0)
+            if fitted:
+                f_lines, f_size = fitted
+                block_h = len(f_lines) * f_size * 1.62
+                y_top = max(text_safe_pt,
+                            text_safe_pt + (usable_h_pt - block_h) * 0.34)
+                box_pt = (box_pt0[0], page_h - y_top - block_h,
+                          box_pt0[2], block_h + 2)
+                assign["left" if _plan_left else "right"] = (
+                    (f_lines, f_size), box_pt, False, False)
 
         for im_half, key in ((left_im, "left"), (right_im, "right")):
             buf = io.BytesIO()

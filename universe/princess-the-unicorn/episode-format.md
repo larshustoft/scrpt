@@ -93,6 +93,25 @@ S14. BEDTIME IS SACRED: the last story beat settles everything. No
     cliffhangers, no open questions — the day is complete, Princess is
     safe, the forest holds her near.
 
+THE STORYTELLER'S VOICE (how every narration line is written — full
+craft book: storyteller-voice.md):
+V1. She has FIVE slots only: the OPENING ("Every morning in Rainbow
+    Forest began the same sweet way." + one sensory line + who we find,
+    three sentences max), the TEASE ("But today would be different.
+    Today, Princess would [concrete adventure] — and learn [lesson in a
+    four-year-old's words]."), at most ONE two-sentence BRIDGE at the
+    wobble that names the feeling plainly, the HANDOVER (one direct
+    question to the child near the end, then a beat of silence), and
+    the GOODNIGHT ("And as the stars came out over Rainbow Forest…"),
+    whose last word lands on safe/warm/home/near.
+V2. Concrete words only (sun, bell, fog, blanket); "brave" yes,
+    "courage" no. Short sentences, one breath each; fourteen words is
+    long. Repetition is warmth — she reuses the episode's own words.
+V3. She adds FEELING to the picture, never description of what we can
+    already see. She loves the characters out loud ("our little
+    unicorn"). Never scary, never ironic, never during dialogue, never
+    more than six appearances in an episode.
+
 ## Production notes (for the pipeline, not the prompts)
 
 - Target length: 12 minutes (board at minutes=12; ~10 scenes, ~40 shots).
@@ -113,5 +132,6 @@ S14. BEDTIME IS SACRED: the last story beat settles everything. No
   episode carries the show intro and only the last the end card;
   episodes chain lullaby → next valley opening, seamlessly. Per-episode
   rituals still repeat — rituals are retention; repeated intros are churn.
+- Storyteller craft book: storyteller-voice.md.
 - Reference analyses: research/daniel-tiger-structure.md,
   research/rainbow-ruby-structure.md.
