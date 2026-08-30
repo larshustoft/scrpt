@@ -588,6 +588,23 @@ def _build_interior(catalog: str, handle=None) -> dict:
         _aw8 = max(1, int(_reach / (im.width / _cw)))
         occ_l = float(_char[:, :_aw8].mean())
         occ_r = float(_char[:, _cw - _aw8:].mean())
+
+        # THE CLEAN RUN: how far in from each outer edge before a real
+        # character body stands (a column is blocked only at body-density
+        # — scattered flowers don't count). The field and its feather must
+        # end before that (Lars, 2026-08-30: the feather kept clipping
+        # whoever stood just past the field).
+        _col_d = _char.mean(axis=0)
+        _sc8 = im.width / _cw
+        def _clean_run(from_left):
+            idx = range(_cw) if from_left else range(_cw - 1, -1, -1)
+            run = 0
+            for j in idx:
+                if _col_d[j] > 0.25:
+                    break
+                run += 1
+            return int(run * _sc8)
+        clean_l, clean_r = _clean_run(True), _clean_run(False)
         if lay.get("page"):
             _plan_left = lay.get("page") == "left"
         else:
@@ -608,6 +625,46 @@ def _build_interior(catalog: str, handle=None) -> dict:
         wash_aw[str(n)] = aw
         chosen[str(n)]["page"] = "left" if _plan_left else "right"
         chosen[str(n)]["key"] = "album" if album else "wash"
+
+        # the field never reaches past its side's clean run: shrink the
+        # column (floor: a narrow-but-honest 0.24 page) before ever letting
+        # the feather touch someone
+        _feather_w = max(int(0.5 * dpi), int(0.42 * aw))
+        _clean = clean_l if _plan_left else clean_r
+        _max_aw = max(0, _clean - int(0.55 * _feather_w))
+        # the words outrank everything: the column may never shrink below
+        # what the FULL text needs at floor size — dropped sentences are a
+        # worse sin than a feather touching someone (Lars's order of law)
+        _fit_col = None
+        if text_all:
+            for _fr in (0.24, 0.28, 0.32, 0.38, 0.44, 0.50):
+                _cpx = int((px_w - 2 * text_safe - 2 * pad_px) * _fr)
+                _lines_f = wrap_paras(text_all, _cpx * PT / dpi, 13.0)
+                if len(_lines_f) * 13.0 * 1.62 <= usable_h_pt:
+                    _fit_col = _cpx
+                    break
+            if _fit_col is None:
+                _fit_col = int((px_w - 2 * text_safe - 2 * pad_px) * 0.50)
+        if aw > _max_aw:
+            _min_col = max(_fit_col or 0,
+                           int((px_w - 2 * text_safe - 2 * pad_px) * 0.24))
+            aw_floor = text_safe + _min_col + 2 * pad_px
+            if _max_aw >= aw_floor:
+                aw = _max_aw
+                col_px = aw - text_safe - 2 * pad_px
+            else:
+                _other = clean_r if _plan_left else clean_l
+                if _other - int(0.55 * _feather_w) >= aw_floor and not lay.get("page"):
+                    _plan_left = not _plan_left
+                    wash_left[str(n)] = _plan_left
+                    chosen[str(n)]["page"] = "left" if _plan_left else "right"
+                    aw = min(aw, _other - int(0.55 * _feather_w))
+                    col_px = aw - text_safe - 2 * pad_px
+                else:
+                    # neither side is clean enough: the words win — keep a
+                    # column the full text fits, feather where it must
+                    aw = max(aw_floor, min(aw, _max_aw if _max_aw >= aw_floor else aw))
+                    col_px = aw - text_safe - 2 * pad_px
 
         if album:
             from PIL import ImageDraw as _ID, ImageFilter as _IF

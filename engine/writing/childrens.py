@@ -331,8 +331,11 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
         px = list(region.getdata())
         mean = sum(px)/len(px)
         var = sum((v-mean)**2 for v in px)/len(px)
-        # tightened 2026-08-30 (Lars: never a white layer OVER art again —
-        # the air must be real, so the interior's field barely has to exist)
+        # (a strip-mask fold gate was tried 2026-08-30 and retired the
+        # same hour: the subject mask reads flowers as people, so every
+        # spread failed and the gate would re-roll forever. The fold is
+        # handled by the composition prompt and the interior's clean-run
+        # measurement instead.)
         return mean > 222 and var ** 0.5 < 26
 
     async def draw(prompt: str, reference: Optional[bytes]) -> bytes:
@@ -390,6 +393,13 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                f"story details (a butterfly, a flower sprig, a small side "
                f"character) may sit near the margins so no corner feels "
                f"empty. In the spirit of classic Scandinavian picture books.")
+        # NOBODY STANDS ON THE FOLD (Lars, 2026-08-30): the spread is cut
+        # down the middle into two pages — a character on the centre line
+        # is sliced by the binding. Keep every character clearly inside
+        # one half, never straddling the middle.
+        air += (" IMPORTANT: the image will be folded down its exact "
+                "vertical centre — never place a character on or near the "
+                "centre line; every character stays well inside one half.")
         if hard_air or force_air:
             air += (f" CRITICAL, NON-NEGOTIABLE: the {side} half of the image "
                     f"is completely EMPTY pale watercolor paper — no "
