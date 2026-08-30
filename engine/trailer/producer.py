@@ -2743,7 +2743,9 @@ async def produce_workorder(catalog: str, quality: str = "draft", format_name: s
         shutil.copy2(mixed, out)
     else:
         shutil.copy2(picture, out)
-    poster = OUTPUT_DIR / catalog / f"trailer-poster{fmt['suffix']}.jpg"
+    poster = OUTPUT_DIR / catalog / (
+        "film-poster.jpg" if version_label == "film"
+        else f"trailer-poster{fmt['suffix']}.jpg")
     _run(["-y", "-i", str(out), "-ss", "1.0", "-frames:v", "1", "-q:v", "3", str(poster)], "poster")
     credits_after = await runway.credit_balance()
     record = {"mode": "workorder", "model": "seedance2_5", "format": format_name,
@@ -2848,7 +2850,8 @@ async def parse_storyboard_image(image_bytes: bytes, book: dict) -> dict:
 MAX_TRAILER_SECONDS = 60      # house rule: no trailer runs longer than a minute
 
 
-def _cap_to_house_length(panels: list, handle=None) -> list:
+def _cap_to_house_length(panels: list, handle=None,
+                         budget_s: int = 0) -> list:
     """Keep a board inside the house's one-minute limit.
 
     A board is written before anyone knows how long the narration will run, so
@@ -2864,7 +2867,10 @@ def _cap_to_house_length(panels: list, handle=None) -> list:
     # planning 38s delivered 62.3s. The limit is therefore enforced in
     # produce_storyboard once the narration has been measured; this just stops
     # a wildly long board from being narrated in full before that happens.
-    budget = MAX_TRAILER_SECONDS
+    # a FILM passes its own budget — the one-minute house limit is for
+    # trailers. Without this, the first film shoot silently dropped 59 of
+    # 69 panels and delivered a 90-second digest (2026-08-30).
+    budget = int(budget_s) or MAX_TRAILER_SECONDS
     total = sum(float(p.get("dur") or 4.0) for p in panels)
     if total <= budget:
         return panels
@@ -2919,7 +2925,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     # a board may bring its own style; otherwise the bible's world describes it
     style = (board.get("style") or "").strip() or world.get("style", "")
     panels = board.get("panels") or []
-    panels = _cap_to_house_length(panels, handle)
+    panels = _cap_to_house_length(panels, handle, budget_s=max_seconds or 0)
     genre = book["data"].get("genre_preset") or ""
     _g = genre.lower()
     _fast = any(k in _g for k in ("thriller", "crime", "action", "mystery"))
@@ -3281,7 +3287,9 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             sfx.append((cue, max(0.0, start + 0.1), 0.8))
 
     mixed = tdir / "sb-mixed.mp4"
-    out = OUTPUT_DIR / catalog / f"trailer{fmt['suffix']}.mp4"
+    out = OUTPUT_DIR / catalog / (
+        "film.mp4" if version_label == "film"
+        else f"trailer{fmt['suffix']}.mp4")
     bed = (book["data"].get("trailer") or {}).get("workorder_bed") or (0.8 if _fast else 0.42)
     fade_in = float((book["data"].get("trailer") or {}).get("score_fade_in") or 3.5)
     if _mix_narration(picture, cues, mixed, tag=tag_vo, tag_at=card_at + TAG_IN, score=score,
@@ -3289,7 +3297,9 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         shutil.copy2(mixed, out)
     else:
         shutil.copy2(picture, out)
-    poster = OUTPUT_DIR / catalog / f"trailer-poster{fmt['suffix']}.jpg"
+    poster = OUTPUT_DIR / catalog / (
+        "film-poster.jpg" if version_label == "film"
+        else f"trailer-poster{fmt['suffix']}.jpg")
     _run(["-y", "-i", str(out), "-ss", "1.0", "-frames:v", "1", "-q:v", "3", str(poster)], "poster")
     credits_after = await runway.credit_balance()
     record = {"mode": "storyboard", "model": "seedance2_5", "format": format_name, "quality": "draft", "provider": "seedance",

@@ -1855,6 +1855,10 @@ async def trailer_status(catalog: str):
             "voice_cast": (book["data"].get("movie") or {}).get("voice_cast") or {},
             "format": ((book["data"].get("movie") or {}).get("storyboard") or {}).get("format") or "childrens",
             "count": len((((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels")) or []),
+            "film_url": ((lambda fp: f"/api/files/{catalog}/film.mp4?v={int(fp.stat().st_mtime)}"
+                          if fp.exists() else None)(Path(OUTPUT_DIR) / catalog / "film.mp4")),
+            "film_poster_url": ((lambda fp: f"/api/files/{catalog}/film-poster.jpg?v={int(fp.stat().st_mtime)}"
+                                 if fp.exists() else None)(Path(OUTPUT_DIR) / catalog / "film-poster.jpg")),
         } if ((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels") else None),
         "versions": versions,
         "has_video": (out / latest_file).exists(),
@@ -3325,7 +3329,12 @@ async def movie_produce(catalog: str, body: dict = Body(default={})):
     async def job(handle):
         r = await produce_storyboard(
             catalog, sb, format_name="wide", handle=handle,
-            version_label="film", max_seconds=int(total_s) + 30)
+            version_label="film",
+            # dialogue stretching runs a board ~25-35% past its planned
+            # durations; a tight budget trimmed 11 story panels out of the
+            # first film's MIDDLE (2026-08-30). Films get honest headroom —
+            # length is judged in the edit, not by an amputation.
+            max_seconds=int(total_s * 1.6) + 30)
         # THE INTRO OPENS EVERY FILM (Lars): if the book's universe has a
         # show intro, prepend it to the finished cut — free ffmpeg
         try:

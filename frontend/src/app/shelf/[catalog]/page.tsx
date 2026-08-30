@@ -3228,6 +3228,7 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
   type MoviePanel = { n?: string | number; title?: string; dur?: number; vo?: string;
                       frame_url?: string | null; characters?: string[] };
   const [mv, setMv] = useState<{ panels: MoviePanel[]; count: number; minutes?: number; music?: string;
+                                 film_url?: string | null; film_poster_url?: string | null;
                                  voice_cast?: Record<string, { id: string; name: string }> } | null>(null);
   const [castFor, setCastFor] = useState<string | null>(null);
   const [castQ, setCastQ] = useState("");
@@ -3501,8 +3502,7 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
 
   return (
     <div className="mt-6 space-y-5">
-      {filmBoard}
-      {/* The screening room */}
+      {/* The screening room — the viewer leads the page (Lars, 2026-08-30) */}
       <div className="card">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <div className="serif-display text-[17px] font-semibold">The screening room</div>
@@ -3524,11 +3524,17 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
             <div className="mx-auto w-full">
               <div className="rounded-[4px] overflow-hidden"
                    style={{ boxShadow: "0 0 60px rgba(120,140,190,0.18), 0 0 6px rgba(0,0,0,0.9)" }}>
-                <div className="w-full flex items-center justify-center bg-black" style={{ aspectRatio: "16/9" }}>
-                  <span className="text-[12px] uppercase tracking-[0.2em]" style={{ color: "#3c4254" }}>
-                    Waiting for the blockbuster
-                  </span>
-                </div>
+                {mv?.film_url ? (
+                  <video key={mv.film_url} controls className="w-full block bg-black"
+                         poster={mv.film_poster_url ? `${scrpt.engineUrl}${mv.film_poster_url}` : undefined}
+                         src={`${scrpt.engineUrl}${mv.film_url}`} />
+                ) : (
+                  <div className="w-full flex items-center justify-center bg-black" style={{ aspectRatio: "16/9" }}>
+                    <span className="text-[12px] uppercase tracking-[0.2em]" style={{ color: "#3c4254" }}>
+                      Waiting for the blockbuster
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="text-center mt-6 text-[11px] uppercase tracking-[0.25em]" style={{ color: "#3c4254" }}>
                 {book.title}
@@ -3541,11 +3547,17 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
             <div className="w-full" style={{ maxWidth: 640 }}>
               <div className="rounded-[10px] p-2" style={{ background: "#000", boxShadow: "0 14px 40px rgba(0,0,0,0.55)" }}>
                 <div className="rounded-[6px] overflow-hidden">
-                  <div className="w-full flex items-center justify-center bg-black" style={{ aspectRatio: "16/9" }}>
-                    <span className="text-[12px] uppercase tracking-[0.2em]" style={{ color: "#3c4254" }}>
-                      Waiting for the blockbuster
-                    </span>
-                  </div>
+                  {mv?.film_url ? (
+                    <video key={mv.film_url} controls className="w-full block bg-black"
+                           poster={mv.film_poster_url ? `${scrpt.engineUrl}${mv.film_poster_url}` : undefined}
+                           src={`${scrpt.engineUrl}${mv.film_url}`} />
+                  ) : (
+                    <div className="w-full flex items-center justify-center bg-black" style={{ aspectRatio: "16/9" }}>
+                      <span className="text-[12px] uppercase tracking-[0.2em]" style={{ color: "#3c4254" }}>
+                        Waiting for the blockbuster
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="mx-auto mt-[2px]" style={{ width: 120, height: 8, background: "#0a0b0e", borderRadius: "0 0 6px 6px" }} />
@@ -3558,6 +3570,8 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
           <span className="text-[11px] uppercase tracking-[0.1em] text-text-faint">In development</span>
         </div>
       </div>
+
+      {filmBoard}
 
       {/* Format (legacy) — gone once the choice above is made */}
       {!mv && (<>
