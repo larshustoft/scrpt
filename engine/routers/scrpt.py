@@ -3361,11 +3361,26 @@ async def movie_produce(catalog: str, body: dict = Body(default={})):
                 FF = _iio.get_ffmpeg_exe()
                 parts = [pp for pp in (intro, film, outro) if pp]
                 merged = film.with_name("film-with-bookends.mp4")
+                # each part's audio is padded/trimmed to ITS OWN video
+                # length before the concat — unequal streams let the audio
+                # timeline slip against the picture for everything after
+                # (part of the first film's voice drift, 2026-08-30)
+                import re as _re2
+                def _vlen(fp):
+                    pr = _sp.run([FF, "-i", str(fp), "-map", "0:v", "-c", "copy",
+                                  "-f", "null", "-"], capture_output=True, text=True)
+                    ts = _re2.findall(r"time=(\d+):(\d+):([\d.]+)", pr.stderr)
+                    if not ts:
+                        return 0.0
+                    h, m, s = ts[-1]
+                    return int(h) * 3600 + int(m) * 60 + float(s)
                 ins, fc, labels = [], [], ""
                 for i, pp in enumerate(parts):
                     ins += ["-i", str(pp)]
+                    vl = _vlen(pp)
                     fc.append(f"[{i}:v]scale=1920:1080,fps=24,format=yuv420p[v{i}]")
-                    fc.append(f"[{i}:a]aresample=48000[a{i}]")
+                    fc.append(f"[{i}:a]aresample=48000,apad,atrim=0:{vl:.3f}[a{i}]"
+                              if vl > 0 else f"[{i}:a]aresample=48000[a{i}]")
                     labels += f"[v{i}][a{i}]"
                 fc.append(f"{labels}concat=n={len(parts)}:v=1:a=1[v][a]")
                 _sp.run([FF, "-y", "-v", "error", *ins,

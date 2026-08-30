@@ -32,7 +32,7 @@
       "logo-wink.png",
       "logo-blink.png"
     ],
-    "show_outro": "universe/princess-the-unicorn/outro.mp4",
+    "show_outro": "universe/princess-the-unicorn/episode-outro.mp4",
     "show_intro_4k": "universe/princess-the-unicorn/show-intro-4K.mp4",
     "desktop_mirror": "/Users/tiger/Desktop/Princess the Unicorn",
     "lullaby_brief": "universe/princess-the-unicorn/unicorn-lullaby-brief.md",
@@ -40,7 +40,8 @@
     "theme_continuation_candidate": "theme/theme-continuation.mp3",
     "episode_format": "episode-format.md",
     "logo_transparent": "logo-transparent.png",
-    "logo_transparent_note": "Canva cutout by Lars 2026-08-30 \u2014 THE transparent logo for all composites and the website"
+    "logo_transparent_note": "Canva cutout by Lars 2026-08-30 \u2014 THE transparent logo for all composites and the website",
+    "show_outro_note": "THE episode ending: lullaby tuck-in + minimalist TigerWorks card (Lars 2026-08-30 \u2014 never the old gold credits card)"
   },
   "world": {
     "bible_book": "SC-039",

@@ -3186,7 +3186,11 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             # lands after the narrator has finished — never over him
             cues.append((lf, t + off + 0.15 + vo_durs[i] + lgap, 1.25))
         panel_starts.append((i, pn, t))
-        t += need
+        # the ACTUAL encoded segment length, not the plan: every encode
+        # snaps to frame boundaries, and 69 tiny roundings compounded to
+        # the five-second voice drift Lars heard in the first film
+        # (2026-08-30). Trailers never showed it; films did.
+        t += (_probe_seconds(seg) or need)
     # the series name over the opening beat, while the theme plays alone
     series_title = ((book["data"].get("series") or {}).get("series_title") or "").strip()
     if lead_in >= 1.5 and series_title and segs:
@@ -3225,23 +3229,34 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     tagline = (str(board.get("end_card_text") or "").strip()
                or (book["data"].get("manuscript") or {}).get("tagline")
                or book["data"].get("tagline") or "").strip()
-    card = build_end_card(catalog, tagline, "Available on Amazon", size=(W, H))
-    card_clip = tdir / f"sb-card-{W}x{H}.mp4"
-    tag_vo = await _record_line(catalog, f"{book['title']} — Available on Amazon.", genre, "vo-wo-tag2", "vo-wo-tag2.mp3", speed=0.8)
-    XF = 1.2; TAG_IN = XF + 0.8
-    tag_len = (_probe_seconds(tag_vo) if tag_vo else 3.0) or 3.0
-    CARD_S = round(TAG_IN + tag_len + 0.8 + 2.6, 2)
-    _run(["-y", "-loop", "1", "-t", f"{CARD_S:.1f}", "-i", str(card), "-f", "lavfi", "-t", f"{CARD_S:.1f}", "-i", "anullsrc=r=48000:cl=stereo",
-          "-vf", f"scale={W}:{H},fps=24,format=yuv420p", "-r", "24", "-ar", "48000", "-ac", "2",
-          "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", str(card_clip)], "sb card")
+    if version_label == "film":
+        # A FILM ends inside its story: bedtime, then the universe outro
+        # (lullaby + the minimalist TigerWorks card). The trailer's sales
+        # card has no place in an episode (Lars, 2026-08-30).
+        card_clip = None
+        tag_vo = None
+        XF = 0.0; TAG_IN = 0.0; CARD_S = 0.0
+    else:
+        card = build_end_card(catalog, tagline, "Available on Amazon", size=(W, H))
+        card_clip = tdir / f"sb-card-{W}x{H}.mp4"
+        tag_vo = await _record_line(catalog, f"{book['title']} — Available on Amazon.", genre, "vo-wo-tag2", "vo-wo-tag2.mp3", speed=0.8)
+        XF = 1.2; TAG_IN = XF + 0.8
+        tag_len = (_probe_seconds(tag_vo) if tag_vo else 3.0) or 3.0
+        CARD_S = round(TAG_IN + tag_len + 0.8 + 2.6, 2)
+        _run(["-y", "-loop", "1", "-t", f"{CARD_S:.1f}", "-i", str(card), "-f", "lavfi", "-t", f"{CARD_S:.1f}", "-i", "anullsrc=r=48000:cl=stereo",
+              "-vf", f"scale={W}:{H},fps=24,format=yuv420p", "-r", "24", "-ar", "48000", "-ac", "2",
+              "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", str(card_clip)], "sb card")
     take_norm = tdir / "sb-take-norm.mp4"
     _run(["-y", "-i", str(footage), "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-map", "0:v", "-map", "1:a", "-shortest",
           "-vf", f"scale={W}:{H},fps=24,format=yuv420p", "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-c:a", "aac", "-b:a", "160k", str(take_norm)], "sb norm")
     take_s = _probe_seconds(take_norm) or t
     picture = tdir / "sb-picture.mp4"
-    _run(["-y", "-i", str(take_norm), "-i", str(card_clip), "-filter_complex",
-          f"[0:v][1:v]xfade=transition=fade:duration={XF}:offset={max(0.0, take_s - XF):.2f}[v];[0:a][1:a]acrossfade=d={XF}[a]",
-          "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-c:a", "aac", "-b:a", "160k", str(picture)], "sb dissolve")
+    if card_clip is None:
+        shutil.copy2(take_norm, picture)
+    else:
+        _run(["-y", "-i", str(take_norm), "-i", str(card_clip), "-filter_complex",
+              f"[0:v][1:v]xfade=transition=fade:duration={XF}:offset={max(0.0, take_s - XF):.2f}[v];[0:a][1:a]acrossfade=d={XF}[a]",
+              "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-c:a", "aac", "-b:a", "160k", str(picture)], "sb dissolve")
     total = _probe_seconds(picture) or (take_s + CARD_S - XF)
     card_at = take_s - XF
     if handle:
