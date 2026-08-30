@@ -109,8 +109,13 @@ V2. Concrete words only (sun, bell, fog, blanket); "brave" yes,
     long. Repetition is warmth — she reuses the episode's own words.
 V3. She adds FEELING to the picture, never description of what we can
     already see. She loves the characters out loud ("our little
-    unicorn"). Never scary, never ironic, never during dialogue, never
-    more than six appearances in an episode.
+    unicorn"). Never scary, never ironic, never during dialogue.
+V4. IN A FILM she is a continuous thread (Lars, 2026-08-30: the
+    voiceover does the storytelling): besides her five slots she marks
+    EVERY scene transition a child could lose — how the hero got here,
+    why they go there next, any change of place or point of view —
+    eight to ten touches in a 10-12 minute film. If a viewer closed
+    their eyes, her words alone should still carry the story.
 
 ## Production notes (for the pipeline, not the prompts)
 
