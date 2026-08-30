@@ -595,16 +595,57 @@ def _build_interior(catalog: str, handle=None) -> dict:
             occ_p, occ_o = (occ_l, occ_r) if _plan_left else (occ_r, occ_l)
             if occ_p > occ_o + 0.02:
                 _plan_left = not _plan_left
-        if min(occ_l, occ_r) > 0.10 and text_all:
-            # the art left no honest room on either page — the field still
-            # wins (text only on white), but the spread is flagged for a
-            # hard-air redraw
+        album = bool(text_all) and min(occ_l, occ_r) > 0.10
+        if album:
+            # the art left no honest room on either page. A wash here can
+            # only bury someone (it kept dissolving the foal on the rain
+            # spread — Lars, 2026-08-30), so these spreads become ALBUM
+            # pages: the WHOLE artwork, uncropped, framed on one page with
+            # a soft edge; the words on a pure-paper page beside it.
             crowded.append(n)
         wash_left[str(n)] = _plan_left
         wash_aw[str(n)] = aw
         chosen[str(n)]["page"] = "left" if _plan_left else "right"
+        chosen[str(n)]["key"] = "album" if album else "wash"
 
-        if text_all:
+        if album:
+            from PIL import ImageDraw as _ID, ImageFilter as _IF
+            _paper_rgb = (253, 252, 250)
+            _m = int(0.55 * dpi)
+            _box_w, _box_h = px_w - 2 * _m, px_h - 2 * _m
+            # crop the wide spread to the CHARACTERS' region first, so the
+            # framed picture fills the portrait page instead of floating
+            # as a thin band — every character stays inside, by the mask
+            import numpy as _np3
+            _cols = _np3.where(_char.any(axis=0))[0]
+            if len(_cols):
+                _s8 = im.width / _char.shape[1]
+                _cx0 = max(0, int(_cols.min() * _s8 - 0.16 * im.width))
+                _cx1 = min(im.width, int((_cols.max() + 1) * _s8 + 0.16 * im.width))
+                _min_w = int(im.height * 1.05)   # never narrower than ~square
+                if _cx1 - _cx0 < _min_w:
+                    _pad = (_min_w - (_cx1 - _cx0)) // 2
+                    _cx0 = max(0, _cx0 - _pad)
+                    _cx1 = min(im.width, _cx1 + _pad)
+                im = im.crop((_cx0, 0, _cx1, im.height))
+            _iw, _ih = im.size
+            _sc = min(_box_w / _iw, _box_h / _ih)
+            _art = im.resize((int(_iw * _sc), int(_ih * _sc)), Image.LANCZOS)
+            _mask = Image.new("L", _art.size, 0)
+            _rad = int(0.22 * dpi)
+            _ID.Draw(_mask).rounded_rectangle(
+                [_rad // 2, _rad // 2, _art.width - _rad // 2,
+                 _art.height - _rad // 2], radius=_rad, fill=255)
+            _mask = _mask.filter(_IF.GaussianBlur(int(0.14 * dpi)))
+            _page_art = Image.new("RGB", (px_w, px_h), _paper_rgb)
+            _page_art.paste(_art, ((px_w - _art.width) // 2,
+                                   (px_h - _art.height) // 2), _mask)
+            _page_txt = Image.new("RGB", (px_w, px_h), _paper_rgb)
+            if _plan_left:
+                left_im, right_im = _page_txt, _page_art
+            else:
+                left_im, right_im = _page_art, _page_txt
+        elif text_all:
             # the field: solid true paper under every line, a wide cosine
             # feather dissolving into the art — a paper edge, never a panel
             _W2, _H2 = im.size
@@ -621,8 +662,9 @@ def _build_interior(catalog: str, handle=None) -> dict:
             _arr = _arr * (1 - _alpha) + _paper * _alpha
             im = Image.fromarray(_arr.astype("uint8"))
 
-        left_im = im.crop((0, 0, px_w, px_h))
-        right_im = im.crop((px_w, 0, spread_w, px_h))
+        if not album:
+            left_im = im.crop((0, 0, px_w, px_h))
+            right_im = im.crop((px_w, 0, spread_w, px_h))
 
         # the words, set inside the field core — top third, breathing room
         assign = {}
@@ -631,7 +673,9 @@ def _build_interior(catalog: str, handle=None) -> dict:
             # left page's left edge or the right page's right edge. Using
             # left coordinates on a right-side field put the words on art
             # while their paper sat empty beside them (2026-08-30).
-            if _plan_left:
+            if album:
+                x0 = (px_w - col_px) // 2       # a pure-paper page: centred
+            elif _plan_left:
                 x0 = text_safe + pad_px
             else:
                 x0 = px_w - text_safe - pad_px - col_px
