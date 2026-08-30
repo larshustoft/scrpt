@@ -24,8 +24,8 @@ The goal: 100 episodes, each one only as much new work as its story.
 | 9 | Learner becomes teacher — Princess uses the strategy for someone ELSE; the lesson is named once, plainly | ~1:00 | per episode |
 | 10 | Full recap verse — a longer sung pass of the strategy over quick vignettes of the day | ~1:00 | per episode (same melody as beat 7) |
 | 11 | Home at dusk + direct address — the day settles; Princess (or the storyteller) hands the lesson to the viewer: "When YOU…?" | ~0:30 | per episode |
-| 12 | Bedtime ending — Glitter tucks Princess in and sings The Unicorn Lullaby (short); asleep on the last note | ~0:26 | rotating set of lullaby animations (to be made) |
-| 13 | End card — TigerWorks, thin Futura, white on black | 0:02 | `endcard-tigerworks.mp4` |
+| 12 | Bedtime ending — Glitter tucks Princess in and sings The Unicorn Lullaby (short); asleep on the last note. THE only bedtime in the episode | ~0:26 | rotating set of lullaby animations (to be made) |
+| 13 | Credits — TigerWorks card holds while the MAIN THEME plays as an instrumental, fading out | ~0:17 | `endcard-with-theme.mp4` (inside episode-outro) |
 
 Music slots: sung theme → instrumental continuation → travel ritual line →
 strategy song (intro, ladder reprises, recap verse) → mood score → The
@@ -38,8 +38,11 @@ RULES OF THE SERIES — every episode of Princess the Unicorn obeys these:
 
 S1. THE SHAPE OF A DAY: every episode is one day in Rainbow Forest — it
     begins in the morning ("Every morning in Rainbow Forest…" is the
-    storyteller's home key) and ends at bedtime, Princess tucked into
-    her moss bed. Write toward bedtime.
+    storyteller's home key) and settles toward EVENING. The story itself
+    ends at dusk — homecoming, celebration, calm — but NEVER in bed:
+    bedtime happens exactly once per episode, in the standard lullaby
+    outro that follows (Lars, 2026-08-30: the story showed Princess
+    going to bed twice in a row). Write toward dusk, not toward sleep.
 S2. THE STORYTELLER opens (world first, then the tease of today's story,
     concrete and story-true), and PRINCESS GREETS THE VIEWER directly
     ("Hi, friend!") before any character-to-character dialogue. The
