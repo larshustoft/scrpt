@@ -3179,6 +3179,28 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             clip_dur = _probe_seconds(clip) or need
             seg_start = max(0.0, min(clip_dur - need - 0.2, (clip_dur - need) * 0.55))
         _cut_segment(clip, seg_start, seg_start + need, seg, W, H)
+        # A PANEL MUST HOLD ITS OWN SPEECH (Lars, 2026-08-30: five VO
+        # spills made the voices talk over each other). If the take came
+        # back shorter than the words need, the picture stretches gently
+        # (≤1.35×) and then holds its final beat — the words never bleed
+        # into the next panel's mouth.
+        _seg_real = _probe_seconds(seg) or need
+        if _seg_real < need - 0.05:
+            _factor = min(1.35, need / max(0.1, _seg_real))
+            _fixed = seg.with_name(seg.stem + "-held.mp4")
+            _hold = max(0.0, need - _seg_real * _factor)
+            _run(["-y", "-i", str(seg), "-filter_complex",
+                  f"[0:v]setpts=PTS*{_factor:.4f}"
+                  + (f",tpad=stop_mode=clone:stop_duration={_hold + 0.2:.2f}" if _hold > 0.02 else "")
+                  + f",trim=0:{need:.2f},setpts=PTS-STARTPTS,fps=24[v];"
+                  f"[0:a]atempo={max(0.5, 1 / _factor):.4f},"
+                  f"apad=whole_dur={need:.2f},atrim=0:{need:.2f}[a]",
+                  "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
+                  "-preset", "fast", "-crf", "18", "-c:a", "aac",
+                  "-b:a", "160k", str(_fixed)], f"seg hold {i}")
+            if _fixed.exists() and _fixed.stat().st_size > 10_000:
+                import shutil as _sh2
+                _sh2.move(str(_fixed), str(seg))
         segs.append(seg)
         if vo_files[i]:
             cues.append((vo_files[i], t + off + 0.15, 1.0))
