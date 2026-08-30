@@ -577,7 +577,14 @@ def _build_interior(catalog: str, handle=None) -> dict:
         # the words, set inside the field core — top third, breathing room
         assign = {}
         if text_all:
-            x0 = text_safe + pad_px
+            # the column lives INSIDE the washed field — which sits at the
+            # left page's left edge or the right page's right edge. Using
+            # left coordinates on a right-side field put the words on art
+            # while their paper sat empty beside them (2026-08-30).
+            if _plan_left:
+                x0 = text_safe + pad_px
+            else:
+                x0 = px_w - text_safe - pad_px - col_px
             box_px = (x0, text_safe, x0 + col_px, px_h - text_safe)
             bx0, by0, bx1, by1 = box_px
             box_pt0 = (bx0 * PT / dpi, (px_h - by1) * PT / dpi,
