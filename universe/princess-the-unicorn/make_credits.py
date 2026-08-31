@@ -61,7 +61,8 @@ def _pip_pose(pip, t):
 
 
 def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4",
-                    src_start: float = 3.0, dim: int = 118):
+                    src_start: float = 3.0, dim: int = 118,
+                    shadow: bool = False):   # the house ending: clean type
     """Credits over the living scene — TEN SECONDS, one steady dim.
 
     The dim is set before the first frame and never changes (Lars,
@@ -76,10 +77,14 @@ def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4",
     over = Image.new("RGBA", (W, H), (6, 9, 22, DIM))
     dr = ImageDraw.Draw(over)
     f_small, f_big = _font(26), _font(54)
-    _tracked(dr, "CREATED AND WRITTEN BY", f_small, W / 2, H * 0.34, 5, (222, 222, 226, 255))
-    _tracked(dr, "The Tiger Family", f_big, W / 2, H * 0.40, 3, (255, 255, 255, 255))
-    _tracked(dr, "MUSIC BY", f_small, W / 2, H * 0.56, 5, (222, 222, 226, 255))
-    _tracked(dr, "Lars Tiger", f_big, W / 2, H * 0.62, 3, (255, 255, 255, 255))
+    _tracked(dr, "CREATED AND WRITTEN BY", f_small, W / 2, H * 0.34, 5,
+             (222, 222, 226, 255), shadow=shadow)
+    _tracked(dr, "The Tiger Family", f_big, W / 2, H * 0.40, 3,
+             (255, 255, 255, 255), shadow=shadow)
+    _tracked(dr, "MUSIC BY", f_small, W / 2, H * 0.56, 5,
+             (222, 222, 226, 255), shadow=shadow)
+    _tracked(dr, "Lars Tiger", f_big, W / 2, H * 0.62, 3,
+             (255, 255, 255, 255), shadow=shadow)
     over.save(tmp / "type.png")
 
     mark = Image.open(BRAND).convert("RGBA")
