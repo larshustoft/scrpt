@@ -8,7 +8,7 @@ Screen 2 — the TigerWorks mark, Pip flying out of frame.
 
 Frame-by-frame compositing: nothing generated, nothing random.
 """
-import math, shutil, subprocess
+import math, re, shutil, subprocess
 from pathlib import Path
 
 import imageio_ffmpeg
@@ -114,13 +114,21 @@ def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4",
                    check=True, capture_output=True)
 
     total = S1 + S2
+    # THE MUSIC MUST END, NOT FADE (Lars, 2026-08-31): take the LAST
+    # seconds of the theme so its own final chord rings out exactly as the
+    # picture ends. Only a whisper of fade-in, to avoid a click.
+    theme = HERE / "theme/theme-instrumental.mp3"
+    _pr = subprocess.run([FF, "-i", str(theme)], capture_output=True, text=True)
+    _m = re.search(r"Duration: (\d+):(\d+):([\d.]+)", _pr.stderr)
+    _dur = int(_m.group(1)) * 3600 + int(_m.group(2)) * 60 + float(_m.group(3))
+    _start = max(0.0, _dur - total)
     subprocess.run([FF, "-y", "-i", str(scene), "-i", str(markclip),
-                    "-i", str(HERE / "theme/theme-instrumental.mp3"),
+                    "-ss", f"{_start:.2f}", "-i", str(theme),
                     "-filter_complex",
                     f"[0:v][1:v]concat=n=2:v=1:a=0[v];"
-                    f"[2:a]atrim=0:{total},aresample=48000,"
-                    f"aformat=channel_layouts=stereo,afade=t=in:st=0:d=0.4,"
-                    f"afade=t=out:st={total-1.8:.1f}:d=1.8,"
+                    f"[2:a]atrim=0:{total},asetpts=PTS-STARTPTS,"
+                    f"aresample=48000,aformat=channel_layouts=stereo,"
+                    f"afade=t=in:st=0:d=0.25,"
                     f"loudnorm=I=-14:TP=-1.5:LRA=11[a]",
                     "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
                     "-preset", "medium", "-crf", "17", "-c:a", "aac",
