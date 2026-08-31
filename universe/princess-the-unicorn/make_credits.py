@@ -84,12 +84,17 @@ def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4"):
     mark = mark.crop(mark.split()[3].getbbox())
     mark = mark.resize((int(W * 0.145), int(mark.height * (W * 0.145) / mark.width)),
                        Image.LANCZOS)
-    card = Image.new("RGB", (W, H), (0, 0, 0))
-    card.paste(mark, ((W - mark.width) // 2, (H - mark.height) // 2), mark)
-    card.save(tmp / "mark.png")
+    # the mark rides the SAME living scene, over a dim so it reads
+    over2 = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d2 = ImageDraw.Draw(over2)
+    d2.rectangle([0, 0, W, H], fill=(6, 9, 22, 165))
+    over2.paste(mark, ((W - mark.width) // 2, (H - mark.height) // 2), mark)
+    over2.save(tmp / "mark.png")
 
     scene = tmp / "scene.mp4"
-    subprocess.run([FF, "-y", "-i", str(clip), "-i", str(tmp / "type.png"),
+    subprocess.run([FF, "-y", "-i", str(clip),
+                    "-loop", "1", "-framerate", str(FPS), "-t", str(S1),
+                    "-i", str(tmp / "type.png"),
                     "-filter_complex",
                     f"[0:v]scale={W}:{H},fps={FPS},format=yuv420p,"
                     f"fade=t=in:st=0:d=0.8[bg];"
@@ -100,12 +105,17 @@ def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4"):
                     "-crf", "17", str(scene)], check=True, capture_output=True)
 
     markclip = tmp / "mark.mp4"
-    subprocess.run([FF, "-y", "-framerate", str(FPS), "-loop", "1", "-t", str(S2),
-                    "-i", str(tmp / "mark.png"), "-vf",
-                    f"format=yuv420p,fade=t=in:st=0:d=0.9,"
-                    f"fade=t=out:st={S2-1.2:.1f}:d=1.2",
-                    "-c:v", "libx264", "-preset", "medium", "-crf", "17",
-                    "-r", str(FPS), str(markclip)], check=True, capture_output=True)
+    subprocess.run([FF, "-y", "-ss", str(S1), "-i", str(clip),
+                    "-loop", "1", "-framerate", str(FPS), "-t", str(S2),
+                    "-i", str(tmp / "mark.png"), "-filter_complex",
+                    f"[0:v]scale={W}:{H},fps={FPS},format=yuv420p,"
+                    f"trim=0:{S2},setpts=PTS-STARTPTS[bg];"
+                    f"[1:v]format=rgba,fade=t=in:st=0:d=1.0:alpha=1,"
+                    f"fade=t=out:st={S2-1.2:.1f}:d=1.2:alpha=1[mk];"
+                    f"[bg][mk]overlay=0:0,fade=t=out:st={S2-1.0:.1f}:d=1.0[v]",
+                    "-map", "[v]", "-an", "-c:v", "libx264", "-preset", "medium",
+                    "-crf", "17", "-r", str(FPS), str(markclip)],
+                   check=True, capture_output=True)
 
     total = S1 + S2
     subprocess.run([FF, "-y", "-i", str(scene), "-i", str(markclip),
