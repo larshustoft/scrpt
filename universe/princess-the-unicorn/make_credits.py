@@ -158,11 +158,7 @@ def build():
             sp = sp.copy(); sp.putalpha(sp.split()[3].point(lambda a: int(a * fade)))
         img.paste(sp, (px, py), sp)
 
-        # Pip: the swoop — in from the top right, down to a landing
-        b, bx, by = pip_frame(t)
-        if fade < 1:
-            b = b.copy(); b.putalpha(b.split()[3].point(lambda a: int(a * fade)))
-        img.paste(b, (int(bx - b.width / 2), int(by - b.height / 2)), b)
+        # (Pip retired from the credits — Lars, 2026-08-31)
         img.save(frames / f"a{i:04d}.png")
 
     n2 = int(S2 * FPS)
