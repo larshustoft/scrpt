@@ -32,8 +32,17 @@ def _font(size):
     return ImageFont.load_default()
 
 
-def _tracked(dr, text, font, cx, y, gap, fill):
+def _tracked(dr, text, font, cx, y, gap, fill, shadow=True):
+    """Letterspaced, with a soft dark shadow so white type stays readable
+    over a bright painted backdrop."""
     w = sum(dr.textlength(c, font=font) + gap for c in text) - gap
+    if shadow:
+        sh = tuple(int(v * 0.10) for v in (255, 255, 255))
+        for dx, dy in ((2, 2), (2, 3), (3, 2), (-1, 2), (1, 3)):
+            x = cx - w / 2
+            for c in text:
+                dr.text((x + dx, y + dy), c, font=font, fill=sh)
+                x += dr.textlength(c, font=font) + gap
     x = cx - w / 2
     for c in text:
         dr.text((x, y), c, font=font, fill=fill)
@@ -51,6 +60,70 @@ def _pip_pose(pip, t):
     return pip.rotate(tilt, resample=Image.BICUBIC, expand=True), lift
 
 
+def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4"):
+    """Credits over a LIVE scene (Lars, 2026-08-31: full-screen animation,
+    not a sprite on a still). The clip carries the world and Princess
+    walking in; we only lay the type and the mark on top."""
+    import tempfile
+    tmp = Path(tempfile.mkdtemp())
+    # 1. the type, as a transparent overlay with its scrim
+    over = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dr = ImageDraw.Draw(over)
+    for y in range(H):                      # top-down scrim for legibility
+        a = int(205 * max(0.0, 1 - (y / H) / 0.86))
+        dr.line([(0, y), (W, y)], fill=(12, 16, 34, a))
+    f_small, f_big = _font(26), _font(54)
+    _tracked(dr, "CREATED AND WRITTEN BY", f_small, W / 2, H * 0.34, 5, (222, 222, 226, 255))
+    _tracked(dr, "The Tiger Family", f_big, W / 2, H * 0.40, 3, (255, 255, 255, 255))
+    _tracked(dr, "MUSIC BY", f_small, W / 2, H * 0.56, 5, (222, 222, 226, 255))
+    _tracked(dr, "Lars Tiger", f_big, W / 2, H * 0.62, 3, (255, 255, 255, 255))
+    over.save(tmp / "type.png")
+
+    # 2. the mark screen, as before
+    mark = Image.open(BRAND).convert("RGBA")
+    mark = mark.crop(mark.split()[3].getbbox())
+    mark = mark.resize((int(W * 0.145), int(mark.height * (W * 0.145) / mark.width)),
+                       Image.LANCZOS)
+    card = Image.new("RGB", (W, H), (0, 0, 0))
+    card.paste(mark, ((W - mark.width) // 2, (H - mark.height) // 2), mark)
+    card.save(tmp / "mark.png")
+
+    scene = tmp / "scene.mp4"
+    subprocess.run([FF, "-y", "-i", str(clip), "-i", str(tmp / "type.png"),
+                    "-filter_complex",
+                    f"[0:v]scale={W}:{H},fps={FPS},format=yuv420p,"
+                    f"fade=t=in:st=0:d=0.8[bg];"
+                    f"[1:v]format=rgba,fade=t=in:st=0.6:d=1.0:alpha=1,"
+                    f"fade=t=out:st={S1-1.0:.1f}:d=1.0:alpha=1[tx];"
+                    f"[bg][tx]overlay=0:0,trim=0:{S1},setpts=PTS-STARTPTS[v]",
+                    "-map", "[v]", "-an", "-c:v", "libx264", "-preset", "medium",
+                    "-crf", "17", str(scene)], check=True, capture_output=True)
+
+    markclip = tmp / "mark.mp4"
+    subprocess.run([FF, "-y", "-framerate", str(FPS), "-loop", "1", "-t", str(S2),
+                    "-i", str(tmp / "mark.png"), "-vf",
+                    f"format=yuv420p,fade=t=in:st=0:d=0.9,"
+                    f"fade=t=out:st={S2-1.2:.1f}:d=1.2",
+                    "-c:v", "libx264", "-preset", "medium", "-crf", "17",
+                    "-r", str(FPS), str(markclip)], check=True, capture_output=True)
+
+    total = S1 + S2
+    subprocess.run([FF, "-y", "-i", str(scene), "-i", str(markclip),
+                    "-i", str(HERE / "theme/theme-instrumental.mp3"),
+                    "-filter_complex",
+                    f"[0:v][1:v]concat=n=2:v=1:a=0[v];"
+                    f"[2:a]atrim=0:{total},aresample=48000,"
+                    f"aformat=channel_layouts=stereo,afade=t=in:st=0:d=0.8,"
+                    f"afade=t=out:st={total-2.5:.1f}:d=2.5,"
+                    f"loudnorm=I=-14:TP=-1.5:LRA=11[a]",
+                    "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
+                    "-preset", "medium", "-crf", "17", "-c:a", "aac",
+                    "-b:a", "192k", "-r", str(FPS), str(out)],
+                   check=True, capture_output=True)
+    shutil.rmtree(tmp, ignore_errors=True)
+    print("credits (live scene) ->", out)
+
+
 def build():
     """Real animation, not moved stills (Lars, 2026-08-31): Princess walks
     in on a four-frame cycle, settles, breathes and blinks; Pip flies on a
@@ -60,7 +133,7 @@ def build():
     stand = Image.open(S / "princess-4.png").convert("RGBA")
     blink = Image.open(S / "princess-5.png").convert("RGBA")
     flap = [Image.open(S / f"pip-{i}.png").convert("RGBA") for i in range(4)]
-    PH = 380                                  # Princess height on screen
+    PH = 430                                  # Princess height on screen
     walk = [_fit(w, PH) for w in walk]
     stand, blink = _fit(stand, PH), _fit(blink, PH)
     flap = [_fit(f, 165) for f in flap]
@@ -70,12 +143,27 @@ def build():
     mark = mark.resize((int(W * 0.145), int(mark.height * (W * 0.145) / mark.width)),
                        Image.LANCZOS)
 
+    # THE KINGDOM AS BACKDROP (Lars, 2026-08-31) — the same world the
+    # website opens with, painted empty so she can walk into her place.
+    bg = Image.open(HERE / "credits-backdrop.png").convert("RGB")
+    sc = max(W / bg.width, H / bg.height)
+    bg = bg.resize((int(bg.width * sc + 1), int(bg.height * sc + 1)), Image.LANCZOS)
+    bg = bg.crop(((bg.width - W) // 2, (bg.height - H) // 2,
+                  (bg.width - W) // 2 + W, (bg.height - H) // 2 + H))
+    # a gentle top-down scrim so white credits read on a bright painting
+    scrim = Image.new("L", (1, H))
+    for y in range(H):
+        f = max(0.0, 1 - (y / H) / 0.86)
+        scrim.putpixel((0, y), int(205 * f))
+    scrim = scrim.resize((W, H))
+    plate = Image.composite(Image.new("RGB", (W, H), (12, 16, 34)), bg, scrim)
+
     frames = HERE / "work-credits"
     if frames.exists():
         shutil.rmtree(frames)
     frames.mkdir()
     f_small, f_big = _font(26), _font(54)
-    GREY, WHITE = (150, 150, 150), (255, 255, 255)
+    GREY, WHITE = (222, 222, 226), (255, 255, 255)
 
     glide = _fit(Image.open(S / "pip-glide.png").convert("RGBA"), 165)
     flare = _fit(Image.open(S / "pip-flare.png").convert("RGBA"), 175)
@@ -127,12 +215,17 @@ def build():
 
     n1 = int(S1 * FPS)
     WALK_END = 3.6                            # she walks in, then settles
-    x_start, x_home = int(W * 1.02), int(W * 0.78)
+    x_start, x_home = int(-W * 0.16), int(W * 0.17)
     for i in range(n1):
         t = i / FPS
-        img = Image.new("RGB", (W, H), (0, 0, 0))
+        img = plate.copy()
+        if fade_bg := min(1.0, t / 0.8):
+            pass
         dr = ImageDraw.Draw(img)
         fade = min(1.0, t / 0.8, max(0.0, (S1 - t) / 0.8))
+        if fade < 1:                       # fade the whole picture in/out
+            img = Image.blend(Image.new("RGB", (W, H), (0, 0, 0)), img, fade)
+            dr = ImageDraw.Draw(img)
         g = tuple(int(v * fade) for v in GREY)
         w_ = tuple(int(v * fade) for v in WHITE)
         _tracked(dr, "CREATED AND WRITTEN BY", f_small, W / 2, H * 0.34, 5, g)
@@ -142,7 +235,7 @@ def build():
 
         if t < WALK_END:                      # WALKING: 8 fps cycle, moving left
             k = int(t * 8) % 4
-            sp = walk[k].transpose(Image.FLIP_LEFT_RIGHT)   # facing left, entering
+            sp = walk[k]                                    # facing right, entering
             _e = t / WALK_END
             _e = 1 - (1 - _e) ** 2            # she slows as she arrives
             px = int(x_start + (x_home - x_start) * _e)
@@ -150,7 +243,7 @@ def build():
         else:                                 # SETTLED: breathing, blinking
             u = t - WALK_END
             eyes_shut = (u % 3.4) > 3.15      # a real blink, twice a screen
-            sp = (blink if eyes_shut else stand).transpose(Image.FLIP_LEFT_RIGHT)
+            sp = blink if eyes_shut else stand              # turns to the viewer
             px = x_home
             bob = math.sin(u * 1.7) * 4
         py = int(H - sp.height - H * 0.06 + bob)
