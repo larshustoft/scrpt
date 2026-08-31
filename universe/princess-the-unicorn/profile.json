@@ -66,9 +66,9 @@
       "name": "Tilly - Bright, Spirited, Naive, Scrappy"
     },
     "Glitter": {
-      "id": "iCrDUkL56s3C8sCRl7wb",
-      "name": "Hope - soothing narrator",
-      "note": "Lars 2026-08-30: Hope \u2014 closest to the lullaby singer's softness. Her raw output runs quiet: lift her lines ~4dB in the mix (see make_episode_bookends VOICE_GAIN)."
+      "id": "ok2PCXNXA9PMVYmBj7QJ",
+      "name": "Beth - Warm, Grounded, Narrator",
+      "note": "Lars 2026-08-31: Beth, performed ENERGIZED (stability .28 / style .8 / speed 1.02 \u2014 see VOICE_SETTINGS in producer.py). Hope read too flat; Glitter needs life."
     },
     "Pip": {
       "id": "thfYL0Elyru2qqTtNQsE",

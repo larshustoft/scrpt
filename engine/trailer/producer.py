@@ -1325,6 +1325,14 @@ async def _record_line(catalog: str, text: str, genre: str, key: str,
     if not text.strip():
         return None
     voice_id = voice_override or trailer_voice(genre, catalog)[0]
+    # PERFORMANCE PER VOICE (Lars, 2026-08-31: "Glitter needs a lot more
+    # energy"). Calm settings flatten a character; some voices must be
+    # played with the brakes off. Keyed by voice id, applied at record.
+    _PERF = {
+        "ok2PCXNXA9PMVYmBj7QJ": {"stability": 0.28, "similarity_boost": 0.75,
+                                  "style": 0.8, "speed": 1.02},   # Beth = Glitter
+    }
+    _perf = _PERF.get(voice_id) or {}
     dest = OUTPUT_DIR / catalog / "trailer" / filename
     source = f"{voice_id}|{speed}|{text}"
     if _take_valid(catalog, key, source, dest):
@@ -1342,7 +1350,7 @@ async def _record_line(catalog: str, text: str, genre: str, key: str,
                           "model_id": get_setting("elevenlabs_model_id", "eleven_multilingual_v2"),
                           "voice_settings": {"stability": 0.38, "similarity_boost": 0.8,
                                              "style": 0.65, "use_speaker_boost": True,
-                                             "speed": speed}},
+                                             "speed": speed, **_perf}},
                     params={"output_format": "mp3_44100_128"},
                 )
                 if resp.status_code == 429 and attempt < 3:
@@ -3189,15 +3197,16 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             _factor = min(1.35, need / max(0.1, _seg_real))
             _fixed = seg.with_name(seg.stem + "-held.mp4")
             _hold = max(0.0, need - _seg_real * _factor)
-            _run(["-y", "-i", str(seg), "-filter_complex",
-                  f"[0:v]setpts=PTS*{_factor:.4f}"
-                  + (f",tpad=stop_mode=clone:stop_duration={_hold + 0.2:.2f}" if _hold > 0.02 else "")
-                  + f",trim=0:{need:.2f},setpts=PTS-STARTPTS,fps=24[v];"
-                  f"[0:a]atempo={max(0.5, 1 / _factor):.4f},"
-                  f"apad=whole_dur={need:.2f},atrim=0:{need:.2f}[a]",
-                  "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
-                  "-preset", "fast", "-crf", "18", "-c:a", "aac",
-                  "-b:a", "160k", str(_fixed)], f"seg hold {i}")
+            # the segments carry PICTURE ONLY (shots are shot audio=False;
+            # every sound is added in the mix), so an [0:a] chain here made
+            # ffmpeg refuse the whole command and the guard silently did
+            # nothing — the exact bug Lars heard as voices crashing.
+            _run(["-y", "-i", str(seg), "-an", "-filter_complex",
+                  f"[0:v]setpts=PTS*{_factor:.4f},fps=24"
+                  + (f",tpad=stop_mode=clone:stop_duration={_hold + 0.4:.2f}" if _hold > 0.02 else "")
+                  + f",trim=0:{need:.2f},setpts=PTS-STARTPTS[v]",
+                  "-map", "[v]", "-c:v", "libx264",
+                  "-preset", "fast", "-crf", "18", str(_fixed)], f"seg hold {i}")
             if _fixed.exists() and _fixed.stat().st_size > 10_000:
                 import shutil as _sh2
                 _sh2.move(str(_fixed), str(seg))
