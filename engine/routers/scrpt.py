@@ -3388,6 +3388,31 @@ async def movie_produce(catalog: str, body: dict = Body(default={})):
                          "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
                          "-preset", "fast", "-crf", "18", "-c:a", "aac",
                          "-b:a", "192k", str(merged)], check=True, timeout=2400)
+                # ONE LEVEL FOR THE WHOLE EPISODE (Lars, 2026-08-31: the
+                # lullaby was 15 dB under the story and vanished). The
+                # finished film is mastered to the streaming standard —
+                # measured first, then applied exactly, so quiet scenes
+                # stay quiet in FEEL without disappearing.
+                if handle:
+                    handle.progress(0.99, "premiere", "mastering the sound")
+                import re as _re3
+                _an = _sp.run([FF, "-i", str(merged), "-af",
+                               "loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json",
+                               "-f", "null", "-"], capture_output=True, text=True)
+                _m = _re3.search(r"\{[^{}]*input_i[^{}]*\}", _an.stderr, _re3.S)
+                if _m:
+                    _d = _json.loads(_m.group(0))
+                    _af = ("loudnorm=I=-14:TP=-1.5:LRA=11:"
+                           f"measured_I={_d['input_i']}:measured_TP={_d['input_tp']}:"
+                           f"measured_LRA={_d['input_lra']}:"
+                           f"measured_thresh={_d['input_thresh']}:"
+                           f"offset={_d['target_offset']}:linear=true")
+                    _mast = film.with_name("film-mastered.mp4")
+                    _sp.run([FF, "-y", "-v", "error", "-i", str(merged),
+                             "-af", _af, "-c:v", "copy", "-c:a", "aac",
+                             "-b:a", "192k", "-ar", "48000", str(_mast)],
+                            check=True, timeout=1800)
+                    _mast.replace(merged)
                 merged.replace(film)
                 r["intro_attached"] = bool(intro)
                 r["outro_attached"] = bool(outro)
