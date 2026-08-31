@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 HERE = Path(__file__).parent
 W, H, FPS = 1920, 1080, 24
-S1, S2 = 9.0, 8.0                      # seconds per screen
+S1, S2 = 5.5, 4.5                      # seconds per screen
 BRAND = Path("/Users/tiger/.scrpt/house/brand/tigerworks-white.png")
 
 
@@ -60,18 +60,21 @@ def _pip_pose(pip, t):
     return pip.rotate(tilt, resample=Image.BICUBIC, expand=True), lift
 
 
-def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4"):
-    """Credits over a LIVE scene (Lars, 2026-08-31: full-screen animation,
-    not a sprite on a still). The clip carries the world and Princess
-    walking in; we only lay the type and the mark on top."""
+def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4",
+                    src_start: float = 3.0):
+    """Credits over the living scene — TEN SECONDS, one steady dim.
+
+    The dim is set before the first frame and never changes (Lars,
+    2026-08-31: no pulsing light); the only fade in the whole piece is
+    the last second, to black. src_start picks up the take after she has
+    started walking, so the short version still shows her arrive.
+    """
     import tempfile
     tmp = Path(tempfile.mkdtemp())
-    # 1. the type, as a transparent overlay with its scrim
-    over = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    DIM = 118                                  # one setting, all the way
+
+    over = Image.new("RGBA", (W, H), (6, 9, 22, DIM))
     dr = ImageDraw.Draw(over)
-    for y in range(H):                      # top-down scrim for legibility
-        a = int(205 * max(0.0, 1 - (y / H) / 0.86))
-        dr.line([(0, y), (W, y)], fill=(12, 16, 34, a))
     f_small, f_big = _font(26), _font(54)
     _tracked(dr, "CREATED AND WRITTEN BY", f_small, W / 2, H * 0.34, 5, (222, 222, 226, 255))
     _tracked(dr, "The Tiger Family", f_big, W / 2, H * 0.40, 3, (255, 255, 255, 255))
@@ -79,39 +82,32 @@ def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4"):
     _tracked(dr, "Lars Tiger", f_big, W / 2, H * 0.62, 3, (255, 255, 255, 255))
     over.save(tmp / "type.png")
 
-    # 2. the mark screen, as before
     mark = Image.open(BRAND).convert("RGBA")
     mark = mark.crop(mark.split()[3].getbbox())
     mark = mark.resize((int(W * 0.145), int(mark.height * (W * 0.145) / mark.width)),
                        Image.LANCZOS)
-    # the mark rides the SAME living scene, over a dim so it reads
-    over2 = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d2 = ImageDraw.Draw(over2)
-    d2.rectangle([0, 0, W, H], fill=(6, 9, 22, 165))
+    over2 = Image.new("RGBA", (W, H), (6, 9, 22, DIM))      # the SAME dim
     over2.paste(mark, ((W - mark.width) // 2, (H - mark.height) // 2), mark)
     over2.save(tmp / "mark.png")
 
     scene = tmp / "scene.mp4"
-    subprocess.run([FF, "-y", "-i", str(clip),
+    subprocess.run([FF, "-y", "-ss", str(src_start), "-i", str(clip),
                     "-loop", "1", "-framerate", str(FPS), "-t", str(S1),
                     "-i", str(tmp / "type.png"),
                     "-filter_complex",
                     f"[0:v]scale={W}:{H},fps={FPS},format=yuv420p,"
-                    f"fade=t=in:st=0:d=0.8[bg];"
-                    f"[1:v]format=rgba,fade=t=in:st=0.6:d=1.0:alpha=1,"
-                    f"fade=t=out:st={S1-1.0:.1f}:d=1.0:alpha=1[tx];"
-                    f"[bg][tx]overlay=0:0,trim=0:{S1},setpts=PTS-STARTPTS[v]",
+                    f"trim=0:{S1},setpts=PTS-STARTPTS[bg];"
+                    f"[1:v]format=rgba[tx];[bg][tx]overlay=0:0[v]",
                     "-map", "[v]", "-an", "-c:v", "libx264", "-preset", "medium",
                     "-crf", "17", str(scene)], check=True, capture_output=True)
 
     markclip = tmp / "mark.mp4"
-    subprocess.run([FF, "-y", "-ss", str(S1), "-i", str(clip),
+    subprocess.run([FF, "-y", "-ss", str(src_start + S1), "-i", str(clip),
                     "-loop", "1", "-framerate", str(FPS), "-t", str(S2),
                     "-i", str(tmp / "mark.png"), "-filter_complex",
                     f"[0:v]scale={W}:{H},fps={FPS},format=yuv420p,"
                     f"trim=0:{S2},setpts=PTS-STARTPTS[bg];"
-                    f"[1:v]format=rgba,fade=t=in:st=0:d=1.0:alpha=1,"
-                    f"fade=t=out:st={S2-1.2:.1f}:d=1.2:alpha=1[mk];"
+                    f"[1:v]format=rgba[mk];"
                     f"[bg][mk]overlay=0:0,fade=t=out:st={S2-1.0:.1f}:d=1.0[v]",
                     "-map", "[v]", "-an", "-c:v", "libx264", "-preset", "medium",
                     "-crf", "17", "-r", str(FPS), str(markclip)],
@@ -123,15 +119,15 @@ def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4"):
                     "-filter_complex",
                     f"[0:v][1:v]concat=n=2:v=1:a=0[v];"
                     f"[2:a]atrim=0:{total},aresample=48000,"
-                    f"aformat=channel_layouts=stereo,afade=t=in:st=0:d=0.8,"
-                    f"afade=t=out:st={total-2.5:.1f}:d=2.5,"
+                    f"aformat=channel_layouts=stereo,afade=t=in:st=0:d=0.4,"
+                    f"afade=t=out:st={total-1.8:.1f}:d=1.8,"
                     f"loudnorm=I=-14:TP=-1.5:LRA=11[a]",
                     "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
                     "-preset", "medium", "-crf", "17", "-c:a", "aac",
                     "-b:a", "192k", "-r", str(FPS), str(out)],
                    check=True, capture_output=True)
     shutil.rmtree(tmp, ignore_errors=True)
-    print("credits (live scene) ->", out)
+    print(f"credits -> {out} ({total:.0f}s, one dim, one fade)")
 
 
 def build():
