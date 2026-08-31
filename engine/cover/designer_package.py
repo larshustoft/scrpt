@@ -434,7 +434,7 @@ def compose_print_wrap(catalog: str, title: str, author: str, blurb: str,
     spine_cx = bleed + trim_w + spine_w / 2
     logo_reserve = 0
     logo_path = next((p for p in (base / "spine-logo.png",
-                                  Path(OUTPUT_DIR).parent / "assets" / "olive-tree-logo.png")
+                                  Path(OUTPUT_DIR).parent / "assets" / "tigerworks-logo.png")
                       if p.exists()), None)
     if logo_path is not None:
         from reportlab.lib.utils import ImageReader

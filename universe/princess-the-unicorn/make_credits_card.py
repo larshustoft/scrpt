@@ -32,26 +32,17 @@ def _font(size):
 
 
 def build(out=HERE / "endcard-tigerworks.mp4"):
+    """The end screen is the MARK, nothing else (Lars, 2026-08-31): the
+    white TigerWorks logo centred on black. No typeset name, no place,
+    no year — the logo carries all of it."""
+    logo = Path("/Users/tiger/.scrpt/house/brand/tigerworks-white.png")
     img = Image.new("RGB", (W, H), (0, 0, 0))
-    dr = ImageDraw.Draw(img)
-    f = _font(64)
-    text, gap = "TigerWorks", 40         # wide airy tracking, per the mockup
-    tw = sum(dr.textlength(c, font=f) + gap for c in text) - gap
-    bb = dr.textbbox((0, 0), text, font=f)
-    x, y = (W - tw) / 2, (H - (bb[3] - bb[1])) / 2 - bb[1] - 26
-    for c in text:
-        dr.text((x, y), c, font=f, fill=(255, 255, 255))
-        x += dr.textlength(c, font=f) + gap
-
-    # the studio line: where the work is made (Lars, 2026-08-30)
-    f2 = _font(19)
-    sub, gap2 = "FRANCE 2026", 3.5
-    tw2 = sum(dr.textlength(ch, font=f2) + gap2 for ch in sub) - gap2
-    x2 = (W - tw2) / 2
-    y2 = y + (bb[3] - bb[1]) + 40
-    for ch in sub:
-        dr.text((x2, y2), ch, font=f2, fill=(150, 150, 150))
-        x2 += dr.textlength(ch, font=f2) + gap2
+    lg = Image.open(logo).convert("RGBA")
+    bbox = lg.split()[3].getbbox() or (0, 0, lg.width, lg.height)
+    lg = lg.crop(bbox)
+    target_w = int(W * 0.20)
+    lg = lg.resize((target_w, int(lg.height * target_w / lg.width)), Image.LANCZOS)
+    img.paste(lg, ((W - lg.width) // 2, (H - lg.height) // 2), lg)
 
     still = HERE / "endcard-tigerworks.png"
     img.save(still)

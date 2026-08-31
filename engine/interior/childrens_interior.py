@@ -410,7 +410,10 @@ def _build_interior(catalog: str, handle=None) -> dict:
     subtitle = str((ms_rec or {}).get("tagline") or "").strip()
     publisher = (get_setting("publisher_name", "") or "").strip()
     # parents[1] is engine/, and the mark lives in the project root
-    logo_path = Path(__file__).resolve().parents[2] / "assets" / "olive-tree-logo.png"
+    _assets = Path(__file__).resolve().parents[2] / "assets"
+    logo_path = (_assets / "tigerworks-logo.png"
+                 if (_assets / "tigerworks-logo.png").exists()
+                 else _assets / "olive-tree-logo.png")
 
     c.setFillColorRGB(1, 1, 1); c.rect(0, 0, page_w, page_h, stroke=0, fill=1)
     c.setFillColorRGB(0.08, 0.07, 0.06)
