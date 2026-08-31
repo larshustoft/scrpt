@@ -45,3 +45,20 @@ Beats 1, 5 and 6 are fixed assets: made once per universe, attached
 mechanically, never re-made per episode. Beats 2, 3 and 4 are the only
 new work a story requires. That is what makes 26 — or 100 — episodes
 possible.
+
+## The first law of the script (Lars, 2026-08-31)
+
+**THE SCRIPT IS THE FILM.** It is written to work with the eyes closed —
+a listener who never sees a picture must follow the whole story, feel
+every turn and understand the ending. It must stand on its own as an
+audiobook.
+
+The pictures only underline and strengthen what the words already carry.
+They are never asked to explain anything: if a beat can only be
+understood by seeing it, the script is wrong.
+
+This inverts the old order (board first, words fitted afterwards) and is
+why the pipeline now runs: **script → approve → illustrate → shoot.**
+Every spoken beat becomes exactly one shot carrying that beat alone —
+one voice at a time — and a shot's length is decided by its words
+(words / 2.2 + a beat to breathe), never the other way round.

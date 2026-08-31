@@ -678,21 +678,34 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
 
     # ── stage 1: the adaptation
     adapt_prompt = (
-        f"BOOK: \"{book['title']}\" — adapt it into a ~{minutes}-minute "
-        f"{fmt['label']} screenplay. REGISTER: {fmt['register']}.\n"
+        f"BOOK: \"{book['title']}\" — write the ~{minutes}-minute "
+        f"{fmt['label']} SCRIPT. REGISTER: {fmt['register']}.\n"
+        "\nTHE FIRST LAW OF THIS SCRIPT (Lars, 2026-08-31): THE SCRIPT IS "
+        "THE FILM. Write it so it works with the eyes CLOSED — a listener "
+        "who never sees a single picture must follow the whole story, feel "
+        "every turn and understand the ending. It must stand on its own as "
+        "an AUDIOBOOK. The pictures will only underline what the words "
+        "already carry; they will never be asked to explain anything. If a "
+        "beat can only be understood by seeing it, the script is wrong — "
+        "say it in narration or in a character's mouth.\n"
         + rules_block
         + (f"EPISODE PREMISE (this episode's own story, true to the book's "
            f"world and cast): {premise.strip()}\n" if premise.strip() else "")
         + f"\nTHE BOOK:\n{story}\n\n"
         f"THE CAST (the only characters that exist): {', '.join(cast_names)}\n\n"
-        "ADAPTATION CRAFT:\n"
-        "1. The story is TOLD THROUGH THE CHARACTERS: dialogue and on-screen "
-        "action carry every beat. Expand the book's spoken lines into real "
-        "exchanges (2-6 lines per scene) that stay true to each character's "
-        "voice and the book's story — invent dialogue, never plot.\n"
-        "2. NARRATION is a storyteller's spice: at most one or two short "
-        "warm sentences per scene, mainly the opening, the turn, and the "
-        "close. Most scenes need none.\n"
+        "SCRIPT CRAFT (audio first):\n"
+        "1. EVERY SCENE IS HEARD: each scene carries narration AND dialogue "
+        "in an order that reads aloud like a story being told — the "
+        "storyteller sets the place and the change, the characters live "
+        "inside it. A scene of pure pictures does not exist in this script.\n"
+        "2. THE STORYTELLER IS THE SPINE, not a spice: she opens, she "
+        "marks every move (where they are now, why they went, what just "
+        "changed, how time passed), she names feelings, and she closes. "
+        "Two to four narration beats per scene is normal. NEVER let a "
+        "cause, a place-change or a rescue happen only in the picture.\n"
+        "2a. ONE VOICE AT A TIME: write narration and dialogue as separate "
+        "consecutive beats, never overlapping, never a line that depends on "
+        "hearing another at the same moment.\n"
         "2c. THE EPISODE ENDING has three movements in order (house law, "
         "Lars 2026-08-30): the storyteller SUMS UP the story now that it "
         "is over; then the MAIN CHARACTER says in their own child-simple "
@@ -712,11 +725,14 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
         + ("5. Nothing scary; the register is a beloved family film.\n\n"
            if format_kind == "childrens" else
            "5. Honour the book's genre register throughout.\n\n")
-        + "Return JSON only: {\"scenes\": [{\"n\": 1, \"title\": \"...\", "
-        "\"setting\": \"where and when\", \"action\": \"what happens on "
-        "screen, 2-4 sentences\", \"narration\": \"storyteller line or "
-        "empty\", \"dialogue\": [{\"speaker\": \"Name\", \"line\": "
-        "\"...\"}]}]}")
+        + "Return JSON only: {\"score_plan\": [...], \"scenes\": [{\"n\": 1, "
+        "\"title\": \"...\", \"setting\": \"where and when\", "
+        "\"action\": \"what happens, 2-4 sentences\", "
+        "\"script\": [{\"type\": \"vo\", \"text\": \"...\"}, "
+        "{\"type\": \"line\", \"speaker\": \"Name\", \"text\": "
+        "\"...\"}, ...]}]} — `script` is the scene READ ALOUD, in order, "
+        "beat by beat: it is the film. Keep `narration` and `dialogue` out; "
+        "everything spoken belongs in `script`.")
     if handle:
         handle.progress(0.1, "adaptation", "adapting the book into a screenplay")
     set_model_override(writing_model())
@@ -737,11 +753,23 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
         if handle:
             handle.progress(0.35, "board", "breaking the screenplay into shots")
         board_prompt = (
-            f"THE SCREENPLAY of \"{book['title']}\" (animated family film):\n"
+            f"THE FINISHED SCRIPT of \"{book['title']}\" (animated family "
+            f"film). It is LOCKED — the film IS this script:\n"
             f"{scenes_txt}\n\n"
             f"THE CAST: {', '.join(cast_names)}\n"
             + rules_block + "\n"
-            f"Break EVERY scene into {shots_per}-4 shots. Rules:\n"
+            "YOUR JOB: give every spoken beat a PICTURE. The words are "
+            "fixed; you are illustrating them (Lars, 2026-08-31: the "
+            "visuals only underline and strengthen the story).\n"
+            "A. Walk the `script` array of each scene IN ORDER. Every beat "
+            "becomes exactly ONE shot carrying that beat and nothing else: "
+            "a `vo` beat becomes a shot with that narration and NO dialogue; "
+            "a `line` beat becomes a shot with that character speaking and "
+            "NO narration. Never merge two beats into one shot, never drop "
+            "a beat, never invent a line.\n"
+            "B. Design the picture to SERVE the words being heard: what "
+            "would a child most want to see while hearing exactly this?\n"
+            f"Then the old rules still hold. Break EVERY scene into {shots_per}-4 shots. Rules:\n"
             "1. One composition per shot: framing, what happens, the light. "
             "Characters by cast name only; never invent characters.\n"
             "2. We SEE faces: front or three-quarter views, expressions "
@@ -753,7 +781,10 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             "4. The scene's `narration` (if any) becomes `vo` on its opening "
             "shot only.\n"
             "5. `sound`: one gentle diegetic sound per shot.\n"
-            "6. `dur`: 4-8 seconds; a shot with a line runs long enough to "
+            "6. `dur`: THE WORDS DECIDE. Count the words this shot must "
+            "carry and give it at least (words / 2.2) + 1.5 seconds, "
+            "minimum 4 — a shot is as long as the thing being said, never "
+            "shorter. Otherwise 4-8 seconds; a shot with a line runs long enough to "
             "speak it.\n"
             "7. THE FILM'S FIRST SHOT (Lars, 2026-08-30) is always the "
             "WIDEST view of the story's world — a whole valley, a skyline, "
@@ -780,6 +811,14 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
     finally:
         set_model_override(None)
     data_out = extract_json(raw2) or {}
+    def _needed_seconds(pn: dict) -> float:
+        """A shot must be able to hold its own speech (Lars, 2026-08-31:
+        the script is the film). 2.2 words/second at the house pace, plus
+        a beat to breathe."""
+        w = len((pn.get("vo") or "").split()) + \
+            len((((pn.get("line") or {}).get("text")) or "").split())
+        return max(4.0, round(w / 2.2 + 1.5, 1)) if w else 4.0
+
     panels, idx = [], 0
     known = {n.lower(): n for n in cast_names}
     for sc in (data_out.get("scenes") or []):
@@ -804,6 +843,8 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             if isinstance(ln, dict) and (ln.get("text") or "").strip():
                 pn["line"] = {"speaker": str(ln.get("speaker") or "")[:60],
                               "text": str(ln["text"]).strip()[:200]}
+            # the board may still under-time a shot; the words win
+            pn["dur"] = max(float(pn.get("dur") or 4), _needed_seconds(pn))
             panels.append(pn)
     if len(panels) < len(scenes):
         raise RuntimeError("The board came back too thin — try again")
