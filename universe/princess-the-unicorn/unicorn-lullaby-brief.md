@@ -30,3 +30,26 @@ OUTRO VERSION (Lars, 2026-08-29): every episode's outro SINGS the short lullaby 
 the refrain + the goodnight tag (~25s): "Sleep now… sleep now… the forest holds you
 near / Sleep now… sleep now… your dreams are safe in here / Goodnight, goodnight,
 little unicorn — sleep tight." Same lines every episode, so children sing along.
+
+
+## THE LYRICS AS SUNG (canon, 2026-08-31)
+
+Verse 1
+  Little hooves are tired now, the meadow's gone to rest.
+  Fireflies are drowsy, tucked in their tiny nests.
+
+Refrain  (= the SHORT version that ends every episode)
+  Sleep now... sleep now... the forest holds you near.
+  Sleep now... sleep now... your dreams are safe in here.
+
+Verse 2
+  The moss is soft, the moon is high, the river hums a tune.
+  Mama's bell is ringing soft, and you'll be dreaming soon.
+
+Refrain
+
+Close
+  Goodnight, goodnight, little unicorn... sleep tight.
+
+Recordings: theme/lullaby-short-harp.mp3 (26s, the episode ending) and
+theme/lullaby-full.mp3 (2:00, the Spotify-candidate full version, 57 cr).
