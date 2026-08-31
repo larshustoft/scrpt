@@ -52,8 +52,19 @@ def _pip_pose(pip, t):
 
 
 def build():
-    princess = _fit(Image.open(HERE / "credits-princess.png").convert("RGBA"), 420)
-    pip = _fit(Image.open(HERE / "credits-pip.png").convert("RGBA"), 150)
+    """Real animation, not moved stills (Lars, 2026-08-31): Princess walks
+    in on a four-frame cycle, settles, breathes and blinks; Pip flies on a
+    four-frame wing-flap. Screen two is the mark alone — no characters."""
+    S = HERE / "sprites"
+    walk = [Image.open(S / f"princess-{i}.png").convert("RGBA") for i in (0, 1, 2, 3)]
+    stand = Image.open(S / "princess-4.png").convert("RGBA")
+    blink = Image.open(S / "princess-5.png").convert("RGBA")
+    flap = [Image.open(S / f"pip-{i}.png").convert("RGBA") for i in range(4)]
+    PH = 380                                  # Princess height on screen
+    walk = [_fit(w, PH) for w in walk]
+    stand, blink = _fit(stand, PH), _fit(blink, PH)
+    flap = [_fit(f, 165) for f in flap]
+
     mark = Image.open(BRAND).convert("RGBA")
     mark = mark.crop(mark.split()[3].getbbox())
     mark = mark.resize((int(W * 0.20), int(mark.height * (W * 0.20) / mark.width)),
@@ -63,21 +74,21 @@ def build():
     if frames.exists():
         shutil.rmtree(frames)
     frames.mkdir()
-
     f_small, f_big = _font(26), _font(54)
     GREY, WHITE = (150, 150, 150), (255, 255, 255)
 
-    # Pip's route: the outer margin only — he never crosses the words
     def pip_xy(u):
-        """u in 0..1 around a rounded rectangle path, clockwise from left."""
-        mx, my = int(W * 0.06), int(H * 0.10)
-        if u < 0.42:                       # left edge, rising
-            return mx, int(H * 0.80 - (H * 0.62) * (u / 0.42))
-        if u < 0.72:                       # top edge, left to right
-            return int(mx + (W - 2 * mx) * ((u - 0.42) / 0.30)), my
-        return W - mx, int(my + (H * 0.5) * ((u - 0.72) / 0.28))   # right edge
+        """The outer margin, clockwise — never across the words."""
+        mx, my = int(W * 0.07), int(H * 0.12)
+        if u < 0.40:
+            return mx, int(H * 0.82 - (H * 0.64) * (u / 0.40))
+        if u < 0.70:
+            return int(mx + (W - 2 * mx) * ((u - 0.40) / 0.30)), my
+        return W - mx, int(my + (H * 0.55) * ((u - 0.70) / 0.30))
 
     n1 = int(S1 * FPS)
+    WALK_END = 3.6                            # she walks in, then settles
+    x_start, x_home = int(W * 1.02), int(W * 0.78)
     for i in range(n1):
         t = i / FPS
         img = Image.new("RGB", (W, H), (0, 0, 0))
@@ -90,49 +101,41 @@ def build():
         _tracked(dr, "MUSIC BY", f_small, W / 2, H * 0.56, 5, g)
         _tracked(dr, "Lars Tiger", f_big, W / 2, H * 0.62, 3, w_)
 
-        # Princess: sitting in the corner, breathing, with a slow sway
-        bob = math.sin(t * 1.6) * 7
-        p = princess.rotate(math.sin(t * 0.9) * 1.6, resample=Image.BICUBIC,
-                            expand=True)
-        px = int(W * 0.80)
-        py = int(H - p.height - H * 0.04 + bob)
+        if t < WALK_END:                      # WALKING: 8 fps cycle, moving left
+            k = int(t * 8) % 4
+            sp = walk[k].transpose(Image.FLIP_LEFT_RIGHT)   # facing left, entering
+            px = int(x_start + (x_home - x_start) * (t / WALK_END))
+            bob = math.sin(t * 8 * math.pi / 2) * 3
+        else:                                 # SETTLED: breathing, blinking
+            u = t - WALK_END
+            eyes_shut = (u % 3.4) > 3.15      # a real blink, twice a screen
+            sp = (blink if eyes_shut else stand).transpose(Image.FLIP_LEFT_RIGHT)
+            px = x_home
+            bob = math.sin(u * 1.7) * 4
+        py = int(H - sp.height - H * 0.06 + bob)
         if fade < 1:
-            p = p.copy(); p.putalpha(p.split()[3].point(lambda a: int(a * fade)))
-        img.paste(p, (px, py), p)
+            sp = sp.copy(); sp.putalpha(sp.split()[3].point(lambda a: int(a * fade)))
+        img.paste(sp, (px, py), sp)
 
-        # Pip: flying the margin
-        u = (t / 6.5) % 1.0
+        # Pip: a real flap cycle at 10 fps, riding the margin
+        u = (t / 7.0) % 1.0
         bx, by = pip_xy(u)
-        bird, lift = _pip_pose(pip, t)
-        if u < 0.42:                       # rising on the left: face up-right
-            b = bird
-        elif u < 0.72:
-            b = bird
-        else:
-            b = bird.transpose(Image.FLIP_LEFT_RIGHT)
+        b = flap[int(t * 10) % 4]
+        if u >= 0.70:
+            b = b.transpose(Image.FLIP_LEFT_RIGHT)
         if fade < 1:
             b = b.copy(); b.putalpha(b.split()[3].point(lambda a: int(a * fade)))
-        img.paste(b, (int(bx - b.width / 2), int(by - b.height / 2 + lift)), b)
+        img.paste(b, (int(bx - b.width / 2), int(by - b.height / 2)), b)
         img.save(frames / f"a{i:04d}.png")
 
     n2 = int(S2 * FPS)
-    for i in range(n2):
+    for i in range(n2):                       # the mark, alone
         t = i / FPS
         img = Image.new("RGB", (W, H), (0, 0, 0))
         fade = min(1.0, t / 0.9, max(0.0, (S2 - t) / 1.2))
         m = mark.copy()
         m.putalpha(m.split()[3].point(lambda a: int(a * fade)))
         img.paste(m, ((W - m.width) // 2, (H - m.height) // 2), m)
-        # Pip crosses high and leaves the frame, then the mark stands alone
-        if t < 3.2:
-            u = t / 3.2
-            bx = int(-200 + (W + 400) * u)
-            by = int(H * 0.16 + math.sin(t * 2.2) * 18)
-            bird, lift = _pip_pose(pip, t)
-            b = bird.transpose(Image.FLIP_LEFT_RIGHT)
-            a = min(1.0, fade, max(0.0, (3.2 - t) / 0.6))
-            b = b.copy(); b.putalpha(b.split()[3].point(lambda v: int(v * a)))
-            img.paste(b, (bx, int(by + lift)), b)
         img.save(frames / f"b{i:04d}.png")
 
     total = S1 + S2
@@ -143,7 +146,8 @@ def build():
                     f"[0:v][1:v]concat=n=2:v=1:a=0,format=yuv420p[v];"
                     f"[2:a]atrim=0:{total},aresample=48000,"
                     f"aformat=channel_layouts=stereo,afade=t=in:st=0:d=0.8,"
-                    f"afade=t=out:st={total-2.5:.1f}:d=2.5,volume=0.9[a]",
+                    f"afade=t=out:st={total-2.5:.1f}:d=2.5,"
+                    f"loudnorm=I=-14:TP=-1.5:LRA=11[a]",
                     "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
                     "-preset", "medium", "-crf", "17", "-c:a", "aac",
                     "-b:a", "192k", "-r", str(FPS),
