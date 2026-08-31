@@ -44,13 +44,13 @@ def build(out=HERE / "endcard-tigerworks.mp4"):
         x += dr.textlength(c, font=f) + gap
 
     # the studio line: where the work is made (Lars, 2026-08-30)
-    f2 = _font(30)
-    sub, gap2 = "France 2026", 10
+    f2 = _font(19)
+    sub, gap2 = "FRANCE 2026", 3.5
     tw2 = sum(dr.textlength(ch, font=f2) + gap2 for ch in sub) - gap2
     x2 = (W - tw2) / 2
-    y2 = y + (bb[3] - bb[1]) + 46
+    y2 = y + (bb[3] - bb[1]) + 40
     for ch in sub:
-        dr.text((x2, y2), ch, font=f2, fill=(168, 168, 168))
+        dr.text((x2, y2), ch, font=f2, fill=(150, 150, 150))
         x2 += dr.textlength(ch, font=f2) + gap2
 
     still = HERE / "endcard-tigerworks.png"
