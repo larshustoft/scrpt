@@ -61,7 +61,7 @@ def _pip_pose(pip, t):
 
 
 def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4",
-                    src_start: float = 3.0):
+                    src_start: float = 3.0, dim: int = 118):
     """Credits over the living scene — TEN SECONDS, one steady dim.
 
     The dim is set before the first frame and never changes (Lars,
@@ -71,7 +71,7 @@ def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4",
     """
     import tempfile
     tmp = Path(tempfile.mkdtemp())
-    DIM = 118                                  # one setting, all the way
+    DIM = dim                                  # one setting, all the way
 
     over = Image.new("RGBA", (W, H), (6, 9, 22, DIM))
     dr = ImageDraw.Draw(over)
