@@ -1,0 +1,750 @@
+[
+ {
+  "n": 1,
+  "title": "A SWEET MORNING BEGINS",
+  "script": [
+   {
+    "type": "vo",
+    "text": "Far away, where the rainbows go to rest, there is a magical place called Rainbow Forest."
+   },
+   {
+    "type": "vo",
+    "text": "And every single morning there begins with the same sweet sound."
+   },
+   {
+    "type": "vo",
+    "text": "That bell belongs to Glitter. And the little one bouncing along behind her \u2014 that is Princess."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Hi, friend! We're going somewhere very special today. Would you like to come with us?"
+   },
+   {
+    "type": "vo",
+    "text": "Princess did not know it yet. But this would be a morning she would never, ever forget."
+   }
+  ]
+ },
+ {
+  "n": 2,
+  "title": "STAY NEAR THE BELL",
+  "script": [
+   {
+    "type": "vo",
+    "text": "They walked together under enormous flowers and curling rainbow vines."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Stay close enough to hear my bell, little one."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "I love your bell, Mama. It sounds like tiny stars laughing."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "And if we are ever apart, you remember what to do."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Stop. Take a breath. And listen."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Then call for me, and wait somewhere safe."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "And if I still can't find you?"
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Then go to the last safe place we both remember. And I will always, always come looking for you."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "(singing) Stay near my bell, stay close on your way\u2026 if the forest grows quiet \u2014 stop, listen, and stay."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Will your bell always bring me home?"
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "My bell. Your courage. And a little help from your friends."
+   }
+  ]
+ },
+ {
+  "n": 3,
+  "title": "MOONWATER SPRING",
+  "script": [
+   {
+    "type": "vo",
+    "text": "Their special place was called Moonwater Spring \u2014 where the water shimmers with a little piece of the night sky, even in the morning."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Mmm! It tastes like starlight!"
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "With just a sprinkle of moonbeam, I think."
+   },
+   {
+    "type": "vo",
+    "text": "And from that spring, glowing water runs out through the roots of the forest, to every flower and every tree and every creature in it."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Does the whole forest need it?"
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Every single drop."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Then I hope it never, ever stops flowing."
+   }
+  ]
+ },
+ {
+  "n": 4,
+  "title": "THE TRAPPED FIREFLIES",
+  "script": [
+   {
+    "type": "vo",
+    "text": "But on the way home, from behind a curtain of silver vines, came the smallest sound."
+   },
+   {
+    "type": "line",
+    "speaker": "Fireflies",
+    "text": "Help! Please, help us!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Mama, wait! Somebody needs us!"
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "I'm right here. Stay where you can hear my bell."
+   },
+   {
+    "type": "vo",
+    "text": "A whole family of fireflies was tangled in the sticky vines, their little lights blinking on and off."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Don't be frightened, little lights. I'll get you out."
+   },
+   {
+    "type": "vo",
+    "text": "Princess lifted the vines with her horn \u2014 carefully, carefully \u2014 until every last firefly wriggled free."
+   },
+   {
+    "type": "line",
+    "speaker": "Fireflies",
+    "text": "We're free! Thank you, Princess!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Helping somebody makes my heart feel warm."
+   },
+   {
+    "type": "vo",
+    "text": "And then the wind came. Thick golden fog came tumbling between the trees, and a heavy branch crashed down across the path \u2014 right between Princess and her mother."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Princess! Stay where you are! I'm coming!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Mama!"
+   },
+   {
+    "type": "vo",
+    "text": "But the wind was loud. And her mother's voice, and her mother's bell, were somewhere on the other side of it."
+   }
+  ]
+ },
+ {
+  "n": 5,
+  "title": "THE FOREST GROWS QUIET",
+  "script": [
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Mama?"
+   },
+   {
+    "type": "vo",
+    "text": "Princess started to run \u2014 and then she stopped herself."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "No. Running could take me even further away."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Stop. Take a breath. And listen."
+   },
+   {
+    "type": "vo",
+    "text": "So she did. She stood very still in the fog, and she listened with her whole heart."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Can you hear her bell, friend?"
+   },
+   {
+    "type": "vo",
+    "text": "But there was no ring, ring, ring. There was nothing at all."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "I think\u2026 I think I'm lost."
+   },
+   {
+    "type": "vo",
+    "text": "And that is a very big feeling, for somebody very small."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "But I remember the rest of what Mama taught me. If I can't find her by myself\u2026 I can ask for help."
+   }
+  ]
+ },
+ {
+  "n": 6,
+  "title": "TWO HEADS ARE BETTER",
+  "script": [
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "Chirp! Who are you calling for?"
+   },
+   {
+    "type": "vo",
+    "text": "A small blue bird hopped out of the fog."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "My mama. Her name is Glitter. She has a rainbow mane, and a silver bell."
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "I'm Pip! And I know nearly every path in Rainbow Forest."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "\u2026Nearly?"
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "Well. The ones that aren't covered in fog. But cheer up \u2014 two heads are better than one. And four eyes are better than two!"
+   },
+   {
+    "type": "vo",
+    "text": "Then Pip spotted something in the soft mud: hoofprints."
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "Unicorn tracks!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Mama's hoofprints! Let's follow them. Together?"
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "Together."
+   }
+  ]
+ },
+ {
+  "n": 7,
+  "title": "THE WOBBLY BRIDGE",
+  "script": [
+   {
+    "type": "vo",
+    "text": "The tracks led them to a narrow rope bridge, swaying over a rushing stream."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "That bridge looks very wobbly."
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "It also looks very creaky."
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "\u2026Extremely creaky."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Step by step. Slow and steady."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "Please don't step on my tail!"
+   },
+   {
+    "type": "vo",
+    "text": "Out from under the bridge came a small green dragon, shaking from his nose to the end of his tail."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "I'm Moss. I wanted to cross, but I'm afraid of heights. And deep water. And bridges. Especially bridges."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Hello, Moss. Have you seen a big unicorn with a rainbow mane?"
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "No. But I'll help you look."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Being brave doesn't mean you're not scared, Moss. It means you keep going, even when you are."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "Then\u2026 perhaps I can be brave for one bridge."
+   }
+  ]
+ },
+ {
+  "n": 8,
+  "title": "THE BOUNCING MUSHROOMS",
+  "script": [
+   {
+    "type": "vo",
+    "text": "On the other side lay a whole field of enormous, glowing mushrooms."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "How do we ever get across?"
+   },
+   {
+    "type": "vo",
+    "text": "Princess put one hoof on a mushroom \u2014 and it bent, and it bounced, and up she went!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Wheeee!"
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "The forest has given us a shortcut!"
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "Or a very bouncy mistake."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "I'm flying! \u2026Sort of!"
+   },
+   {
+    "type": "vo",
+    "text": "And for one small moment, in the middle of a very frightening day, all three of them laughed out loud."
+   }
+  ]
+ },
+ {
+  "n": 9,
+  "title": "THE STORM",
+  "script": [
+   {
+    "type": "vo",
+    "text": "Then the clouds rolled over the sun, and the rain came down \u2014 and washed every one of those hoofprints away."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "No! Mama's tracks!"
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "I don't like storms."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Stay close to me, Moss. We'll face it together."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "But how will we ever find your mama now?"
+   },
+   {
+    "type": "vo",
+    "text": "And Princess stood very still in the rain, and remembered."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Mama said: go to the last safe place we both remember."
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "Moonwater Spring!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "That's where she'll come looking. Let's go!"
+   },
+   {
+    "type": "vo",
+    "text": "And far away, through the very same rain, Glitter was running and calling."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Princess! Princess, where are you?"
+   },
+   {
+    "type": "vo",
+    "text": "Until her silver bell caught fast on a thorny branch \u2014 and the strap snapped, and the bell fell silently into the wet grass."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Oh no. My bell!"
+   },
+   {
+    "type": "vo",
+    "text": "And now there was no ringing left in the forest at all."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Moonwater Spring. Princess will remember. She will remember."
+   }
+  ]
+ },
+ {
+  "n": 10,
+  "title": "THE SILENT SPRING",
+  "script": [
+   {
+    "type": "vo",
+    "text": "When the three friends reached the clearing at last, something was terribly wrong."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "The spring! It's\u2026 it's gone dark."
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "Where has all the water gone?"
+   },
+   {
+    "type": "vo",
+    "text": "They followed a thin little trickle of water, all the way to a crack in the rocks \u2014 and a dark, quiet cave."
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "In there. That's where the water is going."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "It is very dark in there."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Then we shouldn't go in without a plan\u2026 wait. Little lights! Are you there?"
+   },
+   {
+    "type": "line",
+    "speaker": "Fireflies",
+    "text": "Follow us!"
+   },
+   {
+    "type": "vo",
+    "text": "And out of the trees came the fireflies Princess had saved that very morning \u2014 and they made a glowing golden trail, right into the dark."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Moss, stay close to me. Pip, watch the way behind us."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "I'm still afraid."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "So am I. We can be afraid and brave at the same time."
+   }
+  ]
+ },
+ {
+  "n": 11,
+  "title": "THE CRYSTAL IN THE DARK",
+  "script": [
+   {
+    "type": "vo",
+    "text": "Deep inside the cave, an enormous crystal had fallen right across the underground river. The water pushed and pushed behind it \u2014 and could not get through."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "We have to move it. Push!"
+   },
+   {
+    "type": "vo",
+    "text": "She pushed with all her might. It did not move. Not even a little."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "It's too heavy."
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "Not if we all work together! I'll pull!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "I'll push from below. Moss \u2014 we need somebody at the top."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "But I can't fly."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "You flew over the mushrooms."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "I floated. Very briefly!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "You don't have to fly far. Just one brave flap at a time."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "One brave flap at a time\u2026"
+   },
+   {
+    "type": "vo",
+    "text": "And Moss flapped once. And twice. And up he went!"
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "I'm flying! I'm really flying!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Ready? One, two, three \u2014 PUSH!"
+   },
+   {
+    "type": "vo",
+    "text": "Princess pushed. Pip pulled. Moss shoved from the very top. And the great crystal rolled aside \u2014 and the water burst free, bright and glowing, rushing out into the forest."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Wait. Listen!"
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "(far away) Princess!"
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Mama!"
+   }
+  ]
+ },
+ {
+  "n": 12,
+  "title": "TWO SILVER BELLS",
+  "script": [
+   {
+    "type": "vo",
+    "text": "Moonwater Spring came back to life, shining like the moon come home \u2014 and that light spilled out through the trees, all the way to a mother searching in the rain."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Princess!"
+   },
+   {
+    "type": "vo",
+    "text": "And Princess ran faster than she had ever run in her whole life."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Oh, my brave girl. I was so worried."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "I was worried too, Mama. But I stopped. And I breathed. And I listened. And I asked for help. And then I came to our safe place."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "You remembered every single thing."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "And Pip and Moss helped me. We saved the spring together!"
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "Three heads really are better than one."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "And I flew!"
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "\u2026Sort of."
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "I definitely flew."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Princess \u2014 I have something for you."
+   },
+   {
+    "type": "vo",
+    "text": "And from beneath her mane, Glitter lifted a tiny silver bell, just Princess's size."
+   },
+   {
+    "type": "line",
+    "speaker": "Glitter",
+    "text": "Not because you will never be lost again. But because now you know exactly what to do when the way feels uncertain."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Ring, ring, ring! It sounds just like yours!"
+   },
+   {
+    "type": "line",
+    "speaker": "Moss",
+    "text": "Only smaller."
+   },
+   {
+    "type": "line",
+    "speaker": "Pip",
+    "text": "And much more bouncy."
+   }
+  ]
+ },
+ {
+  "n": 13,
+  "title": "WHAT WE LEARNED TODAY",
+  "script": [
+   {
+    "type": "vo",
+    "text": "And so that was the day Princess got lost in the fog \u2014 and found her own way home again."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "Friend? I learned something today. When you can't find somebody you love \u2014 you don't run. You stop. You take a breath. And you listen."
+   },
+   {
+    "type": "line",
+    "speaker": "Princess",
+    "text": "And then you go to the place you both know. And if you feel too small\u2026 you ask a friend. Two heads really are better than one."
+   },
+   {
+    "type": "vo",
+    "text": "And as the evening came down over Rainbow Forest, two silver bells rang together \u2014 one big, and one small."
+   }
+  ]
+ }
+]

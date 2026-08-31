@@ -77,13 +77,20 @@ def build_over_clip(clip: Path, out=HERE / "credits-ending.mp4",
     over = Image.new("RGBA", (W, H), (6, 9, 22, DIM))
     dr = ImageDraw.Draw(over)
     f_small, f_big = _font(26), _font(54)
-    _tracked(dr, "CREATED AND WRITTEN BY", f_small, W / 2, H * 0.34, 5,
+    # the label sits as close under its name as TIGERWORKS sits under the
+    # mark — a tight pair, then real air before the next pair (Lars,
+    # 2026-08-31). The mark's own gap is ~2.6% of frame height.
+    PAIR = H * 0.030
+    BLOCK = H * 0.155
+    y1 = H * 0.355
+    _tracked(dr, "CREATED AND WRITTEN BY", f_small, W / 2, y1, 5,
              (222, 222, 226, 255), shadow=shadow)
-    _tracked(dr, "The Tiger Family", f_big, W / 2, H * 0.40, 3,
+    _tracked(dr, "The Tiger Family", f_big, W / 2, y1 + PAIR, 3,
              (255, 255, 255, 255), shadow=shadow)
-    _tracked(dr, "MUSIC BY", f_small, W / 2, H * 0.56, 5,
+    y2 = y1 + BLOCK
+    _tracked(dr, "MUSIC BY", f_small, W / 2, y2, 5,
              (222, 222, 226, 255), shadow=shadow)
-    _tracked(dr, "Lars Tiger", f_big, W / 2, H * 0.62, 3,
+    _tracked(dr, "Lars Tiger", f_big, W / 2, y2 + PAIR, 3,
              (255, 255, 255, 255), shadow=shadow)
     over.save(tmp / "type.png")
 
