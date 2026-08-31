@@ -9,6 +9,16 @@ the board builder injects the FORMAT RULES section verbatim into its
 prompts; the fixed bookends are attached mechanically by the pipeline.
 The goal: 100 episodes, each one only as much new work as its story.
 
+## The house six beats (see universe/EPISODE-STRUCTURE.md)
+
+1. Intro — theme song · 2. Episode introduction — wide world image,
+storyteller sets up today, move in to the characters (instrumental) ·
+3. The main chunk — pictures, dialogue, storyteller throughout ·
+4. The episode ending — storyteller sums up, PRINCESS says what we
+learned today, storyteller closes (at dusk, never in bed) ·
+5. THE END — the lullaby scene, the only bedtime · 6. Credits —
+TigerWorks · France 2026 over a short instrumental of the theme.
+
 ## The fixed skeleton (~12:00)
 
 | # | Beat | Length | Source |
