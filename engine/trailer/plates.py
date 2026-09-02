@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..credits import OutOfCredits, raise_if_broke
+from .budget import BUDGET
 from ..config import OPENAI_API_KEY, OUTPUT_DIR
 from ..database import get_book_by_catalog, update_book
 
@@ -91,6 +92,7 @@ async def _draw(client, model: str, prompt: str, dest: Path,
     moves with the generation itself, and the last partial's replacement by
     the final frame is the honest 100% (Lars, 2026-08-29)."""
     import httpx, json as _json
+    BUDGET.spend_drawing(dest.name)          # the cap is checked before the call, never after
     for _ in range(tries):
         try:
             if on_stage is None:
@@ -588,6 +590,7 @@ async def _draw_with_refs(client, model: str, prompt: str, refs: list,
     # was never shown who was in the picture, and drew whoever it liked.
     # The endpoint accepts far more than four; the cap is ours, and the
     # caller orders the list by what must never drift.
+    BUDGET.spend_drawing(dest.name)
     files = []
     for i, r in enumerate(refs[:8]):
         rp = Path(r)
@@ -623,6 +626,7 @@ async def _draw_with_refs(client, model: str, prompt: str, refs: list,
             last = f"{type(e).__name__}: {str(e)[:160]}"
     # The text endpoint is the last resort, and if it fails too the caller
     # is told WHY rather than handed a silent None.
+    BUDGET.drawings -= 1                     # the fallback is the same drawing, not a second one
     got = await _draw(client, model, prompt, dest, size=size, quality=quality)
     if not got:
         raise RuntimeError(f"the picture could not be drawn: {last or 'unknown error'}")

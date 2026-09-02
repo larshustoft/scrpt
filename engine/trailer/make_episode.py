@@ -92,6 +92,20 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
         update_book(fresh["id"], d)
     _save()
 
+    # THE QUOTE IS THE CAP (Lars, 2026-09-02). Pictures: one drawing per
+    # shot, room for repairs on half of them, plus the plates — and not a
+    # drawing more without someone raising the cap on purpose. Credits: the
+    # shoot at gen4_turbo's measured ~5 credits/second with 40% headroom.
+    from .budget import BUDGET, OverBudget
+    n_shots = len(board["panels"])
+    total_s = sum(float(p.get("dur") or p.get("seconds") or 5) for p in board["panels"])
+    drawings_cap = int(n_shots * 1.5) + 24
+    credits_cap = int(total_s * 5 * 1.4) + 200
+    BUDGET.quote(drawings_cap=drawings_cap, credits_cap=credits_cap)
+    log(f"QUOTE — this run may draw at most {drawings_cap} pictures and spend at most "
+        f"{credits_cap} Runway credits ({n_shots} shots, {int(total_s)}s of picture). "
+        f"It stops itself at either cap.")
+
     # 2. the world, drawn once and checked
     world = await establish_world(catalog, board, profile)
     log(f"world established: {world}")
@@ -108,7 +122,7 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
             log("every picture passes")
             last = None
             break
-        except OutOfCredits:
+        except (OutOfCredits, OverBudget):
             raise
         except RuntimeError as e:
             last = e
@@ -140,6 +154,8 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
 
     # 4. shoot, cut, master, archive, export
     before = await credit_balance()
+    BUDGET.credits_start = before
+    log(f"pictures used {BUDGET.report()}")
     log(f"shooting — Runway balance {before}")
     r = await finish_episode(catalog, board, profile, t0)
     after = await credit_balance()
@@ -166,10 +182,11 @@ def main():
         print("\nBOARD READY FOR APPROVAL" if rec.get("stopped") else
               "\nEPISODE COMPLETE:", rec.get("film") or "")
     except Exception as e:
+        from .budget import BUDGET as _B
         out.write_text(json.dumps(
             {"failed": str(e), "trace": traceback.format_exc()[-2000:],
-             "log": LOG}, indent=1))
-        print("\nEPISODE STOPPED:", e)
+             "spend": _B.report(), "log": LOG}, indent=1))
+        print("\nEPISODE STOPPED:", e, "|", _B.report())
         raise
 
 

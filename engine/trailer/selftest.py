@@ -125,4 +125,20 @@ def check_gates() -> list:
                    "the universe's canonical pictures — a redrawn reference "
                    "sheet could silently replace an approved character")
 
+    # 16. A run may not spend past its quote: drawings are counted at the
+    #     call, the episode quotes caps, and the shoot checks its balance.
+    from . import make_episode as _ME
+    from . import budget as _BU
+    if "BUDGET.spend_drawing" not in inspect.getsource(_P):
+        bad.append("drawings are no longer counted against the cap")
+    if "BUDGET.quote" not in inspect.getsource(_ME.make_episode):
+        bad.append("an episode no longer quotes its spending caps before it starts")
+    if "check_credits" not in src:
+        bad.append("the shoot no longer stops at its credit cap")
+    _b = _BU.Budget(); _b.quote(drawings_cap=1); _b.spend_drawing()
+    try:
+        _b.spend_drawing(); bad.append("the drawing cap does not actually refuse")
+    except _BU.OverBudget:
+        pass
+
     return bad

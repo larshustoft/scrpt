@@ -3433,10 +3433,26 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         return Path(rel) if rel.startswith("/") \
             else OUTPUT_DIR / catalog / "trailer" / rel
 
+    from .budget import BUDGET as _BUDGET
+    _launched = [0]
+
     async def shoot_panel(pl):
         i, pn, clip = pl["i"], pl["pn"], pl["clip"]
         prompt, refs, secs = pl["prompt"], pl["refs"], pl["secs"]
         _sp = _still_path_of(pn)
+        # THE SHOOT STOPS AT ITS CAP (2026-09-02). Every tenth take, the
+        # balance is read and compared with what this run was quoted; past
+        # the cap no new take is launched. Takes already in flight finish
+        # and are banked, so nothing paid for is lost.
+        _launched[0] += 1
+        if _BUDGET.credits_cap is not None and _launched[0] % 10 == 0:
+            try:
+                _BUDGET.check_credits(await runway.credit_balance(),
+                                      f"before shot {pn.get('n')}")
+            except Exception as _e:
+                if _e.__class__.__name__ == "OverBudget":
+                    raise
+
         if clip.exists() and clip.stat().st_size > 200_000:
             # A BANKED TAKE MUST STILL BE THE APPROVED PICTURE (Lars,
             # 2026-09-01). Reuse used to be decided by the file name alone,
