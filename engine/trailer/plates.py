@@ -82,6 +82,9 @@ def _dir(catalog: str, leaf: str) -> Path:
     return p
 
 
+# THE WHOLE PROMPT REACHES THE MODEL (2026-09-02). Prompts ran to 5,000
+# characters and were cut at 3,800 — the closing camera line and the
+# universe's earned rules never arrived. The endpoint accepts far more.
 async def _draw(client, model: str, prompt: str, dest: Path,
                 size: str = "1024x1024", tries: int = 3,
                 quality: str = "high", on_stage=None) -> Optional[Path]:
@@ -99,7 +102,7 @@ async def _draw(client, model: str, prompt: str, dest: Path,
                 r = await asyncio.wait_for(client.post(
                     "https://api.openai.com/v1/images/generations",
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                    json={"model": model, "prompt": prompt[:3800],
+                    json={"model": model, "prompt": prompt[:6000],
                           "size": size, "quality": quality, "n": 1}),
                     timeout=240)
                 if r.status_code == 200:
@@ -118,7 +121,7 @@ async def _draw(client, model: str, prompt: str, dest: Path,
             async with client.stream(
                     "POST", "https://api.openai.com/v1/images/generations",
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                    json={"model": model, "prompt": prompt[:3800],
+                    json={"model": model, "prompt": prompt[:6000],
                           "size": size, "quality": quality, "n": 1,
                           "stream": True, "partial_images": 2},
                     timeout=240) as r:
@@ -330,7 +333,7 @@ async def draw_series_logo(catalog: str, n: int = 3, handle=None) -> dict:
                         r = await asyncio.wait_for(client.post(
                             "https://api.openai.com/v1/images/generations",
                             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                            json={"model": model, "prompt": prompt[:3800],
+                            json={"model": model, "prompt": prompt[:6000],
                                   "size": "1536x1024", "quality": "high", "n": 1,
                                   "background": "transparent", "output_format": "png"}),
                             timeout=240)
@@ -604,7 +607,7 @@ async def _draw_with_refs(client, model: str, prompt: str, refs: list,
             resp = await asyncio.wait_for(client.post(
                 "https://api.openai.com/v1/images/edits",
                 headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                data={"model": model, "prompt": prompt[:3800],
+                data={"model": model, "prompt": prompt[:6000],
                       "size": size, "quality": quality, "n": "1"},
                 files=files), timeout=300)
             if resp.status_code == 200:

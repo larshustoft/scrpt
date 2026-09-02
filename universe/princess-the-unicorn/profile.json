@@ -56,7 +56,7 @@
    "note": "These are the EPISODE FURNITURE. They are not regenerated, restyled or re-scored for a new episode — every film is cut between them. Only Lars reopens a locked element.",
    "bells": "bell-glitter.mp3 (Glitter) and bell-princess.mp3 (Princess) — approved 2026-09-01"
   },
-  "scale_chart": "SIZE CHART — obey exactly, in every shot of every episode. Glitter is a full-grown unicorn mare. Princess is a small foal: her back reaches only to Glitter's knee, and she is about one third of Glitter's length. Moss the little dragon is SMALLER than Princess — standing, his head reaches Princess's chest. Pip the bird is tiny: about the size of Princess's head, and he can perch on her back. The white stone in the cave is about as tall as Princess. These sizes NEVER change.",
+  "scale_chart": "SIZE CHART — obey exactly, in every shot of every episode. Glitter is a full-grown unicorn mare. Princess is a small foal: her back reaches only to Glitter's knee, and she is about one third of Glitter's length. Moss the little dragon is SMALLER than Princess — standing, his head reaches Princess's chest. Pip the bird is tiny: about the size of Princess's head, and he can perch on her back. These sizes NEVER change.",
   "scale_plate": "scale-plate.png",
   "bells": {
    "glitter": "bell-glitter.mp3",
@@ -103,7 +103,10 @@
      "bell"
     ],
     "look": "A small polished silver bell on a soft lilac ribbon, plain and round, with a narrow slot across its base.",
-    "worn_by": "Glitter"
+    "worn_by": [
+     "Glitter",
+     "Princess"
+    ]
    },
    "spring-opening": {
     "words": [
@@ -152,7 +155,8 @@
     "stone"
    ]
   },
-  "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there."
+  "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there.",
+  "scale_chart_stone": "The round white stone at the foot of the white cliff is about as tall as Princess."
  },
  "world": {
   "bible_book": "SC-039",

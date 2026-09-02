@@ -75,9 +75,16 @@ def presence_for(pn: dict, cast_names: list) -> str:
     return line
 
 
-def scale_line(profile: dict) -> str:
+def scale_line(profile: dict, pn: dict = None) -> str:
     """The size chart. Characters drift because nothing repeats their size."""
     ch = (profile.get("creatives") or {}).get("scale_chart")
+    # THE STONE'S SIZE TRAVELS ONLY WITH THE STONE (2026-09-02). One size
+    # line — "the white stone in the cave is about as tall as Princess" —
+    # rode in every prompt of the film, and put a stone and a cave into
+    # shots on the forest path, at the bridge and on the closing pages.
+    _stone = (profile.get("creatives") or {}).get("scale_chart_stone")
+    if ch and _stone and "white-stone" in ((pn or {}).get("props") or []):
+        ch = f"{ch} {_stone}"
     return str(ch).strip() if ch else ""
 
 
@@ -86,7 +93,7 @@ def shot_prompt_suffix(board: dict, pn: dict, cast_names: list,
     """Everything the camera cannot infer, appended to a shot's own words."""
     bits = [state_for(board, pn.get("scene")),
             presence_for(pn, cast_names),
-            scale_line(profile or {}),
+            scale_line(profile or {}, pn),
             NO_LIPSYNC]
     return " ".join(b for b in bits if b)
 

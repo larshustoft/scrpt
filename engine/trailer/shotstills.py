@@ -242,7 +242,9 @@ async def draw_shot_stills(catalog: str, board: dict, profile: dict,
                     # "an extra bell lying on the ground"). Handing the bell's own
                     # plate over as well, beside a Glitter who is wearing one, made
                     # the model draw a second bell loose on the ground — six times.
-                    if _worn.get(pk) and _worn[pk] in (pn.get("present") or []):
+                    _wearers = _worn.get(pk)
+                    _wearers = [_wearers] if isinstance(_wearers, str) else list(_wearers or [])
+                    if _wearers and any(w in (pn.get("present") or []) for w in _wearers):
                         continue
                     pp = Path(OUTPUT_DIR) / catalog / "trailer" / "props" / f"{pk}.png"
                     if pp.exists():
