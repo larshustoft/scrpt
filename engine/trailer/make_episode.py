@@ -109,6 +109,9 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     total_s = sum(float(p.get("dur") or p.get("seconds") or 5) for p in board["panels"])
     drawings_cap = int(n_shots * 1.5) + 24
     credits_cap = int(total_s * 5 * 1.4) + 200
+    # A PERSON MAY SET A TIGHTER CAP FOR A PARTIAL RE-SHOOT (2026-09-02)
+    if os.environ.get("SCRPT_CREDITS_CAP"):
+        credits_cap = min(credits_cap, int(os.environ["SCRPT_CREDITS_CAP"]))
     BUDGET.quote(drawings_cap=drawings_cap, credits_cap=credits_cap)
     log(f"QUOTE — this run may draw at most {drawings_cap} pictures and spend at most "
         f"{credits_cap} Runway credits ({n_shots} shots, {int(total_s)}s of picture). "

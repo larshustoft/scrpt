@@ -3532,6 +3532,17 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     # sent with every name replaced by what the picture shows.
                     from .takecheck import de_name as _de_name
                     _motion = _de_name(_motion, _universe_profile(catalog))
+                    # THE LAST TRY ASKS FOR ALMOST NOTHING (2026-09-02). Most
+                    # drift follows an action the model cannot hold — a turn,
+                    # a pull, a walk. A take that has failed twice is asked
+                    # only to breathe: the camera holds, light and leaves
+                    # move, nobody goes anywhere. A quiet true picture beats a
+                    # lively wrong one.
+                    if attempt >= 2:
+                        _motion = ("The camera holds completely still. The characters breathe "
+                                   "and blink and shift their weight very slightly; leaves, "
+                                   "flowers, light and dust drift gently. Nobody walks, turns "
+                                   "or reaches.")
                     # MOTION ONLY — never the scene description (Lars,
                     # 2026-09-01). The picture IS the content: it already
                     # holds the characters, their colours, their sizes, the
@@ -3587,6 +3598,28 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                                 clip.rename(clip.with_name(clip.stem + f".bad{attempt}.mp4"))
                                 await asyncio.sleep(4)
                                 continue
+                            # THREE TAKES REFUSED: THE SHOT HOLDS ON ITS PICTURE
+                            # (2026-09-02). A slow push-in on the approved still is
+                            # exactly the right picture with a little life; it is
+                            # what the film would have used had the shot never been
+                            # filmed, and it is reported by name. The film is never
+                            # stopped by a shot the model cannot hold, and never
+                            # shipped with one it invented.
+                            clip.rename(clip.with_name(clip.stem + f".bad{attempt}.mp4"))
+                            _fn = max(12, int(round(secs * 24))); _W2, _H2 = 1280, 720
+                            _vf = (f"scale={_W2*2}:{_H2*2}:force_original_aspect_ratio=increase,"
+                                   f"crop={_W2*2}:{_H2*2},"
+                                   f"zoompan=z='min(1+0.08*on/{_fn},1.08)':d={_fn}:"
+                                   f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={_W2}x{_H2}:fps=24,format=yuv420p")
+                            _run(["-y", "-loop", "1", "-i", str(_sp), "-f", "lavfi", "-i",
+                                  "anullsrc=r=48000:cl=stereo", "-vf", _vf, "-frames:v", str(_fn),
+                                  "-t", f"{secs:.2f}", "-shortest", "-c:v", "libx264", "-preset", "fast",
+                                  "-crf", "20", "-c:a", "aac", "-b:a", "96k", str(clip)], f"hold {pn.get('n')}")
+                            pn["held_on_still"] = pn.pop("take_problem", "")[:160]
+                            if handle:
+                                handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
+                                                f"panel {pn.get('n')} holds on its picture after three refused takes")
+                            ok = True; break
                         else:
                             pn.pop("take_problem", None)
                         pn.pop("off_board", None)
@@ -3663,6 +3696,8 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             if _spx is None:
                 continue
             _m = _take_matches_still(pl["clip"], _spx)
+            if pl["pn"].get("held_on_still"):
+                continue
             if _off_board(_m) or pl["pn"].get("take_problem"):
                 _off.append((str(pl["pn"].get("n")), pl["pn"].get("take_problem") or round(_m, 2)))
             elif _m is None:
@@ -3885,7 +3920,8 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
               "refs_dropped": [p.get("n") for p in panels if p.get("refs_dropped")],
               # Proof, in the record, that every shot in this file is the
               # picture that was approved on the board.
-              "board_check": board_check}
+              "board_check": board_check,
+              "held_on_still": {str(p.get("n")): p.get("held_on_still") for p in panels if p.get("held_on_still")}}
     book2 = get_book_by_catalog(catalog)
     versions = list(((book2["data"].get("trailer") or {}).get("versions")) or [])
     vn = len(versions) + 1
