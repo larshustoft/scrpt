@@ -208,6 +208,10 @@
    "rope-bridge": {
     "file": "props/rope-bridge.png",
     "md5": "6a7704050f18c0a879c42643d5186025"
+   },
+   "fallen-branch": {
+    "file": "props/fallen-branch.png",
+    "md5": "7491cfd90bd97d552ce972077fc271ac"
    }
   },
   "props_note": "Universe objects. Each has one plate, drawn once and kept here with its hash; every episode copies it in and verifies it before drawing. The bell (Lars, 2026-09-02): Glitter's silver bell on a lilac ribbon, and Princess's — the same bell a little smaller, on a sky-blue ribbon — are the same object at two sizes."
