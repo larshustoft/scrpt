@@ -257,7 +257,8 @@ async def draw_shot_stills(catalog: str, board: dict, profile: dict,
                 got = await _draw_with_refs(client, model,
                                             still_prompt(board, pn, cast, style, profile,
                                                          handling),
-                                            refs, dest, size="1536x1024")
+                                            refs, dest, size="1536x1024",
+                                            quality=os.environ.get("SCRPT_STILL_QUALITY", "high"))
                 done[0] += 1
                 if handle:
                     handle.progress(0.05 + 0.35 * done[0] / max(1, len(todo)),
