@@ -5927,6 +5927,350 @@
    "round": 0,
    "kind": "boulder",
    "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "6",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "13b",
+   "round": 1,
+   "kind": "other",
+   "reason": "not the shot on the board: The shot should be a wide view of the forest beyond the clearing with flowers and trees, b"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "14",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a boulder, egg-shaped stone, standing rock, door or"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "14",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "15",
+   "round": 1,
+   "kind": "missing_character",
+   "reason": "not the shot on the board: Only one unicorn is shown (a close-up portrait); Princess, the daughter she should be look"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "28b",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a boulder, egg-shaped stone, standing rock, door or"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "28b",
+   "round": 1,
+   "kind": "cave",
+   "reason": "Is there a cave, den, tunnel, burrow, hollow or any dark ope"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "28b",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "43b",
+   "round": 1,
+   "kind": "other",
+   "reason": "not the shot on the board: The camera distance is wrong: this is a medium/close shot with Princess and Pip filling mu"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "47",
+   "round": 1,
+   "kind": "cave",
+   "reason": "Is there a cave, den, tunnel, burrow, hollow or any dark ope"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "56b",
+   "round": 1,
+   "kind": "open_mouth",
+   "reason": "Is any character shown with an open mouth as if speaking?"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "66",
+   "round": 1,
+   "kind": "other",
+   "reason": "not the shot on the board: The picture shows Moss and Pip beside a large egg in a nest-like rocky alcove with flowers"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "67",
+   "round": 1,
+   "kind": "open_mouth",
+   "reason": "Is any character shown with an open mouth as if speaking?"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "67",
+   "round": 1,
+   "kind": "cave",
+   "reason": "not the shot on the board: The picture shows a large egg-shaped stone sitting in a cave opening among rocks and flowe"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "69",
+   "round": 1,
+   "kind": "open_mouth",
+   "reason": "Is any character shown with an open mouth as if speaking?"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "69",
+   "round": 1,
+   "kind": "other",
+   "reason": "not the shot on the board: The shot requires a stone wedged in a spring opening holding back water, but the picture s"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "71",
+   "round": 1,
+   "kind": "open_mouth",
+   "reason": "Is any character shown with an open mouth as if speaking?"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "71",
+   "round": 1,
+   "kind": "other",
+   "reason": "not the shot on the board: The picture shows only a close-up of Moss's face with wings, but the required stone wedged"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "72",
+   "round": 1,
+   "kind": "open_mouth",
+   "reason": "Is any character shown with an open mouth as if speaking?"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "86b",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "86b-2",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "88",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a boulder, egg-shaped stone, standing rock, door or"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "88",
+   "round": 1,
+   "kind": "cave",
+   "reason": "Is there a cave, den, tunnel, burrow, hollow or any dark ope"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "88",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "6",
+   "round": 2,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "15",
+   "round": 2,
+   "kind": "missing_character",
+   "reason": "not the shot on the board: Only one unicorn is shown in close-up; Glitter's daughter (Princess) is missing from the s"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "28b",
+   "round": 2,
+   "kind": "cave",
+   "reason": "Is there a cave, den, tunnel, burrow, hollow or any dark ope"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "47",
+   "round": 2,
+   "kind": "cave",
+   "reason": "Is there a cave, den, tunnel, burrow, hollow or any dark ope"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "47",
+   "round": 2,
+   "kind": "other",
+   "reason": "not the shot on the board: The unicorn shown is tall and slender with long legs and a full flowing mane, matching Gli"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "56b",
+   "round": 2,
+   "kind": "open_mouth",
+   "reason": "Is any character shown with an open mouth as if speaking?"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "56b",
+   "round": 2,
+   "kind": "cave",
+   "reason": "not the shot on the board: The shot calls for solid cliff rock with no opening, but the image shows a dark cave/tunne"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "66",
+   "round": 2,
+   "kind": "other",
+   "reason": "not the shot on the board: The shot should be a close-up detail of Moss and Pip's faces together near a wedged stone "
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "67",
+   "round": 2,
+   "kind": "open_mouth",
+   "reason": "Is any character shown with an open mouth as if speaking?"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "67",
+   "round": 2,
+   "kind": "cave",
+   "reason": "not the shot on the board: The scene shows Princess and Moss beside a large egg-shaped stone wedged in a rocky cave o"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "69",
+   "round": 2,
+   "kind": "open_mouth",
+   "reason": "Is any character shown with an open mouth as if speaking?"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "69",
+   "round": 2,
+   "kind": "other",
+   "reason": "not the shot on the board: The image shows a pink-haired unicorn foal and a green baby dragon beside a large egg, not"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "71",
+   "round": 2,
+   "kind": "other",
+   "reason": "not the shot on the board: The picture shows a baby dragon character next to a large cracked egg among rocks — not Mo"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "72",
+   "round": 2,
+   "kind": "open_mouth",
+   "reason": "Is any character shown with an open mouth as if speaking?"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "72",
+   "round": 2,
+   "kind": "other",
+   "reason": "not the shot on the board: The line describes the stone wedged in a spring opening at the foot of a white cliff with "
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "86b",
+   "round": 2,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "86b-2",
+   "round": 2,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "86b-2",
+   "round": 2,
+   "kind": "other",
+   "reason": "not the shot on the board: The scene matches Princess walking along the path with her bell, but there is an unexplain"
+  },
+  {
+   "date": "2026-09-02",
+   "episode": "SC-039",
+   "shot": "88",
+   "round": 2,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
   }
  ]
 }

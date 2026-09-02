@@ -235,7 +235,15 @@ async def draw_shot_stills(catalog: str, board: dict, profile: dict,
                          else [x.strip() for x in str(cont).split(",")])
                 # THE PROP PLATES COME FIRST: an object the story keeps
                 # returning to is drawn from its own plate, never re-imagined
+                _worn = {k: (v.get("worn_by") if isinstance(v, dict) else None)
+                         for k, v in ((profile.get("creatives") or {}).get("props") or {}).items()}
                 for pk in (pn.get("props") or [])[:2]:
+                    # A WORN PROP IS ALREADY ON ITS WEARER'S PLATE (Lars, 2026-09-02:
+                    # "an extra bell lying on the ground"). Handing the bell's own
+                    # plate over as well, beside a Glitter who is wearing one, made
+                    # the model draw a second bell loose on the ground — six times.
+                    if _worn.get(pk) and _worn[pk] in (pn.get("present") or []):
+                        continue
                     pp = Path(OUTPUT_DIR) / catalog / "trailer" / "props" / f"{pk}.png"
                     if pp.exists():
                         refs.insert(0, pp)

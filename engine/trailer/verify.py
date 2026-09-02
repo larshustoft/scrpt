@@ -90,7 +90,13 @@ WORLD_QUESTIONS = [
     "Is there a human being of any kind in the picture — a person, girl, boy, princess "
     "or human hand or face?",
     "Is there any text, lettering or numbers in the picture?",
-    "Is any character shown with an open mouth as if speaking?",
+    # A SMILE IS NOT SPEECH (2026-09-02). Moss's approved plate smiles with his
+    # mouth open, and the checker was failing every shot he smiled in. The rule
+    # exists because lip-sync was removed — a mouth mid-word flaps in video. A
+    # smile does not.
+    "Is any character's mouth open AS IF TALKING — jaw dropped mid-word, as in "
+    "a conversation? A closed-lip smile or a gently open happy smile is NOT "
+    "talking and must be answered false.",
     "Is there a cave, den, tunnel, burrow, hollow or any dark opening in rock or "
     "earth anywhere in this picture, including small ones far in the background?",
     "Is there a large pale rounded boulder or standing stone anywhere in this "
