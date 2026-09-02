@@ -79,13 +79,28 @@ def still_prompt(board: dict, pn: dict, cast: dict, style: str,
     if (pn.get("props") or []):
         parts.append("AN OBJECT IN THE REFERENCE IMAGES APPEARS IN THIS SHOT AND MUST LOOK "
                      "EXACTLY THE SAME: the same shape, the same colour, the same size and "
-                     "the same markings, every time it is seen.")
+                     "the same markings, every time it is seen. "
+                     # THE REFERENCE IS THE OBJECT, NOT AN INSTRUCTION TO ADD ONE
+                     # (Lars, 2026-09-02: "there is an extra bell lying loose").
+                     # A prop plate shows the thing on a plain background, and the
+                     # model kept placing a SECOND copy of it on the ground beside
+                     # the character already wearing it.
+                     "That object exists ONCE in this picture, exactly where the shot "
+                     "says it is — worn, carried or held by whoever has it. Never draw "
+                     "a second copy of it, and never leave one lying loose on the "
+                     "ground or floating in the scene.")
     parts.append("THE LINE-UP REFERENCE IMAGE IS ONLY A SIZE AND IDENTITY GUIDE: do not copy "
                  "its composition, and never add a character who is not named below.")
     parts.append(shot_prompt_suffix(board, pn, list(cast.keys()), profile))
     parts.append("No text or lettering anywhere in the picture.")
     for rule in ((profile.get("creatives") or {}).get("world_rules") or []):
         parts.append(str(rule))
+    # WHAT THIS UNIVERSE HAS LEARNED. Mistakes that recurred across earlier
+    # rounds and episodes come back as standing rules, so the second film
+    # starts where the first one finished (2026-09-02).
+    from .lessons import standing_rules
+    for rule in standing_rules(profile):
+        parts.append(rule)
     # HOW A CHARACTER HANDLES A THING is in the bible and belongs in any shot
     # where they touch one — otherwise a unicorn lifts a branch in whatever way
     # the model imagines (Lars, 2026-09-01: "Princess is lifting it in a weird

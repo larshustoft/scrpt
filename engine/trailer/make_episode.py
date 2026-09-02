@@ -60,6 +60,11 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     from .runway import credit_balance
 
     t0 = time.time()
+    # IS THIS WORK SAFE? Asked before two hours of compute, because on
+    # 2026-09-02 a night was lost on a machine whose backup and GitHub push
+    # had been failing silently for two days. It warns; it never blocks.
+    from ..safety import report as safety_report
+    safety_report(Path(__file__).resolve().parents[2], log=log)
     gates = check_gates()
     if gates:
         raise RuntimeError("the safety checks are not in place: " + "; ".join(gates))

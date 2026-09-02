@@ -95,8 +95,12 @@ async def draw_and_check_stills(catalog: str, board: dict, profile: dict,
     _log(f"stills ready: {n} of {len(board.get('panels') or [])}")
 
     flagged = {}
+    redrawn = None            # None = the first pass reads every picture
     for rd in range(rounds + 1):
-        chk = await verify_stills(catalog, board)
+        # ONLY WHAT CHANGED GETS READ AGAIN (2026-09-02). Every round used
+        # to re-read all 146 pictures when only the redrawn ones could have
+        # changed — three minutes and hundreds of vision calls a round.
+        chk = await verify_stills(catalog, board, only=redrawn)
         all_flags = {k: v for k, v in (chk.get("flagged") or {}).items() if v}
         # UNCHECKED IS NOT REJECTED (Lars, 2026-09-01: "this is taking very
         # long"). A picture the checker could not read is not a bad picture,
@@ -113,6 +117,18 @@ async def draw_and_check_stills(catalog: str, board: dict, profile: dict,
                 f"{chk.get('checked')} pictures, so nothing can be judged or "
                 f"redrawn: {list(unchecked.values())[0][0]}")
         flagged = all_flags
+        # EVERY REJECTION TEACHES THE UNIVERSE (Lars, 2026-09-02: "build a
+        # system that will make future films automatic on the first try").
+        # Recorded here, read back into every future drawing prompt once a
+        # mistake has recurred — see lessons.py.
+        if flagged:
+            from .lessons import record as _learn
+            _learn(profile, catalog, flagged, rd)
+        if rd == 0:
+            board["first_pass_yield"] = round(
+                1 - len(flagged) / max(1, chk.get("checked") or 1), 3)
+            _log(f"first-pass yield: {int(board['first_pass_yield']*100)}% "
+                 f"of pictures right the first time")
         if not flagged:
             _log(f"stills checked: all {chk.get('checked')} pass the world rules")
             break
@@ -123,6 +139,7 @@ async def draw_and_check_stills(catalog: str, board: dict, profile: dict,
             break
         _log(f"redrawing {len(flagged)} rejected pictures (round {rd + 1})")
         await draw_shot_stills(catalog, board, profile, only=set(flagged))
+        redrawn = set(flagged)
     if flagged:
         raise RuntimeError(
             f"{len(flagged)} pictures still break the world rules after "

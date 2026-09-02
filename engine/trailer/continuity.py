@@ -264,6 +264,23 @@ def check_board(board: dict) -> list:
                     f"shot {n}: the words put {name} on screen but the cast "
                     f"list for this shot does not — {name} will not be drawn")
 
+    # A SHOT LINE DESCRIBES A PICTURE; IT DOES NOT GIVE ORDERS (2026-09-02).
+    # Instructions pasted into shot lines — "No loose boulders", "the ropes
+    # are never tangled" — confuse both the drawer, which sometimes paints
+    # the thing it was told not to, and the checker, which reads "No
+    # unicorns in this shot" as the subject. Rules belong in the universe's
+    # world_rules and in the place briefs, once. The line stays a picture.
+    for i, pn in enumerate(board.get("panels") or []):
+        n = pn.get("n", i + 1)
+        line = " ".join(str(pn.get("shot") or "").split())
+        orders = re.findall(r"(?:^|[.;]\s*)(No |Never |Do not |Must |Always )[^.;]{6,60}",
+                            line)
+        if orders:
+            problems.append(
+                f"shot {n}: the words contain an instruction rather than a "
+                f"description ({orders[0].strip()[:40]}…) — move it to the "
+                f"world rules or the place brief")
+
     return problems
 
 
@@ -291,11 +308,10 @@ def repair_board(board: dict) -> list:
     pony was drawn and the checker rejected it, round after round.
 
     A person reconciled 18 shots by hand to finish episode one. This does
-    the same thing, deterministically, in a second, and it is ADDITIVE for
-    cast: a character the words put on screen is added, and nobody is ever
-    removed — a cast list is also the record of who the story says is there,
-    and a model asked to "reconcile" it emptied shots that plainly had
-    characters in them.
+    the same thing, deterministically, in a second. It is ADDITIVE for
+    cast — a character the words put on screen is added, nobody is ever
+    removed — because a model asked to "reconcile" cast lists emptied
+    shots that plainly had characters in them.
 
     Returns a list of what it changed, for the run's record.
     """
@@ -307,6 +323,22 @@ def repair_board(board: dict) -> list:
         line = " ".join(str(pn.get("shot") or "").split())
         if not line:
             continue
+        # INSTRUCTIONS COME OUT OF THE PICTURE (2026-09-02). Sentences that
+        # give orders — "No loose boulders", "Never tangled" — were pasted
+        # into eight shot lines during episode one's repairs. The world
+        # rules and place briefs carry those now, once. Here they are
+        # removed from the description, and what was removed is reported.
+        kept, dropped = [], []
+        for sent in re.split(r"(?<=[.;])\s+", line):
+            if re.match(r"(No |Never |Do not |Must |Always )", sent.strip()):
+                dropped.append(sent.strip())
+            else:
+                kept.append(sent)
+        if dropped:
+            line = " ".join(kept).strip()
+            pn["shot"] = line
+            changed.append(f"shot {n}: removed an instruction from the words "
+                           f"({dropped[0][:40]}…)")
         for want, pat in FRAMING_SAYS:
             if re.search(pat, line, re.I):
                 if (pn.get("framing") or "").lower() != want:

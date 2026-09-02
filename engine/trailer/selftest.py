@@ -112,4 +112,11 @@ def check_gates() -> list:
         bad.append("the board is no longer repaired before drawing — a shot "
                    "whose words and cast list disagree would be drawn wrong")
 
+    # 14. Rejections must be recorded, and earned rules must reach the prompt.
+    if "lessons" not in inspect.getsource(_EL.draw_and_check_stills):
+        bad.append("rejections are no longer recorded — the next film would "
+                   "repeat this one's mistakes")
+    if "standing_rules" not in inspect.getsource(S.still_prompt):
+        bad.append("earned rules no longer reach the drawing prompt")
+
     return bad

@@ -101,8 +101,13 @@ WORLD_QUESTIONS = [
 # The one round white stone IS the plot of episode one, and the spring
 # really does come out of an opening in the cliff; flagging those is the
 # check being literal instead of useful.
-CONDITIONAL = {4: r"\b(cave|opening|hole|crack|tunnel|hollow|den|mouth of)\b",
-               5: r"\b(stone|boulder|rock)\b"}
+# PLURALS COUNT (2026-09-02). These matched only the singular, so a shot
+# whose whole subject was "a row of huge white stones" was never exempted —
+# it was flagged for containing a stone, redrawn, flagged again, forever.
+# A rule that can never be satisfied is worse than no rule: it spends money
+# in a loop and never converges.
+CONDITIONAL = {4: r"\b(caves?|openings?|holes?|cracks?|tunnels?|hollows?|dens?|mouth of)\b",
+               5: r"\b(stones?|boulders?|rocks?)\b"}
 
 
 async def verify_stills(catalog: str, board: dict, handle=None, limit: int = 0) -> dict:
@@ -146,7 +151,7 @@ async def verify_stills(catalog: str, board: dict, handle=None, limit: int = 0) 
                           " ".join(pn.get("props") or [])])
         allowed = set()
         if "white-stone" in (pn.get("props") or []) or \
-                re.search(r"\b(stone|boulder|rock)\b", _text, re.I):
+                re.search(r"\b(stones?|boulders?|rocks?)\b", _text, re.I):
             allowed.add(0)
         for qi, pat in CONDITIONAL.items():
             if re.search(pat, _text, re.I):
