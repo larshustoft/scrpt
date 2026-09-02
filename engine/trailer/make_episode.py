@@ -75,6 +75,26 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     profile = _profile(slug)
     book = get_book_by_catalog(catalog)
     board = json.loads(json.dumps(book["data"]["movie"]["storyboard"]))
+    # EVERY CHARACTER SPEAKS IN THEIR OWN VOICE (Lars, 2026-09-02: "why are
+    # we not using the voices for dialogue any more"). The voice cast was
+    # applied only on the old entry path; this one skipped it, and all 78
+    # lines of episode one were recorded by the narrator. A line whose
+    # speaker has a cast voice always carries it; a speaker with no voice
+    # is a hard stop, never a silent fallback to the storyteller.
+    vc = (book["data"]["movie"].get("voice_cast") or {})
+    _unvoiced = set()
+    for pn in board["panels"]:
+        ln = pn.get("line")
+        if isinstance(ln, dict) and (ln.get("text") or "").strip():
+            spk = ln.get("speaker")
+            if spk in vc and (vc[spk] or {}).get("id"):
+                ln["voice"] = vc[spk]["id"]
+            elif spk:
+                _unvoiced.add(str(spk))
+    if _unvoiced:
+        raise RuntimeError("these speakers have lines but no voice in the cast: "
+                           + ", ".join(sorted(_unvoiced)))
+    log(f"voice cast applied: {sum(1 for p in board['panels'] if isinstance(p.get('line'), dict) and p['line'].get('voice'))} lines in character voices")
 
     # THE MAP BELONGS TO THE EPISODE (2026-09-02). Without `board["world"]`,
     # apply_world falls back to episode one's constants — and every fix a

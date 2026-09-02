@@ -219,7 +219,11 @@ def check_gates() -> list:
         bad.append("a failed still upload can again drop a shot into text-to-video")
 
     # 23. The score is led by the show's music direction, not a free mood.
-    if "music_direction" not in inspect.getsource(_P._film_score):
+    if "music_direction" not in inspect.getsource(P._film_score):
         bad.append("the score no longer carries the show's music direction — chapters would drift into cinema")
+
+    # 24. Character lines carry their cast voice on every entry path.
+    if "voice cast applied" not in inspect.getsource(_ME.make_episode):
+        bad.append("character lines can again be recorded in the narrator's voice")
 
     return bad
