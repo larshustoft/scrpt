@@ -25,6 +25,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from ..credits import OutOfCredits, raise_if_broke
 from ..config import OPENAI_API_KEY, OUTPUT_DIR
 from ..database import get_book_by_catalog, update_book
 
@@ -102,6 +103,11 @@ async def _draw(client, model: str, prompt: str, dest: Path,
                 if r.status_code == 200:
                     dest.write_bytes(base64.b64decode(r.json()["data"][0]["b64_json"]))
                     return dest
+                # AN EMPTY ACCOUNT IS NOT A REFUSED PICTURE (2026-09-01).
+                # Returning None here made "out of credits" indistinguishable
+                # from "the model would not draw this", and an entire repair
+                # run reported pictures that had never been attempted.
+                raise_if_broke("OpenAI", r.status_code, r.text, "drawing a picture")
                 if r.status_code < 500:
                     return None          # refused: skip rather than hang
                 continue
@@ -559,6 +565,68 @@ def _panel_prompt(pn: dict, style: str, cast: dict, title: str) -> str:
         "No readable faces anywhere in the frame. "
         "No text, no captions, no panel borders, no watermark."
     )
+
+
+
+async def _draw_with_refs(client, model: str, prompt: str, refs: list,
+                          dest: Path, size: str = "1536x1024",
+                          quality: str = "high", tries: int = 3):
+    """One picture drawn WITH reference images in front of it.
+
+    The text endpoint can only be told what a character looks like; this
+    one can be SHOWN. That is the difference between "a small fluffy
+    unicorn with a pastel mane" — which drifts every time — and the same
+    unicorn, at the same size next to her mother, in every shot of the
+    film (2026-09-01). Falls back to the text-only draw if the reference
+    call is refused, so a shot is never lost to it.
+    """
+    import httpx
+    # HOW MANY REFERENCES ACTUALLY REACH THE MODEL (Lars, 2026-09-01: "only
+    # a single unicorn is shown"). This was capped at four with the faces
+    # appended LAST, so any shot carrying a prop plate and a continuity
+    # still pushed its own characters off the end of the list — the model
+    # was never shown who was in the picture, and drew whoever it liked.
+    # The endpoint accepts far more than four; the cap is ours, and the
+    # caller orders the list by what must never drift.
+    files = []
+    for i, r in enumerate(refs[:8]):
+        rp = Path(r)
+        if rp.exists():
+            files.append(("image[]", (rp.name, rp.read_bytes(), "image/png")))
+    if not files:
+        return await _draw(client, model, prompt, dest, size=size, quality=quality)
+    last = ""
+    for _ in range(tries):
+        try:
+            resp = await asyncio.wait_for(client.post(
+                "https://api.openai.com/v1/images/edits",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                data={"model": model, "prompt": prompt[:3800],
+                      "size": size, "quality": quality, "n": "1"},
+                files=files), timeout=300)
+            if resp.status_code == 200:
+                dest.write_bytes(base64.b64decode(resp.json()["data"][0]["b64_json"]))
+                return dest
+            last = f"{resp.status_code} {resp.text[:200]}"
+            # AN EMPTY ACCOUNT IS NOT A BAD PICTURE (Lars, 2026-09-01). A
+            # 429 "no credits remaining" used to be swallowed here, the draw
+            # returned nothing, and the line reported the picture "missing" —
+            # so an hour of redraws that never happened read as an hour of
+            # redraws that did not help. There is no point retrying or
+            # falling back to the text endpoint on the same dead key.
+            raise_if_broke("OpenAI", resp.status_code, resp.text, "drawing a picture")
+            if resp.status_code < 500:
+                return await _draw(client, model, prompt, dest, size=size, quality=quality)
+        except OutOfCredits:
+            raise
+        except Exception as e:
+            last = f"{type(e).__name__}: {str(e)[:160]}"
+    # The text endpoint is the last resort, and if it fails too the caller
+    # is told WHY rather than handed a silent None.
+    got = await _draw(client, model, prompt, dest, size=size, quality=quality)
+    if not got:
+        raise RuntimeError(f"the picture could not be drawn: {last or 'unknown error'}")
+    return got
 
 
 async def draw_board_plates(catalog: str, board: dict, handle=None,

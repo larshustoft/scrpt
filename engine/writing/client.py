@@ -10,6 +10,7 @@ from typing import Optional
 
 from anthropic import AsyncAnthropic
 
+from ..credits import OutOfCredits, looks_broke, raise_if_broke
 from ..config import ANTHROPIC_API_KEY
 from ..database import get_setting
 
@@ -172,7 +173,12 @@ async def complete(
             continue
         except ContentRefused:
             raise                      # a real content problem: surface it
+        except OutOfCredits:
+            raise            # the account is empty: stop, never retry
         except Exception as e:  # transient API errors: back off and retry
+            # AN EMPTY ACCOUNT IS NOT A TRANSIENT ERROR (2026-09-01).
+            if looks_broke(e):
+                raise OutOfCredits("Anthropic", "writing or checking", str(e))
             last_err = e
             msg = str(e).lower()
             if kwargs.get("tools") and ("tool" in msg or "web_search" in msg) \
@@ -196,7 +202,11 @@ async def complete(
                 return await complete(system, user, max_tokens=max_tokens,
                                       retries=retries, web_search=web_search,
                                       cached_context=cached_context, model=fb)
+            except OutOfCredits:
+                raise      # the account is empty: no fallback model helps
             except Exception as e:
+                if looks_broke(e):
+                    raise OutOfCredits("Anthropic", "writing", str(e))
                 last_err = e
     raise RuntimeError(f"Claude request failed after {retries} attempts: {last_err}")
 
@@ -231,9 +241,48 @@ async def complete_vision(
             last_err = RuntimeError(f"empty response (stop_reason={getattr(resp, 'stop_reason', None)})")
             max_tokens = min(max_tokens * 2, 16000)
         except Exception as e:
+            # AN EMPTY ACCOUNT IS NOT A TRANSIENT ERROR (2026-09-01) — but
+            # for READING a picture there is a second provider, so one empty
+            # account slows the line down rather than stopping it. If that
+            # one is empty too, the run halts and says so.
+            if looks_broke(e):
+                return await _vision_openai(system, user, image_png, max_tokens)
             last_err = e
             await asyncio.sleep(2 ** attempt * 2)
     raise RuntimeError(f"Claude vision request failed after {retries} attempts: {last_err}")
+
+
+async def _vision_openai(system: str, user: str, image_png: bytes,
+                         max_tokens: int = 2000) -> str:
+    """The second pair of eyes.
+
+    Reading a picture back is a safety check, and a safety check that only
+    one account can perform is a safety check that stops the factory when
+    that account empties (Lars, 2026-09-01). Same question, different
+    provider, so the line keeps its eyes open.
+    """
+    import base64
+    import httpx
+    from ..config import OPENAI_API_KEY
+    if not OPENAI_API_KEY:
+        raise RuntimeError("no second vision provider is configured")
+    b64 = base64.b64encode(image_png).decode()
+    async with httpx.AsyncClient(timeout=180) as c:
+        r = await c.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+            json={"model": "gpt-4.1", "max_tokens": max_tokens,
+                  "messages": [
+                      {"role": "system", "content": system},
+                      {"role": "user", "content": [
+                          {"type": "text", "text": user},
+                          {"type": "image_url",
+                           "image_url": {"url": f"data:image/png;base64,{b64}"}}]}]})
+        raise_if_broke("OpenAI", r.status_code, r.text, "checking a picture")
+        if r.status_code != 200:
+            raise RuntimeError(f"second-opinion vision failed "
+                               f"({r.status_code}): {r.text[:200]}")
+        return r.json()["choices"][0]["message"]["content"]
 
 
 async def complete_chat(
@@ -254,6 +303,9 @@ async def complete_chat(
             )
             return "".join(b.text for b in resp.content if b.type == "text")
         except Exception as e:
+            # AN EMPTY ACCOUNT IS NOT A TRANSIENT ERROR (2026-09-01).
+            if looks_broke(e):
+                raise OutOfCredits("Anthropic", "writing or checking", str(e))
             last_err = e
             await asyncio.sleep(2 ** attempt)
     raise RuntimeError(f"Claude chat failed: {last_err}")

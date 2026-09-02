@@ -21,6 +21,7 @@ trailer runs ~320 credits; "voiceover" ~140.
 """
 
 import asyncio
+import os
 import hashlib
 import json
 import re
@@ -216,11 +217,47 @@ async def _shoot_seedance_take(prompt: str, cover_uri, seconds: int, ratio: str,
     return False
 
 
+# The finished deliverables stay on the software encoder, where quality per
+# bit actually matters and the encode runs once. Everything BEFORE them —
+# per-shot segments, joins, pads, animatics, the hundreds of intermediate
+# files a film passes through — goes to the Mac's hardware encoder, which
+# is 4.1x faster on this machine (measured, 2026-09-01) and whose output is
+# thrown away as soon as the next stage reads it.
+_FINAL = ("film.mp4", "film-with-bookends.mp4", "-mastered.mp4", "trailer.mp4",
+          "trailer-16x9.mp4", "trailer-9x16.mp4", "trailer-1x1.mp4")
+_CRF_TO_BITRATE = {"16": "16M", "18": "12M", "19": "10M", "20": "9M", "21": "8M"}
+
+
+def _hw_encode(args: list) -> list:
+    """Swap libx264 for VideoToolbox on intermediate files only."""
+    import os
+    if os.environ.get("SCRPT_HW_ENCODE", "1") != "1" or "libx264" not in args:
+        return args
+    out = str(args[-1])
+    if any(out.endswith(f) or f in out for f in _FINAL):
+        return args
+    i = args.index("libx264")
+    crf = args[args.index("-crf") + 1] if "-crf" in args else "18"
+    rest = []
+    skip = 0
+    for k, a in enumerate(args):
+        if skip:
+            skip -= 1; continue
+        if a in ("-preset", "-crf"):
+            skip = 1; continue
+        rest.append(a)
+    j = rest.index("libx264")
+    rest[j] = "h264_videotoolbox"
+    return rest[:j + 1] + ["-b:v", _CRF_TO_BITRATE.get(str(crf), "12M"),
+                           "-allow_sw", "1"] + rest[j + 1:]
+
+
 def _run(args: list, label: str):
     # every x264 encode must be 4:2:0 — QuickTime/Safari cannot play 4:4:4
     args = list(args)
     if "libx264" in args and "-pix_fmt" not in args and "copy" not in args[args.index("libx264") - 1:args.index("libx264") + 1]:
         args = args[:-1] + ["-pix_fmt", "yuv420p", args[-1]]
+    args = _hw_encode(args)
     proc = subprocess.run([_ffmpeg(), "-y", *args],
                           capture_output=True, text=True, timeout=600)
     if proc.returncode != 0:
@@ -262,16 +299,106 @@ def _h(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()[:10]
 
 
+def _frame_signature(path, size=(32, 18)):
+    """A tiny grayscale signature of one picture, for comparing two of them."""
+    from PIL import Image
+    im = Image.open(path).convert("L").resize(size)
+    px = list(im.getdata())
+    m = sum(px) / len(px)
+    return [x - m for x in px]
+
+
+def _sig_match(a, b) -> float:
+    """Correlation of two signatures: 1.0 identical, ~0 unrelated."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    den = (sum(x * x for x in a) ** .5) * (sum(y * y for y in b) ** .5)
+    return (sum(x * y for x, y in zip(a, b)) / den) if den else 0.0
+
+
+def _take_matches_still(clip, still_path):
+    """Is this footage actually the approved picture, moving?
+
+    An image-to-video take opens ON its still — that is the whole point of
+    shooting from an approved board. So the first frame of the take and the
+    still must be the same picture. When they are not, the take is footage
+    of something else: a cached take from an older draft, a text-to-video
+    invention, or the wrong file entirely.
+
+    Returns the correlation (1.0 identical, 0 unrelated, NEGATIVE means the
+    opposite picture — light where the still is dark), or None when the
+    comparison could not be made at all. None and a low score are different
+    facts and must never share a value: an earlier version used -1.0 for
+    "could not compare", which quietly accepted every anti-correlated take
+    — the worst mismatches of all — as unverifiable.
+    """
+    import tempfile
+    if not (clip and Path(clip).exists() and still_path and Path(still_path).exists()):
+        return None
+    with tempfile.TemporaryDirectory() as td:
+        fp = Path(td) / "f0.png"
+        try:
+            subprocess.run([_ffmpeg(), "-y", "-i", str(clip), "-frames:v", "1",
+                            "-vf", "scale=320:180", str(fp)],
+                           capture_output=True, timeout=120)
+            if not fp.exists():
+                return None
+            return _sig_match(_frame_signature(fp), _frame_signature(still_path))
+        except Exception:
+            return None
+
+
+BOARD_MATCH = 0.55        # below this, the take is not the approved picture
+
+
+def _off_board(score) -> bool:
+    """True when a take demonstrably is not its still. None is not a pass —
+    it is reported separately, never silently accepted."""
+    return score is not None and score < BOARD_MATCH
+
+
+def _still_fingerprint(catalog: str, pn: dict) -> str:
+    """The identity of the picture a shot is filmed from — its bytes.
+
+    A shot filmed from an approved still is only cacheable while that still
+    is unchanged. Filenames stay the same when a picture is redrawn, so the
+    path is worthless as an identity; the pixels are the identity. A shot
+    with no still (text-to-video) returns an empty fingerprint and keeps its
+    old cache behaviour.
+    """
+    rel = (pn.get("still") or "").strip()
+    if not rel:
+        return ""
+    p = Path(rel) if rel.startswith("/") else OUTPUT_DIR / catalog / "trailer" / rel
+    try:
+        return rel + ":" + hashlib.md5(p.read_bytes()).hexdigest()[:16]
+    except Exception:
+        # A missing still must NEVER collapse to the same key as another
+        # missing still, or two different shots share one take.
+        return rel + ":missing"
+
+
 def _takes(catalog: str) -> dict:
     book = get_book_by_catalog(catalog)
     return dict(((book["data"].get("trailer") or {}).get("takes")) or {})
 
 
-def _take_valid(catalog: str, key: str, source: str, path: Path) -> bool:
+def _take_valid(catalog: str, key: str, source: str, path: Path,
+                grandfather: bool = True) -> bool:
+    """Is the file on disk the take that these inputs produce?
+
+    `grandfather` blesses a take that predates the ledger — safe for a voice
+    line, where the file name already carries the words. It is NEVER safe
+    for picture: an unrecorded shot take is exactly the case that served a
+    week-old film as a fresh one, so shots pass grandfather=False and an
+    unknown take is treated as unproven rather than as valid.
+    """
     if not (path.exists() and path.stat().st_size > 10_000):
         return False
     stored = _takes(catalog).get(key)
-    if stored is None:          # grandfather pre-ledger takes
+    if stored is None:
+        if not grandfather:
+            return False
         _remember_take(catalog, key, source)
         return True
     return stored == _h(source)
@@ -929,6 +1056,124 @@ async def _sectioned_score(catalog: str, cues: dict, turn_at: float, total: floa
     return dest
 
 
+def _house_sfx(catalog: str, text: str, pn: dict = None):
+    """A sound this universe already owns, if the shot is asking for one."""
+    import json as _json
+    from pathlib import Path as _P
+    prof = _universe_profile(catalog)
+    if not prof:
+        return None
+    root = _P(__file__).resolve().parents[2]
+    udir = root / "universe" / str(prof.get("slug") or "")
+    bells = (prof.get("creatives") or {}).get("bells") or {}
+    t = (text or "").lower()
+    if "bell" in t and bells:
+        # the little bell belongs to Princess, and only after she is given it
+        small = any(w in t for w in ("little bell", "small bell", "tiny bell",
+                                     "her own bell", "two bells"))
+        key = "princess" if small else "glitter"
+        f = udir / str(bells.get(key) or "")
+        if f.exists():
+            return f
+    return None
+
+
+def _is_film_board(board: dict, catalog: str) -> bool:
+    """A film, decided by what is being made — never by a label string."""
+    return (str((board or {}).get("kind") or "").lower() in ("film", "episode")
+            or bool((board or {}).get("continuity"))
+            or bool(_universe_profile(catalog)))
+
+
+def _universe_profile(catalog: str) -> dict:
+    """This book's universe profile, or {} if it belongs to none."""
+    try:
+        import json as _json
+        from pathlib import Path as _P
+        from ..database import get_setting as _gs
+        _v = _gs("universes", "")
+        reg = _v if isinstance(_v, dict) else _json.loads(_v or "{}")
+        root = _P(__file__).resolve().parents[2]
+        for u in reg.values():
+            prof = _json.loads((root / u["profile"]).read_text())
+            if catalog in (prof.get("members") or []):
+                return prof
+    except Exception:
+        pass
+    return {}
+
+
+def _storyteller_direction(catalog: str) -> str:
+    """How this universe's storyteller speaks, when a line says nothing
+    else. Held in the profile so it is the same in every episode."""
+    try:
+        import json as _json
+        from pathlib import Path as _P
+        from ..database import get_setting as _gs
+        _v = _gs("universes", "")
+        reg = _v if isinstance(_v, dict) else _json.loads(_v or "{}")
+        root = _P(__file__).resolve().parents[2]
+        for u in reg.values():
+            prof = _json.loads((root / u["profile"]).read_text())
+            if catalog in (prof.get("members") or []):
+                st = (prof.get("voice_cast") or {}).get("Storyteller") or {}
+                return st.get("direction") or ""
+    except Exception:
+        pass
+    return ""
+
+
+def _universe_opening_theme(catalog: str):
+    """The instrumental continuation of the main theme that opens every
+    episode after the intro (house law, beat 2). A universe has ONE of
+    these — it is the sound a child recognises before a word is spoken —
+    so the film score must never generate its own opening cue over it
+    (Lars, 2026-08-31: the new cut came back with different music after
+    the intro)."""
+    try:
+        import json as _json
+        from pathlib import Path as _P
+        from ..database import get_setting as _gs
+        _v = _gs("universes", "")
+        reg = _v if isinstance(_v, dict) else _json.loads(_v or "{}")
+        root = _P(__file__).resolve().parents[2]
+        for u in reg.values():
+            ppath = root / u["profile"]
+            prof = _json.loads(ppath.read_text())
+            if catalog not in (prof.get("members") or []):
+                continue
+            cr = prof.get("creatives") or {}
+            rel = (cr.get("theme_continuation")
+                   or cr.get("theme_continuation_candidate") or "")
+            if not rel:
+                return None
+            for cand in (root / rel, ppath.parent / rel):
+                if cand.exists() and cand.stat().st_size > 10_000:
+                    return cand
+    except Exception:
+        pass
+    return None
+
+
+def _opening_theme_bed(catalog: str):
+    """The opening theme at the house score level (-16 LUFS, the same
+    level `_record_music` hands back), so `bed` means one thing across
+    every cue in the film. Normalised once and cached."""
+    src = _universe_opening_theme(catalog)
+    if not src:
+        return None
+    dest = OUTPUT_DIR / catalog / "trailer" / "score-opening-theme.mp3"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists() and dest.stat().st_mtime >= src.stat().st_mtime:
+        return dest
+    try:
+        _run(["-y", "-i", str(src), "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+              "-c:a", "libmp3lame", "-b:a", "192k", str(dest)], "opening theme")
+    except Exception:
+        return src
+    return dest if dest.exists() else src
+
+
 async def _film_score(catalog: str, plan: list, panel_starts: list,
                       total: float, prefix: str):
     """A film is scored in emotional CHAPTERS, never wallpaper (Lars,
@@ -956,10 +1201,27 @@ async def _film_score(catalog: str, plan: list, panel_starts: list,
     for k, ch in enumerate(chapters):
         ch["end"] = (chapters[k + 1]["start"] if k + 1 < len(chapters)
                      else float(total))
+    # Beat 2 is not composed — it is the series' own theme continuing out of
+    # the intro. It leads the film, and the first written chapter picks up
+    # underneath it once it has bowed out.
     parts = []
+    lead = 0.0
+    theme = _opening_theme_bed(catalog)
+    if theme:
+        tlen = _probe_seconds(theme) or 0.0
+        room = max(0.0, chapters[0]["end"] - chapters[0]["start"])
+        lead = min(tlen, room) if room else tlen
+        if lead >= 4.0:
+            parts.append((theme, lead))
+        else:
+            lead = 0.0
     for k, ch in enumerate(chapters):
-        span = max(6.0, ch["end"] - ch["start"])
-        bed = await _record_music(catalog, ch["mood"], min(span + 4, 85),
+        # The cue is REQUESTED at the chapter's full span and only USED for
+        # what is left after the theme — asking for a different length would
+        # miss the cache and re-buy music we already own.
+        span_req = max(6.0, ch["end"] - ch["start"])
+        span = max(6.0, span_req - (lead if k == 0 else 0.0))
+        bed = await _record_music(catalog, ch["mood"], min(span_req + 4, 85),
                                   f"{prefix}-ch{k}-{_h(ch['mood'])[:6]}")
         if bed:
             parts.append((bed, span))
@@ -1249,7 +1511,7 @@ async def _shoot(catalog: str, shots: list, mode: dict, style: str,
     return files
 
 
-_VOICE_GATE = asyncio.Semaphore(2)
+_VOICE_GATE = asyncio.Semaphore(int(os.environ.get('SCRPT_VOICE_LANES', '4')))
 
 # The cinema voice. Runway's presets are announcers; the true trailer
 # instrument lives in the publisher's ElevenLabs bank. Overridable with
@@ -1314,7 +1576,7 @@ def trailer_voice(genre_preset: str, catalog: str = "") -> tuple:
 
 async def _record_line(catalog: str, text: str, genre: str, key: str,
                        filename: str, speed: float = 0.9,
-                       voice_override: str = "") -> Optional[Path]:
+                       voice_override: str = "", direction: str = "") -> Optional[Path]:
     """One cached voice recording (the VO script, or the title read).
     Runs on ElevenLabs directly; the take is keyed on words AND voice, so
     recasting the narrator re-records everything he says.
@@ -1325,6 +1587,18 @@ async def _record_line(catalog: str, text: str, genre: str, key: str,
     if not text.strip():
         return None
     voice_id = voice_override or trailer_voice(genre, catalog)[0]
+    # DIRECTION. eleven_v3 acts an inline note — [frightened], [warm, gentle]
+    # — the way a screenplay carries a parenthetical. Every older model
+    # READS THE NOTE OUT LOUD (heard on the control test, 2026-08-31:
+    # Princess said "frightened" instead of sounding it). So the tag is
+    # attached only on a model that can act it, and stripped everywhere
+    # else — a wrong model must degrade to a flat read, never to nonsense.
+    _model = get_setting("elevenlabs_model_id", "eleven_multilingual_v2")
+    _acts = _model.startswith("eleven_v3")
+    text = re.sub(r"\[[^\]]{1,60}\]", " ", text)          # never trust an incoming tag
+    text = re.sub(r"\s{2,}", " ", text).strip()
+    if direction and _acts:
+        text = f"[{direction.strip('[] ')}] {text}"
     # PERFORMANCE PER VOICE (Lars, 2026-08-31: "Glitter needs a lot more
     # energy"). Calm settings flatten a character; some voices must be
     # played with the brakes off. Keyed by voice id, applied at record.
@@ -1334,7 +1608,7 @@ async def _record_line(catalog: str, text: str, genre: str, key: str,
     }
     _perf = _PERF.get(voice_id) or {}
     dest = OUTPUT_DIR / catalog / "trailer" / filename
-    source = f"{voice_id}|{speed}|{text}"
+    source = f"{voice_id}|{speed}|{_model}|{text}"
     if _take_valid(catalog, key, source, dest):
         return dest
     api_key = get_setting("elevenlabs_api_key", "")
@@ -1347,7 +1621,7 @@ async def _record_line(catalog: str, text: str, genre: str, key: str,
                     f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
                     headers={"xi-api-key": api_key},
                     json={"text": text,
-                          "model_id": get_setting("elevenlabs_model_id", "eleven_multilingual_v2"),
+                          "model_id": _model,
                           "voice_settings": {"stability": 0.38, "similarity_boost": 0.8,
                                              "style": 0.65, "use_speaker_boost": True,
                                              "speed": speed, **_perf}},
@@ -2752,7 +3026,7 @@ async def produce_workorder(catalog: str, quality: str = "draft", format_name: s
     else:
         shutil.copy2(picture, out)
     poster = OUTPUT_DIR / catalog / (
-        "film-poster.jpg" if version_label == "film"
+        "film-poster.jpg" if _is_film
         else f"trailer-poster{fmt['suffix']}.jpg")
     _run(["-y", "-i", str(out), "-ss", "1.0", "-frames:v", "1", "-q:v", "3", str(poster)], "poster")
     credits_after = await runway.credit_balance()
@@ -2953,17 +3227,22 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         if not ln:
             vo_files.append(None); vo_durs.append(0.0)
         else:
-            t_ = await _record_line(catalog, ln, genre, f"vo-sb-{_h(ln)}-{vo_speed}", f"vo-sb-{_h(ln)}-{vo_speed}.mp3", speed=vo_speed)
+            _vdir = (pn.get("vo_direction") or _storyteller_direction(catalog)).strip()
+            t_ = await _record_line(catalog, ln, genre,
+                                    f"vo-sb-{_h(ln + _vdir)}-{vo_speed}",
+                                    f"vo-sb-{_h(ln + _vdir)}-{vo_speed}.mp3",
+                                    speed=vo_speed, direction=_vdir)
             vo_files.append(t_); vo_durs.append((_probe_seconds(t_) if t_ else 0.0) or 0.0)
         spoken = pn.get("line") or {}
         stext = (spoken.get("text") or "").strip()
         if stext:
             svoice = (spoken.get("voice") or "").strip()
             sspeed = float(spoken.get("speed") or 1.0)
+            sdir = (spoken.get("direction") or "").strip()
             sf = await _record_line(catalog, stext, genre,
-                                    f"line-sb-{_h(stext + svoice)}-{sspeed}",
-                                    f"line-sb-{_h(stext + svoice)}-{sspeed}.mp3",
-                                    speed=sspeed, voice_override=svoice)
+                                    f"line-sb-{_h(stext + svoice + sdir)}-{sspeed}",
+                                    f"line-sb-{_h(stext + svoice + sdir)}-{sspeed}.mp3",
+                                    speed=sspeed, voice_override=svoice, direction=sdir)
             line_files.append((sf, float(spoken.get("gap") or 0.3),
                                (_probe_seconds(sf) if sf else 0.0) or 0.0))
         else:
@@ -2998,6 +3277,8 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         off = lead_in if i == 0 else 0.0
         need = off + max(want, (vo_durs[i] + GAP if vo_durs[i] else 0), spoken_end)
         secs = int(max(4, min(12, round(need + 0.6))))
+        if (pn.get("still") or "").strip():
+            secs = 10 if secs > 5 else 5      # gen4_turbo shoots 5s or 10s
         return need, off, secs, lf, lgap
 
     def _panel_seconds(i: int, pn: dict) -> int:
@@ -3071,19 +3352,49 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # for the mixer to paper over.
         snd = (pn.get("sound") or "").strip()
         snd_txt = f" Sound: {snd}. No music, no speech, no voices." if snd else ""
-        prompt = f"{shot_txt} {style} No text or lettering on screen.{snd_txt}{who}".strip()
-        clip = tdir / f"sb-{_h(prompt + ratio + str(secs))}.mp4"
+        # EVERYTHING THE CAMERA CANNOT KNOW (2026-09-01): the state of the
+        # world at this scene, who is allowed on screen and who is not, the
+        # size chart, and the standing rule that nobody speaks on camera.
+        # Without these a shot invents its own continuity every time.
+        from .continuity import shot_prompt_suffix
+        _suffix = shot_prompt_suffix(board, pn, list(cast.keys()),
+                                     _universe_profile(catalog))
+        _look = (pn.get("look") or "").strip()
+        _style = style
+        if _look == "storybook":
+            _style = (style + " Shown as an illustrated page from a storybook, "
+                      "with a soft painted border.")
+        prompt = f"{shot_txt} {_style} No text or lettering on screen.{snd_txt}{who} {_suffix}".strip()
+        # THE TAKE'S IDENTITY IS THE PICTURE, NOT ITS FILENAME (Lars,
+        # 2026-09-01: "this film looks different"). A take is only the same
+        # take if the camera would receive the same thing: the same words,
+        # the same motion, and THE SAME PIXELS. Hashing the still's PATH
+        # meant every picture we redrew kept its filename, the cache called
+        # it a hit, and footage shot days earlier — some of it from before
+        # stills existed at all — was served as the fix. 80 of 135 shots in
+        # a delivered film were not the pictures on the approved board.
+        # The still's bytes are in the key now, so redrawing a picture
+        # always costs a new take and can never resurrect an old one.
+        clip = tdir / (f"sb-{_h(prompt + ratio + str(secs) + str(pn.get('motion') or '') + _still_fingerprint(catalog, pn))}.mp4")
         if reshoot and str(pn.get("n")) in {str(x) for x in reshoot} and clip.exists():
             # the publisher asked for a fresh take of THIS scene — the old
             # take is banked, never destroyed, and only this panel re-shoots
             import shutil as _sh
             _sh.move(str(clip), str(clip.with_suffix(".prev.mp4")))
+        # THE SHOT JOINS THE SAME LEDGER AS THE VOICE (2026-09-01). Voice and
+        # sound effects have always recorded what a take was made from and
+        # re-made it when those inputs changed. Picture alone trusted the
+        # file name — which is the whole reason a delivered film was cut
+        # from footage of older, different pictures.
+        take_src = (f"{prompt}|{ratio}|{secs}|{pn.get('motion') or ''}|"
+                    f"{_still_fingerprint(catalog, pn)}")
         plans.append({"i": i, "pn": pn, "prompt": prompt, "refs": refs,
                       "secs": secs, "clip": clip, "need": need, "off": off,
-                      "lf": lf, "lgap": lgap})
+                      "lf": lf, "lgap": lgap, "src": take_src,
+                      "key": f"shot-{pn.get('n')}"})
 
     done_n = [0]
-    shoot_gate = asyncio.Semaphore(4)
+    shoot_gate = asyncio.Semaphore(int(os.environ.get('SCRPT_SHOOT_LANES', '6')))
 
     if no_new_shots:
         # GUARANTEED free of video generation. A scene without a take gets a
@@ -3115,11 +3426,46 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                   "-shortest", "-c:v", "libx264", "-preset", "fast", "-crf", "20",
                   "-c:a", "aac", "-b:a", "96k", str(clip)], f"animatic {n_p}")
 
+    def _still_path_of(pn):
+        rel = (pn.get("still") or "").strip()
+        if not rel:
+            return None
+        return Path(rel) if rel.startswith("/") \
+            else OUTPUT_DIR / catalog / "trailer" / rel
+
     async def shoot_panel(pl):
         i, pn, clip = pl["i"], pl["pn"], pl["clip"]
         prompt, refs, secs = pl["prompt"], pl["refs"], pl["secs"]
+        _sp = _still_path_of(pn)
         if clip.exists() and clip.stat().st_size > 200_000:
-            return
+            # A BANKED TAKE MUST STILL BE THE APPROVED PICTURE (Lars,
+            # 2026-09-01). Reuse used to be decided by the file name alone,
+            # and week-old footage walked into a delivered film. Two ways to
+            # earn reuse now, in order of cost:
+            #
+            #   1. the ledger — this take was recorded as made from exactly
+            #      these inputs. Free, and the ordinary case.
+            #   2. the picture — an unrecorded take is not discarded, it is
+            #      PROVEN: if it opens on the approved still it is adopted
+            #      into the ledger. This is what stops the new rule from
+            #      billing every existing production for a full re-shoot.
+            #
+            # Anything that fails both is set aside and filmed again.
+            if _take_valid(catalog, pl["key"], pl["src"], clip, grandfather=False):
+                return
+            m = _take_matches_still(clip, _sp) if _sp is not None else None
+            if _off_board(m):
+                import shutil as _sh
+                _sh.move(str(clip), str(clip.with_suffix(".stale.mp4")))
+                if handle:
+                    handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
+                                    f"panel {pn.get('n')} — banked take is not the "
+                                    f"approved picture, re-shooting")
+            elif m is not None:
+                _remember_take(catalog, pl["key"], pl["src"])   # proven, adopted
+                return
+            else:
+                return          # no still to check against: old text-to-video path
         async with shoot_gate:
             if handle:
                 handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting", f"panel {pn.get('n', i+1)} — {pn.get('title','')}")
@@ -3132,13 +3478,80 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             # level 2. So the photo references are held through many retries;
             # dropping them is the last resort, not the third response. This
             # is the whole difference between a lead who holds and a Dafoe.
+            # SHOOT FROM THE APPROVED STILL (2026-09-01). A still we drew and
+            # checked becomes the FIRST FRAME, and the camera's only job is to
+            # move it. It holds composition, scale, who is on screen and the
+            # state of the world — everything that drifted when each shot was
+            # invented from a sentence. It also bills at ~5 credits a second
+            # instead of ~32.
+            _still = (pn.get("still") or "").strip()
+            _still_uri = ""
+            if _still:
+                _sp = OUTPUT_DIR / catalog / "trailer" / _still
+                if _sp.exists():
+                    try:
+                        _still_uri = await runway.upload_file(_sp)
+                    except Exception:
+                        _still_uri = ""
             for attempt in range(16):
-                task = await runway.generate_seedance(prompt, live_refs, seconds=secs, ratio=ratio,
+                if _still_uri:
+                    # WHAT MOVES IS ITS OWN INSTRUCTION (Lars, 2026-09-01:
+                    # "in this clip he is not animated well"). A still handed
+                    # over with only a description of the PICTURE comes back
+                    # nearly frozen — the model is told what it looks like and
+                    # nothing about what happens. Every shot now carries a
+                    # motion line, and a shot without one still gets life.
+                    _motion = (pn.get("motion") or "").strip() or (
+                        "Gentle continuous motion: the characters breathe, "
+                        "blink and shift their weight, leaves and flowers sway, "
+                        "light and dust drift through the air.")
+                    # MOTION ONLY — never the scene description (Lars,
+                    # 2026-09-01). The picture IS the content: it already
+                    # holds the characters, their colours, their sizes, the
+                    # light and the place. Sending the full prompt as well
+                    # gave the model a picture of two unicorns and a
+                    # paragraph asking for a bird, and it produced a bird
+                    # with a unicorn horn. With the motion alone, the same
+                    # still animates untouched — proven side by side on the
+                    # same shot, same cost.
+                    task = await runway.generate_shot(
+                        _motion + " Keep everything else exactly as it is in "
+                        "the picture: the same characters, the same colours, "
+                        "the same sizes, the same place, the same light. "
+                        "Do not add anyone or anything that is not already "
+                        "in the picture. Every character stays fully inside "
+                        "the frame for the whole shot — nobody walks out of "
+                        "view and the camera does not leave them behind. "
+                        "All mouths stay closed: nobody speaks, laughs or "
+                        "brays.",
+                        _still_uri, seconds=secs, ratio=ratio,
+                        model="gen4_turbo", audio=False)
+                else:
+                    task = await runway.generate_seedance(prompt, live_refs, seconds=secs, ratio=ratio,
                                                       model="seedance2_5", audio=False)
                 result = await runway.wait_for(task["id"], timeout_s=1500)
                 url = (result.get("output") or [None])[0] if result.get("status") == "SUCCEEDED" else None
                 if url:
-                    await runway.download(url, clip); ok = True; break
+                    await runway.download(url, clip)
+                    # A FRESH TAKE IS CHECKED TOO. Shooting from a still can
+                    # silently fall back to text-to-video when the upload
+                    # fails, and that footage invents its own world. Two
+                    # attempts to come back on the approved picture, then we
+                    # keep what we have and the shot is named in the report
+                    # rather than passing unnoticed.
+                    if _still_uri and _sp is not None and attempt < 2:
+                        _m = _take_matches_still(clip, _sp)
+                        if _off_board(_m):
+                            pn["off_board"] = round(_m, 2)
+                            if handle:
+                                handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
+                                                f"panel {pn.get('n')} came back as a different "
+                                                f"picture — shooting it again")
+                            await asyncio.sleep(4)
+                            continue
+                        pn.pop("off_board", None)
+                    _remember_take(catalog, pl["key"], pl["src"])
+                    ok = True; break
                 last_fail = json.dumps(result.get("failure") or result.get("failureCode") or result.get("status"))
                 if "moderation" in last_fail.lower() or "third_party" in last_fail.lower():
                     moderation_hits += 1
@@ -3161,13 +3574,70 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting", f"panel {pn.get('n', i+1)} retry — {last_fail[:120]}")
                 await asyncio.sleep(8 * (attempt + 1))
             if not ok:
-                raise RuntimeError(f"panel {pn.get('n', i+1)} could not be shot: {last_fail[:200]}")
+                # ONE BAD PROMPT MUST NOT KILL A WHOLE SHOOT (2026-09-01: a
+                # 122-shot film died at 3am on the word "pricked", with
+                # 8,000 credits of footage already in the can). The panel is
+                # marked and left unfilmed; the cut falls back to its own
+                # storyboard frame with a slow push-in, and the result names
+                # exactly which shots need re-prompting. Nothing is silent.
+                pn["unshot"] = last_fail[:160] or "moderation"
+                frame = OUTPUT_DIR / catalog / "trailer" / "board" / f"panel-{pn.get('n')}.png"
+                if frame.exists():
+                    frames_n = max(12, int(round(secs * 24)))
+                    W2, H2 = 1280, 720
+                    vf = (f"scale={W2*2}:{H2*2}:force_original_aspect_ratio=increase,"
+                          f"crop={W2*2}:{H2*2},"
+                          f"zoompan=z='min(1+0.10*on/{frames_n},1.10)':d={frames_n}:"
+                          f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W2}x{H2}:fps=24,"
+                          f"format=yuv420p")
+                    _run(["-y", "-loop", "1", "-i", str(frame),
+                          "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+                          "-vf", vf, "-frames:v", str(frames_n), "-t", f"{secs:.2f}",
+                          "-shortest", "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+                          "-c:a", "aac", "-b:a", "96k", str(clip)], f"animatic {pn.get('n')}")
+                    if handle:
+                        handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
+                                        f"panel {pn.get('n')} would not pass the camera — using its frame")
+                else:
+                    raise RuntimeError(f"panel {pn.get('n', i+1)} could not be shot "
+                                       f"and has no frame to fall back on: {last_fail[:160]}")
         done_n[0] += 1
         if handle:
             handle.progress(0.1 + 0.6 * done_n[0] / max(1, len(plans)), "shooting",
                             f"{done_n[0]} of {len(plans)} panels shot")
 
     await asyncio.gather(*(shoot_panel(pl) for pl in plans))
+
+    # ── THE BOARD IS THE CONTRACT (Lars, 2026-09-01: "we spent all day
+    # turning the storyboard into what we want, and then this film looks
+    # different"). Before a single frame is cut, every take is measured
+    # against the picture it was approved from. Nothing is assumed from
+    # filenames, timestamps or cache bookkeeping — the pixels are compared.
+    # A film that does not match its board does not get made; the shots are
+    # named instead, so the failure is loud and specific rather than
+    # something the publisher discovers on screen.
+    if not no_new_shots:
+        _off, _unchecked = [], []
+        for pl in plans:
+            _spx = _still_path_of(pl["pn"])
+            if _spx is None:
+                continue
+            _m = _take_matches_still(pl["clip"], _spx)
+            if _off_board(_m):
+                _off.append((str(pl["pn"].get("n")), round(_m, 2)))
+            elif _m is None:
+                _unchecked.append(str(pl["pn"].get("n")))
+        board_check = {"checked": len(plans), "off_board": _off,
+                       "could_not_check": _unchecked}
+        if _off:
+            names = ", ".join(f"{n} ({m})" for n, m in _off[:20])
+            raise RuntimeError(
+                f"{len(_off)} shots are not the pictures on the approved "
+                f"board and the film will not be cut from them: {names}"
+                + (" …" if len(_off) > 20 else "")
+                + ". Re-shoot these panels, or redraw their stills first.")
+    else:
+        board_check = {"checked": 0, "off_board": [], "could_not_check": []}
 
     # ── now assemble, in order, from clips that already exist
     for pl in plans:
@@ -3260,7 +3730,17 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     tagline = (str(board.get("end_card_text") or "").strip()
                or (book["data"].get("manuscript") or {}).get("tagline")
                or book["data"].get("tagline") or "").strip()
-    if version_label == "film":
+    # IS THIS A FILM? Decided by WHAT IS BEING MADE, not by the word passed
+    # in. A preview run labelled "section" got the trailer's "Available on
+    # Amazon" card stitched onto a children's episode (Lars, 2026-09-01) —
+    # because a string comparison was standing between a sales screen and a
+    # four-year-old. The board itself knows what it is, and a board built for
+    # a universe is never a trailer.
+    _is_film = (version_label == "film"
+                or str(board.get("kind") or "").lower() in ("film", "episode")
+                or bool(board.get("continuity"))
+                or bool(_universe_profile(catalog)))
+    if _is_film:
         # A FILM ends inside its story: bedtime, then the universe outro
         # (lullaby + the minimalist TigerWorks card). The trailer's sales
         # card has no place in an episode (Lars, 2026-08-30).
@@ -3317,9 +3797,13 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     if handle:
         handle.progress(0.93, "sound", "recording the sound design")
     recipe = sound_for(book["data"])
-    intro = await _record_sfx(catalog, recipe["intro"], 2.5, "sfx-sb-intro", "sfx-sb-intro.mp3")
-    if intro:
-        sfx.append((intro, 0.0, 0.85))
+    # A FILM OPENS ON ITS THEME, NOT ON A SOUND EFFECT (Lars, 2026-09-01:
+    # "remove the pling sound that opens the episode"). The intro sting is a
+    # trailer device; an episode already has an intro of its own.
+    if not _is_film_board(board, catalog):
+        intro = await _record_sfx(catalog, recipe["intro"], 2.5, "sfx-sb-intro", "sfx-sb-intro.mp3")
+        if intro:
+            sfx.append((intro, 0.0, 0.85))
     for i, pn, start in panel_starts:
         # `sfx` overrides `sound` for the MIXED cue only — so sound design
         # can be recut after the shoot without touching the take prompt
@@ -3327,14 +3811,20 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         snd = (pn.get("sfx") or pn.get("sound") or "").strip()
         if not snd:
             continue
-        cue = await _record_sfx(catalog, snd, min(4.0, float(pn.get("dur") or 4)),
-                                f"sfx-sb-{_h(snd)}", f"sfx-sb-{_h(snd)}.mp3")
+        # THE UNIVERSE OWNS ITS OWN SOUNDS. A bell is not re-invented per
+        # shot — that is where the metallic, computer-ish bell came from
+        # (Lars, 2026-09-01). If the universe has a recorded sound for what
+        # this shot describes, that recording is used, always.
+        cue = _house_sfx(catalog, snd, pn)
+        if cue is None:
+            cue = await _record_sfx(catalog, snd, min(4.0, float(pn.get("dur") or 4)),
+                                    f"sfx-sb-{_h(snd)}", f"sfx-sb-{_h(snd)}.mp3")
         if cue:
             sfx.append((cue, max(0.0, start + 0.1), 0.8))
 
     mixed = tdir / "sb-mixed.mp4"
     out = OUTPUT_DIR / catalog / (
-        "film.mp4" if version_label == "film"
+        "film.mp4" if _is_film
         else f"trailer{fmt['suffix']}.mp4")
     bed = (book["data"].get("trailer") or {}).get("workorder_bed") or (0.8 if _fast else 0.42)
     fade_in = float((book["data"].get("trailer") or {}).get("score_fade_in") or 3.5)
@@ -3352,7 +3842,10 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
               "file": out.name, "poster": poster.name, "seconds": round(_probe_seconds(out), 1),
               "credits_used": max(0, credits_before - credits_after), "credits_left": credits_after,
               "shots": len(panels), "plates": len(panels),
-              "refs_dropped": [p.get("n") for p in panels if p.get("refs_dropped")]}
+              "refs_dropped": [p.get("n") for p in panels if p.get("refs_dropped")],
+              # Proof, in the record, that every shot in this file is the
+              # picture that was approved on the board.
+              "board_check": board_check}
     book2 = get_book_by_catalog(catalog)
     versions = list(((book2["data"].get("trailer") or {}).get("versions")) or [])
     vn = len(versions) + 1

@@ -99,6 +99,7 @@ async def generate_shot(prompt: str, reference_image_url: str = "",
                                if model.startswith("veo") else reference_image_url)
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(f"{BASE}{endpoint}", headers=_headers(), json=body)
+    raise_if_broke("Runway", r.status_code, r.text, "shooting")
     if r.status_code >= 300:
         raise RuntimeError(f"Runway rejected the shot ({r.status_code}): {r.text[:300]}")
     return r.json()
@@ -120,6 +121,7 @@ async def generate_seedance(prompt: str, reference_uris: list, seconds: int = 10
         body["references"] = [{"uri": u} for u in refs]
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(f"{BASE}/text_to_video", headers=_headers(), json=body)
+    raise_if_broke("Runway", r.status_code, r.text, "shooting")
     if r.status_code >= 300:
         raise RuntimeError(f"Runway rejected the Seedance take ({r.status_code}): {r.text[:300]}")
     return r.json()
@@ -142,6 +144,7 @@ async def wait_for(task_id: str, timeout_s: int = 600) -> dict:
                 waited += 6
                 continue
             misses = 0
+            raise_if_broke("Runway", r.status_code, r.text, "shooting")
             if r.status_code >= 300:
                 raise RuntimeError(f"Task poll failed ({r.status_code}): {r.text[:200]}")
             data = r.json()
@@ -196,6 +199,7 @@ async def text_to_speech(text: str, preset_id: str,
             "useSpeakerBoost": True}
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(f"{BASE}/text_to_speech", headers=_headers(), json=body)
+    raise_if_broke("Runway", r.status_code, r.text, "shooting")
     if r.status_code >= 300:
         raise RuntimeError(f"Runway TTS rejected ({r.status_code}): {r.text[:300]}")
     return r.json()
@@ -209,6 +213,7 @@ async def sound_effect(prompt: str, seconds: float = 0,
         body["duration"] = seconds
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(f"{BASE}/sound_effect", headers=_headers(), json=body)
+    raise_if_broke("Runway", r.status_code, r.text, "shooting")
     if r.status_code >= 300:
         raise RuntimeError(f"Runway SFX rejected ({r.status_code}): {r.text[:300]}")
     return r.json()
@@ -224,6 +229,7 @@ async def music_bed(brief: str, seconds: float) -> dict:
             "outputFormat": "mp3"}
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(f"{BASE}/sound_effect", headers=_headers(), json=body)
+    raise_if_broke("Runway", r.status_code, r.text, "shooting")
     if r.status_code >= 300:
         raise RuntimeError(f"Runway music rejected ({r.status_code}): {r.text[:300]}")
     return r.json()
@@ -255,6 +261,7 @@ async def upload_file(path) -> str:
     async with httpx.AsyncClient(timeout=300) as c:
         r = await c.post(f"{BASE}/uploads", headers=_headers(),
                          json={"filename": path.name, "type": "ephemeral"})
+        raise_if_broke("Runway", r.status_code, r.text, "shooting")
         if r.status_code >= 300:
             raise RuntimeError(f"Upload init failed ({r.status_code}): {r.text[:200]}")
         d = r.json()
@@ -275,6 +282,7 @@ async def video_upscale(video_uri: str, resolution: str = "4k",
             "creativity": creativity}
     async with httpx.AsyncClient(timeout=120) as c:
         r = await c.post(f"{BASE}/video_upscale", headers=_headers(), json=body)
+    raise_if_broke("Runway", r.status_code, r.text, "shooting")
     if r.status_code >= 300:
         raise RuntimeError(f"Upscale rejected ({r.status_code}): {r.text[:300]}")
     return r.json()
@@ -290,6 +298,7 @@ async def text_to_image(prompt: str, ratio: str = "1920:1080",
         body["referenceImages"] = [{"uri": u, "tag": f"ref{i+1}"} for i, u in enumerate(reference_uris[:3])]
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(f"{BASE}/text_to_image", headers=_headers(), json=body)
+    raise_if_broke("Runway", r.status_code, r.text, "shooting")
     if r.status_code >= 300:
         raise RuntimeError(f"Runway still rejected ({r.status_code}): {r.text[:300]}")
     return r.json()

@@ -3223,13 +3223,26 @@ const MOVIE_PIPELINE = [
 
 function FullMovieTab({ book }: { book: ScrptBook }) {
   const [screen, setScreen] = useState<"cinema" | "tv">("cinema");
+  // every cut is kept: the picker lets two versions be judged against
+  // each other instead of from memory (Lars, 2026-08-31)
+  const [watchingFilm, setWatchingFilm] = useState<number | "latest">("latest");
   const [format, setFormat] = useState("feature");
   const catalog = book.catalog_number;
   type MoviePanel = { n?: string | number; title?: string; dur?: number; vo?: string;
                       frame_url?: string | null; characters?: string[] };
   const [mv, setMv] = useState<{ panels: MoviePanel[]; count: number; minutes?: number; music?: string;
                                  film_url?: string | null; film_poster_url?: string | null;
+                                 film_versions?: { n: number; label?: string; seconds?: number;
+                                                   created?: string; notes?: string;
+                                                   url: string; poster_url?: string | null }[];
                                  voice_cast?: Record<string, { id: string; name: string }> } | null>(null);
+  const filmVersions = mv?.film_versions || [];
+  const filmUrl = watchingFilm === "latest"
+    ? mv?.film_url
+    : filmVersions.find((v) => v.n === watchingFilm)?.url;
+  const filmPoster = watchingFilm === "latest"
+    ? mv?.film_poster_url
+    : filmVersions.find((v) => v.n === watchingFilm)?.poster_url;
   const [castFor, setCastFor] = useState<string | null>(null);
   const [castQ, setCastQ] = useState("");
   const [castGender, setCastGender] = useState("");
@@ -3506,7 +3519,26 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
       <div className="card">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <div className="serif-display text-[17px] font-semibold">The screening room</div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            {filmVersions.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {filmVersions.map((v) => (
+                  <button key={v.n} onClick={() => setWatchingFilm(v.n)}
+                          title={`${v.label || "cut"} · ${v.created || ""} · ${v.seconds ? Math.floor(v.seconds / 60) + ":" + String(v.seconds % 60).padStart(2, "0") : "?"}${v.notes ? " · " + v.notes : ""}`}
+                          className={`px-2.5 py-1 rounded-full text-[11px] uppercase tracking-[0.08em] ${
+                            watchingFilm === v.n ? "text-text-primary" : "text-text-faint hover:text-text-secondary"}`}
+                          style={watchingFilm === v.n ? { background: "var(--surface)", boxShadow: "var(--shadow-card)" } : {}}>
+                    v{v.n}
+                  </button>
+                ))}
+                <button onClick={() => setWatchingFilm("latest")}
+                        className={`px-2.5 py-1 rounded-full text-[11px] uppercase tracking-[0.08em] ${
+                          watchingFilm === "latest" ? "text-text-primary" : "text-text-faint hover:text-text-secondary"}`}
+                        style={watchingFilm === "latest" ? { background: "var(--surface)", boxShadow: "var(--shadow-card)" } : {}}>
+                  Latest
+                </button>
+              </div>
+            )}
             {(["cinema", "tv"] as const).map((m) => (
               <button key={m} onClick={() => setScreen(m)}
                       className={`px-3 py-1 rounded-full text-[11px] uppercase tracking-[0.1em] ${
@@ -3524,10 +3556,10 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
             <div className="mx-auto w-full">
               <div className="rounded-[4px] overflow-hidden"
                    style={{ boxShadow: "0 0 60px rgba(120,140,190,0.18), 0 0 6px rgba(0,0,0,0.9)" }}>
-                {mv?.film_url ? (
-                  <video key={mv.film_url} controls className="w-full block bg-black"
-                         poster={mv.film_poster_url ? `${scrpt.engineUrl}${mv.film_poster_url}` : undefined}
-                         src={`${scrpt.engineUrl}${mv.film_url}`} />
+                {filmUrl ? (
+                  <video key={filmUrl} controls className="w-full block bg-black"
+                         poster={filmPoster ? `${scrpt.engineUrl}${filmPoster}` : undefined}
+                         src={`${scrpt.engineUrl}${filmUrl}`} />
                 ) : (
                   <div className="w-full flex items-center justify-center bg-black" style={{ aspectRatio: "16/9" }}>
                     <span className="text-[12px] uppercase tracking-[0.2em]" style={{ color: "#3c4254" }}>
@@ -3547,10 +3579,10 @@ function FullMovieTab({ book }: { book: ScrptBook }) {
             <div className="w-full" style={{ maxWidth: 640 }}>
               <div className="rounded-[10px] p-2" style={{ background: "#000", boxShadow: "0 14px 40px rgba(0,0,0,0.55)" }}>
                 <div className="rounded-[6px] overflow-hidden">
-                  {mv?.film_url ? (
-                    <video key={mv.film_url} controls className="w-full block bg-black"
-                           poster={mv.film_poster_url ? `${scrpt.engineUrl}${mv.film_poster_url}` : undefined}
-                           src={`${scrpt.engineUrl}${mv.film_url}`} />
+                  {filmUrl ? (
+                    <video key={filmUrl} controls className="w-full block bg-black"
+                           poster={filmPoster ? `${scrpt.engineUrl}${filmPoster}` : undefined}
+                           src={`${scrpt.engineUrl}${filmUrl}`} />
                   ) : (
                     <div className="w-full flex items-center justify-center bg-black" style={{ aspectRatio: "16/9" }}>
                       <span className="text-[12px] uppercase tracking-[0.2em]" style={{ color: "#3c4254" }}>

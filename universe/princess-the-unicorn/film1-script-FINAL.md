@@ -1,427 +1,348 @@
 # PRINCESS AND THE HIDDEN SPRING
-## Episode 1 — FINAL SHOOTING MANUSCRIPT
+## Episode 1 — SHOOTING MANUSCRIPT v8 (ten minutes)
 
-The script is the film. It is written to work with the eyes closed: a
-listener who never sees a picture follows the whole story. Pictures only
-underline it.
+Trimmed from v7 against `episode1-story-chain.json`: all 22 load-bearing
+links and all 6 setup–payoff pairs intact. What left was repetition,
+banter, and lines where a character said something the storyteller had
+already said.
 
-**Voices** — STORYTELLER: David · PRINCESS: Tilly · GLITTER: Beth
-(energized) · PIP: Aurelia · MOSS: Valf · FIREFLIES: Emily
-**Running order** — theme intro → scenes 1–13 → lullaby ending →
-TigerWorks credits.
-
----
-
-## 1 · A SWEET MORNING BEGINS
-
-**STORYTELLER:** Far away, where the rainbows go to rest, there is a
-magical place called Rainbow Forest.
-
-*Ring, ring, ring.*
-
-**STORYTELLER:** And every single morning there begins with the same
-sweet sound.
-
-**STORYTELLER:** That bell belongs to Glitter. And the little one
-bouncing along behind her — that is Princess.
-
-**PRINCESS:** Hi, friend! We're going somewhere very special today.
-Would you like to come with us?
-
-**STORYTELLER:** Princess did not know it yet. But this would be a
-morning she would never, ever forget.
+**Voices** — STORYTELLER David *(warm, gentle, caring — never dramatic)*
+· PRINCESS Tilly · GLITTER Beth · PIP Aurelia · MOSS Valf · FIREFLIES
+Emily. Every line carries its direction. Recording on eleven_v3.
 
 ---
 
-## 2 · STAY NEAR THE BELL
+## 1 · A MORNING IN RAINBOW FOREST
 
-**STORYTELLER:** They walked together under enormous flowers and curling
-rainbow vines.
+**STORYTELLER** *(warm, gentle)*: Far away, where the rainbows go to
+rest, there is a forest. It is called Rainbow Forest. And every morning
+in Rainbow Forest begins with the same happy sound.
 
-**GLITTER:** Stay close enough to hear my bell, little one.
+*The sound of a silver bell. Ring, ring, ring.*
 
-**PRINCESS:** I love your bell, Mama. It sounds like tiny stars
-laughing.
+**STORYTELLER** *(warm, smiling)*: That is the sound of a little silver
+bell. The bell belongs to a big, kind unicorn called Glitter. And the
+little unicorn walking next to her is her daughter. Her name is
+Princess.
 
-**GLITTER:** And if we are ever apart, you remember what to do.
+**PRINCESS** *(bright, friendly, to the audience)*: Good morning,
+friend! My mum and I are going for our morning walk. Will you come?
 
-**PRINCESS:** Stop. Take a breath. And listen.
+---
 
-**GLITTER:** Then call for me, and wait somewhere safe.
+## 2 · MAMA'S RULE
 
-**PRINCESS:** And if I still can't find you?
+**STORYTELLER** *(warm)*: Princess and her mum walked in under the big
+flowers, where the morning mist lies soft on the path.
 
-**GLITTER:** Then go to the last safe place we both remember. And I will
-always, always come looking for you.
+**GLITTER** *(warm, tender)*: Stay close enough to hear my bell, little
+one.
 
-**GLITTER:** *(singing)* Stay near my bell, stay close on your way…
-if the forest grows quiet — stop, listen, and stay.
+**PRINCESS** *(happy)*: I can always hear your bell, Mama.
 
-**PRINCESS:** Will your bell always bring me home?
+**GLITTER** *(gentle, teaching)*: And if one day you cannot hear it — do
+you remember our rule?
 
-**GLITTER:** My bell. Your courage. And a little help from your friends.
+**PRINCESS** *(proud, careful)*: Stop. Listen. And go to Moonwater
+Spring.
+
+**GLITTER** *(warm, certain)*: That is right. Moonwater Spring is our
+meeting place. And I will always come there to find you.
+
+**STORYTELLER** *(warm, kind)*: Remember Mama's rule, friend. Princess
+is going to need it today.
 
 ---
 
 ## 3 · MOONWATER SPRING
 
-**STORYTELLER:** Their special place was called Moonwater Spring — where
-the water shimmers with a little piece of the night sky, even in the
-morning.
+**STORYTELLER** *(warm, wondering)*: The meeting place is a little pool
+of water in a green clearing, and it shines like the moon, even in the
+morning. That is why it is called Moonwater Spring.
 
-**PRINCESS:** Mmm! It tastes like starlight!
+**PRINCESS** *(delighted)*: Mmm! This water tastes like starlight.
 
-**GLITTER:** With just a sprinkle of moonbeam, I think.
+**STORYTELLER** *(warm)*: The water from Moonwater Spring runs away
+under the ground. It gives a drink to every flower and every tree in
+Rainbow Forest.
 
-**STORYTELLER:** And from that spring, glowing water runs out through
-the roots of the forest, to every flower and every tree and every
-creature in it.
+**PRINCESS** *(curious)*: Does the whole forest drink this water, Mama?
 
-**PRINCESS:** Does the whole forest need it?
+**GLITTER** *(warm, simple)*: Every drop, my love.
 
-**GLITTER:** Every single drop.
-
-**PRINCESS:** Then I hope it never, ever stops flowing.
-
----
-
-## 4 · THE TRAPPED FIREFLIES
-
-**STORYTELLER:** But on the way home, from behind a curtain of silver
-vines, came the smallest sound.
-
-**FIREFLIES:** Help! Please, help us!
-
-**PRINCESS:** Mama, wait! Somebody needs us!
-
-**GLITTER:** I'm right here. Stay where you can hear my bell.
-
-**STORYTELLER:** A whole family of fireflies was tangled in the sticky
-vines, their little lights blinking on and off.
-
-**PRINCESS:** Don't be frightened, little lights. I'll get you out.
-
-**STORYTELLER:** Princess lifted the vines with her horn — carefully,
-carefully — until every last firefly wriggled free.
-
-**FIREFLIES:** We're free! Thank you, Princess!
-
-**PRINCESS:** Helping somebody makes my heart feel warm.
-
-**STORYTELLER:** And then the wind came. Thick golden fog came tumbling
-between the trees, and a heavy branch crashed down across the path —
-right between Princess and her mother.
-
-**GLITTER:** Princess! Stay where you are! I'm coming!
-
-**PRINCESS:** Mama!
-
-**STORYTELLER:** But the wind was loud. And her mother's voice, and her
-mother's bell, were somewhere on the other side of it.
+**STORYTELLER** *(gentle, quietly marking it)*: High above the pool
+stands a white cliff. Look at the big white stones on top of it, friend.
+Those big white stones have been waiting up there for a very, very long
+time. And today, they are going to fall.
 
 ---
 
-## 5 · THE FOREST GROWS QUIET
+## 4 · THE STONES COME DOWN
 
-**PRINCESS:** Mama?
+**STORYTELLER** *(warm, calm)*: Princess and her mum walked back along
+the path towards home. Then the forest made a sound.
 
-**STORYTELLER:** Princess started to run — and then she stopped herself.
+*A long, low rumble.*
 
-**PRINCESS:** No. Running could take me even further away.
+**PRINCESS** *(a little worried)*: Mama? What is that noise?
 
-**PRINCESS:** Stop. Take a breath. And listen.
+**GLITTER** *(calm, reassuring)*: It is only the old stones on the
+cliff, my love.
 
-**STORYTELLER:** So she did. She stood very still in the fog, and she
-listened with her whole heart.
+**STORYTELLER** *(gentle, clear)*: But it was more than that. Up on the
+cliff, the white stones came sliding down, and grey dust flew up into
+the trees.
 
-**PRINCESS:** Can you hear her bell, friend?
-
-**STORYTELLER:** But there was no ring, ring, ring. There was nothing at
-all.
-
-**PRINCESS:** I think… I think I'm lost.
-
-**STORYTELLER:** And that is a very big feeling, for somebody very
-small.
-
-**PRINCESS:** But I remember the rest of what Mama taught me. If I can't
-find her by myself… I can ask for help.
+**STORYTELLER** *(gentle, clear)*: And one round white stone rolled into
+the little hole where the water comes out, and stuck fast. Now the water
+could not get out at all. Nobody saw that stone, friend. Only you and
+me.
 
 ---
 
-## 6 · TWO HEADS ARE BETTER
+## 5 · THE LITTLE LIGHTS
 
-**PIP:** Chirp! Who are you calling for?
+**FIREFLIES** *(tiny, frightened)*: Help! Somebody help us, please!
 
-**STORYTELLER:** A small blue bird hopped out of the fog.
+**PRINCESS** *(alert, kind)*: Mama, wait! Somebody is calling for help!
 
-**PRINCESS:** My mama. Her name is Glitter. She has a rainbow mane, and
-a silver bell.
+**STORYTELLER** *(warm)*: The shaking had knocked a branch out of a
+tree, and it had trapped a family of fireflies in the vines.
 
-**PIP:** I'm Pip! And I know nearly every path in Rainbow Forest.
+**PRINCESS** *(gentle, brave)*: Don't be frightened, little lights. I
+will get you out.
 
-**PRINCESS:** …Nearly?
+**STORYTELLER** *(warm, careful)*: So Princess stayed. She lifted the
+branch with her horn, very carefully, until every firefly wriggled out.
 
-**PIP:** Well. The ones that aren't covered in fog. But cheer up — two
-heads are better than one. And four eyes are better than two!
+**FIREFLIES** *(bright, happy)*: We are free! Thank you, Princess!
 
-**STORYTELLER:** Then Pip spotted something in the soft mud: hoofprints.
+**STORYTELLER** *(gentle, this is the turn)*: But while Princess was
+helping the fireflies, her mum kept walking. Glitter was calling
+Princess's name, and ringing her silver bell. But the dust was thick
+between them, and Princess did not hear her mum at all.
 
-**PIP:** Unicorn tracks!
+**PRINCESS** *(happy, then uncertain)*: I did it, Mama! Mama? Where are
+you?
 
-**PRINCESS:** Mama's hoofprints! Let's follow them. Together?
-
-**PIP:** Together.
-
----
-
-## 7 · THE WOBBLY BRIDGE
-
-**STORYTELLER:** The tracks led them to a narrow rope bridge, swaying
-over a rushing stream.
-
-**PRINCESS:** That bridge looks very wobbly.
-
-**PIP:** It also looks very creaky.
-
-**STORYTELLER:** *(the bridge creaks)*
-
-**PIP:** …Extremely creaky.
-
-**PRINCESS:** Step by step. Slow and steady.
-
-**MOSS:** Please don't step on my tail!
-
-**STORYTELLER:** Out from under the bridge came a small green dragon,
-shaking from his nose to the end of his tail.
-
-**MOSS:** I'm Moss. I wanted to cross, but I'm afraid of heights. And
-deep water. And bridges. *Especially* bridges.
-
-**PRINCESS:** Hello, Moss. Have you seen a big unicorn with a rainbow
-mane?
-
-**MOSS:** No. But I'll help you look.
-
-**PRINCESS:** Being brave doesn't mean you're not scared, Moss. It means
-you keep going, even when you are.
-
-**MOSS:** Then… perhaps I can be brave for one bridge.
+**STORYTELLER** *(gentle, sad but warm)*: And the path in front of
+Princess was empty. She was a long way from home.
 
 ---
 
-## 8 · THE BOUNCING MUSHROOMS
+## 6 · STOP. LISTEN. GO.
 
-**STORYTELLER:** On the other side lay a whole field of enormous,
-glowing mushrooms.
+**PRINCESS** *(calling, worried)*: Mama! Mama, where are you?
 
-**MOSS:** How do we ever get across?
+**STORYTELLER** *(gentle)*: Princess started to run. Then Princess
+stopped herself, and remembered the first part of Mama's rule.
 
-**STORYTELLER:** Princess put one hoof on a mushroom — and it bent, and
-it bounced, and up she went!
+**PRINCESS** *(steadying herself)*: Stop. Listen.
 
-**PRINCESS:** Wheeee!
+**STORYTELLER** *(gentle, quiet)*: So Princess stood very still, and she
+listened as hard as she could.
 
-**PIP:** The forest has given us a shortcut!
+**PRINCESS** *(hopeful, then small)*: Can you hear Mama's bell, friend?
+No. I cannot hear it either.
 
-**MOSS:** Or a very bouncy mistake.
+**STORYTELLER** *(gentle, tender)*: There was no ringing anywhere. There
+was no sound of Mama's bell in the whole forest. And for somebody very
+small, that is a very big feeling.
 
-**MOSS:** I'm flying! …Sort of!
+**PRINCESS** *(frightened, small, trembling)*: I think I am lost.
 
-**STORYTELLER:** And for one small moment, in the middle of a very
-frightening day, all three of them laughed out loud.
+**PRINCESS** *(deciding, brave)*: But I know our rule. Go to Moonwater
+Spring. Mama will come there. I am going to walk there.
 
----
-
-## 9 · THE STORM
-
-**STORYTELLER:** Then the clouds rolled over the sun, and the rain came
-down — and washed every one of those hoofprints away.
-
-**PRINCESS:** No! Mama's tracks!
-
-**MOSS:** I don't like storms.
-
-**PRINCESS:** Stay close to me, Moss. We'll face it together.
-
-**MOSS:** But how will we ever find your mama now?
-
-**STORYTELLER:** And Princess stood very still in the rain, and
-remembered.
-
-**PRINCESS:** Mama said: go to the last safe place we both remember.
-
-**PIP:** Moonwater Spring!
-
-**PRINCESS:** That's where she'll come looking. Let's go!
-
-**STORYTELLER:** And far away, through the very same rain, Glitter was
-running and calling.
-
-**GLITTER:** Princess! Princess, where are you?
-
-**STORYTELLER:** Until her silver bell caught fast on a thorny branch —
-and the strap snapped, and the bell fell silently into the wet grass.
-
-**GLITTER:** Oh no. My bell!
-
-**STORYTELLER:** And now there was no ringing left in the forest at all.
-
-**GLITTER:** Moonwater Spring. Princess will remember. She *will*
-remember.
+**STORYTELLER** *(warm, clear)*: And now Princess had a plan. She was
+very small, and she was not sure of the way. But she knew where she was
+going.
 
 ---
 
-## 10 · THE SILENT SPRING
+## 7 · PIP THE BIRD
 
-**STORYTELLER:** When the three friends reached the clearing at last,
-something was terribly wrong.
+**PIP** *(quick, cheerful, curious)*: Chirp! Hello! Who are you calling
+for?
 
-**PRINCESS:** The spring! It's… it's gone dark.
+**STORYTELLER** *(warm)*: A little blue bird hopped out of the dust. The
+bird was called Pip.
 
-**PIP:** Where has all the water gone?
+**PRINCESS** *(polite, hopeful)*: My mum. She will be at Moonwater
+Spring. But I don't know the way from here.
 
-**STORYTELLER:** They followed a thin little trickle of water, all the
-way to a crack in the rocks — and a dark, quiet cave.
+**PIP** *(bright, proud)*: Then it is lucky you met me! Moonwater Spring
+is that way, over the rope bridge.
 
-**PIP:** In there. That's where the water is going.
-
-**MOSS:** It is *very* dark in there.
-
-**PRINCESS:** Then we shouldn't go in without a plan… wait. Little
-lights! Are you there?
-
-**FIREFLIES:** Follow us!
-
-**STORYTELLER:** And out of the trees came the fireflies Princess had
-saved that very morning — and they made a glowing golden trail, right
-into the dark.
-
-**PRINCESS:** Moss, stay close to me. Pip, watch the way behind us.
-
-**MOSS:** I'm still afraid.
-
-**PRINCESS:** So am I. We can be afraid and brave at the same time.
+**STORYTELLER** *(warm, kind)*: And that was the second good thing
+Princess did today. When Princess could not do it on her own, Princess
+asked for help.
 
 ---
 
-## 11 · THE CRYSTAL IN THE DARK
+## 8 · MOSS THE LITTLE DRAGON
 
-**STORYTELLER:** Deep inside the cave, an enormous crystal had fallen
-right across the underground river. The water pushed and pushed behind
-it — and could not get through.
+**STORYTELLER** *(warm)*: The way to the spring goes over a rope bridge,
+high above a river.
 
-**PRINCESS:** We have to move it. Push!
+**MOSS** *(nervous, shaky, small)*: Please don't step on my tail!
 
-**STORYTELLER:** She pushed with all her might. It did not move. Not
-even a little.
+**STORYTELLER** *(warm)*: Out from under the bridge came a little green
+dragon, shaking from his nose to the end of his tail. His name was Moss.
 
-**PRINCESS:** It's too heavy.
+**MOSS** *(nervous, small)*: I want to cross. But I am afraid of high
+places.
 
-**PIP:** Not if we all work together! I'll pull!
+**PRINCESS** *(warm, inviting)*: Come with us, Moss. We are going to
+Moonwater Spring.
 
-**PRINCESS:** I'll push from below. Moss — we need somebody at the top.
+**MOSS** *(worried)*: But I am not brave.
 
-**MOSS:** But I can't fly.
+**PRINCESS** *(kind, certain)*: Being brave does not mean you are not
+scared, Moss. It means you keep going, even when you are.
 
-**PRINCESS:** You flew over the mushrooms.
+**STORYTELLER** *(warm)*: And Princess and Pip and Moss crossed the rope
+bridge together. Step by step, slowly and carefully.
 
-**MOSS:** I floated. Very briefly!
+---
 
-**PRINCESS:** You don't have to fly far. Just one brave flap at a time.
+## 9 · THE SPRING HAS GONE DARK
 
-**MOSS:** One brave flap at a time…
+**STORYTELLER** *(gentle, concerned)*: But when the three friends came
+into the green clearing, Princess stopped very suddenly.
 
-**STORYTELLER:** And Moss flapped once. And twice. And up he went!
+**PRINCESS** *(shocked, quiet)*: Look at the spring. The water has gone.
 
-**MOSS:** I'm flying! I'm really flying!
+**STORYTELLER** *(gentle)*: Moonwater Spring was not shining any more.
+There were only wet grey stones, and one thin little trickle of water.
 
-**PRINCESS:** Ready? One, two, three — PUSH!
+**PRINCESS** *(working it out, then certain)*: Look up at the cliff. The
+white stones have fallen down. That was the rumble I heard this morning.
+Now the water cannot get out.
 
-**STORYTELLER:** Princess pushed. Pip pulled. Moss shoved from the very
-top. And the great crystal rolled aside — and the water burst free,
-bright and glowing, rushing out into the forest.
+**STORYTELLER** *(warm, proud of her)*: And Princess was right. The
+three friends followed the little trickle to a crack in the cliff, and a
+dark, quiet cave.
 
-**PRINCESS:** Wait. Listen!
+**PRINCESS** *(worried, clear)*: The whole forest drinks this water. But
+I am not going into a dark cave without a light.
 
-**GLITTER:** *(far away)* Princess!
+---
 
-**PRINCESS:** Mama!
+## 10 · THE LITTLE LIGHTS COME BACK
+
+**PRINCESS** *(calling, hopeful)*: Little lights! Fireflies! We need
+your help!
+
+**STORYTELLER** *(warm, delighted)*: And out from the trees came the
+fireflies Princess had helped that morning. They flew into the crack in
+the cliff, and their little lights made a golden path into the dark.
+
+**MOSS** *(small, honest)*: I am still afraid, Princess.
+
+**PRINCESS** *(warm, honest)*: So am I, Moss. We can be afraid and brave
+at the same time.
+
+---
+
+## 11 · ONE BRAVE FLAP AT A TIME
+
+**STORYTELLER** *(gentle, clear)*: Deep inside the cave, one big round
+white stone was stuck in the mouth of an underground river. The water
+pushed and pushed behind it, and could not get past.
+
+**PRINCESS** *(recognising it)*: That is the stone that fell this
+morning. We have to move it. Push!
+
+**STORYTELLER** *(warm)*: Princess pushed as hard as she could. The
+stone did not move.
+
+**PIP** *(bright, rallying)*: It is not too heavy for all three of us! I
+will pull from the side.
+
+**PRINCESS** *(planning)*: Moss, we need somebody on top of the stone.
+
+**MOSS** *(afraid)*: But I cannot fly.
+
+**PRINCESS** *(warm, believing in him)*: You crossed the bridge, Moss.
+And you were afraid. Just one brave flap at a time.
+
+**STORYTELLER** *(warm, rising)*: And Moss flapped his wings once. And
+twice. And up went Moss!
+
+**MOSS** *(amazed, joyful)*: I am flying! I am really flying!
+
+**PRINCESS** *(strong, leading)*: Ready? One. Two. Three. Push!
+
+**STORYTELLER** *(warm, joyful)*: And the big white stone rolled away.
+And the water came rushing out, bright and shining, out of the cave and
+into the forest.
 
 ---
 
 ## 12 · TWO SILVER BELLS
 
-**STORYTELLER:** Moonwater Spring came back to life, shining like the
-moon come home — and that light spilled out through the trees, all the
-way to a mother searching in the rain.
+**STORYTELLER** *(warm, happy)*: Out in the clearing, Moonwater Spring
+filled up and began to shine again. And then Princess heard a sound.
 
-**GLITTER:** Princess!
+*Ring, ring, ring.*
 
-**STORYTELLER:** And Princess ran faster than she had ever run in her
-whole life.
+**PRINCESS** *(overjoyed)*: Mama! That is Mama's bell!
 
-**GLITTER:** Oh, my brave girl. I was so worried.
+**GLITTER** *(calling, full of love)*: Princess!
 
-**PRINCESS:** I was worried too, Mama. But I stopped. And I breathed.
-And I listened. And I asked for help. And then I came to our safe place.
+**GLITTER** *(tender, holding her)*: Oh, my brave girl. I have been
+walking to this spring since the morning.
 
-**GLITTER:** You remembered every single thing.
+**PRINCESS** *(happy, understanding)*: You came to our meeting place.
 
-**PRINCESS:** And Pip and Moss helped me. We saved the spring together!
+**GLITTER** *(warm, certain)*: Of course I did. That is our rule. I knew
+that if I waited here, you would come.
 
-**PIP:** Three heads really are better than one.
+**PRINCESS** *(proud, telling it)*: I stopped, Mama. And I listened. And
+then I walked here. And Pip and Moss helped me.
 
-**MOSS:** And I flew!
+**MOSS** *(proud, still amazed)*: And I flew!
 
-**PIP:** …Sort of.
+**STORYTELLER** *(warm, tender)*: And Glitter lifted a little silver
+bell out from under her mane, just the right size for Princess.
 
-**MOSS:** I definitely flew.
+**GLITTER** *(tender)*: Now you know exactly what to do when you cannot
+hear me.
 
-**GLITTER:** Princess — I have something for you.
-
-**STORYTELLER:** And from beneath her mane, Glitter lifted a tiny silver
-bell, just Princess's size.
-
-**GLITTER:** Not because you will never be lost again. But because now
-you know exactly what to do when the way feels uncertain.
-
-**PRINCESS:** Ring, ring, ring! It sounds just like yours!
-
-**MOSS:** Only smaller.
-
-**PIP:** And much more bouncy.
+**PRINCESS** *(delighted)*: Ring, ring, ring! It sounds just like your
+bell, Mama!
 
 ---
 
 ## 13 · WHAT WE LEARNED TODAY
 
-**STORYTELLER:** And so that was the day Princess got lost in the fog —
-and found her own way home again.
+*This scene, and only this scene, is shown in the storybook look:
+illustrated pages with a soft painted border.*
 
-**PRINCESS:** Friend? I learned something today. When you can't find
-somebody you love — you don't run. You stop. You take a breath. And you
-listen.
+**STORYTELLER** *(warm, gentle)*: And that was the day the white stones
+came down in Rainbow Forest, and Princess found her own way to the
+meeting place.
 
-**PRINCESS:** And then you go to the place you both know. And if you
-feel too small… you ask a friend. Two heads really are better than one.
+**PRINCESS** *(warm, to the audience)*: Friend? I learned something
+today. If you cannot find somebody you love, do not run. Stop. Listen.
+And go to the place you both know. That is where they will be looking
+for you.
 
-**STORYTELLER:** And as the evening came down over Rainbow Forest, two
-silver bells rang together — one big, and one small.
+**PRINCESS** *(warm, simple)*: And if the way is too big for you, ask a
+friend to help. Pip and Moss helped me.
+
+**STORYTELLER** *(warm, gentle, closing)*: The evening came down soft
+and gold over Rainbow Forest. And on the path home, two silver bells
+were ringing together. One big bell, and one little bell.
 
 ---
 
 ## THE END — the lullaby
 
-*Fixed ending: Glitter tucks Princess into her moss bed and sings the
-short Unicorn Lullaby; Princess falls asleep on the last note.*
-
-> Sleep now… sleep now… the forest holds you near.
-> Sleep now… sleep now… your dreams are safe in here.
-> Goodnight, goodnight, little unicorn… sleep tight.
+*Fixed bookend: Glitter tucks Princess into her moss bed and sings the
+Unicorn Lullaby. Princess falls asleep on the last note.*
 
 ## CREDITS
 
-*Screen one: "Created and Written by The Tiger Family · Music by Lars
-Tiger", with Princess smiling in the corner and Pip flying past.
-Screen two: the TigerWorks mark. Both over the theme instrumental.*
+*Fixed bookend: the two credit screens over the theme. Ten seconds.*

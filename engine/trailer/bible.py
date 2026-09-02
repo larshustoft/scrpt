@@ -625,9 +625,34 @@ def _universe_format_rules(catalog: str) -> str:
     return ""
 
 
+def film_style(style: str) -> str:
+    """The style a FILM is shot in, cleaned of two traps.
+
+    A book's style bible is written for pages, and it carries words that
+    wreck a film: "storybook" makes the camera render an open book with
+    the characters inside it, and "night-blues / lit by moonlight" makes a
+    morning story come back moonlit (both seen on Episode 1, 2026-09-01).
+    The palette words go; the time of day is stated per shot and obeyed.
+    """
+    import re as _re
+    out = style or ""
+    for word, repl in (("storybook", "children's animation"),
+                       ("night-blues", "forest blues"),
+                       ("velvety night", "soft"),
+                       ("as if lit by moonlight and magic", "lit by the light of the hour"),
+                       ("lit by moonlight", "lit by the light of the hour"),
+                       ("moonlight", "daylight")):
+        out = _re.sub(_re.escape(word), repl, out, flags=_re.I)
+    return (out.strip().rstrip(".") +
+            ". 2D children's animation, soft painterly cartoon rendering, "
+            "rounded friendly character design, never photorealistic and never "
+            "a page from a book. THE TIME OF DAY IS STATED IN EACH SHOT AND "
+            "MUST BE OBEYED — do not default to night.")
+
+
 async def build_film_board(catalog: str, minutes: int = 8, handle=None,
                            format_kind: str = "childrens",
-                           premise: str = "") -> dict:
+                           premise: str = "", locked_scenes: list = None) -> dict:
     """Adapt the book into a FILM — two stages, like a real production:
 
     1. ADAPTATION: the book becomes a screenplay. The story is told through
@@ -737,12 +762,23 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
         handle.progress(0.1, "adaptation", "adapting the book into a screenplay")
     set_model_override(writing_model())
     try:
-        raw = await complete(
-            "You are a family-film screenwriter adapting a beloved picture "
-            "book. Faithful to the story, cinematic in the telling.",
-            adapt_prompt, max_tokens=8000)
-        screenplay = extract_json(raw) or {}
-        scenes = screenplay.get("scenes") or []
+        screenplay = {"scenes": locked_scenes} if locked_scenes else {}
+        if locked_scenes:
+            # A MANUSCRIPT WRITTEN AND APPROVED BY HAND outranks the machine's
+            # adaptation. When the script has already been written, read aloud
+            # and signed off, stage 1 is skipped entirely and the board only
+            # illustrates it (Lars, 2026-08-31 — v7 of Episode 1).
+            scenes = locked_scenes
+            if handle:
+                handle.progress(0.3, "adaptation",
+                                f"using the approved script — {len(scenes)} scenes")
+        else:
+            raw = await complete(
+                "You are a family-film screenwriter adapting a beloved picture "
+                "book. Faithful to the story, cinematic in the telling.",
+                adapt_prompt, max_tokens=8000)
+            screenplay = extract_json(raw) or {}
+            scenes = screenplay.get("scenes") or []
         if len(scenes) < 4:
             raise RuntimeError("The adaptation came back too thin — try again")
 
@@ -774,6 +810,52 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             "Characters by cast name only; never invent characters.\n"
             "2. We SEE faces: front or three-quarter views, expressions "
             "carrying the feeling.\n"
+            "2a. FIELDS EVERY SHOT MUST CARRY (2026-09-01), because the "
+            "camera cannot know them: `framing` — one of wide / medium / "
+            "close / detail, and NEVER the same framing twice in a row; "
+            "`present` — the list of characters actually on screen in this "
+            "shot, and nobody else (after Princess loses her mother, Glitter "
+            "is NOT in the shot); `event` — if this shot shows a story event "
+            "(the stones falling, the stone blocking the water, the stone "
+            "rolling away), name it, and NO OTHER SHOT may carry that same "
+            "event; `look` — leave it out everywhere except the closing "
+            "summary scene, where it is \"storybook\".\n"
+            "2g. `motion`: ONE SENTENCE SAYING WHAT MOVES in this shot — "
+            "what the characters do, and what the world does around them "
+            "(\"Princess trots three steps toward the camera and shakes her "
+            "mane; the flowers sway and dew slides off a leaf\"). A shot with "
+            "no motion comes back frozen. Nothing violent, nothing sudden: "
+            "small, continuous, gentle movement.\n"
+            "2d. NO TWO SHOTS IN A ROW MAY OPEN THE SAME WAY. Change the "
+            "framing, change the camera position, change what is in front. "
+            "Two shots of the same valley from the same angle read as a "
+            "mistake (Lars, 2026-09-01).\n"
+            "2e. NOBODY SPEAKS ON CAMERA. The voices are recorded "
+            "separately and no mouth ever matches them. Write shots where "
+            "characters listen, react, walk and do — never 'says', never "
+            "'talking', never a mouth open.\n"
+            "2f. THE TIME OF DAY belongs in every shot description, in "
+            "plain words ('bright morning sunlight', 'flat grey afternoon "
+            "light'), and it must follow the story's clock.\n"
+            "2b. THE SHOT GRAMMAR OF CHILDREN'S ANIMATION (Lars, "
+            "2026-08-31). A small child must always be able to tell WHO "
+            "is there and WHAT is happening. So: eye-level, at the "
+            "child's height, camera steady. Characters WHOLE in frame — "
+            "full figure or medium — standing side by side with air "
+            "between them, both faces visible when they talk to each "
+            "other. A close-up is only ever a single face, straight on, "
+            "holding one feeling. FORBIDDEN: over-the-shoulder shots, "
+            "shots framed past a body or through foreground objects, "
+            "tilted angles, extreme high or low angles, handheld or "
+            "shaky camera, whip pans, orbits, rack focus, and any framing "
+            "that crops a face or cuts a character in half. Camera moves "
+            "are slow and simple: a gentle push in, a slow drift, or "
+            "nothing at all.\n"
+            "2c. MOUTHS. The voices are recorded separately, so a tight "
+            "close-up on a talking mouth never matches. While a character "
+            "SPEAKS, frame them full figure or medium so the mouth is "
+            "small in frame; save the close-up for the character who is "
+            "LISTENING, deciding, or feeling something.\n"
             "3. Assign the scene's dialogue lines to shots, ONE line per "
             "shot (`line`: {speaker, text}) — the speaker is on screen and "
             "speaking in that shot. Keep every line from the screenplay, in "
@@ -782,8 +864,8 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             "shot only.\n"
             "5. `sound`: one gentle diegetic sound per shot.\n"
             "6. `dur`: THE WORDS DECIDE. Count the words this shot must "
-            "carry and give it at least (words / 2.2) + 1.5 seconds, "
-            "minimum 4 — a shot is as long as the thing being said, never "
+            "carry and give it at least (words / 2.44) + 0.8 seconds, "
+            "minimum 3.5 — a shot is as long as the thing being said, never "
             "shorter. Otherwise 4-8 seconds; a shot with a line runs long enough to "
             "speak it.\n"
             "7. THE FILM'S FIRST SHOT (Lars, 2026-08-30) is always the "
@@ -791,6 +873,17 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             "the land from above — and the camera drifts or zooms IN toward "
             "where the story is happening. No character is close in shot 1; "
             "we arrive at them in shot 2.\n\n"
+            "7a. THE CONTINUITY LEDGER: also return \"continuity\": "
+            "{\"states\": [{\"key\": \"water\", \"from_scene\": 4, "
+            "\"until_scene\": 11, \"say\": \"The pool and the creek bed "
+            "are completely DRY — wet grey stones, no water anywhere, no "
+            "ripples, no reflections.\", \"forbid\": [\"water\", "
+            "\"stream\", \"pool\"]}]} — one entry for every fact about "
+            "the world that CHANGES during the film and would be wrong if a "
+            "shot forgot it. `say` is written INTO every shot between those "
+            "scenes; `forbid` lists words that must not appear in a shot "
+            "description while the state holds. This is what stops water "
+            "flowing through a spring the story has just blocked.\n"
             "7b. THE SCORE PLAN: also return \"score_plan\" — the film's "
             "music in 5-9 emotional chapters covering every scene once, "
             "each {\"scenes\": [..], \"mood\": \"an instrumental brief in "
@@ -813,11 +906,17 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
     data_out = extract_json(raw2) or {}
     def _needed_seconds(pn: dict) -> float:
         """A shot must be able to hold its own speech (Lars, 2026-08-31:
-        the script is the film). 2.2 words/second at the house pace, plus
-        a beat to breathe."""
+        the script is the film).
+
+        The rate is MEASURED, not guessed, and it is measured on the
+        model we actually record with. eleven_v3 ACTS the line, and acting
+        is slower than reading: 1,996 words came back as 13.6 minutes of
+        speech — 2.44 words per second, against 2.68 for the old flat
+        model and a 2.2 guess before that. Footage is bought by the
+        second, so this number is money."""
         w = len((pn.get("vo") or "").split()) + \
             len((((pn.get("line") or {}).get("text")) or "").split())
-        return max(4.0, round(w / 2.2 + 1.5, 1)) if w else 4.0
+        return max(3.5, round(w / 2.44 + 0.8, 1)) if w else 4.0
 
     panels, idx = [], 0
     known = {n.lower(): n for n in cast_names}
@@ -848,14 +947,25 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             panels.append(pn)
     if len(panels) < len(scenes):
         raise RuntimeError("The board came back too thin — try again")
-    sb = {"panels": panels, "music": str(data_out.get("music") or "")[:400],
+    sb = {"panels": panels, "style": film_style(bible.get("style") or ""),
+          "continuity": data_out.get("continuity") or {},
+          "music": str(data_out.get("music") or "")[:400],
           "score_plan": [
               {"scenes": [int(s) for s in (ch.get("scenes") or []) if str(s).isdigit() or isinstance(s, int)],
                "mood": str(ch.get("mood") or "")[:300]}
               for ch in (data_out.get("score_plan") or [])
               if isinstance(ch, dict)][:9],
-          "style": bible.get("style") or "", "kind": "film",
-          "format": format_kind, "minutes": minutes}
+          "kind": "film", "format": format_kind, "minutes": minutes}
+
+    # THE DESK CHECK (2026-09-01). Repeated framings, two shots that read the
+    # same, an event shown twice, a forbidden thing named while the story says
+    # it is absent, a mouth moving, the storybook look outside the summary.
+    # Found here it costs nothing; found on screen it costs a re-shoot.
+    from .continuity import check_board
+    sb["desk_check"] = check_board(sb)
+    if handle and sb["desk_check"]:
+        handle.progress(0.9, "board",
+                        f"{len(sb['desk_check'])} continuity problems on the board")
     fresh = get_book_by_catalog(catalog)
     fd = dict(fresh["data"])
     mv = dict(fd.get("movie") or {})

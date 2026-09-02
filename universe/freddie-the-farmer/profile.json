@@ -1,7 +1,7 @@
 {
   "name": "Freddie the Farmer",
   "tagline": "Adventure first. Learning through discovery.",
-  "world": "Sunnybrook Farm \u2014 a warm, slightly magical place where every ordinary farm job can become an adventure.",
+  "world": "Sunnybrook Farm — a warm, slightly magical place where every ordinary farm job can become an adventure.",
   "guiding_message": "We can understand the world when we stop, look, listen and think.",
   "learning_pillars": [
     "Nature",
@@ -19,7 +19,10 @@
     "book1_cover": "book1-cover.png",
     "universe_bible": "universe-bible.pdf",
     "plates_dir": "plates",
-    "logo": "logo-transparent.png"
+    "logo": "logo-transparent.png",
+    "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Freddie the Farmer",
+    "logo_transparent": "logo-transparent.png",
+    "logo_transparent_note": "Canva cutout by Lars 2026-08-31 — THE transparent logo for the website, the TigerWorks brand wall, films and every composite. logo-raw-cutout.png is his untrimmed original."
   },
   "cast": {
     "Freddie": {
@@ -29,7 +32,7 @@
     },
     "Tilly the Tractor": {
       "plate": "plates/tilly.png",
-      "role": "Freddie's best friend \u2014 persistence and patience",
+      "role": "Freddie's best friend — persistence and patience",
       "line": "Start me up, Freddie!"
     },
     "Pip the Sheepdog": {
@@ -49,7 +52,7 @@
     },
     "Milo the Mole": {
       "plate": "plates/milo.png",
-      "role": "Inventor \u2014 science and experimentation",
+      "role": "Inventor — science and experimentation",
       "line": "It almost worked, which means we learned something!"
     },
     "Rosie the Rabbit": {
@@ -64,7 +67,7 @@
     },
     "Old Oak": {
       "plate": "plates/oldoak.png",
-      "role": "Wise guardian \u2014 feelings and seasons",
+      "role": "Wise guardian — feelings and seasons",
       "line": "Feelings are visitors. Let's listen to this one."
     }
   },
@@ -81,5 +84,6 @@
     "Sunnybrook Village"
   ],
   "note": "Seeded 2026-08-30 from Lars's 16-page universe bible + 9 character plates + book 1 cover (Freddie the Farmer and the Missing Buzz).",
-  "episode_format": "episode-format.md"
+  "episode_format": "episode-format.md",
+  "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Freddie the Farmer"
 }

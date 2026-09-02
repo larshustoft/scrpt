@@ -1,0 +1,39 @@
+{
+  "title": "Princess and the Hidden Spring — the load-bearing chain",
+  "note": "Every link is a BECAUSE. A trim may remove anything that is not a link. It may never remove a link, and it may never remove one half of a pair.",
+  "links": [
+    {"id": "rule",        "must_say": ["Moonwater Spring", "meeting place"], "why": "the rule names the destination before the trouble — without it her later choice is luck"},
+    {"id": "forest-drinks","must_say": ["whole forest", "drink"],            "why": "makes the dry spring matter to a child"},
+    {"id": "stones-shown", "must_say": ["white stones"],                     "why": "the slide must have a cause the child has already seen"},
+    {"id": "slide",        "must_say": ["rumble"],                           "why": "the one event that causes everything"},
+    {"id": "stone-blocks", "must_say": ["stone", "water could not"],         "why": "why the spring goes dark; paid off in the cave"},
+    {"id": "branch-traps", "must_say": ["branch", "fireflies"],              "why": "gives her a reason to stop walking"},
+    {"id": "she-stays",    "must_say": ["Princess stayed"],                  "why": "the separation is HER action, not weather"},
+    {"id": "mum-walks-on", "must_say": ["kept walking"],                     "why": "how they part without anyone being at fault"},
+    {"id": "stop-listen",  "must_say": ["Stop", "Listen"],                   "why": "the rule in use, first half"},
+    {"id": "no-bell",      "must_say": ["no sound of Mama's bell"],          "why": "the silence that forces the decision"},
+    {"id": "decision",     "must_say": ["going to walk"],                    "why": "she chooses the meeting place herself"},
+    {"id": "asks-help",    "must_say": ["don't know the way"],               "why": "the second lesson, and why Pip exists"},
+    {"id": "moss-afraid",  "must_say": ["afraid"],                           "why": "setup for the flight in the cave"},
+    {"id": "brave-line",   "must_say": ["keep going, even when you are"],    "why": "the sentence Moss acts on later"},
+    {"id": "spring-dark",  "must_say": ["water has gone"],                   "why": "the arrival turn"},
+    {"id": "recognises",   "must_say": ["rumble I heard"],                   "why": "ties the two halves of the story together"},
+    {"id": "fireflies-pay","must_say": ["fireflies", "helped"],              "why": "payoff of the morning's kindness"},
+    {"id": "moss-flies",   "must_say": ["brave flap"],                       "why": "payoff of moss-afraid + brave-line"},
+    {"id": "stone-moves",  "must_say": ["rolled away"],                      "why": "the problem solved by the three of them"},
+    {"id": "mum-waiting",  "must_say": ["that is our rule"],                 "why": "the reunion happens BECAUSE of the rule, not by luck"},
+    {"id": "bell-gift",    "must_say": ["little silver bell"],               "why": "makes the lesson a thing she can hold"},
+    {"id": "lesson",       "must_say": ["Stop", "Listen", "place you both know"], "why": "the episode's promise to the child"}
+  ],
+  "pairs": [
+    ["stones-shown", "slide"],
+    ["branch-traps", "fireflies-pay"],
+    ["rule", "mum-waiting"],
+    ["moss-afraid", "moss-flies"],
+    ["stone-blocks", "stone-moves"],
+    ["forest-drinks", "spring-dark"]
+  ],
+  "per_scene": {
+    "requires": "every scene must contain at least one storyteller beat that names WHERE we are, and the story's current goal must have been stated within the last two scenes"
+  }
+}

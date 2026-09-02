@@ -1855,6 +1855,12 @@ async def trailer_status(catalog: str):
             "voice_cast": (book["data"].get("movie") or {}).get("voice_cast") or {},
             "format": ((book["data"].get("movie") or {}).get("storyboard") or {}).get("format") or "childrens",
             "count": len((((book["data"].get("movie") or {}).get("storyboard") or {}).get("panels")) or []),
+            "film_versions": [
+                {**v, "url": f"/api/files/{catalog}/film-v{v['n']}.mp4",
+                 "poster_url": (f"/api/files/{catalog}/film-v{v['n']}.jpg"
+                                if (Path(OUTPUT_DIR) / catalog / f"film-v{v['n']}.jpg").exists() else None)}
+                for v in (((book["data"].get("movie") or {}).get("versions")) or [])
+                if (Path(OUTPUT_DIR) / catalog / f"film-v{v['n']}.mp4").exists()],
             "film_url": ((lambda fp: f"/api/files/{catalog}/film.mp4?v={int(fp.stat().st_mtime)}"
                           if fp.exists() else None)(Path(OUTPUT_DIR) / catalog / "film.mp4")),
             "film_poster_url": ((lambda fp: f"/api/files/{catalog}/film-poster.jpg?v={int(fp.stat().st_mtime)}"
@@ -3204,7 +3210,10 @@ async def movie_board(catalog: str, body: dict = Body(default={})):
     if fmtk not in ("childrens", "feature", "series"):
         raise HTTPException(400, "format must be childrens, feature or series")
     _caps = {"childrens": 15, "feature": 120, "series": 60}
-    minutes = max(4, min(_caps[fmtk], int(body.get("minutes") or (12 if fmtk == "childrens" else 8))))
+    # an episode runs 10–12 minutes: heard as audio, 11:40 was judged
+    # right — "we need that time to properly tell the story" (Lars,
+    # 2026-08-31, withdrawing the 8-minute target set that morning)
+    minutes = max(4, min(_caps[fmtk], int(body.get("minutes") or 12)))
     premise = str(body.get("premise") or "")
 
     async def job(handle):
@@ -3335,87 +3344,19 @@ async def movie_produce(catalog: str, body: dict = Body(default={})):
             # first film's MIDDLE (2026-08-30). Films get honest headroom —
             # length is judged in the edit, not by an amputation.
             max_seconds=int(total_s * 1.6) + 30)
-        # THE INTRO OPENS EVERY FILM (Lars): if the book's universe has a
-        # show intro, prepend it to the finished cut — free ffmpeg
+        # THE INTRO OPENS EVERY FILM (Lars) — and the whole episode is
+        # mastered to one level. Both live in trailer/episode.py so a
+        # re-cut reaches exactly the same finishing line.
         try:
-            import json as _json, subprocess as _sp
-            import imageio_ffmpeg as _iio
-            root = Path(__file__).resolve().parents[2]
-            _v = db.get_setting("universes", "")
-            reg = _v if isinstance(_v, dict) else _json.loads(_v or "{}")
-            intro = None
-            outro = None
-            for u in reg.values():
-                prof = _json.loads((root / u["profile"]).read_text())
-                if catalog in (prof.get("members") or []):
-                    ip = prof.get("creatives", {}).get("show_intro")
-                    if ip and (root / ip).exists():
-                        intro = root / ip
-                    op = prof.get("creatives", {}).get("show_outro")
-                    outro = (root / op) if op and (root / op).exists() else None
-                    break
+            from ..trailer.episode import attach_bookends, archive_film_version
             film = Path(OUTPUT_DIR) / catalog / str(r.get("file") or "trailer.mp4")
-            if (intro or outro) and film.exists():
-                if handle:
-                    handle.progress(0.98, "premiere", "attaching intro and outro")
-                FF = _iio.get_ffmpeg_exe()
-                parts = [pp for pp in (intro, film, outro) if pp]
-                merged = film.with_name("film-with-bookends.mp4")
-                # each part's audio is padded/trimmed to ITS OWN video
-                # length before the concat — unequal streams let the audio
-                # timeline slip against the picture for everything after
-                # (part of the first film's voice drift, 2026-08-30)
-                import re as _re2
-                def _vlen(fp):
-                    pr = _sp.run([FF, "-i", str(fp), "-map", "0:v", "-c", "copy",
-                                  "-f", "null", "-"], capture_output=True, text=True)
-                    ts = _re2.findall(r"time=(\d+):(\d+):([\d.]+)", pr.stderr)
-                    if not ts:
-                        return 0.0
-                    h, m, s = ts[-1]
-                    return int(h) * 3600 + int(m) * 60 + float(s)
-                ins, fc, labels = [], [], ""
-                for i, pp in enumerate(parts):
-                    ins += ["-i", str(pp)]
-                    vl = _vlen(pp)
-                    fc.append(f"[{i}:v]scale=1920:1080,fps=24,format=yuv420p[v{i}]")
-                    fc.append(f"[{i}:a]aresample=48000,apad,atrim=0:{vl:.3f}[a{i}]"
-                              if vl > 0 else f"[{i}:a]aresample=48000[a{i}]")
-                    labels += f"[v{i}][a{i}]"
-                fc.append(f"{labels}concat=n={len(parts)}:v=1:a=1[v][a]")
-                _sp.run([FF, "-y", "-v", "error", *ins,
-                         "-filter_complex", ";".join(fc),
-                         "-map", "[v]", "-map", "[a]", "-c:v", "libx264",
-                         "-preset", "fast", "-crf", "18", "-c:a", "aac",
-                         "-b:a", "192k", str(merged)], check=True, timeout=2400)
-                # ONE LEVEL FOR THE WHOLE EPISODE (Lars, 2026-08-31: the
-                # lullaby was 15 dB under the story and vanished). The
-                # finished film is mastered to the streaming standard —
-                # measured first, then applied exactly, so quiet scenes
-                # stay quiet in FEEL without disappearing.
-                if handle:
-                    handle.progress(0.99, "premiere", "mastering the sound")
-                import re as _re3
-                _an = _sp.run([FF, "-i", str(merged), "-af",
-                               "loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json",
-                               "-f", "null", "-"], capture_output=True, text=True)
-                _m = _re3.search(r"\{[^{}]*input_i[^{}]*\}", _an.stderr, _re3.S)
-                if _m:
-                    _d = _json.loads(_m.group(0))
-                    _af = ("loudnorm=I=-14:TP=-1.5:LRA=11:"
-                           f"measured_I={_d['input_i']}:measured_TP={_d['input_tp']}:"
-                           f"measured_LRA={_d['input_lra']}:"
-                           f"measured_thresh={_d['input_thresh']}:"
-                           f"offset={_d['target_offset']}:linear=true")
-                    _mast = film.with_name("film-mastered.mp4")
-                    _sp.run([FF, "-y", "-v", "error", "-i", str(merged),
-                             "-af", _af, "-c:v", "copy", "-c:a", "aac",
-                             "-b:a", "192k", "-ar", "48000", str(_mast)],
-                            check=True, timeout=1800)
-                    _mast.replace(merged)
-                merged.replace(film)
-                r["intro_attached"] = bool(intro)
-                r["outro_attached"] = bool(outro)
+            r.update(attach_bookends(catalog, film, handle))
+            # every finished cut is kept, so two versions can be compared
+            r["version"] = archive_film_version(catalog, film, label="shoot")
+            # the episode ships its own audiobook, cut from the same mix
+            from ..trailer.episode import export_audiobook
+            _ab = export_audiobook(catalog, film)
+            r["audiobook"] = f"/api/files/{catalog}/{_ab.name}" if _ab else None
         except Exception as e:
             r["intro_attached"] = f"failed: {str(e)[:120]}"
         return r
