@@ -250,6 +250,46 @@ async def establish_world(catalog: str, board: dict, profile: dict) -> dict:
     # be drawn once and then reused for the whole season — and it is what
     # was missing when eleven plates sat on disk unregistered, so every
     # shot in those places was invented again from a sentence.
+    # A NEW UNIVERSE WRITES ITS OWN WORLD RULES (2026-09-02). Princess's
+    # rules — no caves, one stone — were written by hand after a film had
+    # already gone wrong without them. A universe that has none gets them
+    # drafted from its own bible and story, saved to the profile, and used
+    # from the first drawing; they are reviewed, not invented per shot.
+    if not (cre.get("world_rules") or []):
+        from ..writing.client import complete
+        from ..database import get_book_by_catalog as _gb
+        _bk = _gb(catalog)
+        _bib = (_bk["data"].get("childrens") or {}).get("bible") or {}
+        _world = json.dumps({k: _bib.get(k) for k in ("world", "setting", "places", "rules", "tone")
+                             if _bib.get(k)}, ensure_ascii=False)[:4000]
+        _shots = "\n".join(f"- {p.get('shot','')[:160]}" for p in (board.get("panels") or [])[:40])
+        try:
+            txt = await complete(
+                "You write the standing visual rules for a children's animated universe. "
+                "JSON only.",
+                f"THE WORLD, from the bible:\n{_world}\n\nSOME SHOTS:\n{_shots}\n\n"
+                "Write 4 to 6 STANDING RULES a picture of this world must always obey — "
+                "things that must never appear (kinds of place, object, creature, weather "
+                "the story does not have), and things that exist exactly once. Each rule "
+                "one sentence, plain words, in CAPITALS for the first clause. "
+                'Return {"rules": ["..."]}', max_tokens=800)
+            from ..writing.client import extract_json
+            rules = [str(r)[:300] for r in ((extract_json(txt) or {}).get("rules") or [])][:6]
+        except Exception as e:
+            raise RuntimeError(f"this universe has no world rules and they could not be "
+                               f"drafted: {e}")
+        if rules:
+            cre["world_rules"] = rules
+            try:
+                pp = Path(profile.get("profile_path") or "")
+                _prof = json.loads(pp.read_text())
+                _prof.setdefault("creatives", {})["world_rules"] = rules
+                pp.write_text(json.dumps(_prof, indent=1, ensure_ascii=False))
+            except Exception as e:
+                _log(f"could not save the drafted world rules: {e}")
+            _log(f"world rules drafted for this universe ({len(rules)}) — review them in "
+                 f"the profile: " + " | ".join(r[:60] for r in rules[:3]))
+
     briefs = dict(cre.get("place_briefs") or {})
     udir = Path(profile.get("profile_path") or ".").parent
 

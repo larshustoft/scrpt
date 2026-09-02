@@ -141,4 +141,11 @@ def check_gates() -> list:
     except _BU.OverBudget:
         pass
 
+    # 17. One source for a character; a new universe drafts its rules.
+    from . import character_bible as _CB
+    if not hasattr(_CB, "build"):
+        bad.append("the Character Bible can no longer be generated from the plates")
+    if "world_rules drafted" not in est:
+        bad.append("a universe with no world rules would draw with none")
+
     return bad
