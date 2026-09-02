@@ -162,7 +162,9 @@
     "cave",
     "stone"
    ],
-   "rainbow-valley": []
+   "rainbow-valley": [
+    "cave"
+   ]
   },
   "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there.",
   "scale_chart_stone": "The big round white stone is about as tall as Princess — big for her, but a stone, not a boulder the size of a house."
