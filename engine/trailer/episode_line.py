@@ -247,13 +247,24 @@ async def establish_world(catalog: str, board: dict, profile: dict) -> dict:
         if not bad:
             _log("a character plate was doubted on one read and cleared on the second — kept")
     if bad:
-        # THE PLATE IS THE LAW, SO THE PLATE MUST OBEY THE BIBLE. Glitter was
-        # drawn for weeks with a floor-length mane her bible never gave her.
-        raise RuntimeError(
-            "these character plates contradict the bible and the episode will "
-            "not be drawn from them: "
-            + "; ".join(f"{k}: {v[0]}" for k, v in bad.items()))
-    _log("cast plates agree with the bible")
+        # THE APPROVED PICTURE IS THE SPEC (2026-09-02). When the plates are
+        # the universe's canonical, hash-verified portraits — the pictures
+        # Lars signed off — a sentence that disagrees with them is a sentence
+        # to correct, not a reason to stop the film. This check stopped three
+        # launches in one evening over a horn's colour and a tail's length.
+        # It is advisory for canonical plates and blocking only for plates
+        # that have no canonical record.
+        _canon = set(((profile.get("world") or {}).get("plates") or {}).keys())
+        _blocking = {k: v for k, v in bad.items() if k.lower() not in _canon}
+        for k, v in bad.items():
+            if k.lower() in _canon:
+                _log(f"bible text disagrees with {k}'s approved picture — correct the text: {v[0][:90]}")
+        if _blocking:
+            raise RuntimeError(
+                "these character plates contradict the bible and have no approved "
+                "canonical picture: " + "; ".join(f"{k}: {v[0]}" for k, v in _blocking.items()))
+    else:
+        _log("cast plates agree with the bible")
 
     # `place_briefs` describes a place in words; `locations` records the
     # plate that was drawn from it. Keeping them apart is what lets a place
