@@ -215,7 +215,22 @@ async def draw_shot_stills(catalog: str, board: dict, profile: dict,
                 # it is lifted two shots later (Lars, 2026-09-01).
                 # a shot may continue from SEVERAL shots — its place, and the
                 # prop the story keeps coming back to (the branch, the stone)
-                cont = "" if _tight else (pn.get("continues") or "")
+                # A TIGHT SHOT KEEPS ITS CONTINUITY WHEN THE SHOT IT CONTINUES
+                # IS TIGHT TOO (Lars, 2026-09-02: "this doesn't look like the
+                # same stone"). Dropping every reference from close shots fixed
+                # the landscapes and broke the objects: 21b never saw 21, and
+                # the one round stone became a different stone in a different
+                # hole. A close still cannot pull the camera wide, so it is
+                # the best reference there is for the same thing seen again.
+                # Only a WIDE predecessor is withheld from a tight shot.
+                cont = pn.get("continues") or ""
+                if _tight and cont:
+                    _by_n = {str(x.get("n")): x for x in (board.get("panels") or [])}
+                    _srcs = ([str(x) for x in cont] if isinstance(cont, list)
+                             else [x.strip() for x in str(cont).split(",")])
+                    _keep = [c for c in _srcs if c and str((_by_n.get(c) or {}).get("framing") or "").lower()
+                             in ("close", "detail", "medium")]
+                    cont = ",".join(_keep)
                 names = ([str(x) for x in cont] if isinstance(cont, list)
                          else [x.strip() for x in str(cont).split(",")])
                 # THE PROP PLATES COME FIRST: an object the story keeps

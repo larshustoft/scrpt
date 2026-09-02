@@ -120,6 +120,14 @@ def own_words(shot: str) -> str:
     return " ".join(out).strip() or (shot or "")
 
 
+SEEK = (r"\b(?:(?:look|looks|looking|search|searches|searching|scan|scans|scanning|"
+        r"call|calls|calling|listen|listens|listening|wait|waits|waiting|hope|hopes|"
+        r"hoping|ask|asks|asking)\s+(?:\w+\s+){0,4}for|no sign of|without|missing|"
+        r"thinking (?:of|about)|remember(?:s|ing)?|where(?:ver)? (?:is|was|did))"
+        r"\s+(?:her |his |their )?(?:Princess|Glitter|Pip|Moss|mother)\b")
+
+
+
 def check_board(board: dict) -> list:
     """The desk check. Returns a list of problems, worst first."""
     problems = []
@@ -257,6 +265,7 @@ def check_board(board: dict) -> list:
         present = [str(x) for x in (pn.get("present") or [])]
         _pos = " ".join(seg for seg in re.split(r"(?<=[.;])\s+", shot)
                         if not re.search(r"\b(no|not|never|without)\b", seg, re.I))
+        _pos = re.sub(SEEK, " ", _pos, flags=re.I)   # someone looked for is not on screen
         for name, (npat, rpat) in ALIAS.items():
             hit = re.search(npat, _pos) or (rpat and re.search(rpat, _pos, re.I))
             if hit and name not in present:
@@ -347,6 +356,12 @@ def repair_board(board: dict) -> list:
                 break
         positive = " ".join(seg for seg in re.split(r"(?<=[.;])\s+", line)
                             if not re.search(r"\b(no|not|never|without)\b", seg, re.I))
+        # SOMEONE BEING LOOKED FOR IS NOT ON SCREEN (Lars, 2026-09-02: "28b
+        # doesn't make much sense" — Glitter scanning the dust FOR Princess
+        # was drawn with Princess standing beside her). A name that appears
+        # only as the object of seeking, absence or memory is struck from
+        # the words before the cast is read from them.
+        positive = re.sub(SEEK, " ", positive, flags=re.I)
         present = list(pn.get("present") or [])
         for name, (npat, rpat) in CAST_SAYS.items():
             if name in present:
