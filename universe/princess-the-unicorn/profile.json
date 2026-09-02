@@ -191,7 +191,30 @@
     "md5": "8765ebf25ad2a96c3a0519d9d3002baa"
    }
   },
-  "plates_note": "These four pictures are the characters — the ones in the Character Bible Lars approved on 2026-09-01 09:18. Every episode copies them in and verifies them by hash; nothing redraws them."
+  "plates_note": "These four pictures are the characters — the ones in the Character Bible Lars approved on 2026-09-01 09:18. Every episode copies them in and verifies them by hash; nothing redraws them.",
+  "props_plates": {
+   "white-stone": {
+    "file": "props/white-stone.png",
+    "md5": "36aaaafbd13ce8fd4d5db6ef9f0c1084"
+   },
+   "glitter-bell": {
+    "file": "props/glitter-bell.png",
+    "md5": "9a4fd4539886435df8c3f97068dd5a84"
+   },
+   "fallen-branch": {
+    "file": "props/fallen-branch.png",
+    "md5": "0034aaed771b938e9cc95244be5df821"
+   },
+   "spring-opening": {
+    "file": "props/spring-opening.png",
+    "md5": "c703f1f25d9e828a931f069de0a8ee9d"
+   },
+   "rope-bridge": {
+    "file": "props/rope-bridge.png",
+    "md5": "03b004c41003af669c0f9d113c285c37"
+   }
+  },
+  "props_note": "Universe objects. Each has one plate, drawn once and kept here with its hash; every episode copies it in and verifies it before drawing. The bell (Lars, 2026-09-02): Glitter's silver bell on a lilac ribbon, and Princess's — the same bell a little smaller, on a sky-blue ribbon — are the same object at two sizes."
  },
  "members": [
   "SC-039"

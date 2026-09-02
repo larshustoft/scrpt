@@ -162,4 +162,15 @@ def check_gates() -> list:
     if not callable(getattr(_CN, "repair_board", None)) or not callable(getattr(_CN, "check_board", None)):
         bad.append("repair_board/check_board are missing from continuity.py")
 
+    # 20. The Show Bible is the source: objects verified by hash like the
+    #     characters, the document generated from the same files, and every
+    #     run recording the bible it was drawn from.
+    from . import show_bible as _SB
+    if not (callable(getattr(_SB, "build", None)) and callable(getattr(_SB, "manifest", None))):
+        bad.append("the Show Bible can no longer be generated from the universe")
+    if "props_plates" not in est:
+        bad.append("object plates are no longer verified against the universe by hash")
+    if "_bible_manifest" not in inspect.getsource(_ME.make_episode):
+        bad.append("an episode no longer records which Show Bible it was drawn from")
+
     return bad

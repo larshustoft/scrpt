@@ -421,8 +421,39 @@ async def establish_world(catalog: str, board: dict, profile: dict) -> dict:
                                    {k: briefs[k] for k in bad if k in briefs}, style)
 
     props = cre.get("props") or {}
+    # OBJECTS ARE UNIVERSE THINGS TOO (Lars, 2026-09-02: "save the bell as a
+    # universe object"). A prop plate kept only inside one episode's folder
+    # is redrawn for the next episode and drifts. The universe keeps each
+    # object's one plate with its hash; an episode copies it in and verifies
+    # it, exactly as it does for the characters. Only an object with no
+    # canonical plate yet is drawn — once — and then it is saved to the
+    # universe so it is never drawn again.
+    import hashlib as _hl2
+    _pdir = Path(OUTPUT_DIR) / catalog / "trailer" / "props"
+    _preg = dict((profile.get("world") or {}).get("props_plates") or {})
+    for _k, _c in _preg.items():
+        _canon = udir / _c.get("file", "")
+        _mine = _pdir / f"{_k}.png"
+        if _canon.exists() and (not _mine.exists() or _hl2.md5(_mine.read_bytes()).hexdigest() != _c.get("md5")):
+            _pdir.mkdir(parents=True, exist_ok=True); _mine.write_bytes(_canon.read_bytes())
+            _log(f"{_k}: object plate restored from the universe")
     if props:
         made = await draw_prop_plates(catalog, props, style)
+        # a newly drawn object joins the universe with its hash
+        _new = False
+        for _k in props:
+            _mine = _pdir / f"{_k}.png"
+            if _mine.exists() and _k not in _preg:
+                (udir / "props").mkdir(parents=True, exist_ok=True)
+                (udir / "props" / f"{_k}.png").write_bytes(_mine.read_bytes())
+                _preg[_k] = {"file": f"props/{_k}.png", "md5": _hl2.md5(_mine.read_bytes()).hexdigest()}
+                _new = True; _log(f"{_k}: object plate saved to the universe")
+        if _new:
+            try:
+                pp = Path(profile.get("profile_path") or ""); _prof = json.loads(pp.read_text())
+                _prof.setdefault("world", {})["props_plates"] = _preg; pp.write_text(json.dumps(_prof, indent=1, ensure_ascii=False))
+            except Exception as e:
+                _log(f"could not save object plates to the universe: {e}")
         _log(f"object plates: {len(made.get('plates') or made or {})} of {len(props)}")
 
     return {"cast": len(cast), "places": len(places), "props": len(props)}

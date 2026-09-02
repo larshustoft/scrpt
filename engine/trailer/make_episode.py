@@ -113,9 +113,16 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
         f"{credits_cap} Runway credits ({n_shots} shots, {int(total_s)}s of picture). "
         f"It stops itself at either cap.")
 
-    # 2. the world, drawn once and checked
+    # 2. the world, drawn once and checked — and the Show Bible it came from,
+    #    by hash, so this film can always be traced to the exact characters,
+    #    objects, places and rules it was made with (Lars, 2026-09-02).
     world = await establish_world(catalog, board, profile)
     log(f"world established: {world}")
+    from .show_bible import manifest as _bible_manifest
+    profile = _profile(slug)                       # re-read: the world stage may have saved new plates
+    bible = _bible_manifest(profile)
+    log(f"show bible: {len(bible['characters'])} characters, {len(bible['objects'])} objects, "
+        f"{len(bible['places'])} places, rules {bible['world_rules']}")
     _save()
 
     # 3. every picture drawn, read back, repaired — retried as a whole if a
@@ -161,7 +168,7 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     # command run again picks up at the shoot with nothing redone.
     if stop_before_shoot:
         log("pictures complete — stopping before the shoot for approval")
-        return {"stopped": "before shoot", "pictures": len(board["panels"]),
+        return {"stopped": "before shoot", "pictures": len(board["panels"]), "show_bible": bible,
                 "first_pass_yield": board.get("first_pass_yield"),
                 "picture_warning": str(last)[:300] if last else "",
                 "minutes": round((time.time() - t0) / 60, 1)}
@@ -177,6 +184,7 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     r["credits_left"] = after
     r["minutes"] = round((time.time() - t0) / 60, 1)
     r["picture_warning"] = str(last)[:300] if last else ""
+    r["show_bible"] = bible
     log(f"done in {r['minutes']} min — {r['credits_spent']} credits spent, "
         f"{after} left")
     return r
