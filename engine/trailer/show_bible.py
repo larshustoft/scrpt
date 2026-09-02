@@ -46,6 +46,17 @@ def manifest(profile: dict) -> dict:
         f = udir / rel
         out["places"][k] = hashlib.md5(f.read_bytes()).hexdigest() if f.exists() else None
     out["world_rules"] = hashlib.md5(json.dumps(c.get("world_rules") or [], sort_keys=True).encode()).hexdigest()[:12]
+    # THE BOOKENDS AND THE LULLABY ARE FIXED (Lars, 2026-09-02: "the lullaby
+    # should not be changed"). Their hashes travel with every run's record,
+    # so a change to them is always visible and never accidental.
+    out["fixed"] = {}
+    for key in ("show_intro", "show_outro"):
+        rel = c.get(key)
+        f = (udir.parents[1] / rel) if rel and rel.startswith("universe/") else (udir / rel) if rel else None
+        out["fixed"][key] = hashlib.md5(f.read_bytes()).hexdigest() if f and f.exists() else None
+    lul = ((profile.get("lullaby") or {}).get("frontrunner") or "").split(" ")[0].strip()
+    lf = udir / lul if lul else None
+    out["fixed"]["lullaby"] = hashlib.md5(lf.read_bytes()).hexdigest() if lf and lf.exists() else None
     return out
 
 

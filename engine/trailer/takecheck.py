@@ -24,7 +24,11 @@ from pathlib import Path
 
 import imageio_ffmpeg
 
-MIN_MOTION = 0.6          # % of pixels that must change between frames, on average
+# A CALM TAKE IS NOT A PHOTOGRAPH (2026-09-02). At 0.6% the judge refused the
+# gentle takes it had itself asked for on the third try; 75 refusals in one
+# pass, each a paid retry. A true still is ~0.0%; breathing and drifting
+# light sit around 0.2–0.5%. The floor is where a photograph lives.
+MIN_MOTION = 0.2          # % of pixels that must change between frames, on average
 DRIFT_FLOOR = 0.55        # a later frame must correlate with frame 0 at least this much
 
 TAKE_QUESTIONS = (

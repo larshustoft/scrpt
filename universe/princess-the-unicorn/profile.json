@@ -79,7 +79,8 @@
    "spring-dry": "locations/spring-dry.png",
    "spring-outlet": "locations/spring-outlet.png",
    "spring-restored": "locations/spring-restored.png",
-   "inside-the-cave": "locations/inside-the-cave.png"
+   "inside-the-cave": "locations/inside-the-cave.png",
+   "rainbow-valley": "locations/rainbow-valley.png"
   },
   "props": {
    "white-stone": {
@@ -141,7 +142,8 @@
    "spring-dry": "Moonwater Spring sits in a green clearing beneath a tall white stone cliff. The pool bed is cracked and dry, pale grey stones bare where water once pooled, with only a thin trickle winding through damp moss at the lowest point. A fresh pale scar and scattered rubble mark the cliff base—solid rock throughout, no openings. Grass and soft ferns ring the basin under flat, even daylight.",
    "spring-outlet": "A pale white cliff rises above a stony channel where spring water once ran, now damp moss and bare stones drying in the light. At the cliff's foot lies a small low opening, barely tall as a round stone, no cave mouth or doorway. Nearby the rock bears a fresh pale scar and a narrow dark crack beyond it. Morning-to-afternoon light slants through surrounding trees and drifting dust.",
    "spring-restored": "Moonwater Spring lies in a wide clearing at the foot of a pale white cliff, its stone rising smooth and ancient above the trees. Smooth stones ring the pool's edge, worn soft by time. Grass grows thick and green around the water, dotted with small wildflowers. The spring itself glimmers, fed by unseen currents. Warm late-afternoon light gilds everything, casting long, gentle shadows across the clearing.",
-   "inside-the-cave": "Inside the spring cave: a dim, quiet rock chamber behind the crack in the white cliff, walls of pale damp stone, a low tunnel at the back where an underground river comes out — its mouth blocked by one big round white stone about the size of a small unicorn foal — a thin trickle escaping past it, wet grey stones on the floor. Fireflies are the only light."
+   "inside-the-cave": "Inside the spring cave: a dim, quiet rock chamber behind the crack in the white cliff, walls of pale damp stone, a low tunnel at the back where an underground river comes out — its mouth blocked by one big round white stone about the size of a small unicorn foal — a thin trickle escaping past it, wet grey stones on the floor. Fireflies are the only light.",
+   "rainbow-valley": "The whole Unicorn Universe from high above at sunrise: Rainbow Forest with its giant rainbow flowers in the foreground, the golden winding path across green meadows, the river with its stone bridge and waterfalls, the rainbow over the valley, the white castle on its hill far away, blue mountains behind, the great tree with the round door, red-spotted mushrooms, low morning mist, warm golden light."
   },
   "place_exemptions": {
    "cliff-crack": [
@@ -159,7 +161,8 @@
    "inside-the-cave": [
     "cave",
     "stone"
-   ]
+   ],
+   "rainbow-valley": []
   },
   "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there.",
   "scale_chart_stone": "The big round white stone is about as tall as Princess — big for her, but a stone, not a boulder the size of a house."
