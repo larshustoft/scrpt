@@ -101,6 +101,13 @@ WORLD_QUESTIONS = [
     "earth anywhere in this picture, including small ones far in the background?",
     "Is there a large pale rounded boulder or standing stone anywhere in this "
     "picture — one big enough to be noticed rather than ordinary small ground stones?",
+    # ANATOMY (Lars, 2026-09-02: "this unicorn has 5 legs"). A picture with the
+    # wrong number of legs, heads, horns or wings passed every check we had.
+    "Does any character have the WRONG NUMBER of legs, hooves, heads, horns, "
+    "wings, eyes or tails — count them carefully — or a limb that joins the "
+    "body in an impossible place?",
+    "Is any ribbon, rope, string or vine strung BETWEEN two characters, joining "
+    "one to the other, when nothing in the scene should connect them?",
 ]
 
 # Questions 5 and 6 only apply where the story did not ask for the thing.
