@@ -3579,6 +3579,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     # still animates untouched — proven side by side on the
                     # same shot, same cost.
                     secs = min(int(secs), 5)     # DRIFT GROWS WITH LENGTH (2026-09-02): 5s takes only
+                    _BUDGET.launch(secs, 5.0, f"shot {pn.get('n')} try {attempt + 1}")   # the cap, before the money
                     task = await runway.generate_shot(
                         _motion + " Keep everything else exactly as it is in "
                         "the picture: the same characters, the same colours, "

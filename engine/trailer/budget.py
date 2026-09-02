@@ -28,6 +28,7 @@ class Budget:
         self.drawings_cap = None       # None = uncapped (never in the line)
         self.credits_start = None
         self.credits_cap = None        # Runway credits this run may spend
+        self.reserved = 0.0            # credits committed by launched takes
 
     def quote(self, drawings_cap: int, credits_cap: int = None,
               credits_start: int = None):
@@ -35,6 +36,7 @@ class Budget:
         self.drawings_cap = int(drawings_cap)
         self.credits_cap = credits_cap
         self.credits_start = credits_start
+        self.reserved = 0.0
 
     def spend_drawing(self, what: str = ""):
         with self.lock:
@@ -66,9 +68,30 @@ class Budget:
                 f"{self.credits_cap}" + (f" ({what})" if what else "")
                 + " — stopped so nothing more is spent")
 
+    def launch(self, seconds: float, rate: float = 5.0, what: str = ""):
+        """Reserve a take's cost BEFORE it is launched. Refuses past the cap.
+
+        The balance read lags the API by minutes and the check ran every
+        tenth panel, so a run capped at 1,200 credits spent 3,150
+        (2026-09-02). Every launch now reserves its cost up front; the cap
+        is judged on what has been committed, not on what has been billed
+        yet.
+        """
+        if self.credits_cap is None:
+            return
+        cost = float(seconds) * rate
+        with self.lock:
+            if self.reserved + cost > self.credits_cap:
+                raise OverBudget(
+                    f"launching this take would commit {int(self.reserved + cost)} credits "
+                    f"against a cap of {self.credits_cap}" + (f" ({what})" if what else "")
+                    + " — stopped so nothing more is spent")
+            self.reserved += cost
+
     def report(self) -> str:
         cap = "uncapped" if self.drawings_cap is None else str(self.drawings_cap)
-        return f"drawings {self.drawings} of {cap}"
+        ccap = "uncapped" if self.credits_cap is None else str(self.credits_cap)
+        return f"drawings {self.drawings} of {cap}; credits committed {int(self.reserved)} of {ccap}"
 
 
 BUDGET = Budget()

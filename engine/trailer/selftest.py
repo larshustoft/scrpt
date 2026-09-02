@@ -153,8 +153,14 @@ def check_gates() -> list:
         bad.append("drawings are no longer counted against the cap")
     if "BUDGET.quote" not in inspect.getsource(_ME.make_episode):
         bad.append("an episode no longer quotes its spending caps before it starts")
-    if "check_credits" not in src:
-        bad.append("the shoot no longer stops at its credit cap")
+    if "_BUDGET.launch(" not in src:
+        bad.append("takes are launched without reserving their cost against the cap")
+    _d = _BU.Budget(); _d.quote(drawings_cap=5, credits_cap=100)
+    try:
+        for _ in range(5): _d.launch(5)
+        bad.append("the credit cap does not refuse a launch past the cap")
+    except _BU.OverBudget:
+        pass
     _b = _BU.Budget(); _b.quote(drawings_cap=1); _b.spend_drawing()
     _c = _BU.Budget(); _c.quote(drawings_cap=5, credits_cap=100, credits_start=1000)
     try:
