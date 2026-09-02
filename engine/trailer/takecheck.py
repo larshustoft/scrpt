@@ -31,10 +31,12 @@ TAKE_QUESTIONS = (
     "Picture A is the approved still this shot was filmed from. Picture B is a "
     "frame from later in the same take. Answer JSON only: "
     '{"same_characters": true/false, "new_creature_or_person": true/false, '
-    '"human": true/false, "mouth_speaking": true/false, "note": "..."}. '
+    '"duplicate": true/false, "human": true/false, "mouth_speaking": true/false, "note": "..."}. '
     "same_characters is true only if every character in A is still in B, "
     "looking like the same character (same species, colours, size). "
     "new_creature_or_person is true if anyone appears in B who is not in A. "
+    "duplicate is true if B shows MORE THAN ONE of any character that appears once in A "
+    "— two of the same unicorn, two dragons, two birds — even if they look identical. "
     "human is true if any person, girl, boy or human body part is in B. "
     "mouth_speaking is true only for a mouth open mid-word as if talking, not "
     "a smile."
@@ -121,6 +123,8 @@ async def check_take(clip: Path, still: Path, ask_vision=True) -> dict:
                     reasons.append(f"could not be checked: {str(e)[:60]}"); break
                 if d.get("human"):
                     reasons.append(f"a human appears by {pts[k]:.1f}s"); break
+                if d.get("duplicate"):
+                    reasons.append(f"a character is doubled by {pts[k]:.1f}s: {str(d.get('note'))[:60]}"); break
                 if d.get("new_creature_or_person"):
                     reasons.append(f"someone not in the picture appears by {pts[k]:.1f}s: {str(d.get('note'))[:60]}"); break
                 if d.get("same_characters") is False:

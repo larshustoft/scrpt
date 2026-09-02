@@ -3578,7 +3578,12 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     # with a unicorn horn. With the motion alone, the same
                     # still animates untouched — proven side by side on the
                     # same shot, same cost.
-                    secs = min(int(secs), 5)     # DRIFT GROWS WITH LENGTH (2026-09-02): 5s takes only
+                    # A TAKE IS AS LONG AS ITS WORDS NEED (2026-09-02). Capping every
+                    # take at 5s made 32 shots stretch and then FREEZE on their last
+                    # frame to cover the voice line — "the animation stops and hangs
+                    # like a still" (Lars). A shot that needs more than 5.5s gets a
+                    # 10-second take; the whole-length judge guards it against drift.
+                    secs = 10 if float(need) > 5.5 else 5
                     _BUDGET.launch(secs, 5.0, f"shot {pn.get('n')} try {attempt + 1}")   # the cap, before the money
                     task = await runway.generate_shot(
                         _motion + " Keep everything else exactly as it is in "
