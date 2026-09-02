@@ -75,6 +75,13 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     book = get_book_by_catalog(catalog)
     board = json.loads(json.dumps(book["data"]["movie"]["storyboard"]))
 
+    # THE MAP BELONGS TO THE EPISODE (2026-09-02). Without `board["world"]`,
+    # apply_world falls back to episode one's constants — and every fix a
+    # person makes to place or props is silently undone at the next drawing.
+    if not ((board.get("world") or {}).get("places")):
+        raise RuntimeError("this board has no world map (board['world'].places); the line "
+                           "will not draw it from another episode's places")
+
     # 1. the board agrees with itself
     mended = repair_board(board)
     if mended:

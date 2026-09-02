@@ -148,4 +148,11 @@ def check_gates() -> list:
     if "world rules drafted" not in est:
         bad.append("a universe with no world rules would draw with none")
 
+    # 18. A board is drawn from its OWN world map, never another episode's.
+    if "has no world map" not in inspect.getsource(_ME.make_episode):
+        bad.append("a board without a world map would be drawn from episode one's places")
+    from . import world as _W
+    if "shot_props" not in inspect.getsource(_W.apply_world):
+        bad.append("shot-level props are ignored — a fixed object can vanish from a shot")
+
     return bad

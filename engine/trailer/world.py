@@ -58,6 +58,11 @@ def apply_world(board: dict) -> dict:
     places_map = {int(k): v for k, v in (w.get("places") or {}).items()} or PLACES
     shot_places = w.get("shot_places") or ({} if w.get("places") else SHOT_PLACES)
     props_map = w.get("props") or ({} if w.get("places") else PROPS)
+    # SHOT-LEVEL PROPS (2026-09-02). Some objects are in a shot without being
+    # named in its words — the stone wedged in the opening while the line
+    # only says "the dark crack". The board says so per shot; those are
+    # added to, never replaced by, what the words name.
+    shot_props = w.get("shot_props") or {}
     panels = board.get("panels") or []
     masters = {}
     counts = {"place": 0, "props": 0, "continues": 0}
@@ -75,7 +80,10 @@ def apply_world(board: dict) -> dict:
         text = (pn.get("shot") or "").lower()
         found = [k for k, words in props_map.items()
                  if any(re.search(rf"\b{re.escape(w)}\b", text) for w in words)]
+        for extra in (shot_props.get(str(pn.get("n"))) or []):
+            if extra not in found:
+                found.append(extra)
         if found:
-            pn["props"] = found[:2]
+            pn["props"] = found[:3]
             counts["props"] += 1
     return counts
