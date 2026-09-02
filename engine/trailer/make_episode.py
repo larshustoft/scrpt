@@ -122,8 +122,15 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
             log("every picture passes")
             last = None
             break
-        except (OutOfCredits, OverBudget):
+        except OutOfCredits:
             raise
+        except OverBudget as e:
+            # THE CAP IS FINAL. Trying again cannot draw anything; it only
+            # re-reads 146 pictures for nothing (2026-09-02). The board goes
+            # to approval as it stands, with the disputed shots marked.
+            last = e
+            log(f"cap reached — {str(e)[:120]}")
+            break
         except RuntimeError as e:
             last = e
             log(f"pictures attempt {attempt} of {attempts} ended with: {str(e)[:160]}")

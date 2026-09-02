@@ -236,6 +236,16 @@ async def establish_world(catalog: str, board: dict, profile: dict) -> dict:
 
     chk = await verify_plates(catalog)
     bad = {k: v for k, v in (chk.get("by_character") or {}).items() if v}
+    # A CHARACTER IS DOUBTED ONLY ON TWO INDEPENDENT READS (2026-09-02). The
+    # approved Pip passed twice in a morning and failed a third read on how
+    # his feathers were painted. One reader's doubt about the pictures Lars
+    # signed off is put to a second read; only a contradiction both readers
+    # see stops the line.
+    if bad:
+        again = {k: v for k, v in ((await verify_plates(catalog)).get("by_character") or {}).items() if v}
+        bad = {k: v for k, v in bad.items() if k in again}
+        if not bad:
+            _log("a character plate was doubted on one read and cleared on the second — kept")
     if bad:
         # THE PLATE IS THE LAW, SO THE PLATE MUST OBEY THE BIBLE. Glitter was
         # drawn for weeks with a floor-length mane her bible never gave her.

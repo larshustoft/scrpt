@@ -104,7 +104,17 @@
         ],
         "look": "A small polished silver bell on a soft lilac ribbon, plain and round, with a narrow slot across its base."
       },
-      "spring-opening": "The one spring opening: a LOW, NARROW gap at the very foot of a pale white cliff, about as tall as a round stone the size of a small unicorn, with clear water trickling out over flat grey stones. Rough white rock above it, moss and small flowers around it. It is a small hole a spring runs out of — not a cave, not a doorway, nobody could walk into it."
+      "spring-opening": {
+        "words": [
+          "white stone",
+          "round stone",
+          "the stone",
+          "boulder"
+        ],
+        "look": "A single smooth rounded white stone, about the size of a small foal's body, pale chalky white with faint grey veining and a few small chips along one edge.",
+        "brief": "The one spring opening: a LOW, NARROW gap at the very foot of a pale white cliff, about as tall as a round stone the size of a small unicorn, with clear water trickling out over flat grey stones. Rough white rock above it, moss and small flowers around it. It is a small hole a spring runs out of — not a cave, not a doorway, nobody could walk into it.",
+        "name": "the spring opening"
+      }
     },
     "place_briefs": {
       "rope-bridge": "A plain rope-and-plank footbridge across a green gorge in Rainbow Forest. Two straight thick rope handrails at chest height run the whole length; short vertical rope ties every few planks join the handrails down to the deck; flat wooden planks lie side by side across the deck; the ropes are anchored to stout posts at both banks. The ropes are neat and taut — never tangled, never floating, never looping. Solid rocky banks, no cave and no boulder. Warm midday light.",
