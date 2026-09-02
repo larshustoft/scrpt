@@ -3467,8 +3467,12 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             #      billing every existing production for a full re-shoot.
             #
             # Anything that fails both is set aside and filmed again.
-            if _take_valid(catalog, pl["key"], pl["src"], clip, grandfather=False):
-                return
+            # THE LEDGER SAYS WHICH INPUTS MADE A TAKE; IT DOES NOT SAY THE
+            # TAKE IS GOOD (2026-09-02). A banked take is judged along its
+            # length every time before it is reused — the check is a few
+            # seconds and two reads, and it is the only thing standing
+            # between an invented bear and the cut.
+            _ledger_ok = _take_valid(catalog, pl["key"], pl["src"], clip, grandfather=False)
             m = _take_matches_still(clip, _sp) if _sp is not None else None
             if _sp is not None and not _off_board(m):
                 from .takecheck import check_take as _check_take
@@ -3476,6 +3480,9 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                 if not _v["ok"]:
                     m = 0.0                              # treated as not this shot's take
                     pn["take_problem"] = "; ".join(_v["reasons"])[:200]
+                elif _ledger_ok:
+                    pn.pop("take_problem", None)
+                    return
             if _off_board(m):
                 import shutil as _sh
                 _sh.move(str(clip), str(clip.with_suffix(".stale.mp4")))
