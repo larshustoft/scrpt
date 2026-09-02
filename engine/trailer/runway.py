@@ -15,6 +15,7 @@ from typing import Optional
 import httpx
 
 from ..database import get_setting, set_setting
+from ..credits import raise_if_broke
 
 BASE = "https://api.dev.runwayml.com/v1"
 API_VERSION = "2024-11-06"          # Runway requires an explicit version header

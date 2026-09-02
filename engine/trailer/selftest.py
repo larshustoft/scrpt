@@ -102,9 +102,15 @@ def check_gates() -> list:
     if not looks_broke("credit_balance_exhausted"):
         bad.append("an empty OpenAI account is no longer recognised")
     for mod, name in ((_P, "drawing"), (_R, "shooting"), (_C, "writing")):
-        if "raise_if_broke" not in inspect.getsource(mod) and \
-                "OutOfCredits" not in inspect.getsource(mod):
+        src_ = inspect.getsource(mod)
+        if "raise_if_broke" not in src_ and "OutOfCredits" not in src_:
             bad.append(f"{name} no longer stops the run when the account is empty")
+        # THE NAME MUST RESOLVE, NOT JUST APPEAR (2026-09-02): runway.py
+        # called raise_if_broke without importing it, this gate read the
+        # text and passed, and the shoot died on its first take.
+        for nm in ("raise_if_broke", "OutOfCredits"):
+            if nm in src_ and not hasattr(mod, nm):
+                bad.append(f"{name}: {nm} is used but not imported — the first refusal would crash the run")
     if "OutOfCredits" not in inspect.getsource(V):
         bad.append("the picture checker would swallow an empty account")
 
