@@ -64,9 +64,9 @@
   },
   "bells_note": "Lars 2026-09-01: Glitter's bell is the bright brass dinner bell (D); Princess's little bell, given at the end of episode 1, is the clear silver service bell (F). THE UNIVERSE OWNS ITS BELLS — no shot may generate its own, which is where the metallic computer-ish bell came from. Every bell heard in every episode is one of these two files.",
   "world_rules": [
-   "NOTHING BLOCKS AN OPENING. A cave, den or hollow is always open and dark — never a boulder, egg-shaped stone, standing rock or door in or in front of it. A stone blocking a hole is the story's own key image (the white stone that stops the spring) and must not appear anywhere else. (Lars, 2026-09-01)",
-   "THERE ARE NO CAVES IN RAINBOW FOREST. Do not draw a cave mouth, den, tunnel, burrow, hollow or dark opening in rock, earth, hillside or tree in any shot. The ONLY opening in the whole universe is the one low crack in the white cliff at Moonwater Spring that the water comes out of, and it appears only in the shots that name it. (Lars, 2026-09-01: \"we do not want all these caves and rocks\")",
-   "THERE IS ONE BIG STONE IN THIS STORY AND ONLY ONE. The round white stone that blocks the spring exists once, in the shots that name it, and looks identical every time. Do not decorate any other shot with large boulders, standing stones or rounded rocks; ordinary small ground stones and flat cliff rock are fine. (Lars, 2026-09-01: \"why is that rock appearing all over the place\")"
+   "THE GROUND OF RAINBOW FOREST is soft grass, bare earth path and small flat pebbles. Cliffs and banks are solid, unbroken pale rock with moss and flowers on them.",
+   "OBJECTS THE STORY NAMES appear exactly where the shot says and nowhere else; everything else in a picture is plants, ground, water, sky and light.",
+   "EVERY CHARACTER'S THINGS are on the character: a bell hangs at the neck of whoever wears it and appears only there."
   ],
   "locations": {
    "rope-bridge": "locations/rope-bridge.png",
@@ -151,7 +151,8 @@
     "cave",
     "stone"
    ]
-  }
+  },
+  "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there."
  },
  "world": {
   "bible_book": "SC-039",

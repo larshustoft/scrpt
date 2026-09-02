@@ -83,7 +83,11 @@ def apply_world(board: dict) -> dict:
         for extra in (shot_props.get(str(pn.get("n"))) or []):
             if extra not in found:
                 found.append(extra)
+        # PROPS COME FROM THE MAP AND NOTHING ELSE (2026-09-02). Leaving an
+        # old list in place when the map names nothing kept the stone's plate
+        # attached to eight shots on the forest path long after the map had
+        # been corrected. Empty means empty.
+        pn["props"] = found[:3]
         if found:
-            pn["props"] = found[:3]
             counts["props"] += 1
     return counts

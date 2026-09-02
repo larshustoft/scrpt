@@ -26,16 +26,16 @@ from pathlib import Path
 PATTERNS = [
     ("extra_object",
      r"extra|second|spare|lying loose|duplicate|another copy",
-     "Every object exists once. Never draw a spare or second copy of any "
-     "prop lying on the ground or anywhere in the scene."),
+     "Each named object appears exactly once, where the shot places it; the "
+     "ground around the characters is clear."),
     ("cave",
      r"\bcaves?\b|\bden\b|\btunnel\b|\bburrow\b|\bhollow\b|dark opening",
-     "No caves, dens, tunnels or dark openings in rock or earth anywhere, "
-     "unless the shot itself names one."),
+     "Rock faces, banks and hillsides are solid and unbroken, with moss and "
+     "flowers on them."),
     ("boulder",
      r"boulder|standing stone|large pale rounded|rounded stone",
-     "No large rounded boulders or standing stones decorating the scene, "
-     "unless the shot itself names one."),
+     "The ground is grass, earth and small flat pebbles; only objects the shot "
+     "names are there."),
     ("camera_distance",
      r"wrong distance|wide landscape|landscape (view|shot|composition)|"
      r"drawn as a wide|too far|full-body wide",
@@ -50,13 +50,13 @@ PATTERNS = [
      "Nobody who is not named in the shot appears in it."),
     ("open_mouth",
      r"open mouth|speaking|mouth open",
-     "All mouths closed. Nobody is drawn speaking, laughing or braying."),
+     "Mouths are closed or gently smiling; nobody is mid-word."),
     ("human",
      r"\bhuman\b|\bperson\b|\bgirl\b|\bboy\b",
-     "There are no humans in this world. No person, hand or face."),
+     "Everyone in this world is one of its animal characters."),
     ("text",
      r"\btext\b|lettering|\bwords?\b|caption",
-     "No text, lettering or numbers anywhere in the picture."),
+     "The picture is pure image, with no lettering in it."),
 ]
 
 # a lesson becomes a standing rule once it has been taught this many times
