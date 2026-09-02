@@ -145,7 +145,7 @@ def check_gates() -> list:
     from . import character_bible as _CB
     if not hasattr(_CB, "build"):
         bad.append("the Character Bible can no longer be generated from the plates")
-    if "world_rules drafted" not in est:
+    if "world rules drafted" not in est:
         bad.append("a universe with no world rules would draw with none")
 
     return bad
