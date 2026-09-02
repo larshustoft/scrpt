@@ -66,7 +66,8 @@
   "world_rules": [
    "RAINBOW FOREST HAS ONE CAVE: the spring cave behind the crack at the foot of the white cliff at Moonwater Spring, seen only in the scenes set there. Everywhere else, cliffs, banks and hillsides are solid unbroken pale rock with moss and flowers.",
    "THE GROUND is soft grass, bare earth path and small flat pebbles. Objects the story names appear exactly where the shot says and nowhere else.",
-   "EVERY CHARACTER'S THINGS are on the character: a bell hangs at the neck of whoever wears it and appears only there."
+   "EVERY CHARACTER'S THINGS are on the character: a bell hangs at the neck of whoever wears it and appears only there.",
+   "SOUND CUES name concrete things — water over stones, hoofsteps, leaves, small birds, a bell. Never wind, breeze, whisper, murmur, hum, sigh, echo or 'distant': a sound generator turns those into a voice."
   ],
   "locations": {
    "rope-bridge": "locations/rope-bridge.png",
