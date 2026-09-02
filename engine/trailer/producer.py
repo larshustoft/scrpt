@@ -3447,8 +3447,10 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         _launched[0] += 1
         if _BUDGET.credits_cap is not None and _launched[0] % 10 == 0:
             try:
-                _BUDGET.check_credits(await runway.credit_balance(),
-                                      f"before shot {pn.get('n')}")
+                _bal = await runway.credit_balance()
+                if not _bal:
+                    await asyncio.sleep(3); _bal = await runway.credit_balance()   # read twice before believing it
+                _BUDGET.check_credits(_bal, f"before shot {pn.get('n')}")
             except Exception as _e:
                 if _e.__class__.__name__ == "OverBudget":
                     raise

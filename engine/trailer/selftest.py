@@ -156,6 +156,11 @@ def check_gates() -> list:
     if "check_credits" not in src:
         bad.append("the shoot no longer stops at its credit cap")
     _b = _BU.Budget(); _b.quote(drawings_cap=1); _b.spend_drawing()
+    _c = _BU.Budget(); _c.quote(drawings_cap=5, credits_cap=100, credits_start=1000)
+    try:
+        _c.check_credits(0); _c.check_credits(None)
+    except _BU.OverBudget:
+        bad.append("an empty balance read is treated as a spend — a shoot would stop on a hiccup")
     try:
         _b.spend_drawing(); bad.append("the drawing cap does not actually refuse")
     except _BU.OverBudget:

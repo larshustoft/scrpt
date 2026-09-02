@@ -46,8 +46,18 @@ class Budget:
                     "if the pictures are worth it")
             self.drawings += 1
 
-    def check_credits(self, balance_now: int, what: str = ""):
+    def check_credits(self, balance_now, what: str = ""):
         if self.credits_cap is None or self.credits_start is None:
+            return
+        # AN EMPTY READ IS NOT A SPEND (2026-09-02). A balance that comes
+        # back as 0 or None is a failed request, not a bill of 41,000
+        # credits — that false alarm stopped a shoot at its second take.
+        # Unknown means unknown; the cap is judged only on a real number.
+        try:
+            balance_now = int(balance_now)
+        except Exception:
+            return
+        if balance_now <= 0 or balance_now > self.credits_start:
             return
         spent = self.credits_start - balance_now
         if spent >= self.credits_cap:
