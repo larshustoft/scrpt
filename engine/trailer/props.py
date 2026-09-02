@@ -19,6 +19,7 @@ import json
 import re
 from pathlib import Path
 
+from ..credits import OutOfCredits
 from ..config import OUTPUT_DIR, OPENAI_API_KEY
 
 
@@ -70,8 +71,21 @@ async def draw_prop_plates(catalog: str, props: dict, style: str, handle=None) -
 
         async with httpx.AsyncClient(timeout=260) as client:
             model = await _best_image_model(client)
-            for r in await asyncio.gather(*[one(client, model, k, s, f) for k, s, f in todo],
-                                          return_exceptions=True):
+            failed = []
+            for (k, _s, _f), r in zip(todo, await asyncio.gather(
+                    *[one(client, model, k, s, f) for k, s, f in todo],
+                    return_exceptions=True)):
+                # THE STOP SIGNAL SURVIVES A GATHER; A MISSING PROP IS NAMED
+                # (2026-09-02). An empty image account came back here as
+                # "object plates: 3 of 4", which reads as a job done.
+                if isinstance(r, OutOfCredits):
+                    raise r
                 if isinstance(r, tuple):
                     made[r[0]] = r[1]
+                else:
+                    failed.append(f"{k}: {r if isinstance(r, BaseException) else 'no picture'}")
+            if failed:
+                raise RuntimeError("these object plates could not be drawn — every shot "
+                                   "that shows them would invent its own: "
+                                   + "; ".join(str(x)[:120] for x in failed))
     return made
