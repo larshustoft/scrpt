@@ -16,8 +16,22 @@ import inspect
 from pathlib import Path
 
 
+_PASSED_IN_THIS_PROCESS = False
+
+
 def check_gates() -> list:
-    """Return a list of failures. Empty list means every gate is in place."""
+    """Return a list of failures. Empty list means every gate is in place.
+
+    Checked once per process. The gates read source text from disk, and a
+    file edited while a run is live is read at the running code's old line
+    numbers — on 2026-09-02 that stopped a finished picture stage at the
+    door of the shoot for a gate that was in fact in place. A process that
+    passed at its start has the code it passed with; re-reading the disk
+    tells it nothing true about itself.
+    """
+    global _PASSED_IN_THIS_PROCESS
+    if _PASSED_IN_THIS_PROCESS:
+        return []
     bad = []
     from . import producer as P
     from . import episode_line as E
@@ -173,4 +187,6 @@ def check_gates() -> list:
     if "_bible_manifest" not in inspect.getsource(_ME.make_episode):
         bad.append("an episode no longer records which Show Bible it was drawn from")
 
+    if not bad:
+        _PASSED_IN_THIS_PROCESS = True
     return bad

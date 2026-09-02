@@ -50,7 +50,8 @@ def _profile(slug: str) -> dict:
 
 async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
                        picture_rounds: int = 4, attempts: int = 3,
-                       stop_before_shoot: bool = False) -> dict:
+                       stop_before_shoot: bool = False,
+                       shoot_only: bool = False) -> dict:
     """The whole line. Returns a record; raises only when it cannot continue."""
     from ..database import get_book_by_catalog, update_book
     from ..credits import OutOfCredits
@@ -129,6 +130,16 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     #    round ends with a handful still failing, because a fresh draw of the
     #    same shot often lands where the last one did not
     last = None
+    # SHOOT ONLY (2026-09-02): the pictures were finished and approved in an
+    # earlier run; film them exactly as they stand. Not a drawing is made —
+    # a still that is missing is a hard stop, never a redraw.
+    if shoot_only:
+        _missing = [str(p.get("n")) for p in board["panels"]
+                    if not (Path(OUTPUT_DIR) / catalog / "trailer" / str(p.get("still") or "")).exists()]
+        if _missing:
+            raise RuntimeError(f"shoot-only, but {len(_missing)} shots have no picture: {' '.join(_missing[:12])}")
+        attempts = 0
+        log("shoot-only: filming the approved pictures as they stand")
     for attempt in range(1, attempts + 1):
         try:
             await draw_and_check_stills(catalog, board, profile,
@@ -196,9 +207,10 @@ def main():
     catalog = args[0] if args else "SC-039"
     slug = args[1] if len(args) > 1 else "princess-the-unicorn"
     stop = "--approve-board" in flags
+    shoot_only = "--shoot-only" in flags
     out = Path(OUTPUT_DIR) / catalog / "episode-run.json"
     try:
-        rec = asyncio.run(make_episode(catalog, slug, stop_before_shoot=stop))
+        rec = asyncio.run(make_episode(catalog, slug, stop_before_shoot=stop, shoot_only=shoot_only))
         rec["log"] = LOG
         out.write_text(json.dumps(rec, indent=1, default=str))
         print("\nBOARD READY FOR APPROVAL" if rec.get("stopped") else
