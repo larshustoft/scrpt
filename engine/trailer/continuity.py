@@ -298,85 +298,24 @@ def check_board(board: dict) -> list:
                 f"description ({orders[0].strip()[:40]}…) — move it to the "
                 f"world rules or the place brief")
 
-    return problems
-
-
-# ── the board repairs a person had to make by hand on 2026-09-01 ──────────
-FRAMING_SAYS = [("detail", r"\bdetail (shot|close-up|of)\b|\bclose detail\b"),
-                ("wide", r"\bwide (shot|view)\b|\bfrom a distance\b"),
-                ("close", r"\bclose(-| )?(shot|on|up|view)\b"),
-                ("medium", r"\bmedium shot\b")]
-
-# A NAME IS CAPITALISED; A PLANT IS NOT. Matching "moss" loosely once put a
-# dragon into two scenes of damp green ground.
-CAST_SAYS = {"Glitter": (r"\bGlitter\b", r"\b(her|his|the) mother\b"),
-             "Princess": (r"\bPrincess\b", r""),
-             "Moss": (r"\bMoss\b", r"\bthe (little )?(green )?dragon\b"),
-             "Pip": (r"\bPip\b", r"\bthe bird\b")}
-
-
-def repair_board(board: dict) -> list:
-    """Make the board agree with itself, before anything is drawn from it.
-
-    Every shot is described twice — in words, and in the structured camera
-    and cast the drawing stage actually obeys. Where they disagreed, the
-    picture was wrong before anyone drew it: shot 6 read "Princess trotting
-    close behind her mother" and carried a cast list of one name, so one
-    pony was drawn and the checker rejected it, round after round.
-
-    A person reconciled 18 shots by hand to finish episode one. This does
-    the same thing, deterministically, in a second. It is ADDITIVE for
-    cast — a character the words put on screen is added, nobody is ever
-    removed — because a model asked to "reconcile" cast lists emptied
-    shots that plainly had characters in them.
-
-    Returns a list of what it changed, for the run's record.
-    """
-    if not applies(board):
-        return []
-    changed = []
+    # AN OBJECT IN THE SHOT IS NAMED IN THE WORDS (Lars, 2026-09-02: "the
+    # close image of Moss shows the hole without a stone in it"). The board
+    # can put an object into a shot (shot_props) while the line never
+    # mentions it — then the drawer includes it in one shot and not the
+    # next, and a stone jammed in a hole flickers in and out between cuts.
+    # If the object is there, the words say so.
+    _w = board.get("world") or {}
+    _sp = _w.get("shot_props") or {}
+    _words = _w.get("props") or {}
+    _NAMES = {"white-stone": r"\bstones?\b|\bboulders?\b", "spring-opening": r"\bopenings?\b|\bholes?\b|\bcracks?\b|\bgaps?\b",
+              "rope-bridge": r"\bbridge\b", "fallen-branch": r"\bbranch\b", "glitter-bell": r"\bbell\b"}
     for i, pn in enumerate(board.get("panels") or []):
-        n = pn.get("n", i + 1)
-        line = " ".join(str(pn.get("shot") or "").split())
-        if not line:
-            continue
-        # INSTRUCTIONS COME OUT OF THE PICTURE (2026-09-02). Sentences that
-        # give orders — "No loose boulders", "Never tangled" — were pasted
-        # into eight shot lines during episode one's repairs. The world
-        # rules and place briefs carry those now, once. Here they are
-        # removed from the description, and what was removed is reported.
-        kept, dropped = [], []
-        for sent in re.split(r"(?<=[.;])\s+", line):
-            if re.match(r"(No |Never |Do not |Must |Always )", sent.strip()):
-                dropped.append(sent.strip())
-            else:
-                kept.append(sent)
-        if dropped:
-            line = " ".join(kept).strip()
-            pn["shot"] = line
-            changed.append(f"shot {n}: removed an instruction from the words "
-                           f"({dropped[0][:40]}…)")
-        for want, pat in FRAMING_SAYS:
-            if re.search(pat, line, re.I):
-                if (pn.get("framing") or "").lower() != want:
-                    changed.append(f"shot {n}: camera set to {want}, as the words say")
-                    pn["framing"] = want
-                break
-        positive = " ".join(seg for seg in re.split(r"(?<=[.;])\s+", line)
-                            if not re.search(r"\b(no|not|never|without)\b", seg, re.I))
-        # SOMEONE BEING LOOKED FOR IS NOT ON SCREEN (Lars, 2026-09-02: "28b
-        # doesn't make much sense" — Glitter scanning the dust FOR Princess
-        # was drawn with Princess standing beside her). A name that appears
-        # only as the object of seeking, absence or memory is struck from
-        # the words before the cast is read from them.
-        positive = re.sub(SEEK, " ", positive, flags=re.I)
-        present = list(pn.get("present") or [])
-        for name, (npat, rpat) in CAST_SAYS.items():
-            if name in present:
-                continue
-            if re.search(npat, positive) or (rpat and re.search(rpat, positive, re.I)):
-                present.append(name)
-                changed.append(f"shot {n}: {name} added to the cast, as the words say")
-        if sorted(present) != sorted(pn.get("present") or []):
-            pn["present"] = present
-    return changed
+        n = str(pn.get("n", i + 1))
+        line = str(pn.get("shot") or "")
+        for prop in (_sp.get(n) or []):
+            pat = _NAMES.get(prop) or "|".join(re.escape(w) for w in (_words.get(prop) or [prop]))
+            if pat and not re.search(pat, line, re.I):
+                problems.append(f"shot {n}: {prop} is in this shot but the words never "
+                                f"mention it — it will come and go between cuts")
+
+    return problems
