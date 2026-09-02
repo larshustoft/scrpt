@@ -307,7 +307,7 @@ def check_board(board: dict) -> list:
     _w = board.get("world") or {}
     _sp = _w.get("shot_props") or {}
     _words = _w.get("props") or {}
-    _NAMES = {"white-stone": r"\bstones?\b|\bboulders?\b", "spring-opening": r"\bopenings?\b|\bholes?\b|\bcracks?\b|\bgaps?\b",
+    _NAMES = {"white-stone": r"\bstones?\b|\bboulders?\b", "spring-opening": r"\bopenings?\b|\bholes?\b|\bcracks?\b|\bgaps?\b|cave mouth|mouth of the cave",
               "rope-bridge": r"\bbridge\b", "fallen-branch": r"\bbranch\b", "glitter-bell": r"\bbell\b"}
     for i, pn in enumerate(board.get("panels") or []):
         n = str(pn.get("n", i + 1))
