@@ -110,7 +110,8 @@ CONDITIONAL = {4: r"\b(caves?|openings?|holes?|cracks?|tunnels?|hollows?|dens?|m
                5: r"\b(stones?|boulders?|rocks?)\b"}
 
 
-async def verify_stills(catalog: str, board: dict, handle=None, limit: int = 0) -> dict:
+async def verify_stills(catalog: str, board: dict, handle=None, limit: int = 0,
+                        only: set = None) -> dict:
     """Read every still back against the world's standing rules.
 
     A rule written into a prompt is a request; a rule checked afterwards is
@@ -136,6 +137,11 @@ async def verify_stills(catalog: str, board: dict, handle=None, limit: int = 0) 
            "not by the names alone:\n" + who + "\n\n") if who else ""
     tdir = Path(OUTPUT_DIR) / catalog / "trailer"
     panels = (board.get("panels") or [])[: limit or None]
+    # ONLY WHAT CHANGED GETS READ AGAIN (2026-09-02). Every repair round
+    # re-read all 146 pictures when only the redrawn ones could have
+    # changed — three minutes and hundreds of vision calls a round.
+    if only is not None:
+        panels = [p for p in panels if str(p.get("n")) in only]
     gate = asyncio.Semaphore(int(__import__("os").environ.get("SCRPT_VISION_LANES", "6")))
     qs = "\n".join(f"{i+1}. {q}" for i, q in enumerate(WORLD_QUESTIONS))
 

@@ -85,6 +85,12 @@ async def draw_location_plates(universe_dir: Path, profile: dict,
 
     prof_path = universe_dir / "profile.json"
     prof = json.loads(prof_path.read_text())
-    prof.setdefault("creatives", {})["locations"] = made
+    # MERGE, NEVER REPLACE (2026-09-02). A repair that redrew ONE plate
+    # wrote back a registry of one, and the other nine places silently
+    # became unregistered — every shot set in them would have been drawn
+    # from a sentence again. What is drawn is added to what is known.
+    reg = dict(prof.setdefault("creatives", {}).get("locations") or {})
+    reg.update(made)
+    prof["creatives"]["locations"] = reg
     prof_path.write_text(json.dumps(prof, indent=2, ensure_ascii=False))
     return made

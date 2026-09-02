@@ -276,3 +276,16 @@ would have been shot in episode one's places.
 
 *Laws 1–14 are the children's-book and animation line. The grown-up
 non-fiction book and film processes do not use them.*
+
+## Laws 15–22 — learned finishing Episode 1 (2 September 2026)
+
+*Children's books and animation films only.*
+
+15. **First-pass yield is the economics.** Every rejected picture is a redraw and ten minutes. The line logs `first_pass_yield` on the first check of every episode; compare episodes by that number, not by feel. (Episode 1: 32% before the fixes, 78% after.)
+16. **A universe remembers its mistakes.** Every rejection is recorded in `universe/<slug>/lessons.json`. A kind of mistake seen three times becomes a standing rule in every future drawing prompt for that universe. The second film starts where the first one finished.
+17. **Only a wide shot gets the wide reference.** Close, detail and medium shots draw from identity alone — faces and props. A location plate handed to a close-up comes back as a landscape.
+18. **Faces first in the reference list.** Identity is the one thing that may never drift; whoever is in the shot leads the list and is never the one dropped.
+19. **A shot line describes a picture; it gives no orders.** "No loose boulders" belongs in the world rules or the place brief, once. Pasted into a line it confuses the drawer and the checker. The repair stage strips them and reports it.
+20. **Exemptions match plurals.** A rule that cannot be satisfied — "stones" never matching "stone" — spends money in a loop and never converges.
+21. **A prop reference is the object, not an instruction to add one.** The plate shows the thing on a plain background; told nothing else, the model places a second copy on the ground.
+22. **An empty account halts everything, and "could not be checked" is never "rejected."** Money is never spent to work around a failure spending cannot fix. A dead checker stops the line; it does not start a redraw loop.

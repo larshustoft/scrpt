@@ -49,7 +49,8 @@ def _profile(slug: str) -> dict:
 
 
 async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
-                       picture_rounds: int = 4, attempts: int = 3) -> dict:
+                       picture_rounds: int = 4, attempts: int = 3,
+                       stop_before_shoot: bool = False) -> dict:
     """The whole line. Returns a record; raises only when it cannot continue."""
     from ..database import get_book_by_catalog, update_book
     from ..credits import OutOfCredits
@@ -125,6 +126,18 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
         log(f"WARNING — proceeding with pictures the checker still doubts: "
             f"{str(last)[:200]}")
 
+    # THE BOARD CAN BE APPROVED BEFORE A CREDIT IS SPENT (Lars, 2026-09-02:
+    # "I want to see the storyboard before you shoot"). Everything up to
+    # here costs pennies; the shoot is the money. With stop_before_shoot
+    # the line finishes the pictures, saves them, and hands back — the same
+    # command run again picks up at the shoot with nothing redone.
+    if stop_before_shoot:
+        log("pictures complete — stopping before the shoot for approval")
+        return {"stopped": "before shoot", "pictures": len(board["panels"]),
+                "first_pass_yield": board.get("first_pass_yield"),
+                "picture_warning": str(last)[:300] if last else "",
+                "minutes": round((time.time() - t0) / 60, 1)}
+
     # 4. shoot, cut, master, archive, export
     before = await credit_balance()
     log(f"shooting — Runway balance {before}")
@@ -140,14 +153,18 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
 
 
 def main():
-    catalog = sys.argv[1] if len(sys.argv) > 1 else "SC-039"
-    slug = sys.argv[2] if len(sys.argv) > 2 else "princess-the-unicorn"
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    flags = {a for a in sys.argv[1:] if a.startswith("--")}
+    catalog = args[0] if args else "SC-039"
+    slug = args[1] if len(args) > 1 else "princess-the-unicorn"
+    stop = "--approve-board" in flags
     out = Path(OUTPUT_DIR) / catalog / "episode-run.json"
     try:
-        rec = asyncio.run(make_episode(catalog, slug))
+        rec = asyncio.run(make_episode(catalog, slug, stop_before_shoot=stop))
         rec["log"] = LOG
         out.write_text(json.dumps(rec, indent=1, default=str))
-        print("\nEPISODE COMPLETE:", rec.get("film"))
+        print("\nBOARD READY FOR APPROVAL" if rec.get("stopped") else
+              "\nEPISODE COMPLETE:", rec.get("film") or "")
     except Exception as e:
         out.write_text(json.dumps(
             {"failed": str(e), "trace": traceback.format_exc()[-2000:],

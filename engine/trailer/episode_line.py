@@ -311,6 +311,18 @@ async def establish_world(catalog: str, board: dict, profile: dict) -> dict:
     for attempt in range(2):
         chk = await verify_locations(udir, profile)
         bad = chk.get("flagged") or {}
+        # A PLATE IS TORN UP ONLY ON TWO INDEPENDENT READS (2026-09-02). The
+        # restored-spring plate passed three checks in a morning, failed a
+        # fourth on the pale cliff, was thrown away and redrawn — and the
+        # replacement had a ring of boulders. One reader's doubt is not a
+        # verdict on a picture forty shots already depend on; the doubt is
+        # put to a second read, and only a plate that fails both is redrawn.
+        if bad:
+            again = (await verify_locations(udir, profile)).get("flagged") or {}
+            bad = {k: v for k, v in bad.items() if k in again}
+            if not bad:
+                _log("a location plate was doubted on one read and cleared "
+                     "on the second — kept")
         if not bad:
             _log(f"location plates obey the world rules ({chk.get('checked')} checked)")
             break
