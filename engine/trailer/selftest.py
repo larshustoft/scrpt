@@ -155,4 +155,11 @@ def check_gates() -> list:
     if "shot_props" not in inspect.getsource(_W.apply_world):
         bad.append("shot-level props are ignored — a fixed object can vanish from a shot")
 
+    # 19. The board repair must exist as a callable, not just be mentioned.
+    #     It was sliced out of its file twice by edits that cut at the wrong
+    #     `return`; the run would have died at import time, after the quote.
+    from . import continuity as _CN
+    if not callable(getattr(_CN, "repair_board", None)) or not callable(getattr(_CN, "check_board", None)):
+        bad.append("repair_board/check_board are missing from continuity.py")
+
     return bad

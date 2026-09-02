@@ -319,3 +319,67 @@ def check_board(board: dict) -> list:
                                 f"mention it — it will come and go between cuts")
 
     return problems
+
+
+# ── the board repairs a person had to make by hand on 2026-09-01 ──────────
+FRAMING_SAYS = [("detail", r"\bdetail (shot|close-up|of)\b|\bclose detail\b"),
+                ("wide", r"\bwide (shot|view)\b|\bfrom a distance\b"),
+                ("close", r"\bclose(-| )?(shot|on|up|view)\b"),
+                ("medium", r"\bmedium shot\b")]
+
+# A NAME IS CAPITALISED; A PLANT IS NOT. Matching "moss" loosely once put a
+# dragon into two scenes of damp green ground.
+CAST_SAYS = {"Glitter": (r"\bGlitter\b", r"\b(her|his|the) mother\b"),
+             "Princess": (r"\bPrincess\b", r""),
+             "Moss": (r"\bMoss\b", r"\bthe (little )?(green )?dragon\b"),
+             "Pip": (r"\bPip\b", r"\bthe bird\b")}
+
+
+def repair_board(board: dict) -> list:
+    """Make the board agree with itself, before anything is drawn from it.
+
+    Every shot is described twice — in words, and in the structured camera
+    and cast the drawing stage obeys. Where they disagree the picture is
+    wrong before anyone draws it. This reconciles them deterministically:
+    instructions come out of the words, the camera follows the words, and
+    the cast is ADDITIVE from the words (someone only being looked for is
+    not added). Returns what it changed, for the run's record.
+    """
+    if not applies(board):
+        return []
+    changed = []
+    for i, pn in enumerate(board.get("panels") or []):
+        n = pn.get("n", i + 1)
+        line = " ".join(str(pn.get("shot") or "").split())
+        if not line:
+            continue
+        kept, dropped = [], []
+        for sent in re.split(r"(?<=[.;])\s+", line):
+            if re.match(r"(No |Never |Do not |Must |Always )", sent.strip()):
+                dropped.append(sent.strip())
+            else:
+                kept.append(sent)
+        if dropped:
+            line = " ".join(kept).strip()
+            pn["shot"] = line
+            changed.append(f"shot {n}: removed an instruction from the words "
+                           f"({dropped[0][:40]}…)")
+        for want, pat in FRAMING_SAYS:
+            if re.search(pat, line, re.I):
+                if (pn.get("framing") or "").lower() != want:
+                    changed.append(f"shot {n}: camera set to {want}, as the words say")
+                    pn["framing"] = want
+                break
+        positive = " ".join(seg for seg in re.split(r"(?<=[.;])\s+", line)
+                            if not re.search(r"\b(no|not|never|without)\b", seg, re.I))
+        positive = re.sub(SEEK, " ", positive, flags=re.I)
+        present = list(pn.get("present") or [])
+        for name, (npat, rpat) in CAST_SAYS.items():
+            if name in present:
+                continue
+            if re.search(npat, positive) or (rpat and re.search(rpat, positive, re.I)):
+                present.append(name)
+                changed.append(f"shot {n}: {name} added to the cast, as the words say")
+        if sorted(present) != sorted(pn.get("present") or []):
+            pn["present"] = present
+    return changed
