@@ -218,4 +218,8 @@ def check_gates() -> list:
     if "still could not be uploaded" not in src:
         bad.append("a failed still upload can again drop a shot into text-to-video")
 
+    # 23. The score is led by the show's music direction, not a free mood.
+    if "music_direction" not in inspect.getsource(_P._film_score):
+        bad.append("the score no longer carries the show's music direction — chapters would drift into cinema")
+
     return bad

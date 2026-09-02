@@ -1221,8 +1221,18 @@ async def _film_score(catalog: str, plan: list, panel_starts: list,
         # miss the cache and re-buy music we already own.
         span_req = max(6.0, ch["end"] - ch["start"])
         span = max(6.0, span_req - (lead if k == 0 else 0.0))
-        bed = await _record_music(catalog, ch["mood"], min(span_req + 4, 85),
-                                  f"{prefix}-ch{k}-{_h(ch['mood'])[:6]}")
+        # THE SCORE KEEPS THE SHOW'S VOICE (Lars, 2026-09-02: "not child
+        # friendly TV show music — keep the tone of the intro music"). Every
+        # chapter brief is led by the universe's music direction — the same
+        # instruments and tone as the theme — and the chapter's mood only
+        # colours it. A mood written alone drifted into cinema.
+        _md = ((_universe_profile(catalog).get("creatives") or {}).get("music_direction") or "").strip()
+        _brief = ((f"Children's TV show score for the same series as its theme. {_md} "
+                   f"Keep exactly those instruments and that warmth; no vocals, no choir, no drums "
+                   f"or braams, never dark, never epic, never cinematic. This passage is: {ch['mood']}")
+                  if _md else ch["mood"])
+        bed = await _record_music(catalog, _brief, min(span_req + 4, 85),
+                                  f"{prefix}-ch{k}-{_h(_brief)[:6]}")
         if bed:
             parts.append((bed, span))
     if not parts:
