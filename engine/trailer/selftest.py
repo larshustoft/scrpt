@@ -208,4 +208,8 @@ def check_gates() -> list:
     if _TC.de_name("Princess looks at Moss.", {}) == "Princess looks at Moss.":
         bad.append("de_name no longer replaces names")
 
+    # 22. A shot with a still is never filmed from a sentence.
+    if "still could not be uploaded" not in src:
+        bad.append("a failed still upload can again drop a shot into text-to-video")
+
     return bad

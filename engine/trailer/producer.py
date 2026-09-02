@@ -3520,10 +3520,27 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             if _still:
                 _sp = OUTPUT_DIR / catalog / "trailer" / _still
                 if _sp.exists():
-                    try:
-                        _still_uri = await runway.upload_file(_sp)
-                    except Exception:
-                        _still_uri = ""
+                    # A STILL THAT WILL NOT UPLOAD IS RETRIED, NEVER ABANDONED
+                    # (2026-09-02). One failed upload used to drop the shot
+                    # silently into text-to-video — the picture invented from
+                    # a sentence, at six times the price — and four such
+                    # takes reached the cut before the board gate refused
+                    # them. Three tries; then the shot holds on its picture.
+                    for _u in range(3):
+                        try:
+                            _still_uri = await runway.upload_file(_sp); break
+                        except Exception as _ue:
+                            _still_uri = ""; await asyncio.sleep(5 * (_u + 1))
+                    if not _still_uri:
+                        _fn = max(12, int(round(secs * 24))); _W2, _H2 = 1280, 720
+                        _vf = (f"scale={_W2*2}:{_H2*2}:force_original_aspect_ratio=increase,crop={_W2*2}:{_H2*2},"
+                               f"zoompan=z='min(1+0.08*on/{_fn},1.08)':d={_fn}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={_W2}x{_H2}:fps=24,format=yuv420p")
+                        _run(["-y", "-loop", "1", "-i", str(_sp), "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+                              "-vf", _vf, "-frames:v", str(_fn), "-t", f"{secs:.2f}", "-shortest", "-c:v", "libx264",
+                              "-preset", "fast", "-crf", "20", "-c:a", "aac", "-b:a", "96k", str(clip)], f"hold {pn.get('n')}")
+                        pn["held_on_still"] = "still could not be uploaded to the camera"
+                        done_n[0] += 1
+                        return
             for attempt in range(16):
                 if _still_uri:
                     # WHAT MOVES IS ITS OWN INSTRUCTION (Lars, 2026-09-01:
