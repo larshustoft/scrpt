@@ -119,4 +119,10 @@ def check_gates() -> list:
     if "standing_rules" not in inspect.getsource(S.still_prompt):
         bad.append("earned rules no longer reach the drawing prompt")
 
+    # 15. The plates must be the Character Bible's pictures, verified by hash.
+    if "md5" not in est or "plates" not in est:
+        bad.append("episodes no longer verify their character plates against "
+                   "the universe's canonical pictures — a redrawn reference "
+                   "sheet could silently replace an approved character")
+
     return bad

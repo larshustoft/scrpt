@@ -205,6 +205,35 @@ async def establish_world(catalog: str, board: dict, profile: dict) -> dict:
     board["characters"] = {**(board.get("characters") or {}), **cast}
     _log(f"cast plates: {len(cast)}")
 
+    # THE CHARACTER BIBLE'S PICTURES ARE THE PLATES (Lars, 2026-09-02: "it
+    # looks to me like you haven't used the character bible we created").
+    # The approved portraits were replaced by freshly drawn reference
+    # sheets an hour after he signed them off, and a whole film was drawn
+    # from characters he had never seen. A universe now names its canonical
+    # plates by content hash; an episode's plates must BE those files, byte
+    # for byte, or the episode stops before a single picture is drawn.
+    import hashlib as _hl
+    _udir = Path(profile.get("profile_path") or ".").parent
+    _bdir = Path(OUTPUT_DIR) / catalog / "trailer" / "bible"
+    _wrong = []
+    for _name, _c in (((profile.get("world") or {}).get("plates") or {}).items()):
+        _rel, _md5 = _c.get("file"), _c.get("md5")
+        if not (_rel and _md5):
+            continue
+        _canon = _udir / _rel
+        _mine = _bdir / f"{_name.lower()}.png"
+        if not _canon.exists():
+            _wrong.append(f"{_name}: canonical plate missing at {_rel}")
+            continue
+        if not _mine.exists() or _hl.md5(_mine.read_bytes()).hexdigest() != _md5:
+            _mine.parent.mkdir(parents=True, exist_ok=True)
+            _mine.write_bytes(_canon.read_bytes())          # the canon wins, always
+            _log(f"{_name}: plate restored from the universe's canonical picture")
+    if _wrong:
+        raise RuntimeError("the universe's canonical character plates are missing: "
+                           + "; ".join(_wrong))
+    _log("cast plates are the Character Bible's pictures (verified by hash)")
+
     chk = await verify_plates(catalog)
     bad = {k: v for k, v in (chk.get("by_character") or {}).items() if v}
     if bad:

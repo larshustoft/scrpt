@@ -188,9 +188,10 @@ def check_board(board: dict) -> list:
         # unicorns continuing on together" while its cast list said NO
         # CHARACTERS, so the prompt asked for both at once and the drawing
         # made no sense (Lars, 2026-09-01).
+        _seen = re.sub(SEEK, " ", _positive, flags=re.I)   # someone looked for is not on screen
         named = [c for c in (board.get("cast_names") or
                              ["Glitter", "Princess", "Pip", "Moss"])
-                 if re.search(rf"\b{re.escape(c)}\b", _positive)]  # case-sensitive
+                 if re.search(rf"\b{re.escape(c)}\b", _seen)]  # case-sensitive
         listed = list(pn.get("present") or [])
         if named and not listed:
             problems.append(f"shot {n}: names {', '.join(named)} in the picture but its cast "
