@@ -180,7 +180,7 @@
    },
    "glitter": {
     "file": "plates/glitter.png",
-    "md5": "3b23c30238adee39c7c3ab919b06cf6c"
+    "md5": "8ad0621973ce00ed62f245f292fe97e8"
    },
    "pip": {
     "file": "plates/pip.png",
@@ -191,7 +191,7 @@
     "md5": "8765ebf25ad2a96c3a0519d9d3002baa"
    }
   },
-  "plates_note": "These four pictures are the characters — the ones in the Character Bible Lars approved on 2026-09-01 09:18. Every episode copies them in and verifies them by hash; nothing redraws them.",
+  "plates_note": "These four pictures are the characters — the ones in the Character Bible Lars approved on 2026-09-01 09:18. Every episode copies them in and verifies them by hash; nothing redraws them. Glitter's plate replaced on 2026-09-02 (candidate A, chosen by Lars): the portrait's colours with the stylised-cute face the bible text describes.",
   "props_plates": {
    "white-stone": {
     "file": "props/white-stone.png",
