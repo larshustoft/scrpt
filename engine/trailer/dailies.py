@@ -73,7 +73,21 @@ async def review_shots(catalog: str, board: dict, handle=None,
         n = str(pn.get("n") or i + 1)
         seg = tdir / f"sb-seg-{i}.mp4"
         dest = frames_dir / f"day-{n}.jpg"
-        stills.append((n, dest if (dest.exists() or (seg.exists() and _frame(seg, 1.0, dest))) else None))
+        # THE MIDDLE OF THE TAKE, NOT ITS FIRST SECOND (2026-09-02). Sampled
+        # at 1.0s, the dailies passed a film with a human girl and a bear in
+        # it — both arrived after 1.0s. The frame read is now the latest
+        # third of the take, where an invented character has had time to
+        # appear.
+        _len = 0.0
+        try:
+            import re as _re
+            _r = subprocess.run([FF, "-i", str(seg)], capture_output=True, text=True).stderr
+            _m = _re.search(r"Duration: (\d+):(\d+):([\d.]+)", _r)
+            _len = int(_m.group(1)) * 3600 + int(_m.group(2)) * 60 + float(_m.group(3)) if _m else 0.0
+        except Exception:
+            pass
+        _at = max(1.0, _len * 0.7) if _len else 1.0
+        stills.append((n, dest if ((seg.exists() and _frame(seg, _at, dest))) else None))
 
     notes = repetition_report(stills)
 

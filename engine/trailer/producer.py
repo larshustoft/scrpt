@@ -3470,6 +3470,12 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             if _take_valid(catalog, pl["key"], pl["src"], clip, grandfather=False):
                 return
             m = _take_matches_still(clip, _sp) if _sp is not None else None
+            if _sp is not None and not _off_board(m):
+                from .takecheck import check_take as _check_take
+                _v = await _check_take(clip, _sp)
+                if not _v["ok"]:
+                    m = 0.0                              # treated as not this shot's take
+                    pn["take_problem"] = "; ".join(_v["reasons"])[:200]
             if _off_board(m):
                 import shutil as _sh
                 _sh.move(str(clip), str(clip.with_suffix(".stale.mp4")))
@@ -3521,6 +3527,11 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                         "Gentle continuous motion: the characters breathe, "
                         "blink and shift their weight, leaves and flowers sway, "
                         "light and dust drift through the air.")
+                    # NAMES SUMMON STRANGERS (2026-09-02): "Princess turns her
+                    # head" drew a human princess into the take. The line is
+                    # sent with every name replaced by what the picture shows.
+                    from .takecheck import de_name as _de_name
+                    _motion = _de_name(_motion, _universe_profile(catalog))
                     # MOTION ONLY — never the scene description (Lars,
                     # 2026-09-01). The picture IS the content: it already
                     # holds the characters, their colours, their sizes, the
@@ -3530,6 +3541,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     # with a unicorn horn. With the motion alone, the same
                     # still animates untouched — proven side by side on the
                     # same shot, same cost.
+                    secs = min(int(secs), 5)     # DRIFT GROWS WITH LENGTH (2026-09-02): 5s takes only
                     task = await runway.generate_shot(
                         _motion + " Keep everything else exactly as it is in "
                         "the picture: the same characters, the same colours, "
@@ -3555,16 +3567,28 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     # attempts to come back on the approved picture, then we
                     # keep what we have and the shot is named in the report
                     # rather than passing unnoticed.
-                    if _still_uri and _sp is not None and attempt < 2:
-                        _m = _take_matches_still(clip, _sp)
-                        if _off_board(_m):
-                            pn["off_board"] = round(_m, 2)
+                    if _still_uri and _sp is not None:
+                        # THE WHOLE TAKE IS JUDGED, NOT ITS FIRST FRAME
+                        # (2026-09-02). Frame 0 is the one frame the model
+                        # must honour; a human girl at 1.4s and a bear at
+                        # 0.9s both passed a frame-0 check. Five points along
+                        # the take are read, and the middle and the end are
+                        # shown to a reader beside the still. A take that
+                        # fails is filmed again, up to three times; after
+                        # that the shot is named and the cut refuses it.
+                        from .takecheck import check_take as _check_take
+                        _v = await _check_take(clip, _sp)
+                        if not _v["ok"]:
+                            pn["take_problem"] = "; ".join(_v["reasons"])[:200]
                             if handle:
                                 handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
-                                                f"panel {pn.get('n')} came back as a different "
-                                                f"picture — shooting it again")
-                            await asyncio.sleep(4)
-                            continue
+                                                f"panel {pn.get('n')} — {_v['reasons'][0][:70]} — shooting again")
+                            if attempt < 3:
+                                clip.rename(clip.with_name(clip.stem + f".bad{attempt}.mp4"))
+                                await asyncio.sleep(4)
+                                continue
+                        else:
+                            pn.pop("take_problem", None)
                         pn.pop("off_board", None)
                     _remember_take(catalog, pl["key"], pl["src"])
                     ok = True; break
@@ -3639,8 +3663,8 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             if _spx is None:
                 continue
             _m = _take_matches_still(pl["clip"], _spx)
-            if _off_board(_m):
-                _off.append((str(pl["pn"].get("n")), round(_m, 2)))
+            if _off_board(_m) or pl["pn"].get("take_problem"):
+                _off.append((str(pl["pn"].get("n")), pl["pn"].get("take_problem") or round(_m, 2)))
             elif _m is None:
                 _unchecked.append(str(pl["pn"].get("n")))
         board_check = {"checked": len(plans), "off_board": _off,

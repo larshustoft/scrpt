@@ -195,4 +195,12 @@ def check_gates() -> list:
 
     if not bad:
         _PASSED_IN_THIS_PROCESS = True
+    # 21. A take is judged on its whole length, and motion lines carry no names.
+    if "_check_take" not in src or "_de_name" not in src:
+        bad.append("takes are no longer judged along their length, or motion lines "
+                   "carry character names — a human or a bear could walk into a take")
+    from . import takecheck as _TC
+    if _TC.de_name("Princess looks at Moss.", {}) == "Princess looks at Moss.":
+        bad.append("de_name no longer replaces names")
+
     return bad
