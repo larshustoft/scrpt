@@ -3277,7 +3277,7 @@ def _take_index(tdir: Path) -> dict:
         try:
             subprocess.run([_ffmpeg(), "-y", "-ss", "0", "-i", str(t), "-frames:v", "1", "-vf", "scale=320:-1", str(fr)],
                            capture_output=True, timeout=60)
-            idx[tid] = {"name": t.name, "sig": _frame_signature(fr)}
+            idx[tid] = {"name": t.name, "sig": _frame_signature(fr), "mtime": t.stat().st_mtime}
             changed = True
         except Exception:
             continue
@@ -3298,12 +3298,20 @@ def _adopt_take(catalog: str, tdir: Path, pn: dict, clip: Path) -> bool:
     if not pn.get("still") or not sp.exists():
         return False
     ss = _frame_signature(sp)
-    best, best_m = None, 0.0
+    # A TAKE CANNOT PRECEDE ITS PICTURE: only takes filmed after this still
+    # was drawn are candidates (a 0.91 frame match once pointed at a take of
+    # the OLD still-28 — same path, with the branch). Among those, the best
+    # match wins, newest on a tie.
+    _since = sp.stat().st_mtime - 60
+    best, best_m, best_t = None, 0.0, 0.0
     for tid, rec in _take_index(tdir).items():
+        _mt = float(rec.get("mtime") or 0)
+        if _mt < _since:
+            continue
         m = _sig_match(rec.get("sig") or [], ss)
-        if m > best_m:
-            best, best_m = rec.get("name"), m
-    if best and best_m >= 0.85 and _judged_ok(catalog, tdir / best):
+        if m > best_m + 0.01 or (abs(m - best_m) <= 0.01 and _mt > best_t):
+            best, best_m, best_t = rec.get("name"), m, _mt
+    if best and best_m >= 0.80 and _judged_ok(catalog, tdir / best):
         try:
             os.link(str(tdir / best), str(clip))
         except Exception:
