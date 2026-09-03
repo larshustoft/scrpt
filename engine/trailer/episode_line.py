@@ -409,9 +409,23 @@ async def establish_world(catalog: str, board: dict, profile: dict) -> dict:
     # up and drawn again from its brief, once, and then the episode stops
     # rather than inherit it.
     from .verify import verify_locations
+    # AN APPROVED PLACE IS JUDGED ONCE (2026-09-03). The restored-spring plate
+    # had passed every run since Sep 1; a random "stone" read at 10:52 tore it
+    # up and redrew it, and the redraw failed too — the run died on a place
+    # forty shots were already drawn from. A plate whose bytes match the
+    # universe's approved record is never put to the reader again.
+    import hashlib as _hl3
+    _approved = dict((profile.get("creatives") or {}).get("location_md5") or {})
+    def _md5_of(k):
+        f = udir / "locations" / f"{k}.png"
+        return _hl3.md5(f.read_bytes()).hexdigest() if f.exists() else ""
     for attempt in range(2):
         chk = await verify_locations(udir, profile)
         bad = chk.get("flagged") or {}
+        _kept = [k for k in bad if _approved.get(k) and _approved[k] == _md5_of(k)]
+        if _kept:
+            _log("approved place plates doubted by the reader and kept (judged once): " + ", ".join(_kept))
+            bad = {k: v for k, v in bad.items() if k not in _kept}
         # A PLATE IS TORN UP ONLY ON TWO INDEPENDENT READS (2026-09-02). The
         # restored-spring plate passed three checks in a morning, failed a
         # fourth on the pale cliff, was thrown away and redrawn — and the
@@ -426,6 +440,18 @@ async def establish_world(catalog: str, board: dict, profile: dict) -> dict:
                      "on the second — kept")
         if not bad:
             _log(f"location plates obey the world rules ({chk.get('checked')} checked)")
+            # every plate that passed is now approved by its bytes
+            _locs = (profile.get("creatives") or {}).get("locations") or {}
+            _new = {k: _md5_of(k) for k in _locs if _md5_of(k)}
+            if _new != _approved:
+                profile.setdefault("creatives", {})["location_md5"] = _new
+                try:
+                    _pp = udir / "profile.json"
+                    _pj = json.loads(_pp.read_text())
+                    _pj.setdefault("creatives", {})["location_md5"] = _new
+                    _pp.write_text(json.dumps(_pj, indent=1, ensure_ascii=False))
+                except Exception as _e:
+                    _log(f"could not record approved place plates: {str(_e)[:60]}")
             break
         _log("these plates break the world rules: "
              + "; ".join(f"{k}: {', '.join(v)}" for k, v in bad.items()))

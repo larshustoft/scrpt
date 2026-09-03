@@ -165,10 +165,29 @@
    ],
    "rainbow-valley": [
     "cave"
+   ],
+   "spring-restored": [
+    "stone"
+   ],
+   "moonwater-spring": [
+    "stone"
    ]
   },
   "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there.",
-  "scale_chart_stone": "The big round white stone is about as tall as Princess — big for her, but a stone, not a boulder the size of a house."
+  "scale_chart_stone": "The big round white stone is about as tall as Princess — big for her, but a stone, not a boulder the size of a house.",
+  "location_md5": {
+   "rope-bridge": "f331f257e99f5ed97c4a34fc0cd8e382",
+   "moonwater-spring": "d80f788bcad8bbc26583bcf1b0013b4a",
+   "forest-path-dust": "0d121cc984c4733d4c0861dfe304d60b",
+   "forest-path-morning": "ee60399539e013c6e258febbc3199e47",
+   "forest-path-quiet": "bb927c6ff0f218d00aa3dead7a943f34",
+   "path-home-dusk": "32394c4cb595a4f8a5bf01781dfe24c4",
+   "spring-dry": "b7f036941c3b7768bf009df9eda1de81",
+   "spring-outlet": "be3447c56c999140c6c4fc7348aa1dfd",
+   "spring-restored": "2b2e2cf574fb96660fc19b331ba6b092",
+   "inside-the-cave": "65bc62ae89f202e2fc6d1a32e9c2972b",
+   "rainbow-valley": "c65733bb133b11b99a21100ea9944bce"
+  }
  },
  "world": {
   "bible_book": "SC-039",

@@ -293,4 +293,9 @@ def check_gates() -> list:
     if "_judged_ok" not in inspect.getsource(P.produce_storyboard):
         bad.append("banked takes are judged again on every re-cut — stochastic refusals cost re-shoots")
 
+    # 35. An approved place plate (bytes recorded) is never torn up on a doubt.
+    from . import episode_line as _EL
+    if "location_md5" not in inspect.getsource(_EL.establish_world):
+        bad.append("a random read can again tear up an approved location plate")
+
     return bad
