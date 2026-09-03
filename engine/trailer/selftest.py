@@ -226,4 +226,29 @@ def check_gates() -> list:
     if "voice cast applied" not in inspect.getsource(_ME.make_episode):
         bad.append("character lines can again be recorded in the narrator's voice")
 
+    # 25. No freeze-frames in the cut (Lars, 2026-09-03: "the clip stops and
+    # turns into a still image"). A short take stretches and bounces; it
+    # never holds a cloned last frame.
+    _cut_src = inspect.getsource(P.produce_storyboard)
+    if "tpad=stop_mode=clone" in _cut_src or "tail_bounce" not in _cut_src:
+        bad.append("the cut can freeze a shot on its last frame again")
+
+    # 26. Strangers are counted, not argued (a pink pony behind Princess passed
+    # the yes/no questions). The take judge compares species counts A vs B.
+    from . import takecheck as _TC
+    if "unicorns_in_B" not in _TC.TAKE_QUESTIONS or "_in_B" not in inspect.getsource(_TC.check_take):
+        bad.append("the take judge no longer counts characters — invented extras would pass")
+
+    # 27. A prop lives only in its own shots: the picture checker asks about a
+    # stray branch/log, exempt only where the shot names one.
+    from . import verify as _V
+    if not any("fallen tree branch" in q for q in _V.WORLD_QUESTIONS) or 8 not in _V.CONDITIONAL:
+        bad.append("a fallen branch can again appear in shots that never mention it")
+
+    # 28. The cut scans itself for frozen tails, and a dangling sound cue is
+    # replaced before the SFX model can turn it into a voice.
+    _ps = inspect.getsource(P.produce_storyboard)
+    if "frozen_tails" not in _ps or "_DANGLING_CUE" not in _ps:
+        bad.append("the cut no longer scans for freeze-frames / fragment sound cues")
+
     return bad

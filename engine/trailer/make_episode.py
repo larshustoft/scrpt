@@ -51,7 +51,8 @@ def _profile(slug: str) -> dict:
 async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
                        picture_rounds: int = 4, attempts: int = 3,
                        stop_before_shoot: bool = False,
-                       shoot_only: bool = False) -> dict:
+                       shoot_only: bool = False,
+                       reshoot=None, redraw=None) -> dict:
     """The whole line. Returns a record; raises only when it cannot continue."""
     from ..database import get_book_by_catalog, update_book
     from ..credits import OutOfCredits
@@ -156,6 +157,20 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     # SHOOT ONLY (2026-09-02): the pictures were finished and approved in an
     # earlier run; film them exactly as they stand. Not a drawing is made —
     # a still that is missing is a hard stop, never a redraw.
+    if shoot_only and redraw:
+        # a named picture repair: the old pictures are set aside (never
+        # deleted), the shots are drawn and read again through the same
+        # checks as the board, and the shoot below films the new pictures.
+        _tdir = Path(OUTPUT_DIR) / catalog / "trailer"
+        _stamp = time.strftime("%Y%m%d-%H%M")
+        for p in board["panels"]:
+            if str(p.get("n")) in {str(x) for x in redraw}:
+                f = _tdir / str(p.get("still") or "")
+                if f.exists():
+                    f.rename(f.with_name(f.stem + f".prev-{_stamp}" + f.suffix))
+        log(f"redrawing by order: {' '.join(str(x) for x in redraw)}")
+        await draw_and_check_stills(catalog, board, profile, rounds=picture_rounds, only=list(redraw))
+        update_book(book["id"], book["data"])
     if shoot_only:
         _missing = [str(p.get("n")) for p in board["panels"]
                     if not (Path(OUTPUT_DIR) / catalog / "trailer" / str(p.get("still") or "")).exists()]
@@ -212,7 +227,9 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     BUDGET.credits_start = before
     log(f"pictures used {BUDGET.report()}")
     log(f"shooting — Runway balance {before}")
-    r = await finish_episode(catalog, board, profile, t0)
+    if reshoot:
+        log(f"re-shooting by order: {' '.join(str(x) for x in reshoot)}")
+    r = await finish_episode(catalog, board, profile, t0, reshoot=list(reshoot or []))
     after = await credit_balance()
     r["credits_spent"] = max(0, before - after)
     r["credits_left"] = after
@@ -231,9 +248,16 @@ def main():
     slug = args[1] if len(args) > 1 else "princess-the-unicorn"
     stop = "--approve-board" in flags
     shoot_only = "--shoot-only" in flags
+    # --reshoot=26,26b films those shots again (their old takes are banked);
+    # --redraw=28,29 sets those pictures aside so they are drawn and checked
+    # again before the shoot (a new picture always means a new take).
+    _opt = {f.split("=", 1)[0]: f.split("=", 1)[1] for f in flags if "=" in f}
+    reshoot = [x.strip() for x in _opt.get("--reshoot", "").split(",") if x.strip()]
+    redraw = [x.strip() for x in _opt.get("--redraw", "").split(",") if x.strip()]
     out = Path(OUTPUT_DIR) / catalog / "episode-run.json"
     try:
-        rec = asyncio.run(make_episode(catalog, slug, stop_before_shoot=stop, shoot_only=shoot_only))
+        rec = asyncio.run(make_episode(catalog, slug, stop_before_shoot=stop, shoot_only=shoot_only,
+                                       reshoot=reshoot, redraw=redraw))
         rec["log"] = LOG
         out.write_text(json.dumps(rec, indent=1, default=str))
         print("\nBOARD READY FOR APPROVAL" if rec.get("stopped") else

@@ -35,7 +35,11 @@ TAKE_QUESTIONS = (
     "Picture A is the approved still this shot was filmed from. Picture B is a "
     "frame from later in the same take. Answer JSON only: "
     '{"same_characters": true/false, "new_creature_or_person": true/false, '
-    '"duplicate": true/false, "human": true/false, "mouth_speaking": true/false, "note": "..."}. '
+    '"duplicate": true/false, "human": true/false, "mouth_speaking": true/false, '
+    '"unicorns_in_A": n, "unicorns_in_B": n, "dragons_in_A": n, "dragons_in_B": n, '
+    '"birds_in_A": n, "birds_in_B": n, "note": "..."}. '
+    "Count every unicorn, dragon and bird in each picture, including blurry, partial "
+    "or background ones. "
     "same_characters is true only if every character in A is still in B, "
     "looking like the same character (same species, colours, size). "
     "new_creature_or_person is true if anyone appears in B who is not in A. "
@@ -127,6 +131,14 @@ async def check_take(clip: Path, still: Path, ask_vision=True) -> dict:
                     reasons.append(f"could not be checked: {str(e)[:60]}"); break
                 if d.get("human"):
                     reasons.append(f"a human appears by {pts[k]:.1f}s"); break
+                # STRANGERS BY COUNT (Lars, 2026-09-03: "made up extra
+                # characters" — a pink pony behind Princess, a lion cub on
+                # the path — passed the yes/no questions). Numbers do not
+                # argue: more of a species in B than in A is a stranger.
+                _more = [sp for sp in ("unicorns", "dragons", "birds")
+                         if int(d.get(f"{sp}_in_B") or 0) > int(d.get(f"{sp}_in_A") or 0)]
+                if _more:
+                    reasons.append(f"more {', '.join(_more)} than the picture by {pts[k]:.1f}s: {str(d.get('note'))[:60]}"); break
                 if d.get("duplicate"):
                     reasons.append(f"a character is doubled by {pts[k]:.1f}s: {str(d.get('note'))[:60]}"); break
                 if d.get("new_creature_or_person"):
@@ -151,3 +163,21 @@ def de_name(motion: str, profile: dict) -> str:
         out = re.sub(rf"\b{re.escape(name)}'s\b", desc + "'s", out)
         out = re.sub(rf"\b{re.escape(name)}\b", desc, out)
     return out
+
+
+def frozen_tail(clip: Path, min_seconds: float = 0.5) -> float:
+    """Seconds of frozen picture at the END of a finished segment (0.0 = none).
+    Law 53 (2026-09-03): a cut is scanned for freeze-frames, not watched for them."""
+    import subprocess, re
+    try:
+        out = subprocess.run([_ff(), "-i", str(clip), "-vf", f"freezedetect=n=-50dB:d={min_seconds}",
+                              "-an", "-f", "null", "-"], capture_output=True, text=True, timeout=120).stderr
+    except Exception:
+        return 0.0
+    starts = [float(x) for x in re.findall(r"freeze_start: ([\d.]+)", out)]
+    ends = [float(x) for x in re.findall(r"freeze_end: ([\d.]+)", out)]
+    if not starts:
+        return 0.0
+    if len(ends) < len(starts):          # still frozen when the segment ended
+        return round(max(0.0, duration(clip) - starts[-1]), 2)
+    return 0.0

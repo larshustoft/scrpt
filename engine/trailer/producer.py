@@ -1651,6 +1651,10 @@ async def _record_line(catalog: str, text: str, genre: str, key: str,
 
 
 
+_DANGLING_CUE = re.compile(r"\b(into|and|of|with|the|a|an|her|his|its)\s*$|^\s*(her|his|its)\b\s+\w+ing\b", re.I)
+SAFE_CUE = "soft leaves and small birds"
+
+
 async def _record_sfx(catalog: str, prompt: str, seconds: float, key: str,
                       filename: str) -> Optional[Path]:
     """One cached sound-design cue via eleven_text_to_sound_v2."""
@@ -3781,22 +3785,35 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # into the next panel's mouth.
         _seg_real = _probe_seconds(seg) or need
         if _seg_real < need - 0.05:
-            _factor = min(1.35, need / max(0.1, _seg_real))
+            # NEVER A FREEZE-FRAME (Lars, 2026-09-03: "the clip stops and
+            # turns into a still image" — 26 of 135 shots in v6 ended on a
+            # frozen last frame from tpad=clone). A short take is first
+            # stretched (≤1.5× reads as slow motion, not as a fault); if the
+            # words still need more, the tail BOUNCES — the last stretch plays
+            # backwards and forwards again — so the picture keeps breathing
+            # until the line ends. The bounce covers up to two more take
+            # lengths, more than any line on a 10s take needs.
             _fixed = seg.with_name(seg.stem + "-held.mp4")
-            _hold = max(0.0, need - _seg_real * _factor)
+            _factor = min(1.5, need / max(0.1, _seg_real))
+            _stretched = _seg_real * _factor
+            _hold = max(0.0, need - _stretched)
+            if _hold > 0.02:
+                _tail = max(0.5, min(_stretched - 0.05, _hold + 0.6))
+                _fc = (f"[0:v]setpts=PTS*{_factor:.4f},fps=24,split=3[a][b][c];"
+                       f"[b]trim=start={_stretched - _tail:.3f},setpts=PTS-STARTPTS,reverse[r];"
+                       f"[c]trim=start={_stretched - _tail:.3f},setpts=PTS-STARTPTS[f];"
+                       f"[a][r][f]concat=n=3:v=1:a=0,trim=0:{need:.2f},setpts=PTS-STARTPTS[v]")
+            else:
+                _fc = f"[0:v]setpts=PTS*{_factor:.4f},fps=24,trim=0:{need:.2f},setpts=PTS-STARTPTS[v]"
             # the segments carry PICTURE ONLY (shots are shot audio=False;
-            # every sound is added in the mix), so an [0:a] chain here made
-            # ffmpeg refuse the whole command and the guard silently did
-            # nothing — the exact bug Lars heard as voices crashing.
-            _run(["-y", "-i", str(seg), "-an", "-filter_complex",
-                  f"[0:v]setpts=PTS*{_factor:.4f},fps=24"
-                  + (f",tpad=stop_mode=clone:stop_duration={_hold + 0.4:.2f}" if _hold > 0.02 else "")
-                  + f",trim=0:{need:.2f},setpts=PTS-STARTPTS[v]",
+            # every sound is added in the mix), so no [0:a] chain here.
+            _run(["-y", "-i", str(seg), "-an", "-filter_complex", _fc,
                   "-map", "[v]", "-c:v", "libx264",
                   "-preset", "fast", "-crf", "18", str(_fixed)], f"seg hold {i}")
             if _fixed.exists() and _fixed.stat().st_size > 10_000:
                 import shutil as _sh2
                 _sh2.move(str(_fixed), str(seg))
+            pn["tail_bounce"] = round(_hold, 2)
         segs.append(seg)
         if vo_files[i]:
             cues.append((vo_files[i], t + off + 0.15, 1.0))
@@ -3809,6 +3826,19 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # the five-second voice drift Lars heard in the first film
         # (2026-08-30). Trailers never showed it; films did.
         t += (_probe_seconds(seg) or need)
+    # THE CUT IS SCANNED FOR FREEZE-FRAMES (law 53). A frozen tail means the
+    # hold logic above failed or a take is broken; it is reported by shot so
+    # a film is never called finished with a still in it.
+    from .takecheck import frozen_tail as _frozen_tail
+    _frozen = []
+    for (_i, _pn, _t), _seg in zip(panel_starts, segs):
+        _fz = _frozen_tail(_seg)
+        _pn["frozen_tail"] = _fz
+        if _fz >= 0.5:
+            _frozen.append(f"{_pn.get('n')} ({_fz:.1f}s)")
+    if isinstance(board_check, dict):
+        board_check["frozen_tails"] = _frozen
+    print(f"[cut] frozen tails: {len(_frozen)}" + (" — " + ", ".join(_frozen) if _frozen else ""), flush=True)
     # the series name over the opening beat, while the theme plays alone
     series_title = ((book["data"].get("series") or {}).get("series_title") or "").strip()
     if lead_in >= 1.5 and series_title and segs:
@@ -3934,6 +3964,13 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # this shot describes, that recording is used, always.
         cue = _house_sfx(catalog, snd, pn)
         if cue is None:
+            # A CUE IS A WHOLE PHRASE OF REAL SOUNDS (law 52). A dangling
+            # fragment ("fading into dusty", "her echoing softly") comes back
+            # from the SFX model as a voice. Such a cue is replaced, loudly.
+            if _DANGLING_CUE.search(snd) or len(snd.split()) < 3:
+                print(f"[sfx] cue on shot {pn.get('n')} is a fragment ({snd!r}) — using a safe cue", flush=True)
+                snd = SAFE_CUE
+                pn["sound"] = snd
             cue = await _record_sfx(catalog, snd, min(4.0, float(pn.get("dur") or 4)),
                                     f"sfx-sb-{_h(snd)}", f"sfx-sb-{_h(snd)}.mp3")
         if cue:

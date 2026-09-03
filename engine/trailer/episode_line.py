@@ -78,7 +78,7 @@ async def prewarm_score(catalog: str, board: dict, label: str = "film"):
 
 
 async def draw_and_check_stills(catalog: str, board: dict, profile: dict,
-                                rounds: int = 2):
+                                rounds: int = 2, only=None):
     """Draw every shot, then READ THE DRAWINGS BACK and repair the failures.
 
     The check used to exist and was never called (2026-09-01): the function
@@ -90,12 +90,14 @@ async def draw_and_check_stills(catalog: str, board: dict, profile: dict,
     """
     from .shotstills import draw_shot_stills
     from .verify import verify_stills
-    r = await draw_shot_stills(catalog, board, profile)
+    # `only` = a named repair: those pictures are drawn and read again, the
+    # rest of the board is left exactly as approved (2026-09-03).
+    r = await draw_shot_stills(catalog, board, profile, only=set(str(x) for x in only) if only else None)
     n = len(r.get("stills") or {})
     _log(f"stills ready: {n} of {len(board.get('panels') or [])}")
 
     flagged = {}
-    redrawn = None            # None = the first pass reads every picture
+    redrawn = [str(x) for x in only] if only else None   # None = the first pass reads every picture
     for rd in range(rounds + 1):
         # ONLY WHAT CHANGED GETS READ AGAIN (2026-09-02). Every round used
         # to re-read all 146 pictures when only the redrawn ones could have
@@ -543,7 +545,7 @@ async def run_episode(catalog: str, profile: dict, stop_at_animatic: bool = True
     return await finish_episode(catalog, board, profile, t0)
 
 
-async def finish_episode(catalog: str, board: dict, profile: dict, t0=None) -> dict:
+async def finish_episode(catalog: str, board: dict, profile: dict, t0=None, reshoot=None) -> dict:
     """Shoot the approved stills and finish the episode."""
     from .selftest import check_gates
     # THE GATES ARE CHECKED BEFORE THE MONEY IS SPENT. Every protection in
@@ -563,7 +565,7 @@ async def finish_episode(catalog: str, board: dict, profile: dict, t0=None) -> d
     board["characters"] = {**(board.get("characters") or {}),
                            **((await draw_cast_plates(catalog)).get("plates") or {})}
     total_s = sum(float(p.get("dur") or 4) for p in board["panels"])
-    r = await produce_storyboard(catalog, board, format_name="wide",
+    r = await produce_storyboard(catalog, board, format_name="wide", reshoot=reshoot,
                                  version_label="film",
                                  max_seconds=int(total_s * 1.35) + 30)
     film = Path(OUTPUT_DIR) / catalog / str(r.get("file") or "trailer.mp4")

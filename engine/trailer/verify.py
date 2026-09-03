@@ -108,6 +108,11 @@ WORLD_QUESTIONS = [
     "body in an impossible place?",
     "Is any ribbon, rope, string or vine strung BETWEEN two characters, joining "
     "one to the other, when nothing in the scene should connect them?",
+    # THE BRANCH LIVES ONLY IN ITS OWN SHOTS (Lars, 2026-09-03: "the branch
+    # keeps showing up in the clips after it's been lifted away"). 12 of 102
+    # later stills carried a log or branch nobody asked for.
+    "Is there a fallen tree branch, log, or large stick lying on the ground, "
+    "across a path or in the water anywhere in this picture?",
 ]
 
 # Questions 5 and 6 only apply where the story did not ask for the thing.
@@ -120,6 +125,7 @@ WORLD_QUESTIONS = [
 # A rule that can never be satisfied is worse than no rule: it spends money
 # in a loop and never converges.
 CONDITIONAL = {4: r"\b(caves?|openings?|holes?|cracks?|tunnels?|hollows?|dens?|mouth of)\b",
+               8: r"\b(branch(es)?|logs?|sticks?|twigs?)\b",
                5: r"\b(stones?|boulders?|rocks?)\b"}
 
 
