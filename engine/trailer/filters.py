@@ -186,14 +186,7 @@ GEN4_RATE = 5.0
 
 
 def camera_for(pn: dict, need: float, camera: str = "gen4") -> str:
-    """'drift' | 'seedance' | 'gen4'. A wide shot never buys a take; a shot
-    whose words outrun a 5s take (>7.5s after the 1.5x stretch) drifts unless
-    it is a medium/close character moment."""
-    framing = str(pn.get("framing") or "").lower()
-    if not (pn.get("present") or []):
-        return "drift"
-    if framing == "wide":
-        return "drift"
-    if float(need or 0) > 7.5 and framing == "detail":
-        return "drift"
+    """'seedance' | 'gen4'. NEVER 'drift' (Lars, 2026-09-03: "No drifts. We
+    want the best quality film. No cheating."). Every shot, wide or close,
+    is a real animated take."""
     return "seedance" if camera == "seedance" else "gen4"

@@ -3294,7 +3294,9 @@ def _remember_map(catalog: str, pn: dict, clip: Path) -> None:
     try:
         f = OUTPUT_DIR / catalog / "trailer" / "takes-map.json"
         d = json.loads(f.read_text()) if f.exists() else {}
-        d[str(pn.get("n"))] = Path(clip).name
+        # the map is per camera: a gen4 take is never handed to a Seedance shot
+        _k = str(pn.get("n")) + (f"@{pn.get('camera')}" if pn.get("camera") and pn.get("camera") != "gen4" else "")
+        d[_k] = Path(clip).name
         f.write_text(json.dumps(d, indent=0))
     except Exception:
         pass
@@ -3317,7 +3319,8 @@ def _adopt_takes(catalog: str, tdir: Path, plans: list) -> int:
     n = 0
     for pl in plans:
         pn, clip = pl["pn"], pl["clip"]
-        _t = _map.get(str(pn.get("n")))
+        _mk = str(pn.get("n")) + (f"@{pn.get('camera')}" if pn.get("camera") and pn.get("camera") != "gen4" else "")
+        _t = _map.get(_mk)
         if not clip.exists() and _t and (tdir / _t).exists() and _judged_ok(catalog, tdir / _t):
             try:
                 os.link(str(tdir / _t), str(clip))
@@ -3332,6 +3335,8 @@ def _adopt_takes(catalog: str, tdir: Path, plans: list) -> int:
         sp = tdir / str(pn.get("still") or "")
         if clip.exists() or not pn.get("still") or not sp.exists():
             continue
+        if pn.get("camera") and pn.get("camera") != "gen4":
+            continue            # frame matching only ever finds gen4 takes; a Seedance shot buys its own
         ss = _frame_signature(sp)
         _since = sp.stat().st_mtime - 60
         for tid, rec in idx.items():
@@ -3756,10 +3761,10 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             # seconds and two reads, and it is the only thing standing
             # between an invented bear and the cut.
             _ledger_ok = _take_valid(catalog, pl["key"], pl["src"], clip, grandfather=False)
-            if pn.get("camera") in ("seedance", "drift"):
+            if pn.get("camera") == "seedance":
                 # judged by identity at shoot time and remembered; a banked
                 # reference take is reused as it stands
-                if _judged_ok(catalog, clip) or pn.get("camera") == "drift":
+                if _judged_ok(catalog, clip):
                     _remember_map(catalog, pn, clip); pn.pop("take_problem", None)
                     return
                 clip.rename(clip.with_name(clip.stem + ".stale.mp4"))
@@ -3849,13 +3854,6 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             # Seedance 2.5 WITH the universe's plates as references — the way
             # the intro and the lullaby were shot — judged by identity against
             # those plates, two paid tries, then the drift.
-            if pn.get("camera") == "drift" and _sp is not None:
-                _hold_on_still(clip, _sp, max(3.0, float(need)))
-                pn.pop("take_problem", None); pn["drift"] = True
-                _remember_judged(catalog, clip, "drift"); _remember_map(catalog, pn, clip)
-                _remember_take(catalog, pl["key"], pl["src"])
-                print(f"[camera] shot {pn.get('n')}: drift over the approved picture ({float(need):.1f}s, 0 credits)", flush=True)
-                return
             if pn.get("camera") == "seedance" and _sp is not None:
                 from .filters import SEEDANCE_RATE as _SD_RATE
                 from .takecheck import check_take_refs as _check_refs, de_name as _de_name2
@@ -3890,7 +3888,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                 _shot_txt = _de_name2(str(pn.get("shot") or ""), _prof)
                 _cartoon = ("Stylized 2D children's animation, a storybook illustration in motion, soft painterly cartoon rendering — "
                             "NEVER photorealistic, no real-animal anatomy, no realistic fur or skin texture. ")
-                for attempt in range(2):
+                for attempt in range(3):
                     from .filters import motion_for_attempt as _mfa
                     _motion, _lint = _mfa(pn.get("motion") or "", attempt, _prof)
                     _prompt = f"{_cartoon}{_shot_txt} {_motion} {_style} No text or lettering on screen. No music, no speech, no voices.{_who}".strip()
@@ -3913,13 +3911,10 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     pn["take_problem"] = "; ".join(_v["reasons"])[:200]
                     print(f"[judge] shot {pn.get('n')} seedance try {attempt + 1} refused: {_v['reasons'][0][:110]}", flush=True)
                     clip.rename(clip.with_name(clip.stem + f".bad{attempt}.mp4"))
-                # two refused: the picture holds with a drift
-                _hold_on_still(clip, _sp, max(3.0, float(need)))
-                pn["held_on_still"] = pn.pop("take_problem", "")[:160]; pn["drift"] = True
-                _remember_judged(catalog, clip, "drift"); _remember_map(catalog, pn, clip)
-                _remember_take(catalog, pl["key"], pl["src"])
-                print(f"[camera] shot {pn.get('n')}: holds on its picture after two refused seedance takes", flush=True)
-                return
+                # THREE REFUSED: THE RUN STOPS AND NAMES THE SHOT (Lars, 2026-09-03:
+                # "No cheating") — never a picture pretending to be a take.
+                raise RuntimeError(f"shot {pn.get('n')}: three Seedance takes refused ({pn.get('take_problem', '')[:120]}) — "
+                                   "the shot needs a decision (rewrite the motion, redraw the picture, or accept a take by eye)")
             for attempt in range(16):
                 if _still_uri:
                     # WHAT MOVES IS ITS OWN INSTRUCTION (Lars, 2026-09-01:
@@ -4108,7 +4103,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             _spx = _still_path_of(pl["pn"])
             if _spx is None:
                 continue
-            if pl["pn"].get("held_on_still") or pl["pn"].get("camera") in ("seedance", "drift"):
+            if pl["pn"].get("held_on_still") or pl["pn"].get("camera") == "seedance":
                 continue
             _m = _take_matches_still(pl["clip"], _spx)
             if _off_board(_m) or pl["pn"].get("take_problem"):      # filter board_gate

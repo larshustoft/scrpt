@@ -353,4 +353,11 @@ def check_gates() -> list:
     if not hasattr(_TC2, "check_take_refs"):
         bad.append("reference takes have no identity judge")
 
+    # 44. NO DRIFTS, NO CHEATING (Lars, 2026-09-03): the camera never returns
+    # a drift, and a shot refused three times stops the run instead of
+    # holding on its picture.
+    from . import filters as _F3
+    if '"drift"' in inspect.getsource(_F3.camera_for) or "three Seedance takes refused" not in inspect.getsource(P.produce_storyboard):
+        bad.append("a shot can again be a zoom over a still instead of a take")
+
     return bad

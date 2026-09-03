@@ -153,9 +153,9 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     _est = 0.0
     for p in board["panels"]:
         c = camera_for(p, float(p.get("dur") or 5), _cam)
-        _est += 0 if c == "drift" else MAX_TAKE_SECONDS * (SEEDANCE_RATE if c == "seedance" else GEN4_RATE)
+        _est += MAX_TAKE_SECONDS * (SEEDANCE_RATE if c == "seedance" else GEN4_RATE)
     credits_cap = int(_est * 1.4) + 200
-    log(f"camera: {_cam} for character shots, drift for wide shots — estimated {int(_est)} credits first pass")
+    log(f"camera: {_cam} for every shot — estimated {int(_est)} credits first pass")
     # A PERSON MAY SET A TIGHTER CAP FOR A PARTIAL RE-SHOOT (2026-09-02)
     if os.environ.get("SCRPT_CREDITS_CAP"):
         credits_cap = min(credits_cap, int(os.environ["SCRPT_CREDITS_CAP"]))
