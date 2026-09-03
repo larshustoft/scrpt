@@ -98,7 +98,8 @@
    "castle-courtyard": "locations/castle-courtyard.png",
    "castle-great-hall": "locations/castle-great-hall.png",
    "princess-tower-room": "locations/princess-tower-room.png",
-   "castle-balcony-dusk": "locations/castle-balcony-dusk.png"
+   "castle-balcony-dusk": "locations/castle-balcony-dusk.png",
+   "cave-entrance-cliff": "locations/cave-entrance-cliff.png"
   },
   "props": {
    "white-stone": {
@@ -213,7 +214,8 @@
    "castle-courtyard": "Inside the castle walls: a sunny cobbled courtyard with a small fountain, flower boxes at every window, a round tower, pennants in a soft wind, no characters",
    "castle-great-hall": "The castle's great hall: tall arched windows full of daylight, a long carpet to a pair of gentle thrones woven with flowers, banners with a rainbow and a bell, warm and welcoming, no characters",
    "princess-tower-room": "Princess's little round tower room: a bed of soft straw and cushions, a round window looking over the valley, a shelf of shells and feathers, morning light, no characters",
-   "castle-balcony-dusk": "A castle balcony at dusk looking out over the whole valley, the rainbow forest darkening below, the first stars, warm lamp light from the doorway, no characters"
+   "castle-balcony-dusk": "Seen from a balcony OF the castle at dusk: the stone balustrade and a warm lit doorway in the foreground, and beyond it only the valley — Rainbow Forest darkening below, the river catching the last light, meadows, blue mountains and the first stars. There is NO castle, tower or building anywhere in the view; we are standing in the castle looking out. No characters, no text.",
+   "cave-entrance-cliff": "The entrance of the cave in the pale cliff: a tall dark crack in the white-grey rock at the foot of the mountain, moss and ferns around it, a thin trickle of water running out over stones into the clearing — the same pale rock, the same clearing and the same light as the spring outlet, seen from a few steps back so the whole crack is visible. No characters, no text."
   },
   "place_exemptions": {
    "cliff-crack": [
@@ -313,7 +315,8 @@
    "castle-courtyard": "9e8aa1d6018f5b8b9fe71d1c93d02e84",
    "castle-great-hall": "4fbb54c8b5bbf064cc1cbba13d17b0d4",
    "princess-tower-room": "0cba75f1f77574f478a32004dc04ecac",
-   "castle-balcony-dusk": "c41de7ebe828bbccc5a78cd60d7d6641"
+   "castle-balcony-dusk": "09d3de5a12897e0f702a962c02f3397a",
+   "cave-entrance-cliff": "fe5aff316f4243270646db9e3921630f"
   },
   "atlas": {
    "note": "Show Bible extension (Lars, 2026-09-03): the universe defined in wide pictures, each approved once and reused as the place plate for every shot set there.",
@@ -334,7 +337,8 @@
     "castle-courtyard": "Inside the castle walls: a sunny cobbled courtyard with a small fountain, flower boxes at every window, a round tower, pennants in a soft wind, no characters",
     "castle-great-hall": "The castle's great hall: tall arched windows full of daylight, a long carpet to a pair of gentle thrones woven with flowers, banners with a rainbow and a bell, warm and welcoming, no characters",
     "princess-tower-room": "Princess's little round tower room: a bed of soft straw and cushions, a round window looking over the valley, a shelf of shells and feathers, morning light, no characters",
-    "castle-balcony-dusk": "A castle balcony at dusk looking out over the whole valley, the rainbow forest darkening below, the first stars, warm lamp light from the doorway, no characters"
+    "castle-balcony-dusk": "Seen from a balcony OF the castle at dusk: the stone balustrade and a warm lit doorway in the foreground, and beyond it only the valley — Rainbow Forest darkening below, the river catching the last light, meadows, blue mountains and the first stars. There is NO castle, tower or building anywhere in the view; we are standing in the castle looking out. No characters, no text.",
+    "cave-entrance-cliff": "The entrance of the cave in the pale cliff: a tall dark crack in the white-grey rock at the foot of the mountain, moss and ferns around it, a thin trickle of water running out over stones into the clearing — the same pale rock, the same clearing and the same light as the spring outlet, seen from a few steps back so the whole crack is visible. No characters, no text."
    }
   },
   "object_sets_note": "Every story declares its object set: each object has ONE approved image per STATE (e.g. white-stone: alone / in-the-hole / hole-empty). A shot names the state it shows; the still is drawn with that state's plate and only that."
@@ -424,6 +428,11 @@
     "md5": "92bde36f5921705798c4b92d78d6c2fb",
     "state_of": "glitter-bell",
     "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon dangling from its ribbon held gently in a small white unicorn foal's teeth, close on the muzzle and bell"
+   },
+   "bells-together": {
+    "file": "props/bells-together.png",
+    "md5": "f981189af576ac2ad58be2a0bd4f5a66",
+    "brief": "Glitter's bell (plum-size) and Princess's bell (cherry-size) side by side — the size chart of the bells"
    }
   },
   "props_note": "Universe objects. Each has one plate, drawn once and kept here with its hash; every episode copies it in and verifies it before drawing. The bell (Lars, 2026-09-02): Glitter's silver bell on a lilac ribbon, and Princess's — the same bell a little smaller, on a sky-blue ribbon — are the same object at two sizes.",
