@@ -3522,10 +3522,16 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     # opening establishes and the last one carries the title card.
     _budget = (max_seconds or MAX_TRAILER_SECONDS) - END_CARD_SECONDS
     _idx = list(range(len(panels)))
-    while len(_idx) > 3 and sum(_panel_seconds(i, panels[i]) for i in _idx) > _budget:
-        _idx.pop(len(_idx) // 2)
+    # AN EPISODE IS NEVER TRIMMED (2026-09-03). This house-minute trim is a
+    # TRAILER rule; applied to the film it silently dropped the eleven
+    # middle panels of the board — Pip giving directions and Moss's whole
+    # entrance — from v4, v5, v6 and v7, and told only a progress bar.
+    if version_label != "film":
+        while len(_idx) > 3 and sum(_panel_seconds(i, panels[i]) for i in _idx) > _budget:
+            _idx.pop(len(_idx) // 2)
     if len(_idx) < len(panels):
         _dropped = [panels[i].get("n", i + 1) for i in range(len(panels)) if i not in _idx]
+        print(f"[board] trimmed to the house limit — dropped panel(s) {', '.join(str(d) for d in _dropped)}", flush=True)
         panels = [panels[i] for i in _idx]
         vo_files = [vo_files[i] for i in _idx]
         vo_durs = [vo_durs[i] for i in _idx]
@@ -4118,6 +4124,13 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     # THE JOIN KEEPS EVERY SECOND (2026-09-03). Segments on mismatched clocks
     # silently shrank the picture by 47s; a join that is not the sum of its
     # parts is a broken join, and the run says so instead of shipping it.
+    if version_label == "film":
+        _with_pictures = [str(p.get("n")) for p in (board.get("panels") or []) if p.get("still")]
+        _in_cut = {str(pl["pn"].get("n")) for pl in plans}
+        _missing = [n_ for n_ in _with_pictures if n_ not in _in_cut]
+        if _missing:
+            raise RuntimeError(f"the film is missing {len(_missing)} panel(s) that have pictures: "
+                               f"{' '.join(_missing[:12])} — an episode carries every shot on its board")
     _sum = sum((_probe_seconds(s_) or 0.0) for s_ in segs)
     _got = _probe_seconds(footage) or 0.0
     if abs(_sum - _got) > 1.0:

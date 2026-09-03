@@ -305,4 +305,10 @@ def check_gates() -> list:
     if "_h(prompt + ratio" in _ps2 or "_adopt_takes(" not in _ps2:
         bad.append("editing one world rule can again re-shoot the whole film")
 
+    # 37. An episode is never trimmed to the trailer minute, and a film that
+    # lacks a panel with a picture stops at the join and names it.
+    _ps3 = inspect.getsource(P.produce_storyboard)
+    if 'if version_label != "film":' not in _ps3 or "the film is missing" not in _ps3:
+        bad.append("the trailer's house minute can again drop the middle of an episode")
+
     return bad
