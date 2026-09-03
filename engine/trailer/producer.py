@@ -3880,6 +3880,11 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                         _v = await _check_take(clip, _sp)
                         if not _v["ok"]:
                             pn["take_problem"] = "; ".join(_v["reasons"])[:200]
+                            # THE REFUSAL IS IN THE LOG (2026-09-03): 17 takes were
+                            # refused on the short and the log said nothing — the
+                            # reasons only went to a progress bar. Money spent must
+                            # leave a line that says why.
+                            print(f"[judge] shot {pn.get('n')} try {attempt + 1} refused: {_v['reasons'][0][:110]}", flush=True)
                             if handle:
                                 handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
                                                 f"panel {pn.get('n')} — {_v['reasons'][0][:70]} — shooting again")
