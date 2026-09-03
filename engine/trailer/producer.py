@@ -3259,6 +3259,61 @@ def _remember_judged(catalog: str, path: Path, verdict: str = "ok") -> None:
         pass
 
 
+def _take_index(tdir: Path) -> dict:
+    """Frame-0 signatures of every plain take on disk, cached by file identity."""
+    f = tdir / "takes-index.json"
+    try:
+        idx = json.loads(f.read_text()) if f.exists() else {}
+    except Exception:
+        idx = {}
+    changed = False
+    for t in tdir.glob("sb-*.mp4"):
+        if not re.fullmatch(r"sb-[0-9a-f]{10}\.mp4", t.name):
+            continue
+        tid = _take_id(t)
+        if tid in idx and idx[tid].get("name") == t.name:
+            continue
+        fr = tdir / "_adopt-frame.png"
+        try:
+            subprocess.run([_ffmpeg(), "-y", "-ss", "0", "-i", str(t), "-frames:v", "1", "-vf", "scale=320:-1", str(fr)],
+                           capture_output=True, timeout=60)
+            idx[tid] = {"name": t.name, "sig": _frame_signature(fr)}
+            changed = True
+        except Exception:
+            continue
+    if changed:
+        try:
+            f.write_text(json.dumps(idx))
+        except Exception:
+            pass
+    return idx
+
+
+def _adopt_take(catalog: str, tdir: Path, pn: dict, clip: Path) -> bool:
+    """No take under this key yet: adopt a banked take that opens on this
+    exact picture and has already passed the judge (memo), instead of buying
+    one. Keys change when a motion line or a still changes; a take that was
+    judged good for this picture is good for this picture."""
+    sp = _still_path_of(pn)
+    if sp is None or not Path(sp).exists():
+        return False
+    ss = _frame_signature(sp)
+    best, best_m = None, 0.0
+    for tid, rec in _take_index(tdir).items():
+        m = _sig_match(rec.get("sig") or [], ss)
+        if m > best_m:
+            best, best_m = rec.get("name"), m
+    if best and best_m >= 0.85 and _judged_ok(catalog, tdir / best):
+        try:
+            os.link(str(tdir / best), str(clip))
+        except Exception:
+            import shutil as _shc
+            _shc.copy2(str(tdir / best), str(clip))
+        print(f"[takes] shot {pn.get('n')}: adopted banked take {best} ({best_m:.2f}) — no new take bought", flush=True)
+        return True
+    return False
+
+
 def _hold_on_still(clip, still, secs: float) -> None:
     """A slow push-in on the approved still, silent — used when a shot may
     not be filmed (picture failed) or the camera refused it three times."""
@@ -3475,7 +3530,14 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # a delivered film were not the pictures on the approved board.
         # The still's bytes are in the key now, so redrawing a picture
         # always costs a new take and can never resurrect an old one.
-        clip = tdir / (f"sb-{_h(prompt + ratio + str(secs) + str(pn.get('motion') or '') + _still_fingerprint(catalog, pn))}.mp4")
+        # A TAKE IS NAMED BY WHAT THE CAMERA SAW (2026-09-03): the still's
+        # bytes, the motion line, the length, the ratio — and NOT the still's
+        # drawing prompt. The prompt carries the world rules, so adding one
+        # sentence to the universe changed every key and the run set out to
+        # re-shoot all 135 shots (~4,500 credits); the cap caught it.
+        clip = tdir / (f"sb-{_h(ratio + str(secs) + str(pn.get('motion') or '') + _still_fingerprint(catalog, pn))}.mp4")
+        if not clip.exists():
+            _adopt_take(catalog, tdir, pn, clip)
         if reshoot and str(pn.get("n")) in {str(x) for x in reshoot} and clip.exists():
             # the publisher asked for a fresh take of THIS scene — the old
             # take is banked, never destroyed, and only this panel re-shoots
@@ -3486,7 +3548,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # re-made it when those inputs changed. Picture alone trusted the
         # file name — which is the whole reason a delivered film was cut
         # from footage of older, different pictures.
-        take_src = (f"{prompt}|{ratio}|{secs}|{pn.get('motion') or ''}|"
+        take_src = (f"{ratio}|{secs}|{pn.get('motion') or ''}|"
                     f"{_still_fingerprint(catalog, pn)}")
         plans.append({"i": i, "pn": pn, "prompt": prompt, "refs": refs,
                       "secs": secs, "clip": clip, "need": need, "off": off,

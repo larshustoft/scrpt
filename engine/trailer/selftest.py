@@ -298,4 +298,11 @@ def check_gates() -> list:
     if "location_md5" not in inspect.getsource(_EL.establish_world):
         bad.append("a random read can again tear up an approved location plate")
 
+    # 36. A take is keyed by what the camera saw (still bytes, motion, length,
+    # ratio) — never by the drawing prompt — and a banked, judged take is
+    # adopted under a new key before any take is bought.
+    _ps2 = inspect.getsource(P.produce_storyboard)
+    if "_h(prompt + ratio" in _ps2 or "_adopt_take(" not in _ps2:
+        bad.append("editing one world rule can again re-shoot the whole film")
+
     return bad
