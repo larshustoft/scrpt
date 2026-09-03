@@ -126,7 +126,44 @@ WORLD_QUESTIONS = [
 # in a loop and never converges.
 CONDITIONAL = {4: r"\b(caves?|openings?|holes?|cracks?|tunnels?|hollows?|dens?|mouth of)\b",
                8: r"\b(branch(es)?|logs?|sticks?|twigs?)\b",
+               # a vine/rope the shot itself puts in their hands is not a stray ribbon
+               7: r"\b(vines?|ropes?|ribbons?|strings?|pull(s|ing)?|taut)\b",
                5: r"\b(stones?|boulders?|rocks?)\b"}
+
+
+SCENERY_QUESTIONS = {4, 5, 8}      # cave, big boulder, fallen branch — things a place has, not a character
+_MASTER_CACHE: dict = {}
+
+
+async def _master_has(board: dict, tdir, pn: dict, qidx: list) -> list:
+    """Which of the scenery questions `qidx` are ALSO true for the approved
+    still this shot continues. Read once per master picture, then cached."""
+    srcs = [x.strip() for x in str(pn.get("continues") or "").split(",") if x.strip()]
+    byn = {str(p.get("n")): p for p in (board.get("panels") or [])}
+    waived = set()
+    for src in srcs:
+        m = byn.get(src)
+        if not m:
+            continue
+        f = tdir / str(m.get("still") or "")
+        if not f.exists():
+            continue
+        key = (str(f), tuple(sorted(qidx)))
+        if key not in _MASTER_CACHE:
+            try:
+                qs = "\n".join(f"{k+1}. {WORLD_QUESTIONS[i]}" for k, i in enumerate(qidx))
+                raw = await complete_vision("You check pictures against a set of rules. JSON only.",
+                                            f"Answer these questions about this picture:\n{qs}\n\n"
+                                            'Return {"answers": [true/false … one per question …]} where true means YES, the thing IS there.',
+                                            f.read_bytes())
+                a = (extract_json(raw) or {}).get("answers") or []
+                _MASTER_CACHE[key] = {i for k, i in enumerate(qidx) if k < len(a) and a[k] is True}
+            except OutOfCredits:
+                raise
+            except Exception:
+                _MASTER_CACHE[key] = set()
+        waived |= _MASTER_CACHE[key]
+    return [i for i in qidx if i in waived]
 
 
 async def verify_stills(catalog: str, board: dict, handle=None, limit: int = 0,
@@ -222,8 +259,21 @@ async def verify_stills(catalog: str, board: dict, handle=None, limit: int = 0,
                     f.read_bytes())
                 d = extract_json(raw) or {}
                 a = d.get("answers") or []
-                flags = [WORLD_QUESTIONS[i][:60] for i, v in enumerate(a)
+                fired = [i for i, v in enumerate(a)
                          if v is True and i not in allowed and i < len(WORLD_QUESTIONS)]
+                # SCENERY IS INHERITED FROM THE MASTER (2026-09-03). Shot 28
+                # continues shot 17; shot 17 (approved, in the film) has a pale
+                # rock cutting; shot 28 was refused four times for "a large
+                # pale boulder" that continuity itself put there. A scenery
+                # rule (cave, boulder, branch) that also holds for the
+                # approved picture this shot continues is waived, and said so.
+                _inherit = [i for i in fired if i in SCENERY_QUESTIONS]
+                if _inherit and (pn.get("continues") or ""):
+                    _waived = await _master_has(board, tdir, pn, _inherit)
+                    for i in _waived:
+                        fired.remove(i)
+                        print(f"[stills] shot {pn.get('n')}: '{WORLD_QUESTIONS[i][:40]}…' inherited from shot {pn.get('continues')}", flush=True)
+                flags = [WORLD_QUESTIONS[i][:60] for i in fired]
                 if line and d.get("shows_the_shot") is False:
                     flags.append("not the shot on the board: "
                                  + str(d.get("why_not") or "")[:90])
