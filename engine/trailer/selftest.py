@@ -207,7 +207,7 @@ def check_gates() -> list:
     if not bad:
         _PASSED_IN_THIS_PROCESS = True
     # 21. A take is judged on its whole length, and motion lines carry no names.
-    if "_check_take" not in src or "_de_name" not in src:
+    if "_check_take" not in src or ("_de_name" not in src and "_motion_for_attempt" not in src):
         bad.append("takes are no longer judged along their length, or motion lines "
                    "carry character names — a human or a bear could walk into a take")
     from . import takecheck as _TC
@@ -250,5 +250,24 @@ def check_gates() -> list:
     _ps = inspect.getsource(P.produce_storyboard)
     if "frozen_tails" not in _ps or "_DANGLING_CUE" not in _ps:
         bad.append("the cut no longer scans for freeze-frames / fragment sound cues")
+
+    # 29. THE FILTER CHAIN IS WIRED (Lars, 2026-09-03: "a string of filters
+    # that runs in the creation of animation films"). Every filter in
+    # filters.CHAIN must be referenced from the function that has to call
+    # it — a filter nobody calls is not a filter.
+    import importlib
+    from . import filters as _F
+    for _e in _F.CHAIN:
+        _modname, _fn = _e["where"].split(".", 1)
+        try:
+            _mod = importlib.import_module(f"engine.trailer.{_modname}")
+            _obj = _mod
+            for _part in _fn.split("."):
+                _obj = getattr(_obj, _part)
+            _src = inspect.getsource(_obj)
+        except Exception as _ex:
+            bad.append(f"filter {_e['name']}: {_e['where']} cannot be read ({str(_ex)[:40]})"); continue
+        if _e.get("needle", _e["name"]) not in _src:
+            bad.append(f"filter {_e['name']} is not wired into {_e['where']}")
 
     return bad

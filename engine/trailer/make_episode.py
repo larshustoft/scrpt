@@ -230,6 +230,10 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     if reshoot:
         log(f"re-shooting by order: {' '.join(str(x) for x in reshoot)}")
     r = await finish_episode(catalog, board, profile, t0, reshoot=list(reshoot or []))
+    from .filters import report as _filters_report
+    r["filters"] = _filters_report(board)          # what the chain stopped, by filter
+    _acted = {k: v["acted"] for k, v in r["filters"].items() if v["acted"]}
+    log("filter chain: " + (", ".join(f"{k} {v}" for k, v in _acted.items()) or "nothing stopped"))
     after = await credit_balance()
     r["credits_spent"] = max(0, before - after)
     r["credits_left"] = after

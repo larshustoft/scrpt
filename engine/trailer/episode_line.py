@@ -119,6 +119,15 @@ async def draw_and_check_stills(catalog: str, board: dict, profile: dict,
                 f"{chk.get('checked')} pictures, so nothing can be judged or "
                 f"redrawn: {list(unchecked.values())[0][0]}")
         flagged = all_flags
+        # EVERY CHECKED PICTURE CARRIES ITS VERDICT (filter chain, 2026-09-03):
+        # the shoot's pre-flight refuses to film a picture whose still_check
+        # is not "ok" — a redrawn-and-failed picture never costs a take.
+        for _p in board["panels"]:
+            _n = str(_p.get("n"))
+            if _n in flagged:
+                _p["still_check"] = str(flagged[_n][0])[:160]
+            elif redrawn is None or _n in redrawn:
+                _p["still_check"] = "ok"
         # EVERY REJECTION TEACHES THE UNIVERSE (Lars, 2026-09-02: "build a
         # system that will make future films automatic on the first try").
         # Recorded here, read back into every future drawing prompt once a

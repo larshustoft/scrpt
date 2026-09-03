@@ -3187,6 +3187,20 @@ def _cap_to_house_length(panels: list, handle=None,
     return kept
 
 
+def _hold_on_still(clip, still, secs: float) -> None:
+    """A slow push-in on the approved still, silent — used when a shot may
+    not be filmed (picture failed) or the camera refused it three times."""
+    _fn = max(12, int(round(secs * 24))); _W2, _H2 = 1280, 720
+    _vf = (f"scale={_W2*2}:{_H2*2}:force_original_aspect_ratio=increase,"
+           f"crop={_W2*2}:{_H2*2},"
+           f"zoompan=z='min(1+0.08*on/{_fn},1.08)':d={_fn}:"
+           f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={_W2}x{_H2}:fps=24,format=yuv420p")
+    _run(["-y", "-loop", "1", "-i", str(still), "-f", "lavfi", "-i",
+          "anullsrc=r=48000:cl=stereo", "-vf", _vf, "-frames:v", str(_fn),
+          "-t", f"{secs:.2f}", "-shortest", "-c:v", "libx264", "-preset", "fast",
+          "-crf", "20", "-c:a", "aac", "-b:a", "96k", str(clip)], "hold on still")
+
+
 async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide",
                              handle=None, version_label: str = "storyboard",
                              reshoot=None, no_new_shots: bool = False,
@@ -3555,6 +3569,17 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                         pn["held_on_still"] = "still could not be uploaded to the camera"
                         done_n[0] += 1
                         return
+            # PRE-FLIGHT: A PICTURE THAT FAILED ITS CHECK IS NEVER FILMED
+            # (filter still_cleared, 2026-09-03). It holds on the picture
+            # with a slow push and is reported by name; no take is bought.
+            _sc = pn.get("still_check")
+            if _sc not in (None, "ok") and not clip.exists():
+                from .filters import mark as _mark
+                _mark(pn, "still_cleared", f"refused: {_sc[:80]}")
+                _hold_on_still(clip, _sp, 5)
+                pn["held_on_still"] = f"picture never passed its check: {_sc[:120]}"
+                _remember_take(catalog, pl["key"], pl["src"])
+                return
             for attempt in range(16):
                 if _still_uri:
                     # WHAT MOVES IS ITS OWN INSTRUCTION (Lars, 2026-09-01:
@@ -3563,26 +3588,16 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     # nearly frozen — the model is told what it looks like and
                     # nothing about what happens. Every shot now carries a
                     # motion line, and a shot without one still gets life.
-                    _motion = (pn.get("motion") or "").strip() or (
-                        "Gentle continuous motion: the characters breathe, "
-                        "blink and shift their weight, leaves and flowers sway, "
-                        "light and dust drift through the air.")
-                    # NAMES SUMMON STRANGERS (2026-09-02): "Princess turns her
-                    # head" drew a human princess into the take. The line is
-                    # sent with every name replaced by what the picture shows.
-                    from .takecheck import de_name as _de_name
-                    _motion = _de_name(_motion, _universe_profile(catalog))
-                    # THE LAST TRY ASKS FOR ALMOST NOTHING (2026-09-02). Most
-                    # drift follows an action the model cannot hold — a turn,
-                    # a pull, a walk. A take that has failed twice is asked
-                    # only to breathe: the camera holds, light and leaves
-                    # move, nobody goes anywhere. A quiet true picture beats a
-                    # lively wrong one.
-                    if attempt >= 2:
-                        _motion = ("The camera holds completely still. The characters breathe "
-                                   "and blink and shift their weight very slightly; leaves, "
-                                   "flowers, light and dust drift gently. Nobody walks, turns "
-                                   "or reaches.")
+                    # THE MOTION LINE PASSES THE CHAIN FIRST (filters.py,
+                    # 2026-09-03): names → species, arrivals/reveals dropped,
+                    # two sentences at most, and a risky action (lift, run,
+                    # shake, swarm…) is asked for gently on the FIRST paid
+                    # take — not after two refused ones. The last paid try
+                    # always asks for almost nothing (camera holds, breathing).
+                    from .filters import motion_for_attempt as _motion_for_attempt, mark as _mark
+                    _motion, _lint = _motion_for_attempt(pn.get("motion") or "", attempt, _universe_profile(catalog))
+                    _mark(pn, "motion_lint", "; ".join(_lint["notes"]) or "ok")
+                    _mark(pn, "gentle_first", "gentle first" if _lint["risky"] else "ok")
                     # MOTION ONLY — never the scene description (Lars,
                     # 2026-09-01). The picture IS the content: it already
                     # holds the characters, their colours, their sizes, the
@@ -3597,7 +3612,11 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     # frame to cover the voice line — "the animation stops and hangs
                     # like a still" (Lars). A shot that needs more than 5.5s gets a
                     # 10-second take; the whole-length judge guards it against drift.
-                    secs = 10 if float(need) > 5.5 else 5
+                    # 5s + stretch + bounce carries up to 8s of words; only a
+                    # longer line pays for a 10s take (filter take_length).
+                    from .filters import take_seconds as _take_seconds
+                    secs = _take_seconds(need)
+                    _mark(pn, "take_length", f"{secs}s for {float(need):.1f}s of words")
                     _BUDGET.launch(secs, 5.0, f"shot {pn.get('n')} try {attempt + 1}")   # the cap, before the money
                     task = await runway.generate_shot(
                         _motion + " Keep everything else exactly as it is in "
@@ -3652,15 +3671,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                             # stopped by a shot the model cannot hold, and never
                             # shipped with one it invented.
                             clip.rename(clip.with_name(clip.stem + f".bad{attempt}.mp4"))
-                            _fn = max(12, int(round(secs * 24))); _W2, _H2 = 1280, 720
-                            _vf = (f"scale={_W2*2}:{_H2*2}:force_original_aspect_ratio=increase,"
-                                   f"crop={_W2*2}:{_H2*2},"
-                                   f"zoompan=z='min(1+0.08*on/{_fn},1.08)':d={_fn}:"
-                                   f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={_W2}x{_H2}:fps=24,format=yuv420p")
-                            _run(["-y", "-loop", "1", "-i", str(_sp), "-f", "lavfi", "-i",
-                                  "anullsrc=r=48000:cl=stereo", "-vf", _vf, "-frames:v", str(_fn),
-                                  "-t", f"{secs:.2f}", "-shortest", "-c:v", "libx264", "-preset", "fast",
-                                  "-crf", "20", "-c:a", "aac", "-b:a", "96k", str(clip)], f"hold {pn.get('n')}")
+                            _hold_on_still(clip, _sp, secs)
                             pn["held_on_still"] = pn.pop("take_problem", "")[:160]
                             if handle:
                                 handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
@@ -3744,7 +3755,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             _m = _take_matches_still(pl["clip"], _spx)
             if pl["pn"].get("held_on_still"):
                 continue
-            if _off_board(_m) or pl["pn"].get("take_problem"):
+            if _off_board(_m) or pl["pn"].get("take_problem"):      # filter board_gate
                 _off.append((str(pl["pn"].get("n")), pl["pn"].get("take_problem") or round(_m, 2)))
             elif _m is None:
                 _unchecked.append(str(pl["pn"].get("n")))
@@ -3973,6 +3984,24 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                 pn["sound"] = snd
             cue = await _record_sfx(catalog, snd, min(4.0, float(pn.get("dur") or 4)),
                                     f"sfx-sb-{_h(snd)}", f"sfx-sb-{_h(snd)}.mp3")
+            # A SOUND EFFECT THAT SPEAKS IS THROWN AWAY (filter sfx_words,
+            # 2026-09-03: "a strange voice in the background"). The clip is
+            # transcribed locally; words mean a voice, and the cue is
+            # rendered again with the safe cue.
+            from .filters import sfx_has_words as _sfx_has_words, mark as _mark_f
+            _heard = _sfx_has_words(cue) if cue else ""
+            if _heard:
+                print(f"[sfx] shot {pn.get('n')} cue {snd!r} came back as a voice ({_heard[:50]!r}) — re-rendered", flush=True)
+                _mark_f(pn, "sfx_words", _heard[:80])
+                try:
+                    Path(cue).rename(Path(cue).with_suffix(".voice.mp3"))
+                except Exception:
+                    pass
+                snd = SAFE_CUE; pn["sound"] = snd
+                cue = await _record_sfx(catalog, snd, min(4.0, float(pn.get("dur") or 4)),
+                                        f"sfx-sb-{_h(snd)}", f"sfx-sb-{_h(snd)}.mp3")
+            else:
+                _mark_f(pn, "sfx_words", "ok")
         if cue:
             sfx.append((cue, max(0.0, start + 0.1), 0.8))
 
