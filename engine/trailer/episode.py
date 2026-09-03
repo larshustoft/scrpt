@@ -39,9 +39,17 @@ def universe_bookends(catalog: str):
     root = Path(__file__).resolve().parents[2]
     v = db.get_setting("universes", "")
     reg = v if isinstance(v, dict) else json.loads(v or "{}")
-    for u in reg.values():
+    # A BOOK THAT NAMES ITS UNIVERSE BELONGS TO IT (2026-09-03): the short
+    # SC-042 carried data.universe but was not in the profile's members list,
+    # so it shipped without its intro and outro. Either record counts.
+    try:
+        _bk = db.get_book_by_catalog(catalog)
+        _uni = str(((_bk or {}).get("data") or {}).get("universe") or "")
+    except Exception:
+        _uni = ""
+    for slug, u in reg.items():
         prof = json.loads((root / u["profile"]).read_text())
-        if catalog not in (prof.get("members") or []):
+        if catalog not in (prof.get("members") or []) and slug != _uni and u.get("slug") != _uni:
             continue
         cr = prof.get("creatives") or {}
         ip, op = cr.get("show_intro"), cr.get("show_outro")
