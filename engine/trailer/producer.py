@@ -3289,12 +3289,43 @@ def _take_index(tdir: Path) -> dict:
     return idx
 
 
+def _remember_map(catalog: str, pn: dict, clip: Path) -> None:
+    """takes-map.json: shot → the take file the cut used (exact, not guessed)."""
+    try:
+        f = OUTPUT_DIR / catalog / "trailer" / "takes-map.json"
+        d = json.loads(f.read_text()) if f.exists() else {}
+        d[str(pn.get("n"))] = Path(clip).name
+        f.write_text(json.dumps(d, indent=0))
+    except Exception:
+        pass
+
+
 def _adopt_takes(catalog: str, tdir: Path, plans: list) -> int:
     """ONE TAKE, ONE SHOT (2026-09-03). Adoption is decided for the whole board
     at once: every (shot, banked take) pair is scored, the best pairs are
     taken first, and a take is given to at most one shot — per-shot greedy
     matching handed the same wide-path take to shots 28 and 30."""
     idx = _take_index(tdir)
+    # AN EXACT MAP BEATS A GUESS: takes-map.json (shot → take file) is written
+    # by a migration or by the shoot itself, and is honoured before any
+    # frame matching. Frame matching is the fallback, and it is fuzzy.
+    _mapf = tdir / "takes-map.json"
+    try:
+        _map = json.loads(_mapf.read_text()) if _mapf.exists() else {}
+    except Exception:
+        _map = {}
+    n = 0
+    for pl in plans:
+        pn, clip = pl["pn"], pl["clip"]
+        _t = _map.get(str(pn.get("n")))
+        if not clip.exists() and _t and (tdir / _t).exists() and _judged_ok(catalog, tdir / _t):
+            try:
+                os.link(str(tdir / _t), str(clip))
+            except Exception:
+                import shutil as _shc
+                _shc.copy2(str(tdir / _t), str(clip))
+            n += 1
+            print(f"[takes] shot {pn.get('n')}: banked take {_t} (mapped) — no new take bought", flush=True)
     pairs = []
     for pl in plans:
         pn, clip = pl["pn"], pl["clip"]
@@ -3307,10 +3338,10 @@ def _adopt_takes(catalog: str, tdir: Path, plans: list) -> int:
             if float(rec.get("mtime") or 0) < _since:
                 continue
             m = _sig_match(rec.get("sig") or [], ss)
-            if m >= 0.80:
+            if m >= 0.90:                                   # fuzzy fallback: strict
                 pairs.append((m, float(rec.get("mtime") or 0), rec.get("name"), pl))
     pairs.sort(key=lambda x: (-x[0], -x[1]))
-    used, done, n = set(), set(), 0
+    used, done = set(), set()
     for m, _mt, name, pl in pairs:
         key = str(pl["pn"].get("n"))
         if name in used or key in done or not _judged_ok(catalog, tdir / name):
@@ -3694,6 +3725,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                 elif _ledger_ok:
                     if not _already:
                         _remember_judged(catalog, clip)
+                    _remember_map(catalog, pn, clip)
                     pn.pop("take_problem", None)
                     return
             if _off_board(m):
@@ -3863,6 +3895,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                         else:
                             pn.pop("take_problem", None)
                             _remember_judged(catalog, clip)
+                            _remember_map(catalog, pn, clip)
                         pn.pop("off_board", None)
                     _remember_take(catalog, pl["key"], pl["src"])
                     ok = True; break
