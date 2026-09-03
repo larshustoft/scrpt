@@ -1,973 +1,973 @@
 {
- "name": "Princess the Unicorn",
- "kind": "childrens_universe",
- "domain": "princesstheunicorn.com",
- "tagline": "Come along with me — through the Rainbow Forest, magic wild and free!",
- "creatives": {
-  "logo": "universe/princess-the-unicorn/logo.png",
-  "logo_alternates": [
-   "universe/princess-the-unicorn/logo-2.png",
-   "universe/princess-the-unicorn/logo-3.png",
-   "universe/princess-the-unicorn/logo-4.png"
+  "name": "Princess the Unicorn",
+  "kind": "childrens_universe",
+  "domain": "princesstheunicorn.com",
+  "tagline": "Come along with me — through the Rainbow Forest, magic wild and free!",
+  "creatives": {
+    "logo": "universe/princess-the-unicorn/logo.png",
+    "logo_alternates": [
+      "universe/princess-the-unicorn/logo-2.png",
+      "universe/princess-the-unicorn/logo-3.png",
+      "universe/princess-the-unicorn/logo-4.png"
+    ],
+    "theme_instrumental": "universe/princess-the-unicorn/theme/theme-instrumental.mp3",
+    "theme_sung": null,
+    "intro_builder": "universe/princess-the-unicorn/make_intro.py",
+    "music_direction": "Bright storybook orchestra: hummable 8-note glockenspiel motif over pizzicato strings, soft flutes, warm ukulele, gentle sparkle; never dark, never epic. The motif opens every film and belongs to the brand.",
+    "show_intro": "universe/princess-the-unicorn/show-intro-v9.mp4",
+    "show_intro_builder": "universe/princess-the-unicorn/make_show_intro2.py",
+    "leap_take": "universe/princess-the-unicorn/leap-white.mp4",
+    "intro_storyboard": "intro-storyboard.json",
+    "logo_blink": "universe/princess-the-unicorn/logo-blink.png",
+    "intro_takes": [
+      "intro-s1.mp4",
+      "test-gallop.mp4",
+      "intro-s3.mp4",
+      "intro-s4.mp4",
+      "intro-sky.mp4"
+    ],
+    "logo_ending": "universe/princess-the-unicorn/make_logo_ending.py",
+    "logo_twins": [
+      "logo-textonly.png",
+      "logo-wink.png",
+      "logo-blink.png"
+    ],
+    "show_outro": "universe/princess-the-unicorn/episode-outro.mp4",
+    "show_intro_4k": "universe/princess-the-unicorn/show-intro-4K.mp4",
+    "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Princess the Unicorn",
+    "lullaby_brief": "universe/princess-the-unicorn/unicorn-lullaby-brief.md",
+    "credits_card": "credits-card.mp4",
+    "theme_continuation_candidate": "theme/theme-continuation.mp3",
+    "episode_format": "episode-format.md",
+    "logo_transparent": "logo-transparent.png",
+    "logo_transparent_note": "Canva cutout by Lars 2026-08-30 — THE transparent logo for all composites and the website",
+    "show_outro_note": "THE episode ending: lullaby tuck-in + minimalist TigerWorks card (Lars 2026-08-30 — never the old gold credits card)",
+    "credits_ending": "credits-ending.mp4",
+    "credits_ending_spec": "10s over the living kingdom (credits-scene.mp4, locked camera): 5.5s names + 4.5s TigerWorks mark, ONE steady dim (118) set before frame one, clean type with NO shadow, single fade to black at the end, theme instrumental entering at its own last 10s so the music ends on its real final chord (Lars, 2026-08-31)",
+    "theme_continuation": "theme/theme-continuation.mp3",
+    "theme_continuation_note": "THE episode opening music: the instrumental continuation of the main theme that plays after the intro under the storyteller's wide-world introduction (Lars approved 2026-08-29). The film score must never generate its own cue for this beat.",
+    "show_intro_prev": "universe/princess-the-unicorn/show-intro-v8.mp4",
+    "intro_blink_pling": "pling-e6.wav",
+    "intro_blink_note": "ONE simple pling on Princess's blink at 18.20s — a single glockenspiel note on E6, the note the theme resolves to. The v8 bell was wrong (Lars 2026-08-31). Never a chord, never a chime cluster: one note, quick mallet attack, clean decay to silence.",
+    "locked_elements": {
+      "show_intro": "show-intro-v9.mp4 — approved 2026-08-31 (with the E6 pling on the blink)",
+      "show_outro": "episode-outro.mp4 — lullaby tuck-in + TigerWorks credits, approved 2026-08-31",
+      "theme_continuation": "theme/theme-continuation.mp3 — the opening after the intro, approved 2026-08-29",
+      "note": "These are the EPISODE FURNITURE. They are not regenerated, restyled or re-scored for a new episode — every film is cut between them. Only Lars reopens a locked element.",
+      "bells": "bell-glitter.mp3 (Glitter) and bell-princess.mp3 (Princess) — approved 2026-09-01"
+    },
+    "scale_chart": "SIZE CHART — obey exactly, in every shot of every episode. Glitter is a full-grown unicorn mare. Princess is a small foal: her back reaches only to Glitter's knee, and she is about one third of Glitter's length. Moss the little dragon is SMALLER than Princess — standing, his head reaches Princess's chest. Pip the bird is tiny: about the size of Princess's head, and he can perch on her back. These sizes NEVER change.",
+    "scale_plate": "scale-plate.png",
+    "bells": {
+      "glitter": "bell-glitter.mp3",
+      "princess": "bell-princess.mp3"
+    },
+    "bells_note": "Lars 2026-09-01: Glitter's bell is the bright brass dinner bell (D); Princess's little bell, given at the end of episode 1, is the clear silver service bell (F). THE UNIVERSE OWNS ITS BELLS — no shot may generate its own, which is where the metallic computer-ish bell came from. Every bell heard in every episode is one of these two files.",
+    "world_rules": [
+      "RAINBOW FOREST HAS ONE CAVE: the spring cave behind the crack at the foot of the white cliff at Moonwater Spring, seen only in the scenes set there. Everywhere else, cliffs, banks and hillsides are solid unbroken pale rock with moss and flowers.",
+      "THE GROUND is soft grass, bare earth path and small flat pebbles. Objects the story names appear exactly where the shot says and nowhere else.",
+      "EVERY CHARACTER'S THINGS are on the character: a bell hangs at the neck of whoever wears it and appears only there.",
+      "SOUND CUES name concrete things — water over stones, hoofsteps, leaves, small birds, a bell. Never wind, breeze, whisper, murmur, hum, sigh, echo or 'distant': a sound generator turns those into a voice.",
+      "Fireflies are tiny soft yellow-green points of light — plain glowing dots with no bodies, wings or faces; they are never drawn as insects or little characters."
+    ],
+    "locations": {
+      "rope-bridge": "locations/rope-bridge.png",
+      "moonwater-spring": "locations/moonwater-spring.png",
+      "forest-path-dust": "locations/forest-path-dust.png",
+      "forest-path-morning": "locations/forest-path-morning.png",
+      "forest-path-quiet": "locations/forest-path-quiet.png",
+      "path-home-dusk": "locations/path-home-dusk.png",
+      "spring-dry": "locations/spring-dry.png",
+      "spring-outlet": "locations/spring-outlet.png",
+      "spring-restored": "locations/spring-restored.png",
+      "inside-the-cave": "locations/inside-the-cave.png",
+      "rainbow-valley": "locations/rainbow-valley.png",
+      "valley-from-above": "locations/valley-from-above.png",
+      "castle-hill": "locations/castle-hill.png",
+      "castle-gate": "locations/castle-gate.png",
+      "meadow-by-the-river": "locations/meadow-by-the-river.png",
+      "forest-edge": "locations/forest-edge.png",
+      "deep-forest": "locations/deep-forest.png",
+      "hollow-log-clearing": "locations/hollow-log-clearing.png",
+      "river-and-waterfall": "locations/river-and-waterfall.png",
+      "rope-bridge-valley": "locations/rope-bridge-valley.png",
+      "moonwater-spring-wide": "locations/moonwater-spring-wide.png",
+      "great-tree-door": "locations/great-tree-door.png",
+      "path-home-dusk-wide": "locations/path-home-dusk-wide.png",
+      "castle-from-the-meadow": "locations/castle-from-the-meadow.png",
+      "castle-courtyard": "locations/castle-courtyard.png",
+      "castle-great-hall": "locations/castle-great-hall.png",
+      "princess-tower-room": "locations/princess-tower-room.png",
+      "castle-balcony-dusk": "locations/castle-balcony-dusk.png",
+      "cave-entrance-cliff": "locations/cave-entrance-cliff.png"
+    },
+    "props": {
+      "white-stone": {
+        "words": [
+          "white stone",
+          "round stone",
+          "the stone",
+          "boulder"
+        ],
+        "look": "A single smooth rounded white stone, about the size of a small foal's body, pale chalky white with faint grey veining and a few small chips along one edge."
+      },
+      "fallen-branch": {
+        "words": [
+          "branch"
+        ],
+        "look": "One slim fallen branch, silver-grey bark, bare but for a few small leaves, about as long as a small unicorn foal's body and no thicker than her leg — light enough for a small foal to lift on her horn. Three thin forking twigs. A branch, not a log and not a trunk."
+      },
+      "glitter-bell": {
+        "words": [
+          "silver bell",
+          "her bell",
+          "mama's bell",
+          "bell"
+        ],
+        "look": "A small polished silver bell on a soft lilac ribbon, plain and round, with a narrow slot across its base.",
+        "worn_by": [
+          "Glitter",
+          "Princess"
+        ]
+      },
+      "spring-opening": {
+        "words": [
+          "spring opening",
+          "the opening",
+          "dark crack",
+          "the crack",
+          "cave mouth"
+        ],
+        "look": "A narrow dark crack at the foot of a pale white limestone cliff — an opening just tall enough for a small unicorn foal and a baby dragon to walk into, dark inside, with a thin trickle of water running out over wet grey stones and moss. Rough white rock around it, small flowers at its base. The one way into the spring cave.",
+        "name": "the crack in the cliff"
+      },
+      "rope-bridge": {
+        "words": [
+          "bridge",
+          "planks",
+          "handrail"
+        ],
+        "look": "THE rope bridge of Rainbow Forest, exactly as in the reference: a long rope-and-plank suspension bridge hanging HIGH across a deep dry stony gorge, two thick rope handrails, plank deck, anchored to stout posts on the green banks. There is one bridge and it always looks like this.",
+        "name": "the rope bridge"
+      },
+      "glitter-bell--on-the-ribbon": {
+        "words": [
+          "glitter bell",
+          "on the ribbon"
+        ],
+        "brief": "Glitter's small silver bell hanging on its lilac ribbon around a white unicorn mare's neck, close, the bell polished and round with a tiny clapper"
+      },
+      "glitter-bell--lying-in-grass": {
+        "words": [
+          "glitter bell",
+          "lying in grass"
+        ],
+        "brief": "the same small silver bell with its lilac ribbon lying loose in tall green meadow grass, a little sunlight on it, seen close"
+      },
+      "glitter-bell--in-a-foal-mouth": {
+        "words": [
+          "glitter bell",
+          "in a foal mouth"
+        ],
+        "brief": "the same small silver bell dangling from its lilac ribbon held gently in a small white unicorn foal's teeth, close on the muzzle and bell"
+      },
+      "hollow-log--empty": {
+        "words": [
+          "hollow log",
+          "empty"
+        ],
+        "brief": "an old fallen hollow log lying across a small sunlit clearing, moss on its bark, the dark round opening facing the camera, tall grass and mushrooms around it"
+      },
+      "hollow-log--moss-peeking-out": {
+        "words": [
+          "hollow log",
+          "moss peeking out"
+        ],
+        "brief": "the same old hollow log with a small round green-teal baby dragon's head peeking nervously out of its dark opening"
+      }
+    },
+    "place_briefs": {
+      "rope-bridge": "A plain rope-and-plank footbridge across a green gorge in Rainbow Forest. Two straight thick rope handrails at chest height run the whole length; short vertical rope ties every few planks join the handrails down to the deck; flat wooden planks lie side by side across the deck; the ropes are anchored to stout posts at both banks. The ropes are neat and taut — never tangled, never floating, never looping. Solid rocky banks, no cave and no boulder. Warm midday light.",
+      "moonwater-spring": "A round green clearing in Rainbow Forest where a clear spring fills a shallow pool of pale flat stones. Soft grass and small flowers run to the water's edge, tall leafy trees stand back around the rim, and a low white cliff rises behind the pool. No cave, no dark opening and no large rounded boulder anywhere. Bright late-morning light, the water sparkling.",
+      "forest-path-dust": "Forest-path-dust follows a dry creek bed cutting through the woods, its grey stones and damp moss marking where water once ran. Flowering vines tangle along the path's edge, with a fallen branch resting across them. A dusty cliff of loose white stone rises nearby, prone to shedding grit into the air. Daylight filters soft and hazy through drifting dust and surrounding trees.",
+      "forest-path-morning": "Forest-path-morning is a soft dirt trail winding beneath towering rainbow-hued flowers and thick flowering vines, their giant petals arching overhead like canopies. Dew clings to leaves and blossoms, catching early light. Low mist drifts along the ground between smooth stones bordering the path. Golden sunrise light filters through pastel foliage, warm and hazy, with no water features, only stillness, color, and glowing morning air.",
+      "forest-path-quiet": "A dry dirt path winds through open forest, packed pale earth studded with small stones. Tall trees rise on either side, their canopies loose enough to let soft grey-gold light filter down. Oversized flowers and low undergrowth crowd the path's edges in muted colors. No cave, den, hollow, tunnel, boulder, or standing stone breaks the ground anywhere. In the distance, a white cliff is faintly visible beyond the tree line.",
+      "path-home-dusk": "Path-home-dusk winds through Rainbow Forest as a dusty trail scattered with smooth white stones, bordered by tall trees and soft undergrowth. The path dips near a fallen log and opens toward a quiet spring at its end. Rolling hills rise beyond the treeline. Golden dusk light filters low through the branches, casting long warm shadows and a peaceful, glowing stillness over the ground.",
+      "spring-dry": "A dry creek bed in the green clearing: smooth wet stones and mud where the creek used to run, only a thin trickle of water left between them, and BEHIND it the spring outlet — the same rocky bowl and stone spout as the spring-outlet picture — now almost silent. Same place, same rocks, same trees as the reference.",
+      "spring-outlet": "A pale white cliff rises above a stony channel where spring water once ran, now damp moss and bare stones drying in the light. At the cliff's foot lies a small low opening, barely tall as a round stone, no cave mouth or doorway. Nearby the rock bears a fresh pale scar and a narrow dark crack beyond it. Morning-to-afternoon light slants through surrounding trees and drifting dust.",
+      "spring-restored": "Moonwater Spring lies in a wide clearing at the foot of a pale white cliff, its stone rising smooth and ancient above the trees. Smooth stones ring the pool's edge, worn soft by time. Grass grows thick and green around the water, dotted with small wildflowers. The spring itself glimmers, fed by unseen currents. Warm late-afternoon light gilds everything, casting long, gentle shadows across the clearing.",
+      "inside-the-cave": "Inside the mountain, in the dark rounded cave where the underground river runs: we look from INSIDE toward the cave's mouth, and the mouth is blocked from inside by the BACK of one large pale rounded stone wedged tight in the round hole, daylight glowing in a thin ring around its edge; wet rock walls, a thin trickle of water at the bottom, a few tiny soft points of light. Seen so that characters standing inside could push the stone outward.",
+      "rainbow-valley": "The whole Unicorn Universe from high above at sunrise: Rainbow Forest with its giant rainbow flowers in the foreground, the golden winding path across green meadows, the river with its stone bridge and waterfalls, the rainbow over the valley, the white castle on its hill far away, blue mountains behind, the great tree with the round door, red-spotted mushrooms, low morning mist, warm golden light.",
+      "valley-from-above": "the whole Unicorn Universe from high above at sunrise, Rainbow Forest in front, the golden path, the river and its bridge, the rainbow, the white castle on its hill, blue mountains behind",
+      "castle-hill": "the white castle with rose-gold roofs on its green hill, a rainbow behind it, flags in a soft wind, the winding path climbing to its gate",
+      "castle-gate": "the castle gate seen from the path, open, flowers along the wall, warm light inside",
+      "meadow-by-the-river": "a wide green meadow with tall grass and wildflowers, the river shining beside it, the forest edge far behind",
+      "forest-edge": "the edge of Rainbow Forest from the meadow, giant rainbow flowers between the first trees, a path going in",
+      "deep-forest": "deep inside Rainbow Forest, tall trunks, shafts of light, moss, a cobbled path",
+      "hollow-log-clearing": "a small sunlit clearing with an old hollow log lying across it, mushrooms, tall grass",
+      "river-and-waterfall": "the river bending past mossy rocks with a small waterfall, mist in the sun",
+      "rope-bridge-valley": "the rope bridge from a distance, high above the river gorge, trees on both sides",
+      "moonwater-spring-wide": "Moonwater Spring in its rocky bowl, the stone spout, the pool, ferns, seen from a little way off",
+      "great-tree-door": "the great tree with the round wooden door in its trunk, lanterns, roots like steps",
+      "path-home-dusk-wide": "the golden path home at dusk, long shadows, the castle small and warm in the distance, first stars",
+      "castle-from-the-meadow": "The white castle with rose-gold roofs seen from the meadow below at midday, its hill green, the winding golden path climbing to the gate, the rainbow faint behind, no characters",
+      "castle-courtyard": "Inside the castle walls: a sunny cobbled courtyard with a small fountain, flower boxes at every window, a round tower, pennants in a soft wind, no characters",
+      "castle-great-hall": "The castle's great hall: tall arched windows full of daylight, a long carpet to a pair of gentle thrones woven with flowers, banners with a rainbow and a bell, warm and welcoming, no characters",
+      "princess-tower-room": "Princess's little round tower room: a bed of soft straw and cushions, a round window looking over the valley, a shelf of shells and feathers, morning light, no characters",
+      "castle-balcony-dusk": "Seen from a balcony OF the castle at dusk: the stone balustrade and a warm lit doorway in the foreground, and beyond it only the valley — Rainbow Forest darkening below, the river catching the last light, meadows, blue mountains and the first stars. There is NO castle, tower or building anywhere in the view; we are standing in the castle looking out. No characters, no text.",
+      "cave-entrance-cliff": "The entrance of the cave in the pale cliff: a tall dark crack in the white-grey rock at the foot of the mountain, moss and ferns around it, a thin trickle of water running out over stones into the clearing — the same pale rock, the same clearing and the same light as the spring outlet, seen from a few steps back so the whole crack is visible. No characters, no text."
+    },
+    "place_exemptions": {
+      "cliff-crack": [
+        "cave",
+        "stone"
+      ],
+      "spring-outlet": [
+        "cave",
+        "stone"
+      ],
+      "spring-dry": [
+        "cave",
+        "stone"
+      ],
+      "inside-the-cave": [
+        "cave",
+        "stone"
+      ],
+      "rainbow-valley": [
+        "cave"
+      ],
+      "spring-restored": [
+        "stone"
+      ],
+      "moonwater-spring": [
+        "stone"
+      ],
+      "hollow-log-clearing": [
+        "cave"
+      ],
+      "moonwater-spring-wide": [
+        "cave",
+        "stone"
+      ],
+      "river-and-waterfall": [
+        "cave",
+        "stone"
+      ],
+      "valley-from-above": [
+        "cave",
+        "stone"
+      ],
+      "castle-gate": [
+        "cave"
+      ],
+      "great-tree-door": [
+        "cave"
+      ],
+      "rope-bridge-valley": [
+        "cave",
+        "stone"
+      ],
+      "deep-forest": [
+        "cave"
+      ],
+      "castle-hill": [
+        "stone"
+      ],
+      "forest-edge": [
+        "cave"
+      ],
+      "meadow-by-the-river": [
+        "stone"
+      ],
+      "path-home-dusk-wide": [
+        "cave",
+        "stone"
+      ]
+    },
+    "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there.",
+    "scale_chart_stone": "The big round white stone is about as tall as Princess — big for her, but a stone, not a boulder the size of a house.",
+    "location_md5": {
+      "rope-bridge": "f331f257e99f5ed97c4a34fc0cd8e382",
+      "moonwater-spring": "d80f788bcad8bbc26583bcf1b0013b4a",
+      "forest-path-dust": "0d121cc984c4733d4c0861dfe304d60b",
+      "forest-path-morning": "ee60399539e013c6e258febbc3199e47",
+      "forest-path-quiet": "bb927c6ff0f218d00aa3dead7a943f34",
+      "path-home-dusk": "32394c4cb595a4f8a5bf01781dfe24c4",
+      "spring-dry": "409a9d74db655152d70986a4e8db4a6e",
+      "spring-outlet": "be3447c56c999140c6c4fc7348aa1dfd",
+      "spring-restored": "2b2e2cf574fb96660fc19b331ba6b092",
+      "inside-the-cave": "c75fdc70e22c45f95df61429e0fb4493",
+      "rainbow-valley": "c65733bb133b11b99a21100ea9944bce",
+      "valley-from-above": "81e745887fd696f085c93343f5d64730",
+      "castle-hill": "fd2ca8e8011e4cad921b2a30f7cad017",
+      "castle-gate": "e27209340d97f26291199eddcd7bf4b1",
+      "meadow-by-the-river": "6b46eb8d167225588ab081ec7ce87c56",
+      "forest-edge": "dfdbd5eec9a92e10cbd7374047b5d763",
+      "deep-forest": "b6d05d59c48e1bc67b1a441a8f7c4372",
+      "hollow-log-clearing": "70d54e3ec36eb98534b6db983885d1ff",
+      "river-and-waterfall": "9227fb78bbfcffe87c4c354ebd5e4cd4",
+      "rope-bridge-valley": "12d83e142ff5c06a08cae4d56b18c9ae",
+      "moonwater-spring-wide": "8ae45c334e5337f74ecd006f7fd74f6e",
+      "great-tree-door": "7c0a3c3b3efbf4853498845e01935ef7",
+      "path-home-dusk-wide": "99672776580414720becfcf4dda6ab5f",
+      "castle-from-the-meadow": "600bb6c5411af9f3b9bb51d7c256bd20",
+      "castle-courtyard": "9e8aa1d6018f5b8b9fe71d1c93d02e84",
+      "castle-great-hall": "4fbb54c8b5bbf064cc1cbba13d17b0d4",
+      "princess-tower-room": "0cba75f1f77574f478a32004dc04ecac",
+      "castle-balcony-dusk": "09d3de5a12897e0f702a962c02f3397a",
+      "cave-entrance-cliff": "fe5aff316f4243270646db9e3921630f"
+    },
+    "atlas": {
+      "note": "Show Bible extension (Lars, 2026-09-03): the universe defined in wide pictures, each approved once and reused as the place plate for every shot set there.",
+      "places": {
+        "valley-from-above": "the whole Unicorn Universe from high above at sunrise, Rainbow Forest in front, the golden path, the river and its bridge, the rainbow, the white castle on its hill, blue mountains behind",
+        "castle-hill": "the white castle with rose-gold roofs on its green hill, a rainbow behind it, flags in a soft wind, the winding path climbing to its gate",
+        "castle-gate": "the castle gate seen from the path, open, flowers along the wall, warm light inside",
+        "meadow-by-the-river": "a wide green meadow with tall grass and wildflowers, the river shining beside it, the forest edge far behind",
+        "forest-edge": "the edge of Rainbow Forest from the meadow, giant rainbow flowers between the first trees, a path going in",
+        "deep-forest": "deep inside Rainbow Forest, tall trunks, shafts of light, moss, a cobbled path",
+        "hollow-log-clearing": "a small sunlit clearing with an old hollow log lying across it, mushrooms, tall grass",
+        "river-and-waterfall": "the river bending past mossy rocks with a small waterfall, mist in the sun",
+        "rope-bridge-valley": "the rope bridge from a distance, high above the river gorge, trees on both sides",
+        "moonwater-spring-wide": "Moonwater Spring in its rocky bowl, the stone spout, the pool, ferns, seen from a little way off",
+        "great-tree-door": "the great tree with the round wooden door in its trunk, lanterns, roots like steps",
+        "path-home-dusk-wide": "the golden path home at dusk, long shadows, the castle small and warm in the distance, first stars",
+        "castle-from-the-meadow": "The white castle with rose-gold roofs seen from the meadow below at midday, its hill green, the winding golden path climbing to the gate, the rainbow faint behind, no characters",
+        "castle-courtyard": "Inside the castle walls: a sunny cobbled courtyard with a small fountain, flower boxes at every window, a round tower, pennants in a soft wind, no characters",
+        "castle-great-hall": "The castle's great hall: tall arched windows full of daylight, a long carpet to a pair of gentle thrones woven with flowers, banners with a rainbow and a bell, warm and welcoming, no characters",
+        "princess-tower-room": "Princess's little round tower room: a bed of soft straw and cushions, a round window looking over the valley, a shelf of shells and feathers, morning light, no characters",
+        "castle-balcony-dusk": "Seen from a balcony OF the castle at dusk: the stone balustrade and a warm lit doorway in the foreground, and beyond it only the valley — Rainbow Forest darkening below, the river catching the last light, meadows, blue mountains and the first stars. There is NO castle, tower or building anywhere in the view; we are standing in the castle looking out. No characters, no text.",
+        "cave-entrance-cliff": "The entrance of the cave in the pale cliff: a tall dark crack in the white-grey rock at the foot of the mountain, moss and ferns around it, a thin trickle of water running out over stones into the clearing — the same pale rock, the same clearing and the same light as the spring outlet, seen from a few steps back so the whole crack is visible. No characters, no text."
+      }
+    },
+    "object_sets_note": "Every story declares its object set: each object has ONE approved image per STATE (e.g. white-stone: alone / in-the-hole / hole-empty). A shot names the state it shows; the still is drawn with that state's plate and only that.",
+    "storyteller_voice": {
+      "id": "v9LgF91V36LGgbLX3iHW",
+      "name": "David - American Narrator",
+      "note": "mirror of voice_cast.Storyteller"
+    },
+    "camera": {
+      "character_shots": "seedance2_5",
+      "wide_shots": "drift",
+      "note": "Lars 2026-09-03: Seedance 2.5 with the plates as references (how the intro and lullaby were shot); wide shots are drifts over the approved still; gen4_turbo retired for episodes"
+    }
+  },
+  "world": {
+    "bible_book": "SC-039",
+    "register": "magical wonder — Disney-family warmth, nothing scary",
+    "cast": [
+      "Princess",
+      "Glitter",
+      "Pip",
+      "Moss"
+    ],
+    "plates": {
+      "princess": {
+        "file": "plates/princess.png",
+        "md5": "53dd20e18f1241a6fdfaa0c7354908eb"
+      },
+      "glitter": {
+        "file": "plates/glitter.png",
+        "md5": "8ad0621973ce00ed62f245f292fe97e8"
+      },
+      "pip": {
+        "file": "plates/pip.png",
+        "md5": "2314ec945bf495c8aa8166da31820076"
+      },
+      "moss": {
+        "file": "plates/moss.png",
+        "md5": "8765ebf25ad2a96c3a0519d9d3002baa"
+      }
+    },
+    "plates_note": "These four pictures are the characters — the ones in the Character Bible Lars approved on 2026-09-01 09:18. Every episode copies them in and verifies them by hash; nothing redraws them. Glitter's plate replaced on 2026-09-02 (candidate A, chosen by Lars): the portrait's colours with the stylised-cute face the bible text describes.",
+    "props_plates": {
+      "white-stone": {
+        "file": "props/white-stone.png",
+        "md5": "36aaaafbd13ce8fd4d5db6ef9f0c1084"
+      },
+      "glitter-bell": {
+        "file": "props/glitter-bell.png",
+        "md5": "c3539d851e981a51f651e60209f1a8f0",
+        "brief": "Glitter's bell: a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon, about the size of a plum, shown large and clear against soft meadow bokeh; no characters, no text"
+      },
+      "spring-opening": {
+        "file": "props/spring-opening.png",
+        "md5": "73959cad46ac2696b745c65b11cc787a"
+      },
+      "rope-bridge": {
+        "file": "props/rope-bridge.png",
+        "md5": "6a7704050f18c0a879c42643d5186025"
+      },
+      "fallen-branch": {
+        "file": "props/fallen-branch.png",
+        "md5": "85dee7bea3896d5db341a27ff51a9138",
+        "brief": "a thick leafy limb BROKEN OFF a big oak-like tree in a storm, lying across a cobbled forest path: the break end splintered and torn (never sawn or cut clean), the branch as thick as a small tree trunk, dense with green leaves and a few twigs, bark rough and wet; no characters, no text"
+      },
+      "hollow-log--empty": {
+        "file": "props/hollow-log--empty.png",
+        "md5": "573c305f81aaa8b03e49c1ccbe1d4dfb",
+        "state_of": "hollow-log",
+        "brief": "an old fallen hollow log lying across a small sunlit clearing, moss on its bark, the dark round opening facing the camera, tall grass and mushrooms around it"
+      },
+      "hollow-log--moss-peeking-out": {
+        "file": "props/hollow-log--moss-peeking-out.png",
+        "md5": "c7a5c3f134862520455dca91fee9d06a",
+        "state_of": "hollow-log",
+        "brief": "the same old hollow log with a small round green-teal baby dragon's head peeking nervously out of its dark opening"
+      },
+      "princess-bell": {
+        "file": "props/princess-bell.png",
+        "md5": "ca29f33c33e2c8f58692a65fa84c2c15",
+        "brief": "Princess's bell: a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon, a little smaller than Glitter's — the size of a cherry — on a thinner lilac ribbon, shown large and clear against soft meadow bokeh; no characters, no text"
+      },
+      "glitter-bell--on-the-ribbon": {
+        "file": "props/glitter-bell--on-the-ribbon.png",
+        "md5": "c03636b1fe530701938bbba62c015a68",
+        "state_of": "glitter-bell",
+        "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon hanging around a white unicorn mare's neck, close on the bell"
+      },
+      "glitter-bell--lying-in-grass": {
+        "file": "props/glitter-bell--lying-in-grass.png",
+        "md5": "f9d07a38ec620fc5e04e427e22755a55",
+        "state_of": "glitter-bell",
+        "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon, lying loose in tall green meadow grass, sunlight on the metal, seen close"
+      },
+      "glitter-bell--in-a-foal-mouth": {
+        "file": "props/glitter-bell--in-a-foal-mouth.png",
+        "md5": "92bde36f5921705798c4b92d78d6c2fb",
+        "state_of": "glitter-bell",
+        "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon dangling from its ribbon held gently in a small white unicorn foal's teeth, close on the muzzle and bell"
+      },
+      "bells-together": {
+        "file": "props/bells-together.png",
+        "md5": "f981189af576ac2ad58be2a0bd4f5a66",
+        "brief": "Glitter's bell (plum-size) and Princess's bell (cherry-size) side by side — the size chart of the bells"
+      }
+    },
+    "props_note": "Universe objects. Each has one plate, drawn once and kept here with its hash; every episode copies it in and verifies it before drawing. The bell (Lars, 2026-09-02): Glitter's silver bell on a lilac ribbon, and Princess's — the same bell a little smaller, on a sky-blue ribbon — are the same object at two sizes.",
+    "pose_sheet": {
+      "note": "Character Bible extension (Lars, 2026-09-03): every character gets the same sheet of angles, expressions and movements, drawn from the canonical plate and verified for identity; a shot picks the pose closest to its action as its reference.",
+      "angles": [
+        "front, standing, looking at the camera",
+        "three-quarter view from the left, standing",
+        "side profile, standing",
+        "from behind, walking away",
+        "from above, looking up at the camera"
+      ],
+      "expressions": [
+        "happy, bright eyes",
+        "sad, ears down, eyes lowered",
+        "scared, wide eyes",
+        "surprised, mouth a small o",
+        "sleepy, eyes half closed, calm"
+      ],
+      "movements": [
+        "walking, mid-step",
+        "running, all four legs off the ground",
+        "sitting, resting",
+        "lying down, head on the ground",
+        "head lowered to the ground, sniffing or picking something up",
+        "looking back over the shoulder"
+      ]
+    },
+    "pose_sheet_overrides": {
+      "pip": {
+        "movements": [
+          "flying, wings spread wide",
+          "hovering, wings a blur",
+          "perched on a branch",
+          "landing, feet reaching down",
+          "head tilted, listening",
+          "pointing the way with one wing"
+        ]
+      }
+    },
+    "poses": {
+      "princess": {
+        "side-profile-standing": {
+          "file": "plates/princess/side-profile-standing.png",
+          "md5": "3dcb8a907305d1ba7f8f903a1d4ddae0",
+          "kind": "angle",
+          "text": "side profile, standing"
+        },
+        "from-behind-walking-away": {
+          "file": "plates/princess/from-behind-walking-away.png",
+          "md5": "0cbbd919c4b02f5c8359a03009b664b8",
+          "kind": "angle",
+          "text": "from behind, walking away"
+        },
+        "three-quarter-view-from-the-left-standing": {
+          "file": "plates/princess/three-quarter-view-from-the-left-standing.png",
+          "md5": "702a43be29945909d3652fab3a8c758c",
+          "kind": "angle",
+          "text": "three-quarter view from the left, standing"
+        },
+        "happy-bright-eyes": {
+          "file": "plates/princess/happy-bright-eyes.png",
+          "md5": "964652c013108c92ed27bf3eb81827a2",
+          "kind": "expression",
+          "text": "happy, bright eyes"
+        },
+        "from-above-looking-up-at-the-camera": {
+          "file": "plates/princess/from-above-looking-up-at-the-camera.png",
+          "md5": "619a4d227c9b6577f260b49478de7167",
+          "kind": "sheet",
+          "text": "from above, looking up at the camera"
+        },
+        "front-standing-looking-at-the-camera": {
+          "file": "plates/princess/front-standing-looking-at-the-camera.png",
+          "md5": "b34b32b68e3a566a01bb0692dc045319",
+          "kind": "angle",
+          "text": "front, standing, looking at the camera"
+        },
+        "scared-wide-eyes": {
+          "file": "plates/princess/scared-wide-eyes.png",
+          "md5": "f4e7a9f5cfafab98cdbc2b256ec8a7e1",
+          "kind": "expression",
+          "text": "scared, wide eyes"
+        },
+        "sad-ears-down-eyes-lowered": {
+          "file": "plates/princess/sad-ears-down-eyes-lowered.png",
+          "md5": "c5b171e9ce5bb1e6454eaf6ca58c4f14",
+          "kind": "expression",
+          "text": "sad, ears down, eyes lowered"
+        },
+        "surprised-mouth-a-small-o": {
+          "file": "plates/princess/surprised-mouth-a-small-o.png",
+          "md5": "690628aff9806c0b1875fb15e5bd2166",
+          "kind": "expression",
+          "text": "surprised, mouth a small o"
+        },
+        "walking-mid-step": {
+          "file": "plates/princess/walking-mid-step.png",
+          "md5": "bd4ca0587cbb3d4aeb8244c076af67f8",
+          "kind": "movement",
+          "text": "walking, mid-step"
+        },
+        "sleepy-eyes-half-closed-calm": {
+          "file": "plates/princess/sleepy-eyes-half-closed-calm.png",
+          "md5": "8b882af28ff520dd1e1bf75416d86d84",
+          "kind": "expression",
+          "text": "sleepy, eyes half closed, calm"
+        },
+        "running-all-four-legs-off-the-ground": {
+          "file": "plates/princess/running-all-four-legs-off-the-ground.png",
+          "md5": "380ab97a833d0517bb91707cbf99fccd",
+          "kind": "movement",
+          "text": "running, all four legs off the ground"
+        },
+        "sitting-resting": {
+          "file": "plates/princess/sitting-resting.png",
+          "md5": "809f9709b2f274a0bcfc53daa6d2caaa",
+          "kind": "movement",
+          "text": "sitting, resting"
+        },
+        "looking-back-over-the-shoulder": {
+          "file": "plates/princess/looking-back-over-the-shoulder.png",
+          "md5": "426dd9c46b543b251c62f21e188169e3",
+          "kind": "movement",
+          "text": "looking back over the shoulder"
+        },
+        "head-lowered-to-the-ground-sniffing-or-picking-s": {
+          "file": "plates/princess/head-lowered-to-the-ground-sniffing-or-picking-s.png",
+          "md5": "7c8d7952685ec43d940c8d55d0b3c0e4",
+          "kind": "movement",
+          "text": "head lowered to the ground, sniffing or picking something up"
+        },
+        "lying-down-head-on-the-ground": {
+          "file": "plates/princess/lying-down-head-on-the-ground.png",
+          "md5": "97f4895df34fdad8d45512496a07279a",
+          "kind": "movement",
+          "text": "lying down, head on the ground"
+        }
+      },
+      "glitter": {
+        "three-quarter-view-from-the-left-standing": {
+          "file": "plates/glitter/three-quarter-view-from-the-left-standing.png",
+          "md5": "00bad3afed6a017b9344fd5f63d2c750",
+          "kind": "angle",
+          "text": "three-quarter view from the left, standing"
+        },
+        "front-standing-looking-at-the-camera": {
+          "file": "plates/glitter/front-standing-looking-at-the-camera.png",
+          "md5": "dd0d7f7b1dc9354363d5a950c20451f9",
+          "kind": "angle",
+          "text": "front, standing, looking at the camera"
+        },
+        "side-profile-standing": {
+          "file": "plates/glitter/side-profile-standing.png",
+          "md5": "f86dbc810b5939b93199e5f99bb34d5e",
+          "kind": "angle",
+          "text": "side profile, standing"
+        },
+        "from-above-looking-up-at-the-camera": {
+          "file": "plates/glitter/from-above-looking-up-at-the-camera.png",
+          "md5": "5c012b45447cc8520a0b4437878871d7",
+          "kind": "sheet",
+          "text": "from above, looking up at the camera"
+        },
+        "from-behind-walking-away": {
+          "file": "plates/glitter/from-behind-walking-away.png",
+          "md5": "475bb8c926444065fca8aaf5d482fb6a",
+          "kind": "angle",
+          "text": "from behind, walking away"
+        },
+        "scared-wide-eyes": {
+          "file": "plates/glitter/scared-wide-eyes.png",
+          "md5": "1470f65e127cebb0b9489b66f6aea8c3",
+          "kind": "expression",
+          "text": "scared, wide eyes"
+        },
+        "sad-ears-down-eyes-lowered": {
+          "file": "plates/glitter/sad-ears-down-eyes-lowered.png",
+          "md5": "97f75877eb23b850f8535399940a5bcc",
+          "kind": "expression",
+          "text": "sad, ears down, eyes lowered"
+        },
+        "happy-bright-eyes": {
+          "file": "plates/glitter/happy-bright-eyes.png",
+          "md5": "1721f50c7608b872fda44bffc6d89734",
+          "kind": "expression",
+          "text": "happy, bright eyes"
+        },
+        "surprised-mouth-a-small-o": {
+          "file": "plates/glitter/surprised-mouth-a-small-o.png",
+          "md5": "5ab24d9a312f9cc2ee1016c6d2727260",
+          "kind": "expression",
+          "text": "surprised, mouth a small o"
+        },
+        "running-all-four-legs-off-the-ground": {
+          "file": "plates/glitter/running-all-four-legs-off-the-ground.png",
+          "md5": "fbd22a10b5de3cdd64050edfe5d16da5",
+          "kind": "movement",
+          "text": "running, all four legs off the ground"
+        },
+        "walking-mid-step": {
+          "file": "plates/glitter/walking-mid-step.png",
+          "md5": "f736f425ad2add1d0c2bbb5c2bafbdc1",
+          "kind": "movement",
+          "text": "walking, mid-step"
+        },
+        "sleepy-eyes-half-closed-calm": {
+          "file": "plates/glitter/sleepy-eyes-half-closed-calm.png",
+          "md5": "ea809f527ad5cfb408cb0ff3fa8e5e03",
+          "kind": "expression",
+          "text": "sleepy, eyes half closed, calm"
+        },
+        "sitting-resting": {
+          "file": "plates/glitter/sitting-resting.png",
+          "md5": "5b061c162b0aadb1c0c812051918798d",
+          "kind": "movement",
+          "text": "sitting, resting"
+        },
+        "lying-down-head-on-the-ground": {
+          "file": "plates/glitter/lying-down-head-on-the-ground.png",
+          "md5": "91ac7e78177ae9035d4c4781a6ce5995",
+          "kind": "movement",
+          "text": "lying down, head on the ground"
+        },
+        "head-lowered-to-the-ground-sniffing-or-picking-s": {
+          "file": "plates/glitter/head-lowered-to-the-ground-sniffing-or-picking-s.png",
+          "md5": "f7e896492e15d07fc12e45409cee0215",
+          "kind": "movement",
+          "text": "head lowered to the ground, sniffing or picking something up"
+        },
+        "looking-back-over-the-shoulder": {
+          "file": "plates/glitter/looking-back-over-the-shoulder.png",
+          "md5": "4af2d75a53aabfc6bd560f83aa3380b0",
+          "kind": "movement",
+          "text": "looking back over the shoulder"
+        }
+      },
+      "pip": {
+        "three-quarter-view-from-the-left-standing": {
+          "file": "plates/pip/three-quarter-view-from-the-left-standing.png",
+          "md5": "0e1dfbd1bd15a37cbece4bb9c930d9cf",
+          "kind": "angle",
+          "text": "three-quarter view from the left, standing"
+        },
+        "front-standing-looking-at-the-camera": {
+          "file": "plates/pip/front-standing-looking-at-the-camera.png",
+          "md5": "dcdb59571c9cb0c5de52a9df3391de02",
+          "kind": "angle",
+          "text": "front, standing, looking at the camera"
+        },
+        "from-behind-walking-away": {
+          "file": "plates/pip/from-behind-walking-away.png",
+          "md5": "ed048a4a60f7f36d95a1be38a099e1c0",
+          "kind": "angle",
+          "text": "from behind, walking away"
+        },
+        "side-profile-standing": {
+          "file": "plates/pip/side-profile-standing.png",
+          "md5": "5891d4cc870d03a0c5b21156d97f1260",
+          "kind": "angle",
+          "text": "side profile, standing"
+        },
+        "from-above-looking-up-at-the-camera": {
+          "file": "plates/pip/from-above-looking-up-at-the-camera.png",
+          "md5": "5b558db263be4cd3c12cd50542b8532c",
+          "kind": "sheet",
+          "text": "from above, looking up at the camera"
+        },
+        "happy-bright-eyes": {
+          "file": "plates/pip/happy-bright-eyes.png",
+          "md5": "bfa5b972e1bfccbbb2c48ba8d3723df1",
+          "kind": "expression",
+          "text": "happy, bright eyes"
+        },
+        "sad-ears-down-eyes-lowered": {
+          "file": "plates/pip/sad-ears-down-eyes-lowered.png",
+          "md5": "3792f6be80aa3370dd042c77c2c5a927",
+          "kind": "expression",
+          "text": "sad, ears down, eyes lowered"
+        },
+        "scared-wide-eyes": {
+          "file": "plates/pip/scared-wide-eyes.png",
+          "md5": "090941336286345a13b29a43390f0b92",
+          "kind": "expression",
+          "text": "scared, wide eyes"
+        },
+        "sleepy-eyes-half-closed-calm": {
+          "file": "plates/pip/sleepy-eyes-half-closed-calm.png",
+          "md5": "d359136e1eef200a53917031285f421e",
+          "kind": "expression",
+          "text": "sleepy, eyes half closed, calm"
+        },
+        "surprised-mouth-a-small-o": {
+          "file": "plates/pip/surprised-mouth-a-small-o.png",
+          "md5": "8438b5ebdb9baf1cf109e55580cdb51c",
+          "kind": "expression",
+          "text": "surprised, mouth a small o"
+        },
+        "hovering-wings-a-blur": {
+          "file": "plates/pip/hovering-wings-a-blur.png",
+          "md5": "b7ba21115b6d24e066c73cde4c5d4b72",
+          "kind": "movement",
+          "text": "hovering, wings a blur"
+        },
+        "flying-wings-spread-wide": {
+          "file": "plates/pip/flying-wings-spread-wide.png",
+          "md5": "109e39ae55afb9cb59290f140eab9361",
+          "kind": "movement",
+          "text": "flying, wings spread wide"
+        },
+        "perched-on-a-branch": {
+          "file": "plates/pip/perched-on-a-branch.png",
+          "md5": "b9ef1a609b72a80e5612916daab78913",
+          "kind": "movement",
+          "text": "perched on a branch"
+        },
+        "landing-feet-reaching-down": {
+          "file": "plates/pip/landing-feet-reaching-down.png",
+          "md5": "fe1f4d3ce44a204cce80dff200eaf8db",
+          "kind": "movement",
+          "text": "landing, feet reaching down"
+        },
+        "head-tilted-listening": {
+          "file": "plates/pip/head-tilted-listening.png",
+          "md5": "57459c1090381fdfee7cfc811d201607",
+          "kind": "movement",
+          "text": "head tilted, listening"
+        },
+        "pointing-the-way-with-one-wing": {
+          "file": "plates/pip/pointing-the-way-with-one-wing.png",
+          "md5": "37f5144223687652e5816134f3f9761e",
+          "kind": "movement",
+          "text": "pointing the way with one wing"
+        }
+      },
+      "moss": {
+        "front-standing-looking-at-the-camera": {
+          "file": "plates/moss/front-standing-looking-at-the-camera.png",
+          "md5": "c69e891fa1cb7e1b8ed53eac2a658714",
+          "kind": "angle",
+          "text": "front, standing, looking at the camera"
+        },
+        "side-profile-standing": {
+          "file": "plates/moss/side-profile-standing.png",
+          "md5": "231a6f4bf3fd935832d253b77e8956b4",
+          "kind": "angle",
+          "text": "side profile, standing"
+        },
+        "three-quarter-view-from-the-left-standing": {
+          "file": "plates/moss/three-quarter-view-from-the-left-standing.png",
+          "md5": "bd590e165409466fc5a9992a97dccfd9",
+          "kind": "angle",
+          "text": "three-quarter view from the left, standing"
+        },
+        "happy-bright-eyes": {
+          "file": "plates/moss/happy-bright-eyes.png",
+          "md5": "72b7f73ab8d87a03d522e7c89272c25e",
+          "kind": "expression",
+          "text": "happy, bright eyes"
+        },
+        "from-above-looking-up-at-the-camera": {
+          "file": "plates/moss/from-above-looking-up-at-the-camera.png",
+          "md5": "4825a2aff982c7b22403606d033801b5",
+          "kind": "sheet",
+          "text": "from above, looking up at the camera"
+        },
+        "from-behind-walking-away": {
+          "file": "plates/moss/from-behind-walking-away.png",
+          "md5": "87b6c736f0ae96c1e1cd43dfe1001dae",
+          "kind": "angle",
+          "text": "from behind, walking away"
+        },
+        "sad-ears-down-eyes-lowered": {
+          "file": "plates/moss/sad-ears-down-eyes-lowered.png",
+          "md5": "87dc5105a03ae856aa80df2dfbdc0bc7",
+          "kind": "expression",
+          "text": "sad, ears down, eyes lowered"
+        },
+        "scared-wide-eyes": {
+          "file": "plates/moss/scared-wide-eyes.png",
+          "md5": "5b09def974a3cd69e213501126ef760d",
+          "kind": "expression",
+          "text": "scared, wide eyes"
+        },
+        "surprised-mouth-a-small-o": {
+          "file": "plates/moss/surprised-mouth-a-small-o.png",
+          "md5": "e92f21f637e742e9e40de1cc2e46c845",
+          "kind": "expression",
+          "text": "surprised, mouth a small o"
+        },
+        "walking-mid-step": {
+          "file": "plates/moss/walking-mid-step.png",
+          "md5": "b255739cf918d6dbcffbe2513875788e",
+          "kind": "movement",
+          "text": "walking, mid-step"
+        },
+        "sleepy-eyes-half-closed-calm": {
+          "file": "plates/moss/sleepy-eyes-half-closed-calm.png",
+          "md5": "19633983d09132d295420c47329daa96",
+          "kind": "expression",
+          "text": "sleepy, eyes half closed, calm"
+        },
+        "running-all-four-legs-off-the-ground": {
+          "file": "plates/moss/running-all-four-legs-off-the-ground.png",
+          "md5": "258e1dadbfa7a63e2aaf4fe3390b0558",
+          "kind": "movement",
+          "text": "running, all four legs off the ground"
+        },
+        "sitting-resting": {
+          "file": "plates/moss/sitting-resting.png",
+          "md5": "335981e9659bf75e92110f11716f27ec",
+          "kind": "movement",
+          "text": "sitting, resting"
+        },
+        "lying-down-head-on-the-ground": {
+          "file": "plates/moss/lying-down-head-on-the-ground.png",
+          "md5": "5777339fbf608041eea302dd0b3bd6ec",
+          "kind": "movement",
+          "text": "lying down, head on the ground"
+        },
+        "head-lowered-to-the-ground-sniffing-or-picking-s": {
+          "file": "plates/moss/head-lowered-to-the-ground-sniffing-or-picking-s.png",
+          "md5": "0bdc0bb826867e86382e9c7a1d446083",
+          "kind": "movement",
+          "text": "head lowered to the ground, sniffing or picking something up"
+        },
+        "looking-back-over-the-shoulder": {
+          "file": "plates/moss/looking-back-over-the-shoulder.png",
+          "md5": "0fdd45079a1fb7621cc97542a46d02c4",
+          "kind": "movement",
+          "text": "looking back over the shoulder"
+        }
+      }
+    },
+    "species": {
+      "Princess": "unicorn",
+      "Glitter": "unicorn",
+      "Pip": "bird",
+      "Moss": "dragon",
+      "Fireflies": "light"
+    }
+  },
+  "members": [
+    "SC-039",
+    "SC-042"
   ],
-  "theme_instrumental": "universe/princess-the-unicorn/theme/theme-instrumental.mp3",
-  "theme_sung": null,
-  "intro_builder": "universe/princess-the-unicorn/make_intro.py",
-  "music_direction": "Bright storybook orchestra: hummable 8-note glockenspiel motif over pizzicato strings, soft flutes, warm ukulele, gentle sparkle; never dark, never epic. The motif opens every film and belongs to the brand.",
-  "show_intro": "universe/princess-the-unicorn/show-intro-v9.mp4",
-  "show_intro_builder": "universe/princess-the-unicorn/make_show_intro2.py",
-  "leap_take": "universe/princess-the-unicorn/leap-white.mp4",
-  "intro_storyboard": "intro-storyboard.json",
-  "logo_blink": "universe/princess-the-unicorn/logo-blink.png",
-  "intro_takes": [
-   "intro-s1.mp4",
-   "test-gallop.mp4",
-   "intro-s3.mp4",
-   "intro-s4.mp4",
-   "intro-sky.mp4"
-  ],
-  "logo_ending": "universe/princess-the-unicorn/make_logo_ending.py",
-  "logo_twins": [
-   "logo-textonly.png",
-   "logo-wink.png",
-   "logo-blink.png"
-  ],
-  "show_outro": "universe/princess-the-unicorn/episode-outro.mp4",
-  "show_intro_4k": "universe/princess-the-unicorn/show-intro-4K.mp4",
-  "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Princess the Unicorn",
-  "lullaby_brief": "universe/princess-the-unicorn/unicorn-lullaby-brief.md",
-  "credits_card": "credits-card.mp4",
-  "theme_continuation_candidate": "theme/theme-continuation.mp3",
+  "channels": {
+    "youtube": null,
+    "site": "https://princesstheunicorn.com"
+  },
+  "voice_cast": {
+    "Princess": {
+      "id": "MkTSSXNgnBULS6ek4pon",
+      "name": "Tilly - Bright, Spirited, Naive, Scrappy",
+      "direction": "bright and open; frightened only where the story is frightening"
+    },
+    "Glitter": {
+      "id": "ok2PCXNXA9PMVYmBj7QJ",
+      "name": "Beth - Warm, Grounded, Narrator",
+      "note": "Lars 2026-08-31: Beth, performed ENERGIZED (stability .28 / style .8 / speed 1.02 — see VOICE_SETTINGS in producer.py). Hope read too flat; Glitter needs life.",
+      "direction": "warm, tender, full of life"
+    },
+    "Pip": {
+      "id": "thfYL0Elyru2qqTtNQsE",
+      "name": "Aurelia - High Quality Realistic Princess "
+    },
+    "Moss": {
+      "id": "loY1uopAz31XyhAEhNSa",
+      "name": "Valf - Young, Playful & Sarcastic",
+      "direction": "nervous, shaky, small"
+    },
+    "Fireflies": {
+      "id": "d8WcCpplp8meHt10UhL8",
+      "name": "Emily - Bright & Energetic"
+    },
+    "Storyteller": {
+      "id": "v9LgF91V36LGgbLX3iHW",
+      "name": "David - American Narrator",
+      "note": "Lars 2026-08-30: THE storyteller — grandfather type, American, warm. Chosen over Sarah and four warmer female voices; standing until told otherwise.",
+      "direction": "warm, gentle, caring, unhurried",
+      "direction_note": "Lars 2026-08-31: the storyteller is NEVER dramatic. Warm, sweet and caring — especially where the story is sad. The sadness is in the words; he carries the child through it, he does not perform it at them. (Interim wording until Lars picks A/B/C from Storyteller_Warm_Registers.mp3.)"
+    }
+  },
+  "episode_sound_structure": {
+    "note": "Lars 2026-08-29 — the fixed musical arc of every episode",
+    "1_intro": "show-intro-v8.mp4 (sung theme)",
+    "2_opening_underscore": "instrumental continuation of the theme, no vocals, bridges intro into the first section of the story (candidate: theme/theme-continuation.mp3)",
+    "3_score": "additional moods/alternatives added as the library grows",
+    "4_ending_scene": "Princess falls asleep while Glitter sings The Unicorn Lullaby (short sung version) — TO BE SHOT once lullaby take is chosen",
+    "5_credits": "credits-card.mp4 — minimal TigerWorks wordmark, year, princesstheunicorn.com, fades to black"
+  },
+  "lullaby": {
+    "rule": "MAJOR KEY ONLY — bright, warm, safe; never minor (Lars 2026-08-29)",
+    "frontrunner": "theme/lullaby-short-harp.mp3 (the first harp version)",
+    "candidates": [
+      "theme/lullaby-short-harp.mp3",
+      "theme/lullaby-harp-5.mp3",
+      "theme/lullaby-harp-6.mp3",
+      "theme/lullaby-harp-7.mp3"
+    ],
+    "retired": [
+      "theme/lullaby-short-try.mp3 (no harp)",
+      "theme/lullaby-harp-2.mp3",
+      "theme/lullaby-harp-3.mp3",
+      "theme/lullaby-harp-4.mp3"
+    ]
+  },
   "episode_format": "episode-format.md",
-  "logo_transparent": "logo-transparent.png",
-  "logo_transparent_note": "Canva cutout by Lars 2026-08-30 — THE transparent logo for all composites and the website",
-  "show_outro_note": "THE episode ending: lullaby tuck-in + minimalist TigerWorks card (Lars 2026-08-30 — never the old gold credits card)",
-  "credits_ending": "credits-ending.mp4",
-  "credits_ending_spec": "10s over the living kingdom (credits-scene.mp4, locked camera): 5.5s names + 4.5s TigerWorks mark, ONE steady dim (118) set before frame one, clean type with NO shadow, single fade to black at the end, theme instrumental entering at its own last 10s so the music ends on its real final chord (Lars, 2026-08-31)",
-  "theme_continuation": "theme/theme-continuation.mp3",
-  "theme_continuation_note": "THE episode opening music: the instrumental continuation of the main theme that plays after the intro under the storyteller's wide-world introduction (Lars approved 2026-08-29). The film score must never generate its own cue for this beat.",
-  "show_intro_prev": "universe/princess-the-unicorn/show-intro-v8.mp4",
-  "intro_blink_pling": "pling-e6.wav",
-  "intro_blink_note": "ONE simple pling on Princess's blink at 18.20s — a single glockenspiel note on E6, the note the theme resolves to. The v8 bell was wrong (Lars 2026-08-31). Never a chord, never a chime cluster: one note, quick mallet attack, clean decay to silence.",
-  "locked_elements": {
-   "show_intro": "show-intro-v9.mp4 — approved 2026-08-31 (with the E6 pling on the blink)",
-   "show_outro": "episode-outro.mp4 — lullaby tuck-in + TigerWorks credits, approved 2026-08-31",
-   "theme_continuation": "theme/theme-continuation.mp3 — the opening after the intro, approved 2026-08-29",
-   "note": "These are the EPISODE FURNITURE. They are not regenerated, restyled or re-scored for a new episode — every film is cut between them. Only Lars reopens a locked element.",
-   "bells": "bell-glitter.mp3 (Glitter) and bell-princess.mp3 (Princess) — approved 2026-09-01"
-  },
-  "scale_chart": "SIZE CHART — obey exactly, in every shot of every episode. Glitter is a full-grown unicorn mare. Princess is a small foal: her back reaches only to Glitter's knee, and she is about one third of Glitter's length. Moss the little dragon is SMALLER than Princess — standing, his head reaches Princess's chest. Pip the bird is tiny: about the size of Princess's head, and he can perch on her back. These sizes NEVER change.",
-  "scale_plate": "scale-plate.png",
-  "bells": {
-   "glitter": "bell-glitter.mp3",
-   "princess": "bell-princess.mp3"
-  },
-  "bells_note": "Lars 2026-09-01: Glitter's bell is the bright brass dinner bell (D); Princess's little bell, given at the end of episode 1, is the clear silver service bell (F). THE UNIVERSE OWNS ITS BELLS — no shot may generate its own, which is where the metallic computer-ish bell came from. Every bell heard in every episode is one of these two files.",
-  "world_rules": [
-   "RAINBOW FOREST HAS ONE CAVE: the spring cave behind the crack at the foot of the white cliff at Moonwater Spring, seen only in the scenes set there. Everywhere else, cliffs, banks and hillsides are solid unbroken pale rock with moss and flowers.",
-   "THE GROUND is soft grass, bare earth path and small flat pebbles. Objects the story names appear exactly where the shot says and nowhere else.",
-   "EVERY CHARACTER'S THINGS are on the character: a bell hangs at the neck of whoever wears it and appears only there.",
-   "SOUND CUES name concrete things — water over stones, hoofsteps, leaves, small birds, a bell. Never wind, breeze, whisper, murmur, hum, sigh, echo or 'distant': a sound generator turns those into a voice.",
-   "Fireflies are tiny soft yellow-green points of light — plain glowing dots with no bodies, wings or faces; they are never drawn as insects or little characters."
+  "lullaby_lyrics_short": [
+    "Sleep now... sleep now...",
+    "the forest holds you near.",
+    "Sleep now... sleep now...",
+    "your dreams are safe in here.",
+    "Goodnight, goodnight, little unicorn...",
+    "sleep tight."
   ],
-  "locations": {
-   "rope-bridge": "locations/rope-bridge.png",
-   "moonwater-spring": "locations/moonwater-spring.png",
-   "forest-path-dust": "locations/forest-path-dust.png",
-   "forest-path-morning": "locations/forest-path-morning.png",
-   "forest-path-quiet": "locations/forest-path-quiet.png",
-   "path-home-dusk": "locations/path-home-dusk.png",
-   "spring-dry": "locations/spring-dry.png",
-   "spring-outlet": "locations/spring-outlet.png",
-   "spring-restored": "locations/spring-restored.png",
-   "inside-the-cave": "locations/inside-the-cave.png",
-   "rainbow-valley": "locations/rainbow-valley.png",
-   "valley-from-above": "locations/valley-from-above.png",
-   "castle-hill": "locations/castle-hill.png",
-   "castle-gate": "locations/castle-gate.png",
-   "meadow-by-the-river": "locations/meadow-by-the-river.png",
-   "forest-edge": "locations/forest-edge.png",
-   "deep-forest": "locations/deep-forest.png",
-   "hollow-log-clearing": "locations/hollow-log-clearing.png",
-   "river-and-waterfall": "locations/river-and-waterfall.png",
-   "rope-bridge-valley": "locations/rope-bridge-valley.png",
-   "moonwater-spring-wide": "locations/moonwater-spring-wide.png",
-   "great-tree-door": "locations/great-tree-door.png",
-   "path-home-dusk-wide": "locations/path-home-dusk-wide.png",
-   "castle-from-the-meadow": "locations/castle-from-the-meadow.png",
-   "castle-courtyard": "locations/castle-courtyard.png",
-   "castle-great-hall": "locations/castle-great-hall.png",
-   "princess-tower-room": "locations/princess-tower-room.png",
-   "castle-balcony-dusk": "locations/castle-balcony-dusk.png",
-   "cave-entrance-cliff": "locations/cave-entrance-cliff.png"
-  },
-  "props": {
-   "white-stone": {
-    "words": [
-     "white stone",
-     "round stone",
-     "the stone",
-     "boulder"
-    ],
-    "look": "A single smooth rounded white stone, about the size of a small foal's body, pale chalky white with faint grey veining and a few small chips along one edge."
-   },
-   "fallen-branch": {
-    "words": [
-     "branch"
-    ],
-    "look": "One slim fallen branch, silver-grey bark, bare but for a few small leaves, about as long as a small unicorn foal's body and no thicker than her leg — light enough for a small foal to lift on her horn. Three thin forking twigs. A branch, not a log and not a trunk."
-   },
-   "glitter-bell": {
-    "words": [
-     "silver bell",
-     "her bell",
-     "mama's bell",
-     "bell"
-    ],
-    "look": "A small polished silver bell on a soft lilac ribbon, plain and round, with a narrow slot across its base.",
-    "worn_by": [
-     "Glitter",
-     "Princess"
-    ]
-   },
-   "spring-opening": {
-    "words": [
-     "spring opening",
-     "the opening",
-     "dark crack",
-     "the crack",
-     "cave mouth"
-    ],
-    "look": "A narrow dark crack at the foot of a pale white limestone cliff — an opening just tall enough for a small unicorn foal and a baby dragon to walk into, dark inside, with a thin trickle of water running out over wet grey stones and moss. Rough white rock around it, small flowers at its base. The one way into the spring cave.",
-    "name": "the crack in the cliff"
-   },
-   "rope-bridge": {
-    "words": [
-     "bridge",
-     "planks",
-     "handrail"
-    ],
-    "look": "THE rope bridge of Rainbow Forest, exactly as in the reference: a long rope-and-plank suspension bridge hanging HIGH across a deep dry stony gorge, two thick rope handrails, plank deck, anchored to stout posts on the green banks. There is one bridge and it always looks like this.",
-    "name": "the rope bridge"
-   },
-   "glitter-bell--on-the-ribbon": {
-    "words": [
-     "glitter bell",
-     "on the ribbon"
-    ],
-    "brief": "Glitter's small silver bell hanging on its lilac ribbon around a white unicorn mare's neck, close, the bell polished and round with a tiny clapper"
-   },
-   "glitter-bell--lying-in-grass": {
-    "words": [
-     "glitter bell",
-     "lying in grass"
-    ],
-    "brief": "the same small silver bell with its lilac ribbon lying loose in tall green meadow grass, a little sunlight on it, seen close"
-   },
-   "glitter-bell--in-a-foal-mouth": {
-    "words": [
-     "glitter bell",
-     "in a foal mouth"
-    ],
-    "brief": "the same small silver bell dangling from its lilac ribbon held gently in a small white unicorn foal's teeth, close on the muzzle and bell"
-   },
-   "hollow-log--empty": {
-    "words": [
-     "hollow log",
-     "empty"
-    ],
-    "brief": "an old fallen hollow log lying across a small sunlit clearing, moss on its bark, the dark round opening facing the camera, tall grass and mushrooms around it"
-   },
-   "hollow-log--moss-peeking-out": {
-    "words": [
-     "hollow log",
-     "moss peeking out"
-    ],
-    "brief": "the same old hollow log with a small round green-teal baby dragon's head peeking nervously out of its dark opening"
-   }
-  },
-  "place_briefs": {
-   "rope-bridge": "A plain rope-and-plank footbridge across a green gorge in Rainbow Forest. Two straight thick rope handrails at chest height run the whole length; short vertical rope ties every few planks join the handrails down to the deck; flat wooden planks lie side by side across the deck; the ropes are anchored to stout posts at both banks. The ropes are neat and taut — never tangled, never floating, never looping. Solid rocky banks, no cave and no boulder. Warm midday light.",
-   "moonwater-spring": "A round green clearing in Rainbow Forest where a clear spring fills a shallow pool of pale flat stones. Soft grass and small flowers run to the water's edge, tall leafy trees stand back around the rim, and a low white cliff rises behind the pool. No cave, no dark opening and no large rounded boulder anywhere. Bright late-morning light, the water sparkling.",
-   "forest-path-dust": "Forest-path-dust follows a dry creek bed cutting through the woods, its grey stones and damp moss marking where water once ran. Flowering vines tangle along the path's edge, with a fallen branch resting across them. A dusty cliff of loose white stone rises nearby, prone to shedding grit into the air. Daylight filters soft and hazy through drifting dust and surrounding trees.",
-   "forest-path-morning": "Forest-path-morning is a soft dirt trail winding beneath towering rainbow-hued flowers and thick flowering vines, their giant petals arching overhead like canopies. Dew clings to leaves and blossoms, catching early light. Low mist drifts along the ground between smooth stones bordering the path. Golden sunrise light filters through pastel foliage, warm and hazy, with no water features, only stillness, color, and glowing morning air.",
-   "forest-path-quiet": "A dry dirt path winds through open forest, packed pale earth studded with small stones. Tall trees rise on either side, their canopies loose enough to let soft grey-gold light filter down. Oversized flowers and low undergrowth crowd the path's edges in muted colors. No cave, den, hollow, tunnel, boulder, or standing stone breaks the ground anywhere. In the distance, a white cliff is faintly visible beyond the tree line.",
-   "path-home-dusk": "Path-home-dusk winds through Rainbow Forest as a dusty trail scattered with smooth white stones, bordered by tall trees and soft undergrowth. The path dips near a fallen log and opens toward a quiet spring at its end. Rolling hills rise beyond the treeline. Golden dusk light filters low through the branches, casting long warm shadows and a peaceful, glowing stillness over the ground.",
-   "spring-dry": "A dry creek bed in the green clearing: smooth wet stones and mud where the creek used to run, only a thin trickle of water left between them, and BEHIND it the spring outlet — the same rocky bowl and stone spout as the spring-outlet picture — now almost silent. Same place, same rocks, same trees as the reference.",
-   "spring-outlet": "A pale white cliff rises above a stony channel where spring water once ran, now damp moss and bare stones drying in the light. At the cliff's foot lies a small low opening, barely tall as a round stone, no cave mouth or doorway. Nearby the rock bears a fresh pale scar and a narrow dark crack beyond it. Morning-to-afternoon light slants through surrounding trees and drifting dust.",
-   "spring-restored": "Moonwater Spring lies in a wide clearing at the foot of a pale white cliff, its stone rising smooth and ancient above the trees. Smooth stones ring the pool's edge, worn soft by time. Grass grows thick and green around the water, dotted with small wildflowers. The spring itself glimmers, fed by unseen currents. Warm late-afternoon light gilds everything, casting long, gentle shadows across the clearing.",
-   "inside-the-cave": "Inside the mountain, in the dark rounded cave where the underground river runs: we look from INSIDE toward the cave's mouth, and the mouth is blocked from inside by the BACK of one large pale rounded stone wedged tight in the round hole, daylight glowing in a thin ring around its edge; wet rock walls, a thin trickle of water at the bottom, a few tiny soft points of light. Seen so that characters standing inside could push the stone outward.",
-   "rainbow-valley": "The whole Unicorn Universe from high above at sunrise: Rainbow Forest with its giant rainbow flowers in the foreground, the golden winding path across green meadows, the river with its stone bridge and waterfalls, the rainbow over the valley, the white castle on its hill far away, blue mountains behind, the great tree with the round door, red-spotted mushrooms, low morning mist, warm golden light.",
-   "valley-from-above": "the whole Unicorn Universe from high above at sunrise, Rainbow Forest in front, the golden path, the river and its bridge, the rainbow, the white castle on its hill, blue mountains behind",
-   "castle-hill": "the white castle with rose-gold roofs on its green hill, a rainbow behind it, flags in a soft wind, the winding path climbing to its gate",
-   "castle-gate": "the castle gate seen from the path, open, flowers along the wall, warm light inside",
-   "meadow-by-the-river": "a wide green meadow with tall grass and wildflowers, the river shining beside it, the forest edge far behind",
-   "forest-edge": "the edge of Rainbow Forest from the meadow, giant rainbow flowers between the first trees, a path going in",
-   "deep-forest": "deep inside Rainbow Forest, tall trunks, shafts of light, moss, a cobbled path",
-   "hollow-log-clearing": "a small sunlit clearing with an old hollow log lying across it, mushrooms, tall grass",
-   "river-and-waterfall": "the river bending past mossy rocks with a small waterfall, mist in the sun",
-   "rope-bridge-valley": "the rope bridge from a distance, high above the river gorge, trees on both sides",
-   "moonwater-spring-wide": "Moonwater Spring in its rocky bowl, the stone spout, the pool, ferns, seen from a little way off",
-   "great-tree-door": "the great tree with the round wooden door in its trunk, lanterns, roots like steps",
-   "path-home-dusk-wide": "the golden path home at dusk, long shadows, the castle small and warm in the distance, first stars",
-   "castle-from-the-meadow": "The white castle with rose-gold roofs seen from the meadow below at midday, its hill green, the winding golden path climbing to the gate, the rainbow faint behind, no characters",
-   "castle-courtyard": "Inside the castle walls: a sunny cobbled courtyard with a small fountain, flower boxes at every window, a round tower, pennants in a soft wind, no characters",
-   "castle-great-hall": "The castle's great hall: tall arched windows full of daylight, a long carpet to a pair of gentle thrones woven with flowers, banners with a rainbow and a bell, warm and welcoming, no characters",
-   "princess-tower-room": "Princess's little round tower room: a bed of soft straw and cushions, a round window looking over the valley, a shelf of shells and feathers, morning light, no characters",
-   "castle-balcony-dusk": "Seen from a balcony OF the castle at dusk: the stone balustrade and a warm lit doorway in the foreground, and beyond it only the valley — Rainbow Forest darkening below, the river catching the last light, meadows, blue mountains and the first stars. There is NO castle, tower or building anywhere in the view; we are standing in the castle looking out. No characters, no text.",
-   "cave-entrance-cliff": "The entrance of the cave in the pale cliff: a tall dark crack in the white-grey rock at the foot of the mountain, moss and ferns around it, a thin trickle of water running out over stones into the clearing — the same pale rock, the same clearing and the same light as the spring outlet, seen from a few steps back so the whole crack is visible. No characters, no text."
-  },
-  "place_exemptions": {
-   "cliff-crack": [
-    "cave",
-    "stone"
-   ],
-   "spring-outlet": [
-    "cave",
-    "stone"
-   ],
-   "spring-dry": [
-    "cave",
-    "stone"
-   ],
-   "inside-the-cave": [
-    "cave",
-    "stone"
-   ],
-   "rainbow-valley": [
-    "cave"
-   ],
-   "spring-restored": [
-    "stone"
-   ],
-   "moonwater-spring": [
-    "stone"
-   ],
-   "hollow-log-clearing": [
-    "cave"
-   ],
-   "moonwater-spring-wide": [
-    "cave",
-    "stone"
-   ],
-   "river-and-waterfall": [
-    "cave",
-    "stone"
-   ],
-   "valley-from-above": [
-    "cave",
-    "stone"
-   ],
-   "castle-gate": [
-    "cave"
-   ],
-   "great-tree-door": [
-    "cave"
-   ],
-   "rope-bridge-valley": [
-    "cave",
-    "stone"
-   ],
-   "deep-forest": [
-    "cave"
-   ],
-   "castle-hill": [
-    "stone"
-   ],
-   "forest-edge": [
-    "cave"
-   ],
-   "meadow-by-the-river": [
-    "stone"
-   ],
-   "path-home-dusk-wide": [
-    "cave",
-    "stone"
-   ]
-  },
-  "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there.",
-  "scale_chart_stone": "The big round white stone is about as tall as Princess — big for her, but a stone, not a boulder the size of a house.",
-  "location_md5": {
-   "rope-bridge": "f331f257e99f5ed97c4a34fc0cd8e382",
-   "moonwater-spring": "d80f788bcad8bbc26583bcf1b0013b4a",
-   "forest-path-dust": "0d121cc984c4733d4c0861dfe304d60b",
-   "forest-path-morning": "ee60399539e013c6e258febbc3199e47",
-   "forest-path-quiet": "bb927c6ff0f218d00aa3dead7a943f34",
-   "path-home-dusk": "32394c4cb595a4f8a5bf01781dfe24c4",
-   "spring-dry": "409a9d74db655152d70986a4e8db4a6e",
-   "spring-outlet": "be3447c56c999140c6c4fc7348aa1dfd",
-   "spring-restored": "2b2e2cf574fb96660fc19b331ba6b092",
-   "inside-the-cave": "c75fdc70e22c45f95df61429e0fb4493",
-   "rainbow-valley": "c65733bb133b11b99a21100ea9944bce",
-   "valley-from-above": "81e745887fd696f085c93343f5d64730",
-   "castle-hill": "fd2ca8e8011e4cad921b2a30f7cad017",
-   "castle-gate": "e27209340d97f26291199eddcd7bf4b1",
-   "meadow-by-the-river": "6b46eb8d167225588ab081ec7ce87c56",
-   "forest-edge": "dfdbd5eec9a92e10cbd7374047b5d763",
-   "deep-forest": "b6d05d59c48e1bc67b1a441a8f7c4372",
-   "hollow-log-clearing": "70d54e3ec36eb98534b6db983885d1ff",
-   "river-and-waterfall": "9227fb78bbfcffe87c4c354ebd5e4cd4",
-   "rope-bridge-valley": "12d83e142ff5c06a08cae4d56b18c9ae",
-   "moonwater-spring-wide": "8ae45c334e5337f74ecd006f7fd74f6e",
-   "great-tree-door": "7c0a3c3b3efbf4853498845e01935ef7",
-   "path-home-dusk-wide": "99672776580414720becfcf4dda6ab5f",
-   "castle-from-the-meadow": "600bb6c5411af9f3b9bb51d7c256bd20",
-   "castle-courtyard": "9e8aa1d6018f5b8b9fe71d1c93d02e84",
-   "castle-great-hall": "4fbb54c8b5bbf064cc1cbba13d17b0d4",
-   "princess-tower-room": "0cba75f1f77574f478a32004dc04ecac",
-   "castle-balcony-dusk": "09d3de5a12897e0f702a962c02f3397a",
-   "cave-entrance-cliff": "fe5aff316f4243270646db9e3921630f"
-  },
-  "atlas": {
-   "note": "Show Bible extension (Lars, 2026-09-03): the universe defined in wide pictures, each approved once and reused as the place plate for every shot set there.",
-   "places": {
-    "valley-from-above": "the whole Unicorn Universe from high above at sunrise, Rainbow Forest in front, the golden path, the river and its bridge, the rainbow, the white castle on its hill, blue mountains behind",
-    "castle-hill": "the white castle with rose-gold roofs on its green hill, a rainbow behind it, flags in a soft wind, the winding path climbing to its gate",
-    "castle-gate": "the castle gate seen from the path, open, flowers along the wall, warm light inside",
-    "meadow-by-the-river": "a wide green meadow with tall grass and wildflowers, the river shining beside it, the forest edge far behind",
-    "forest-edge": "the edge of Rainbow Forest from the meadow, giant rainbow flowers between the first trees, a path going in",
-    "deep-forest": "deep inside Rainbow Forest, tall trunks, shafts of light, moss, a cobbled path",
-    "hollow-log-clearing": "a small sunlit clearing with an old hollow log lying across it, mushrooms, tall grass",
-    "river-and-waterfall": "the river bending past mossy rocks with a small waterfall, mist in the sun",
-    "rope-bridge-valley": "the rope bridge from a distance, high above the river gorge, trees on both sides",
-    "moonwater-spring-wide": "Moonwater Spring in its rocky bowl, the stone spout, the pool, ferns, seen from a little way off",
-    "great-tree-door": "the great tree with the round wooden door in its trunk, lanterns, roots like steps",
-    "path-home-dusk-wide": "the golden path home at dusk, long shadows, the castle small and warm in the distance, first stars",
-    "castle-from-the-meadow": "The white castle with rose-gold roofs seen from the meadow below at midday, its hill green, the winding golden path climbing to the gate, the rainbow faint behind, no characters",
-    "castle-courtyard": "Inside the castle walls: a sunny cobbled courtyard with a small fountain, flower boxes at every window, a round tower, pennants in a soft wind, no characters",
-    "castle-great-hall": "The castle's great hall: tall arched windows full of daylight, a long carpet to a pair of gentle thrones woven with flowers, banners with a rainbow and a bell, warm and welcoming, no characters",
-    "princess-tower-room": "Princess's little round tower room: a bed of soft straw and cushions, a round window looking over the valley, a shelf of shells and feathers, morning light, no characters",
-    "castle-balcony-dusk": "Seen from a balcony OF the castle at dusk: the stone balustrade and a warm lit doorway in the foreground, and beyond it only the valley — Rainbow Forest darkening below, the river catching the last light, meadows, blue mountains and the first stars. There is NO castle, tower or building anywhere in the view; we are standing in the castle looking out. No characters, no text.",
-    "cave-entrance-cliff": "The entrance of the cave in the pale cliff: a tall dark crack in the white-grey rock at the foot of the mountain, moss and ferns around it, a thin trickle of water running out over stones into the clearing — the same pale rock, the same clearing and the same light as the spring outlet, seen from a few steps back so the whole crack is visible. No characters, no text."
-   }
-  },
-  "object_sets_note": "Every story declares its object set: each object has ONE approved image per STATE (e.g. white-stone: alone / in-the-hole / hole-empty). A shot names the state it shows; the still is drawn with that state's plate and only that.",
-  "storyteller_voice": {
-   "id": "v9LgF91V36LGgbLX3iHW",
-   "name": "David - American Narrator",
-   "note": "mirror of voice_cast.Storyteller"
-  },
-  "camera": {
-   "character_shots": "seedance2_5",
-   "wide_shots": "drift",
-   "note": "Lars 2026-09-03: Seedance 2.5 with the plates as references (how the intro and lullaby were shot); wide shots are drifts over the approved still; gen4_turbo retired for episodes"
-  }
- },
- "world": {
-  "bible_book": "SC-039",
-  "register": "magical wonder — Disney-family warmth, nothing scary",
-  "cast": [
-   "Princess",
-   "Glitter",
-   "Pip",
-   "Moss"
+  "season_titles": [
+    "Princess and the Hidden Spring",
+    "Princess and the Thunder Sky",
+    "Princess and the Broken Wing",
+    "Princess and the Waiting Seed",
+    "Princess and the Tangled Truth",
+    "Princess and the Sharing Tree"
   ],
-  "plates": {
-   "princess": {
-    "file": "plates/princess.png",
-    "md5": "53dd20e18f1241a6fdfaa0c7354908eb"
-   },
-   "glitter": {
-    "file": "plates/glitter.png",
-    "md5": "8ad0621973ce00ed62f245f292fe97e8"
-   },
-   "pip": {
-    "file": "plates/pip.png",
-    "md5": "2314ec945bf495c8aa8166da31820076"
-   },
-   "moss": {
-    "file": "plates/moss.png",
-    "md5": "8765ebf25ad2a96c3a0519d9d3002baa"
-   }
-  },
-  "plates_note": "These four pictures are the characters — the ones in the Character Bible Lars approved on 2026-09-01 09:18. Every episode copies them in and verifies them by hash; nothing redraws them. Glitter's plate replaced on 2026-09-02 (candidate A, chosen by Lars): the portrait's colours with the stylised-cute face the bible text describes.",
-  "props_plates": {
-   "white-stone": {
-    "file": "props/white-stone.png",
-    "md5": "36aaaafbd13ce8fd4d5db6ef9f0c1084"
-   },
-   "glitter-bell": {
-    "file": "props/glitter-bell.png",
-    "md5": "c3539d851e981a51f651e60209f1a8f0",
-    "brief": "Glitter's bell: a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon, about the size of a plum, shown large and clear against soft meadow bokeh; no characters, no text"
-   },
-   "spring-opening": {
-    "file": "props/spring-opening.png",
-    "md5": "73959cad46ac2696b745c65b11cc787a"
-   },
-   "rope-bridge": {
-    "file": "props/rope-bridge.png",
-    "md5": "6a7704050f18c0a879c42643d5186025"
-   },
-   "fallen-branch": {
-    "file": "props/fallen-branch.png",
-    "md5": "85dee7bea3896d5db341a27ff51a9138",
-    "brief": "a thick leafy limb BROKEN OFF a big oak-like tree in a storm, lying across a cobbled forest path: the break end splintered and torn (never sawn or cut clean), the branch as thick as a small tree trunk, dense with green leaves and a few twigs, bark rough and wet; no characters, no text"
-   },
-   "hollow-log--empty": {
-    "file": "props/hollow-log--empty.png",
-    "md5": "573c305f81aaa8b03e49c1ccbe1d4dfb",
-    "state_of": "hollow-log",
-    "brief": "an old fallen hollow log lying across a small sunlit clearing, moss on its bark, the dark round opening facing the camera, tall grass and mushrooms around it"
-   },
-   "hollow-log--moss-peeking-out": {
-    "file": "props/hollow-log--moss-peeking-out.png",
-    "md5": "c7a5c3f134862520455dca91fee9d06a",
-    "state_of": "hollow-log",
-    "brief": "the same old hollow log with a small round green-teal baby dragon's head peeking nervously out of its dark opening"
-   },
-   "princess-bell": {
-    "file": "props/princess-bell.png",
-    "md5": "ca29f33c33e2c8f58692a65fa84c2c15",
-    "brief": "Princess's bell: a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon, a little smaller than Glitter's — the size of a cherry — on a thinner lilac ribbon, shown large and clear against soft meadow bokeh; no characters, no text"
-   },
-   "glitter-bell--on-the-ribbon": {
-    "file": "props/glitter-bell--on-the-ribbon.png",
-    "md5": "c03636b1fe530701938bbba62c015a68",
-    "state_of": "glitter-bell",
-    "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon hanging around a white unicorn mare's neck, close on the bell"
-   },
-   "glitter-bell--lying-in-grass": {
-    "file": "props/glitter-bell--lying-in-grass.png",
-    "md5": "f9d07a38ec620fc5e04e427e22755a55",
-    "state_of": "glitter-bell",
-    "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon, lying loose in tall green meadow grass, sunlight on the metal, seen close"
-   },
-   "glitter-bell--in-a-foal-mouth": {
-    "file": "props/glitter-bell--in-a-foal-mouth.png",
-    "md5": "92bde36f5921705798c4b92d78d6c2fb",
-    "state_of": "glitter-bell",
-    "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon dangling from its ribbon held gently in a small white unicorn foal's teeth, close on the muzzle and bell"
-   },
-   "bells-together": {
-    "file": "props/bells-together.png",
-    "md5": "f981189af576ac2ad58be2a0bd4f5a66",
-    "brief": "Glitter's bell (plum-size) and Princess's bell (cherry-size) side by side — the size chart of the bells"
-   }
-  },
-  "props_note": "Universe objects. Each has one plate, drawn once and kept here with its hash; every episode copies it in and verifies it before drawing. The bell (Lars, 2026-09-02): Glitter's silver bell on a lilac ribbon, and Princess's — the same bell a little smaller, on a sky-blue ribbon — are the same object at two sizes.",
-  "pose_sheet": {
-   "note": "Character Bible extension (Lars, 2026-09-03): every character gets the same sheet of angles, expressions and movements, drawn from the canonical plate and verified for identity; a shot picks the pose closest to its action as its reference.",
-   "angles": [
-    "front, standing, looking at the camera",
-    "three-quarter view from the left, standing",
-    "side profile, standing",
-    "from behind, walking away",
-    "from above, looking up at the camera"
-   ],
-   "expressions": [
-    "happy, bright eyes",
-    "sad, ears down, eyes lowered",
-    "scared, wide eyes",
-    "surprised, mouth a small o",
-    "sleepy, eyes half closed, calm"
-   ],
-   "movements": [
-    "walking, mid-step",
-    "running, all four legs off the ground",
-    "sitting, resting",
-    "lying down, head on the ground",
-    "head lowered to the ground, sniffing or picking something up",
-    "looking back over the shoulder"
-   ]
-  },
-  "pose_sheet_overrides": {
-   "pip": {
-    "movements": [
-     "flying, wings spread wide",
-     "hovering, wings a blur",
-     "perched on a branch",
-     "landing, feet reaching down",
-     "head tilted, listening",
-     "pointing the way with one wing"
-    ]
-   }
-  },
-  "poses": {
-   "princess": {
-    "side-profile-standing": {
-     "file": "plates/princess/side-profile-standing.png",
-     "md5": "3dcb8a907305d1ba7f8f903a1d4ddae0",
-     "kind": "angle",
-     "text": "side profile, standing"
-    },
-    "from-behind-walking-away": {
-     "file": "plates/princess/from-behind-walking-away.png",
-     "md5": "0cbbd919c4b02f5c8359a03009b664b8",
-     "kind": "angle",
-     "text": "from behind, walking away"
-    },
-    "three-quarter-view-from-the-left-standing": {
-     "file": "plates/princess/three-quarter-view-from-the-left-standing.png",
-     "md5": "702a43be29945909d3652fab3a8c758c",
-     "kind": "angle",
-     "text": "three-quarter view from the left, standing"
-    },
-    "happy-bright-eyes": {
-     "file": "plates/princess/happy-bright-eyes.png",
-     "md5": "964652c013108c92ed27bf3eb81827a2",
-     "kind": "expression",
-     "text": "happy, bright eyes"
-    },
-    "from-above-looking-up-at-the-camera": {
-     "file": "plates/princess/from-above-looking-up-at-the-camera.png",
-     "md5": "619a4d227c9b6577f260b49478de7167",
-     "kind": "sheet",
-     "text": "from above, looking up at the camera"
-    },
-    "front-standing-looking-at-the-camera": {
-     "file": "plates/princess/front-standing-looking-at-the-camera.png",
-     "md5": "b34b32b68e3a566a01bb0692dc045319",
-     "kind": "angle",
-     "text": "front, standing, looking at the camera"
-    },
-    "scared-wide-eyes": {
-     "file": "plates/princess/scared-wide-eyes.png",
-     "md5": "f4e7a9f5cfafab98cdbc2b256ec8a7e1",
-     "kind": "expression",
-     "text": "scared, wide eyes"
-    },
-    "sad-ears-down-eyes-lowered": {
-     "file": "plates/princess/sad-ears-down-eyes-lowered.png",
-     "md5": "c5b171e9ce5bb1e6454eaf6ca58c4f14",
-     "kind": "expression",
-     "text": "sad, ears down, eyes lowered"
-    },
-    "surprised-mouth-a-small-o": {
-     "file": "plates/princess/surprised-mouth-a-small-o.png",
-     "md5": "690628aff9806c0b1875fb15e5bd2166",
-     "kind": "expression",
-     "text": "surprised, mouth a small o"
-    },
-    "walking-mid-step": {
-     "file": "plates/princess/walking-mid-step.png",
-     "md5": "bd4ca0587cbb3d4aeb8244c076af67f8",
-     "kind": "movement",
-     "text": "walking, mid-step"
-    },
-    "sleepy-eyes-half-closed-calm": {
-     "file": "plates/princess/sleepy-eyes-half-closed-calm.png",
-     "md5": "8b882af28ff520dd1e1bf75416d86d84",
-     "kind": "expression",
-     "text": "sleepy, eyes half closed, calm"
-    },
-    "running-all-four-legs-off-the-ground": {
-     "file": "plates/princess/running-all-four-legs-off-the-ground.png",
-     "md5": "380ab97a833d0517bb91707cbf99fccd",
-     "kind": "movement",
-     "text": "running, all four legs off the ground"
-    },
-    "sitting-resting": {
-     "file": "plates/princess/sitting-resting.png",
-     "md5": "809f9709b2f274a0bcfc53daa6d2caaa",
-     "kind": "movement",
-     "text": "sitting, resting"
-    },
-    "looking-back-over-the-shoulder": {
-     "file": "plates/princess/looking-back-over-the-shoulder.png",
-     "md5": "426dd9c46b543b251c62f21e188169e3",
-     "kind": "movement",
-     "text": "looking back over the shoulder"
-    },
-    "head-lowered-to-the-ground-sniffing-or-picking-s": {
-     "file": "plates/princess/head-lowered-to-the-ground-sniffing-or-picking-s.png",
-     "md5": "7c8d7952685ec43d940c8d55d0b3c0e4",
-     "kind": "movement",
-     "text": "head lowered to the ground, sniffing or picking something up"
-    },
-    "lying-down-head-on-the-ground": {
-     "file": "plates/princess/lying-down-head-on-the-ground.png",
-     "md5": "97f4895df34fdad8d45512496a07279a",
-     "kind": "movement",
-     "text": "lying down, head on the ground"
-    }
-   },
-   "glitter": {
-    "three-quarter-view-from-the-left-standing": {
-     "file": "plates/glitter/three-quarter-view-from-the-left-standing.png",
-     "md5": "00bad3afed6a017b9344fd5f63d2c750",
-     "kind": "angle",
-     "text": "three-quarter view from the left, standing"
-    },
-    "front-standing-looking-at-the-camera": {
-     "file": "plates/glitter/front-standing-looking-at-the-camera.png",
-     "md5": "dd0d7f7b1dc9354363d5a950c20451f9",
-     "kind": "angle",
-     "text": "front, standing, looking at the camera"
-    },
-    "side-profile-standing": {
-     "file": "plates/glitter/side-profile-standing.png",
-     "md5": "f86dbc810b5939b93199e5f99bb34d5e",
-     "kind": "angle",
-     "text": "side profile, standing"
-    },
-    "from-above-looking-up-at-the-camera": {
-     "file": "plates/glitter/from-above-looking-up-at-the-camera.png",
-     "md5": "5c012b45447cc8520a0b4437878871d7",
-     "kind": "sheet",
-     "text": "from above, looking up at the camera"
-    },
-    "from-behind-walking-away": {
-     "file": "plates/glitter/from-behind-walking-away.png",
-     "md5": "475bb8c926444065fca8aaf5d482fb6a",
-     "kind": "angle",
-     "text": "from behind, walking away"
-    },
-    "scared-wide-eyes": {
-     "file": "plates/glitter/scared-wide-eyes.png",
-     "md5": "1470f65e127cebb0b9489b66f6aea8c3",
-     "kind": "expression",
-     "text": "scared, wide eyes"
-    },
-    "sad-ears-down-eyes-lowered": {
-     "file": "plates/glitter/sad-ears-down-eyes-lowered.png",
-     "md5": "97f75877eb23b850f8535399940a5bcc",
-     "kind": "expression",
-     "text": "sad, ears down, eyes lowered"
-    },
-    "happy-bright-eyes": {
-     "file": "plates/glitter/happy-bright-eyes.png",
-     "md5": "1721f50c7608b872fda44bffc6d89734",
-     "kind": "expression",
-     "text": "happy, bright eyes"
-    },
-    "surprised-mouth-a-small-o": {
-     "file": "plates/glitter/surprised-mouth-a-small-o.png",
-     "md5": "5ab24d9a312f9cc2ee1016c6d2727260",
-     "kind": "expression",
-     "text": "surprised, mouth a small o"
-    },
-    "running-all-four-legs-off-the-ground": {
-     "file": "plates/glitter/running-all-four-legs-off-the-ground.png",
-     "md5": "fbd22a10b5de3cdd64050edfe5d16da5",
-     "kind": "movement",
-     "text": "running, all four legs off the ground"
-    },
-    "walking-mid-step": {
-     "file": "plates/glitter/walking-mid-step.png",
-     "md5": "f736f425ad2add1d0c2bbb5c2bafbdc1",
-     "kind": "movement",
-     "text": "walking, mid-step"
-    },
-    "sleepy-eyes-half-closed-calm": {
-     "file": "plates/glitter/sleepy-eyes-half-closed-calm.png",
-     "md5": "ea809f527ad5cfb408cb0ff3fa8e5e03",
-     "kind": "expression",
-     "text": "sleepy, eyes half closed, calm"
-    },
-    "sitting-resting": {
-     "file": "plates/glitter/sitting-resting.png",
-     "md5": "5b061c162b0aadb1c0c812051918798d",
-     "kind": "movement",
-     "text": "sitting, resting"
-    },
-    "lying-down-head-on-the-ground": {
-     "file": "plates/glitter/lying-down-head-on-the-ground.png",
-     "md5": "91ac7e78177ae9035d4c4781a6ce5995",
-     "kind": "movement",
-     "text": "lying down, head on the ground"
-    },
-    "head-lowered-to-the-ground-sniffing-or-picking-s": {
-     "file": "plates/glitter/head-lowered-to-the-ground-sniffing-or-picking-s.png",
-     "md5": "f7e896492e15d07fc12e45409cee0215",
-     "kind": "movement",
-     "text": "head lowered to the ground, sniffing or picking something up"
-    },
-    "looking-back-over-the-shoulder": {
-     "file": "plates/glitter/looking-back-over-the-shoulder.png",
-     "md5": "4af2d75a53aabfc6bd560f83aa3380b0",
-     "kind": "movement",
-     "text": "looking back over the shoulder"
-    }
-   },
-   "pip": {
-    "three-quarter-view-from-the-left-standing": {
-     "file": "plates/pip/three-quarter-view-from-the-left-standing.png",
-     "md5": "0e1dfbd1bd15a37cbece4bb9c930d9cf",
-     "kind": "angle",
-     "text": "three-quarter view from the left, standing"
-    },
-    "front-standing-looking-at-the-camera": {
-     "file": "plates/pip/front-standing-looking-at-the-camera.png",
-     "md5": "dcdb59571c9cb0c5de52a9df3391de02",
-     "kind": "angle",
-     "text": "front, standing, looking at the camera"
-    },
-    "from-behind-walking-away": {
-     "file": "plates/pip/from-behind-walking-away.png",
-     "md5": "ed048a4a60f7f36d95a1be38a099e1c0",
-     "kind": "angle",
-     "text": "from behind, walking away"
-    },
-    "side-profile-standing": {
-     "file": "plates/pip/side-profile-standing.png",
-     "md5": "5891d4cc870d03a0c5b21156d97f1260",
-     "kind": "angle",
-     "text": "side profile, standing"
-    },
-    "from-above-looking-up-at-the-camera": {
-     "file": "plates/pip/from-above-looking-up-at-the-camera.png",
-     "md5": "5b558db263be4cd3c12cd50542b8532c",
-     "kind": "sheet",
-     "text": "from above, looking up at the camera"
-    },
-    "happy-bright-eyes": {
-     "file": "plates/pip/happy-bright-eyes.png",
-     "md5": "bfa5b972e1bfccbbb2c48ba8d3723df1",
-     "kind": "expression",
-     "text": "happy, bright eyes"
-    },
-    "sad-ears-down-eyes-lowered": {
-     "file": "plates/pip/sad-ears-down-eyes-lowered.png",
-     "md5": "3792f6be80aa3370dd042c77c2c5a927",
-     "kind": "expression",
-     "text": "sad, ears down, eyes lowered"
-    },
-    "scared-wide-eyes": {
-     "file": "plates/pip/scared-wide-eyes.png",
-     "md5": "090941336286345a13b29a43390f0b92",
-     "kind": "expression",
-     "text": "scared, wide eyes"
-    },
-    "sleepy-eyes-half-closed-calm": {
-     "file": "plates/pip/sleepy-eyes-half-closed-calm.png",
-     "md5": "d359136e1eef200a53917031285f421e",
-     "kind": "expression",
-     "text": "sleepy, eyes half closed, calm"
-    },
-    "surprised-mouth-a-small-o": {
-     "file": "plates/pip/surprised-mouth-a-small-o.png",
-     "md5": "8438b5ebdb9baf1cf109e55580cdb51c",
-     "kind": "expression",
-     "text": "surprised, mouth a small o"
-    },
-    "hovering-wings-a-blur": {
-     "file": "plates/pip/hovering-wings-a-blur.png",
-     "md5": "b7ba21115b6d24e066c73cde4c5d4b72",
-     "kind": "movement",
-     "text": "hovering, wings a blur"
-    },
-    "flying-wings-spread-wide": {
-     "file": "plates/pip/flying-wings-spread-wide.png",
-     "md5": "109e39ae55afb9cb59290f140eab9361",
-     "kind": "movement",
-     "text": "flying, wings spread wide"
-    },
-    "perched-on-a-branch": {
-     "file": "plates/pip/perched-on-a-branch.png",
-     "md5": "b9ef1a609b72a80e5612916daab78913",
-     "kind": "movement",
-     "text": "perched on a branch"
-    },
-    "landing-feet-reaching-down": {
-     "file": "plates/pip/landing-feet-reaching-down.png",
-     "md5": "fe1f4d3ce44a204cce80dff200eaf8db",
-     "kind": "movement",
-     "text": "landing, feet reaching down"
-    },
-    "head-tilted-listening": {
-     "file": "plates/pip/head-tilted-listening.png",
-     "md5": "57459c1090381fdfee7cfc811d201607",
-     "kind": "movement",
-     "text": "head tilted, listening"
-    },
-    "pointing-the-way-with-one-wing": {
-     "file": "plates/pip/pointing-the-way-with-one-wing.png",
-     "md5": "37f5144223687652e5816134f3f9761e",
-     "kind": "movement",
-     "text": "pointing the way with one wing"
-    }
-   },
-   "moss": {
-    "front-standing-looking-at-the-camera": {
-     "file": "plates/moss/front-standing-looking-at-the-camera.png",
-     "md5": "c69e891fa1cb7e1b8ed53eac2a658714",
-     "kind": "angle",
-     "text": "front, standing, looking at the camera"
-    },
-    "side-profile-standing": {
-     "file": "plates/moss/side-profile-standing.png",
-     "md5": "231a6f4bf3fd935832d253b77e8956b4",
-     "kind": "angle",
-     "text": "side profile, standing"
-    },
-    "three-quarter-view-from-the-left-standing": {
-     "file": "plates/moss/three-quarter-view-from-the-left-standing.png",
-     "md5": "bd590e165409466fc5a9992a97dccfd9",
-     "kind": "angle",
-     "text": "three-quarter view from the left, standing"
-    },
-    "happy-bright-eyes": {
-     "file": "plates/moss/happy-bright-eyes.png",
-     "md5": "72b7f73ab8d87a03d522e7c89272c25e",
-     "kind": "expression",
-     "text": "happy, bright eyes"
-    },
-    "from-above-looking-up-at-the-camera": {
-     "file": "plates/moss/from-above-looking-up-at-the-camera.png",
-     "md5": "4825a2aff982c7b22403606d033801b5",
-     "kind": "sheet",
-     "text": "from above, looking up at the camera"
-    },
-    "from-behind-walking-away": {
-     "file": "plates/moss/from-behind-walking-away.png",
-     "md5": "87b6c736f0ae96c1e1cd43dfe1001dae",
-     "kind": "angle",
-     "text": "from behind, walking away"
-    },
-    "sad-ears-down-eyes-lowered": {
-     "file": "plates/moss/sad-ears-down-eyes-lowered.png",
-     "md5": "87dc5105a03ae856aa80df2dfbdc0bc7",
-     "kind": "expression",
-     "text": "sad, ears down, eyes lowered"
-    },
-    "scared-wide-eyes": {
-     "file": "plates/moss/scared-wide-eyes.png",
-     "md5": "5b09def974a3cd69e213501126ef760d",
-     "kind": "expression",
-     "text": "scared, wide eyes"
-    },
-    "surprised-mouth-a-small-o": {
-     "file": "plates/moss/surprised-mouth-a-small-o.png",
-     "md5": "e92f21f637e742e9e40de1cc2e46c845",
-     "kind": "expression",
-     "text": "surprised, mouth a small o"
-    },
-    "walking-mid-step": {
-     "file": "plates/moss/walking-mid-step.png",
-     "md5": "b255739cf918d6dbcffbe2513875788e",
-     "kind": "movement",
-     "text": "walking, mid-step"
-    },
-    "sleepy-eyes-half-closed-calm": {
-     "file": "plates/moss/sleepy-eyes-half-closed-calm.png",
-     "md5": "19633983d09132d295420c47329daa96",
-     "kind": "expression",
-     "text": "sleepy, eyes half closed, calm"
-    },
-    "running-all-four-legs-off-the-ground": {
-     "file": "plates/moss/running-all-four-legs-off-the-ground.png",
-     "md5": "258e1dadbfa7a63e2aaf4fe3390b0558",
-     "kind": "movement",
-     "text": "running, all four legs off the ground"
-    },
-    "sitting-resting": {
-     "file": "plates/moss/sitting-resting.png",
-     "md5": "335981e9659bf75e92110f11716f27ec",
-     "kind": "movement",
-     "text": "sitting, resting"
-    },
-    "lying-down-head-on-the-ground": {
-     "file": "plates/moss/lying-down-head-on-the-ground.png",
-     "md5": "5777339fbf608041eea302dd0b3bd6ec",
-     "kind": "movement",
-     "text": "lying down, head on the ground"
-    },
-    "head-lowered-to-the-ground-sniffing-or-picking-s": {
-     "file": "plates/moss/head-lowered-to-the-ground-sniffing-or-picking-s.png",
-     "md5": "0bdc0bb826867e86382e9c7a1d446083",
-     "kind": "movement",
-     "text": "head lowered to the ground, sniffing or picking something up"
-    },
-    "looking-back-over-the-shoulder": {
-     "file": "plates/moss/looking-back-over-the-shoulder.png",
-     "md5": "0fdd45079a1fb7621cc97542a46d02c4",
-     "kind": "movement",
-     "text": "looking back over the shoulder"
-    }
-   }
-  },
-  "species": {
-   "Princess": "unicorn",
-   "Glitter": "unicorn",
-   "Pip": "bird",
-   "Moss": "dragon",
-   "Fireflies": "light"
-  }
- },
- "members": [
-  "SC-039",
-  "SC-042"
- ],
- "channels": {
-  "youtube": null,
-  "site": "https://princesstheunicorn.com"
- },
- "voice_cast": {
-  "Princess": {
-   "id": "MkTSSXNgnBULS6ek4pon",
-   "name": "Tilly - Bright, Spirited, Naive, Scrappy",
-   "direction": "bright and open; frightened only where the story is frightening"
-  },
-  "Glitter": {
-   "id": "ok2PCXNXA9PMVYmBj7QJ",
-   "name": "Beth - Warm, Grounded, Narrator",
-   "note": "Lars 2026-08-31: Beth, performed ENERGIZED (stability .28 / style .8 / speed 1.02 — see VOICE_SETTINGS in producer.py). Hope read too flat; Glitter needs life.",
-   "direction": "warm, tender, full of life"
-  },
-  "Pip": {
-   "id": "thfYL0Elyru2qqTtNQsE",
-   "name": "Aurelia - High Quality Realistic Princess "
-  },
-  "Moss": {
-   "id": "loY1uopAz31XyhAEhNSa",
-   "name": "Valf - Young, Playful & Sarcastic",
-   "direction": "nervous, shaky, small"
-  },
-  "Fireflies": {
-   "id": "d8WcCpplp8meHt10UhL8",
-   "name": "Emily - Bright & Energetic"
-  },
-  "Storyteller": {
-   "id": "v9LgF91V36LGgbLX3iHW",
-   "name": "David - American Narrator",
-   "note": "Lars 2026-08-30: THE storyteller — grandfather type, American, warm. Chosen over Sarah and four warmer female voices; standing until told otherwise.",
-   "direction": "warm, gentle, caring, unhurried",
-   "direction_note": "Lars 2026-08-31: the storyteller is NEVER dramatic. Warm, sweet and caring — especially where the story is sad. The sadness is in the words; he carries the child through it, he does not perform it at them. (Interim wording until Lars picks A/B/C from Storyteller_Warm_Registers.mp3.)"
-  }
- },
- "episode_sound_structure": {
-  "note": "Lars 2026-08-29 — the fixed musical arc of every episode",
-  "1_intro": "show-intro-v8.mp4 (sung theme)",
-  "2_opening_underscore": "instrumental continuation of the theme, no vocals, bridges intro into the first section of the story (candidate: theme/theme-continuation.mp3)",
-  "3_score": "additional moods/alternatives added as the library grows",
-  "4_ending_scene": "Princess falls asleep while Glitter sings The Unicorn Lullaby (short sung version) — TO BE SHOT once lullaby take is chosen",
-  "5_credits": "credits-card.mp4 — minimal TigerWorks wordmark, year, princesstheunicorn.com, fades to black"
- },
- "lullaby": {
-  "rule": "MAJOR KEY ONLY — bright, warm, safe; never minor (Lars 2026-08-29)",
-  "frontrunner": "theme/lullaby-short-harp.mp3 (the first harp version)",
-  "candidates": [
-   "theme/lullaby-short-harp.mp3",
-   "theme/lullaby-harp-5.mp3",
-   "theme/lullaby-harp-6.mp3",
-   "theme/lullaby-harp-7.mp3"
-  ],
-  "retired": [
-   "theme/lullaby-short-try.mp3 (no harp)",
-   "theme/lullaby-harp-2.mp3",
-   "theme/lullaby-harp-3.mp3",
-   "theme/lullaby-harp-4.mp3"
-  ]
- },
- "episode_format": "episode-format.md",
- "lullaby_lyrics_short": [
-  "Sleep now... sleep now...",
-  "the forest holds you near.",
-  "Sleep now... sleep now...",
-  "your dreams are safe in here.",
-  "Goodnight, goodnight, little unicorn...",
-  "sleep tight."
- ],
- "season_titles": [
-  "Princess and the Hidden Spring",
-  "Princess and the Thunder Sky",
-  "Princess and the Broken Wing",
-  "Princess and the Waiting Seed",
-  "Princess and the Tangled Truth",
-  "Princess and the Sharing Tree"
- ],
- "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Princess the Unicorn",
- "slug": "princess-the-unicorn",
- "profile_path": "universe/princess-the-unicorn/profile.json"
+  "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Princess the Unicorn",
+  "slug": "princess-the-unicorn",
+  "profile_path": "universe/princess-the-unicorn/profile.json"
 }

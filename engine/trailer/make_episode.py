@@ -144,7 +144,18 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     n_shots = len(board["panels"])
     total_s = sum(float(p.get("dur") or p.get("seconds") or 5) for p in board["panels"])
     drawings_cap = int(n_shots * 1.5) + 24
-    credits_cap = int(total_s * 5 * 1.4) + 200
+    # THE QUOTE KNOWS THE CAMERA (2026-09-03): a Seedance take costs 150, a
+    # gen4 take 25, a drift nothing — quoting every shot at gen4's rate
+    # clamped a Seedance run to half of what it needed.
+    from .filters import camera_for, SEEDANCE_RATE, GEN4_RATE, MAX_TAKE_SECONDS
+    _pref = str(((profile.get("creatives") or {}).get("camera") or {}).get("character_shots") or "")
+    _cam = "seedance" if (os.environ.get("SCRPT_CAMERA") == "seedance" or _pref.startswith("seedance")) else "gen4"
+    _est = 0.0
+    for p in board["panels"]:
+        c = camera_for(p, float(p.get("dur") or 5), _cam)
+        _est += 0 if c == "drift" else MAX_TAKE_SECONDS * (SEEDANCE_RATE if c == "seedance" else GEN4_RATE)
+    credits_cap = int(_est * 1.4) + 200
+    log(f"camera: {_cam} for character shots, drift for wide shots — estimated {int(_est)} credits first pass")
     # A PERSON MAY SET A TIGHTER CAP FOR A PARTIAL RE-SHOOT (2026-09-02)
     if os.environ.get("SCRPT_CREDITS_CAP"):
         credits_cap = min(credits_cap, int(os.environ["SCRPT_CREDITS_CAP"]))
