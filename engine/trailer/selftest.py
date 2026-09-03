@@ -343,4 +343,14 @@ def check_gates() -> list:
     if "members" not in inspect.getsource(_NF.new_film) or 'profile.get("voice_cast")' not in inspect.getsource(_ME.make_episode):
         bad.append("a film can again be created outside the universe (wrong voices, no bookends)")
 
+    # 43. THE CAMERA (Lars, 2026-09-03): character shots on Seedance 2.5 with
+    # the plates as references, wide shots as drifts over the approved still,
+    # reference takes judged by identity against the plates.
+    _ps4 = inspect.getsource(P.produce_storyboard)
+    if "_camera_for(" not in _ps4 or "_check_refs(" not in _ps4 or "generate_seedance(" not in _ps4:
+        bad.append("character shots can again be guessed from one frame — Seedance with references is not wired")
+    from . import takecheck as _TC2
+    if not hasattr(_TC2, "check_take_refs"):
+        bad.append("reference takes have no identity judge")
+
     return bad

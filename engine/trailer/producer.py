@@ -3389,6 +3389,35 @@ def _adopt_take(catalog: str, tdir: Path, pn: dict, clip: Path) -> bool:
     return False
 
 
+def _universe_dir(catalog: str):
+    """The universe folder this book belongs to (member or data.universe)."""
+    try:
+        from ..database import get_setting, get_book_by_catalog
+        root = Path(__file__).resolve().parents[2]
+        v = get_setting("universes", "")
+        reg = v if isinstance(v, dict) else json.loads(v or "{}")
+        bk = get_book_by_catalog(catalog) or {}
+        uni = str((bk.get("data") or {}).get("universe") or "")
+        for slug, u in reg.items():
+            prof = json.loads((root / u["profile"]).read_text())
+            if catalog in (prof.get("members") or []) or (uni and slug == uni):
+                return (root / u["profile"]).parent
+    except Exception:
+        return None
+    return None
+
+
+_UPLOAD_CACHE: dict = {}
+
+
+async def _upload_cached(path) -> str:
+    """One upload per file per run — the plates are shown to every shot."""
+    key = str(path)
+    if key not in _UPLOAD_CACHE:
+        _UPLOAD_CACHE[key] = await runway.upload_file(path)
+    return _UPLOAD_CACHE[key]
+
+
 def _hold_on_still(clip, still, secs: float) -> None:
     """A slow push-in on the approved still, silent — used when a shot may
     not be filmed (picture failed) or the camera refused it three times."""
@@ -3616,7 +3645,14 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # drawing prompt. The prompt carries the world rules, so adding one
         # sentence to the universe changed every key and the run set out to
         # re-shoot all 135 shots (~4,500 credits); the cap caught it.
-        clip = tdir / (f"sb-{_h(ratio + str(secs) + str(pn.get('motion') or '') + _still_fingerprint(catalog, pn))}.mp4")
+        # THE CAMERA IS PART OF THE TAKE'S IDENTITY (2026-09-03): a Seedance
+        # take and a gen4 take of the same picture are different takes.
+        from .filters import camera_for as _camera_for
+        _cam_pref = str(((_universe_profile(catalog).get("creatives") or {}).get("camera") or {}).get("character_shots") or "")
+        _cam = _camera_for(pn, need, "seedance" if (os.environ.get("SCRPT_CAMERA") == "seedance" or _cam_pref.startswith("seedance")) else "gen4")
+        pn["camera"] = _cam
+        _cam_tag = "" if _cam == "gen4" else f"|{_cam}"
+        clip = tdir / (f"sb-{_h(ratio + str(secs) + str(pn.get('motion') or '') + _still_fingerprint(catalog, pn) + _cam_tag)}.mp4")
         if reshoot and str(pn.get("n")) in {str(x) for x in reshoot} and clip.exists():
             # the publisher asked for a fresh take of THIS scene — the old
             # take is banked, never destroyed, and only this panel re-shoots
@@ -3628,7 +3664,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # file name — which is the whole reason a delivered film was cut
         # from footage of older, different pictures.
         take_src = (f"{ratio}|{secs}|{pn.get('motion') or ''}|"
-                    f"{_still_fingerprint(catalog, pn)}")
+                    f"{_still_fingerprint(catalog, pn)}{_cam_tag}")
         plans.append({"i": i, "pn": pn, "prompt": prompt, "refs": refs,
                       "secs": secs, "clip": clip, "need": need, "off": off,
                       "lf": lf, "lgap": lgap, "src": take_src,
@@ -3720,8 +3756,15 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             # seconds and two reads, and it is the only thing standing
             # between an invented bear and the cut.
             _ledger_ok = _take_valid(catalog, pl["key"], pl["src"], clip, grandfather=False)
-            m = _take_matches_still(clip, _sp) if _sp is not None else None
-            if _sp is not None and not _off_board(m):
+            if pn.get("camera") in ("seedance", "drift"):
+                # judged by identity at shoot time and remembered; a banked
+                # reference take is reused as it stands
+                if _judged_ok(catalog, clip) or pn.get("camera") == "drift":
+                    _remember_map(catalog, pn, clip); pn.pop("take_problem", None)
+                    return
+                clip.rename(clip.with_name(clip.stem + ".stale.mp4"))
+            m = _take_matches_still(clip, _sp) if (_sp is not None and clip.exists()) else None
+            if _sp is not None and clip.exists() and not _off_board(m):
                 from .takecheck import check_take as _check_take
                 _already = _judged_ok(catalog, clip)
                 _v = await _check_take(clip, _sp, ask_vision=not _already)   # judged once: no second opinion
@@ -3734,7 +3777,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     _remember_map(catalog, pn, clip)
                     pn.pop("take_problem", None)
                     return
-            if _off_board(m):
+            if _off_board(m) and clip.exists():
                 import shutil as _sh
                 _sh.move(str(clip), str(clip.with_suffix(".stale.mp4")))
                 if handle:
@@ -3800,6 +3843,82 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                 _hold_on_still(clip, _sp, 5)
                 pn["held_on_still"] = f"picture never passed its check: {_sc[:120]}"
                 _remember_take(catalog, pl["key"], pl["src"])
+                return
+            # ── THE CAMERA (Lars, 2026-09-03). A wide shot is a drift over the
+            # approved still: free and always right. A character shot goes to
+            # Seedance 2.5 WITH the universe's plates as references — the way
+            # the intro and the lullaby were shot — judged by identity against
+            # those plates, two paid tries, then the drift.
+            if pn.get("camera") == "drift" and _sp is not None:
+                _hold_on_still(clip, _sp, max(3.0, float(need)))
+                pn.pop("take_problem", None); pn["drift"] = True
+                _remember_judged(catalog, clip, "drift"); _remember_map(catalog, pn, clip)
+                _remember_take(catalog, pl["key"], pl["src"])
+                print(f"[camera] shot {pn.get('n')}: drift over the approved picture ({float(need):.1f}s, 0 credits)", flush=True)
+                return
+            if pn.get("camera") == "seedance" and _sp is not None:
+                from .filters import SEEDANCE_RATE as _SD_RATE
+                from .takecheck import check_take_refs as _check_refs, de_name as _de_name2
+                _prof = _universe_profile(catalog); _udir = _universe_dir(catalog)
+                _present = list(pn.get("present") or [])
+                _plates, _refs, _who = {}, [], ""
+                for _name in _present:
+                    _rec = ((_prof.get("world") or {}).get("plates") or {}).get(str(_name).lower())
+                    _pf = (_udir / _rec["file"]) if (_udir and isinstance(_rec, dict)) else None
+                    if _pf is not None and _pf.exists():
+                        _plates[_name] = _pf
+                        _refs.append(await _upload_cached(_pf))
+                        _who += f" {_name} is the character in reference image {len(_refs)}: exactly the same face, colours, mane, horn, wings and build."
+                    try:
+                        from .foundation import pose_for as _pose_for
+                        _pp = _pose_for(_prof, _udir, str(_name), pn) if _udir else None
+                    except Exception:
+                        _pp = None
+                    if _pp is not None:
+                        _refs.append(await _upload_cached(_pp))
+                        _who += f" Reference image {len(_refs)} shows {_name} in the pose closest to this shot."
+                for _key in (pn.get("props") or []):
+                    _rec = ((_prof.get("world") or {}).get("props_plates") or {}).get(_key)
+                    _pf = (_udir / _rec["file"]) if (_udir and isinstance(_rec, dict)) else None
+                    if _pf is not None and _pf.exists():
+                        _refs.append(await _upload_cached(_pf))
+                        _who += f" Reference image {len(_refs)} is the {_key.replace('--', ' ').replace('-', ' ')}: the same object, same shape and size."
+                _refs.append(_still_uri or await _upload_cached(_sp))
+                _who += (f" Reference image {len(_refs)} is the storyboard frame for this exact shot: the shot starts on it and keeps its "
+                         "composition, framing, light, art style and blocking; every character comes from the earlier reference images.")
+                _style = str(board.get("style") or "").strip()
+                _shot_txt = _de_name2(str(pn.get("shot") or ""), _prof)
+                _cartoon = ("Stylized 2D children's animation, a storybook illustration in motion, soft painterly cartoon rendering — "
+                            "NEVER photorealistic, no real-animal anatomy, no realistic fur or skin texture. ")
+                for attempt in range(2):
+                    from .filters import motion_for_attempt as _mfa
+                    _motion, _lint = _mfa(pn.get("motion") or "", attempt, _prof)
+                    _prompt = f"{_cartoon}{_shot_txt} {_motion} {_style} No text or lettering on screen. No music, no speech, no voices.{_who}".strip()
+                    _BUDGET.launch(secs, _SD_RATE, f"shot {pn.get('n')} seedance try {attempt + 1}")
+                    _task = await runway.generate_seedance(_prompt, _refs, seconds=secs, ratio=ratio, model="seedance2_5", audio=False)
+                    _res = await runway.wait_for(_task["id"], timeout_s=1800)
+                    _url = (_res.get("output") or [None])[0] if _res.get("status") == "SUCCEEDED" else None
+                    if not _url:
+                        print(f"[camera] shot {pn.get('n')}: seedance take failed ({str(_res.get('failure'))[:80]})", flush=True)
+                        continue
+                    await runway.download(_url, clip)
+                    _species = (_prof.get("world") or {}).get("species") or {}
+                    _v = await _check_refs(clip, _plates, _present, _species)
+                    if _v["ok"]:
+                        pn.pop("take_problem", None)
+                        _remember_judged(catalog, clip); _remember_map(catalog, pn, clip)
+                        _remember_take(catalog, pl["key"], pl["src"])
+                        print(f"[camera] shot {pn.get('n')}: seedance take accepted (try {attempt + 1})", flush=True)
+                        return
+                    pn["take_problem"] = "; ".join(_v["reasons"])[:200]
+                    print(f"[judge] shot {pn.get('n')} seedance try {attempt + 1} refused: {_v['reasons'][0][:110]}", flush=True)
+                    clip.rename(clip.with_name(clip.stem + f".bad{attempt}.mp4"))
+                # two refused: the picture holds with a drift
+                _hold_on_still(clip, _sp, max(3.0, float(need)))
+                pn["held_on_still"] = pn.pop("take_problem", "")[:160]; pn["drift"] = True
+                _remember_judged(catalog, clip, "drift"); _remember_map(catalog, pn, clip)
+                _remember_take(catalog, pl["key"], pl["src"])
+                print(f"[camera] shot {pn.get('n')}: holds on its picture after two refused seedance takes", flush=True)
                 return
             for attempt in range(16):
                 if _still_uri:
@@ -3989,9 +4108,9 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             _spx = _still_path_of(pl["pn"])
             if _spx is None:
                 continue
-            _m = _take_matches_still(pl["clip"], _spx)
-            if pl["pn"].get("held_on_still"):
+            if pl["pn"].get("held_on_still") or pl["pn"].get("camera") in ("seedance", "drift"):
                 continue
+            _m = _take_matches_still(pl["clip"], _spx)
             if _off_board(_m) or pl["pn"].get("take_problem"):      # filter board_gate
                 _off.append((str(pl["pn"].get("n")), pl["pn"].get("take_problem") or round(_m, 2)))
             elif _m is None:

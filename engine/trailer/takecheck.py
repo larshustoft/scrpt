@@ -181,3 +181,65 @@ def frozen_tail(clip: Path, min_seconds: float = 0.5) -> float:
     if len(ends) < len(starts):          # still frozen when the segment ended
         return round(max(0.0, duration(clip) - starts[-1]), 2)
     return 0.0
+
+
+async def check_take_refs(clip: Path, plates: dict, cast: list, species: dict, ask_vision=True) -> dict:
+    """Judge a REFERENCE-DRIVEN take (Seedance with the plates attached). Such
+    a take composes its own frame, so 'opens on the still' does not apply;
+    what must hold is identity — every character is the one on its plate,
+    nobody else is in the shot, nothing is a human, and it moves."""
+    reasons = []
+    D = duration(clip)
+    if D <= 0:
+        return {"ok": False, "reasons": ["unreadable take"], "motion": 0}
+    mo = motion_percent(clip)
+    if mo < MIN_MOTION:
+        reasons.append(f"barely moves ({mo:.1f}% of pixels change)")
+    if reasons or not ask_vision:
+        return {"ok": not reasons, "reasons": reasons, "motion": mo}
+    from ..writing.client import complete_vision, extract_json
+    from PIL import Image
+    expected = {}
+    for name in cast:
+        sp = species.get(name) or species.get(str(name).lower()) or "creature"
+        expected[sp] = expected.get(sp, 0) + 1
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        strip = []
+        for name, pp in plates.items():
+            try:
+                im = Image.open(pp).convert("RGB"); im = im.resize((int(im.width * 300 / im.height), 300)); strip.append((name, im))
+            except Exception:
+                continue
+        for t in (D * 0.5, max(0.0, D - 0.15)):
+            f = td / f"f{int(t*10)}.png"
+            if not frame(clip, t, f):
+                continue
+            fr = Image.open(f).convert("RGB"); fr = fr.resize((int(fr.width * 300 / fr.height), 300))
+            W = sum(im.width for _, im in strip) + 24 * len(strip) + fr.width
+            pair = Image.new("RGB", (W, 300), (255, 255, 255)); x = 0
+            for _, im in strip:
+                pair.paste(im, (x, 0)); x += im.width + 24
+            pair.paste(fr, (x, 0)); pp2 = td / f"pair{int(t*10)}.png"; pair.save(pp2)
+            names = ", ".join(n for n, _ in strip)
+            try:
+                raw = await complete_vision("You check an animation frame against approved character plates. JSON only.",
+                    f"The pictures on the LEFT are the approved plates of: {names}. The picture on the RIGHT is a frame from a take that "
+                    f"should show exactly these characters and nobody else: {', '.join(cast) or 'nobody'}. Answer: "
+                    '{"each_matches_plate": true/false, "unicorns": n, "dragons": n, "birds": n, "humans": n, '
+                    '"stranger": true/false, "note": "..."}. Count every creature in the RIGHT picture including blurry or partial ones; '
+                    'each_matches_plate is false if any character on the right differs from its plate in species, colours, mane, horn, wings or markings.',
+                    pp2.read_bytes())
+                d = extract_json(raw) or {}
+            except Exception as e:
+                reasons.append(f"could not be checked: {str(e)[:60]}"); break
+            if int(d.get("humans") or 0):
+                reasons.append(f"a human appears by {t:.1f}s"); break
+            if d.get("stranger"):
+                reasons.append(f"someone not in the cast appears by {t:.1f}s: {str(d.get('note'))[:60]}"); break
+            more = [sp for sp in ("unicorn", "dragon", "bird") if int(d.get(sp + "s") or 0) > expected.get(sp, 0)]
+            if more:
+                reasons.append(f"more {', '.join(more)}s than the cast by {t:.1f}s: {str(d.get('note'))[:60]}"); break
+            if d.get("each_matches_plate") is False:
+                reasons.append(f"a character is not its plate by {t:.1f}s: {str(d.get('note'))[:60]}"); break
+    return {"ok": not reasons, "reasons": reasons, "motion": mo}

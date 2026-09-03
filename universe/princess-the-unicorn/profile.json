@@ -346,6 +346,11 @@
    "id": "v9LgF91V36LGgbLX3iHW",
    "name": "David - American Narrator",
    "note": "mirror of voice_cast.Storyteller"
+  },
+  "camera": {
+   "character_shots": "seedance2_5",
+   "wide_shots": "drift",
+   "note": "Lars 2026-09-03: Seedance 2.5 with the plates as references (how the intro and lullaby were shot); wide shots are drifts over the approved still; gen4_turbo retired for episodes"
   }
  },
  "world": {
@@ -871,6 +876,13 @@
      "text": "looking back over the shoulder"
     }
    }
+  },
+  "species": {
+   "Princess": "unicorn",
+   "Glitter": "unicorn",
+   "Pip": "bird",
+   "Moss": "dragon",
+   "Fireflies": "light"
   }
  },
  "members": [

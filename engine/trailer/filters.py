@@ -177,3 +177,23 @@ def report(board: dict) -> dict:
             if v and v not in ("ok", True):
                 d["acted"] += 1
     return out
+
+
+# ── the camera (Lars, 2026-09-03): Seedance 2.5 WITH references for character
+# shots, a drift over the approved still for wide shots (free, always right).
+SEEDANCE_RATE = 30.0     # credits per second measured 2026-09-03 (150 per 5s take)
+GEN4_RATE = 5.0
+
+
+def camera_for(pn: dict, need: float, camera: str = "gen4") -> str:
+    """'drift' | 'seedance' | 'gen4'. A wide shot never buys a take; a shot
+    whose words outrun a 5s take (>7.5s after the 1.5x stretch) drifts unless
+    it is a medium/close character moment."""
+    framing = str(pn.get("framing") or "").lower()
+    if not (pn.get("present") or []):
+        return "drift"
+    if framing == "wide":
+        return "drift"
+    if float(need or 0) > 7.5 and framing == "detail":
+        return "drift"
+    return "seedance" if camera == "seedance" else "gen4"
