@@ -942,8 +942,43 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             if isinstance(ln, dict) and (ln.get("text") or "").strip():
                 pn["line"] = {"speaker": str(ln.get("speaker") or "")[:60],
                               "text": str(ln["text"]).strip()[:200]}
+            # THE BOARD KEEPS WHAT IT ASKED FOR (2026-09-03). framing, motion,
+            # present, props and place were requested from the model and then
+            # dropped here; the still and shoot stages need all of them, and
+            # SC-039 only had them from hand repairs.
+            fr = str(sh.get("framing") or "").strip().lower()
+            if fr in ("wide", "medium", "close", "detail"):
+                pn["framing"] = fr
+            if (sh.get("motion") or "").strip():
+                pn["motion"] = str(sh["motion"]).strip()[:300]
+            pres = [known[str(x).strip().lower()] for x in (sh.get("present") or [])
+                    if isinstance(x, str) and str(x).strip().lower() in known]
+            if pres:
+                pn["present"] = list(dict.fromkeys(pres))
+            elif picked:
+                pn["present"] = list(pn["characters"])
+            if isinstance(sh.get("props"), list):
+                pn["props"] = [str(x).strip() for x in sh["props"] if str(x).strip()][:4]
+            if (sh.get("place") or "").strip():
+                pn["place"] = str(sh["place"]).strip()[:60]
             # the board may still under-time a shot; the words win
             pn["dur"] = max(float(pn.get("dur") or 4), _needed_seconds(pn))
+            # NO SHOT LONGER THAN ITS 5-SECOND TAKE CAN CARRY (Lars, 2026-09-03:
+            # no clip over five seconds). A 5s take stretches to 7.5s at most;
+            # a narration beat that needs more is two shots, split at a
+            # sentence, the second one a continuation of the first.
+            if pn["dur"] > 7.0 and pn.get("vo") and not pn.get("line"):
+                import re as _re
+                sents = [x.strip() for x in _re.split(r"(?<=[.!?])\s+", pn["vo"]) if x.strip()]
+                if len(sents) >= 2:
+                    cut = len(sents) // 2
+                    first = dict(pn); first["vo"] = " ".join(sents[:cut])
+                    first["dur"] = max(3.5, _needed_seconds(first))
+                    second = dict(pn); second["vo"] = " ".join(sents[cut:])
+                    second["n"] = f"{idx}b"; second["continues"] = str(idx)
+                    second["dur"] = max(3.5, _needed_seconds(second))
+                    panels.append(first); panels.append(second)
+                    continue
             panels.append(pn)
     if len(panels) < len(scenes):
         raise RuntimeError("The board came back too thin — try again")

@@ -259,7 +259,15 @@ async def draw_shot_stills(catalog: str, board: dict, profile: dict,
                 # place, the props and the shot this one continues from all
                 # matter less than drawing the right characters.
                 faces = []
+                from .foundation import pose_for as _pose_for
                 for who in (pn.get("present") or []):
+                    # THE POSE SHEET LEADS (foundation, 2026-09-03): the
+                    # registered pose closest to this shot's action is shown
+                    # first, then the canonical plate — the model copies a
+                    # walking Princess from a walking Princess.
+                    pf = _pose_for(profile, uni_dir, str(who), pn)
+                    if pf is not None:
+                        faces.append(pf)
                     f = bible_dir / f"{str(who).lower()}.png"
                     if f.exists():
                         faces.append(f)

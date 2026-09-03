@@ -319,4 +319,14 @@ def check_gates() -> list:
     if "All mouths stay closed" not in inspect.getsource(P.produce_storyboard):
         bad.append("takes are no longer asked for with closed mouths — lip sync is off until a model can do it")
 
+    # 39. THE FOUNDATION IS USED, NOT JUST DRAWN: shots take their character
+    # references from the pose sheets, and the board keeps framing/motion/
+    # present/props/place and splits any beat longer than a 5s take carries.
+    from . import shotstills as _SS, bible as _B
+    if "_pose_for(" not in inspect.getsource(_SS.draw_shot_stills):
+        bad.append("shots no longer use the pose sheets — characters drift again")
+    _bs = inspect.getsource(_B.build_film_board)
+    if 'pn["framing"] = fr' not in _bs or "two shots, split at a" not in _bs:
+        bad.append("the board drops framing/motion again or lets a beat outrun its take")
+
     return bad

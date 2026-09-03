@@ -35,11 +35,14 @@ def plate_for(profile: dict, universe_dir: Path, place_key: str):
 
 
 async def draw_location_plates(universe_dir: Path, profile: dict,
-                               places: dict, style: str, handle=None) -> dict:
-    """places = {"spring": "the description of the place, and its light"}"""
+                               places: dict, style: str, handle=None,
+                               refs: list = None, quality: str = "high") -> dict:
+    """places = {"spring": "the description of the place, and its light"}
+    refs = pictures shown to the model for every place (the approved valley
+    plate keeps a whole atlas in one palette and one light — 2026-09-03)."""
     import httpx
     from ..cover.front_cover import _best_image_model
-    from .plates import _draw
+    from .plates import _draw, _draw_with_refs
 
     if not OPENAI_API_KEY:
         raise RuntimeError("OpenAI is not configured — the plates need it")
@@ -60,8 +63,12 @@ async def draw_location_plates(universe_dir: Path, profile: dict,
                           "no bird, no dragon, nobody. No text or lettering "
                           "anywhere. The time of day and the light are exactly "
                           "as described.")
-                got = await _draw(client, model, prompt, out / f"{key}.png",
-                                  size="1536x1024")
+                if refs:
+                    got = await _draw_with_refs(client, model, prompt + " Same painting style, palette and light as the reference pictures.",
+                                                list(refs), out / f"{key}.png", size="1536x1024", quality=quality)
+                else:
+                    got = await _draw(client, model, prompt, out / f"{key}.png",
+                                      size="1536x1024")
                 if handle:
                     handle.progress(0.5, "locations", f"drew {key}")
                 return (key, f"locations/{key}.png") if got else None
