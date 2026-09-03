@@ -3236,15 +3236,26 @@ def _take_id(path: Path) -> str:
         return ""
 
 
-def _judged_ok(catalog: str, path: Path) -> bool:
+def _judged_ok(catalog: str, path: Path, camera: str = "gen4") -> bool:
     """A TAKE IS JUDGED ONCE (2026-09-03). The vision judge is stochastic: a
     take that passed on Monday was refused on Tuesday's re-cut, re-shot for
     25–50 credits, and the new take judged again next time — every re-cut
     of a finished film cost money. A take that passed the whole-length judge
     is remembered by its bytes and never asked again; the deterministic
     checks (opens on its still, drift, motion) still run every time."""
+    # THE MEMO KNOWS THE CAMERA (Lars, 2026-09-03: "How come something was shot
+    # NOT using Seedance?"). 17 gen4 takes were reused under Seedance names
+    # because the memo remembered bytes as "accepted" without saying which
+    # camera accepted them. A Seedance shot only trusts a Seedance verdict.
     try:
-        return _take_id(path) in (json.loads(_judged_file(catalog).read_text()) if _judged_file(catalog).exists() else {})
+        d = json.loads(_judged_file(catalog).read_text()) if _judged_file(catalog).exists() else {}
+        rec = d.get(_take_id(path))
+        if not rec:
+            return False
+        verdict = str(rec.get("verdict") or "")
+        if camera == "seedance":
+            return verdict.startswith("seedance")
+        return not verdict.startswith("drift")
     except Exception:
         return False
 
@@ -3321,7 +3332,7 @@ def _adopt_takes(catalog: str, tdir: Path, plans: list) -> int:
         pn, clip = pl["pn"], pl["clip"]
         _mk = str(pn.get("n")) + (f"@{pn.get('camera')}" if pn.get("camera") and pn.get("camera") != "gen4" else "")
         _t = _map.get(_mk)
-        if not clip.exists() and _t and (tdir / _t).exists() and _judged_ok(catalog, tdir / _t):
+        if not clip.exists() and _t and (tdir / _t).exists() and _judged_ok(catalog, tdir / _t, pn.get("camera") or "gen4"):
             try:
                 os.link(str(tdir / _t), str(clip))
             except Exception:
@@ -3763,8 +3774,8 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             _ledger_ok = _take_valid(catalog, pl["key"], pl["src"], clip, grandfather=False)
             if pn.get("camera") == "seedance":
                 # judged by identity at shoot time and remembered; a banked
-                # reference take is reused as it stands
-                if _judged_ok(catalog, clip):
+                # reference take is reused as it stands — a SEEDANCE one only
+                if _judged_ok(catalog, clip, "seedance"):
                     _remember_map(catalog, pn, clip); pn.pop("take_problem", None)
                     return
                 clip.rename(clip.with_name(clip.stem + ".stale.mp4"))
@@ -3904,7 +3915,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     _v = await _check_refs(clip, _plates, _present, _species)
                     if _v["ok"]:
                         pn.pop("take_problem", None)
-                        _remember_judged(catalog, clip); _remember_map(catalog, pn, clip)
+                        _remember_judged(catalog, clip, "seedance ok"); _remember_map(catalog, pn, clip)
                         _remember_take(catalog, pl["key"], pl["src"])
                         print(f"[camera] shot {pn.get('n')}: seedance take accepted (try {attempt + 1})", flush=True)
                         return

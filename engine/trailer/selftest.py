@@ -360,4 +360,8 @@ def check_gates() -> list:
     if '"drift"' in inspect.getsource(_F3.camera_for) or "three Seedance takes refused" not in inspect.getsource(P.produce_storyboard):
         bad.append("a shot can again be a zoom over a still instead of a take")
 
+    # 45. A Seedance shot can only reuse a Seedance take: the memo and the map carry the camera.
+    if 'verdict.startswith("seedance")' not in inspect.getsource(P._judged_ok) or '"seedance ok"' not in inspect.getsource(P.produce_storyboard):
+        bad.append("a gen4 take can again be served to a Seedance shot")
+
     return bad
