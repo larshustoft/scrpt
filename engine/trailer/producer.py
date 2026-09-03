@@ -3289,6 +3289,42 @@ def _take_index(tdir: Path) -> dict:
     return idx
 
 
+def _adopt_takes(catalog: str, tdir: Path, plans: list) -> int:
+    """ONE TAKE, ONE SHOT (2026-09-03). Adoption is decided for the whole board
+    at once: every (shot, banked take) pair is scored, the best pairs are
+    taken first, and a take is given to at most one shot — per-shot greedy
+    matching handed the same wide-path take to shots 28 and 30."""
+    idx = _take_index(tdir)
+    pairs = []
+    for pl in plans:
+        pn, clip = pl["pn"], pl["clip"]
+        sp = tdir / str(pn.get("still") or "")
+        if clip.exists() or not pn.get("still") or not sp.exists():
+            continue
+        ss = _frame_signature(sp)
+        _since = sp.stat().st_mtime - 60
+        for tid, rec in idx.items():
+            if float(rec.get("mtime") or 0) < _since:
+                continue
+            m = _sig_match(rec.get("sig") or [], ss)
+            if m >= 0.80:
+                pairs.append((m, float(rec.get("mtime") or 0), rec.get("name"), pl))
+    pairs.sort(key=lambda x: (-x[0], -x[1]))
+    used, done, n = set(), set(), 0
+    for m, _mt, name, pl in pairs:
+        key = str(pl["pn"].get("n"))
+        if name in used or key in done or not _judged_ok(catalog, tdir / name):
+            continue
+        try:
+            os.link(str(tdir / name), str(pl["clip"]))
+        except Exception:
+            import shutil as _shc
+            _shc.copy2(str(tdir / name), str(pl["clip"]))
+        used.add(name); done.add(key); n += 1
+        print(f"[takes] shot {key}: adopted banked take {name} ({m:.2f}) — no new take bought", flush=True)
+    return n
+
+
 def _adopt_take(catalog: str, tdir: Path, pn: dict, clip: Path) -> bool:
     """No take under this key yet: adopt a banked take that opens on this
     exact picture and has already passed the judge (memo), instead of buying
@@ -3544,8 +3580,6 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # sentence to the universe changed every key and the run set out to
         # re-shoot all 135 shots (~4,500 credits); the cap caught it.
         clip = tdir / (f"sb-{_h(ratio + str(secs) + str(pn.get('motion') or '') + _still_fingerprint(catalog, pn))}.mp4")
-        if not clip.exists():
-            _adopt_take(catalog, tdir, pn, clip)
         if reshoot and str(pn.get("n")) in {str(x) for x in reshoot} and clip.exists():
             # the publisher asked for a fresh take of THIS scene — the old
             # take is banked, never destroyed, and only this panel re-shoots
@@ -3605,6 +3639,10 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
 
     from .budget import BUDGET as _BUDGET
     _launched = [0]
+
+    # banked takes are adopted for the whole board before a single take is bought
+    if any(not pl["clip"].exists() for pl in plans):
+        _adopt_takes(catalog, tdir, plans)
 
     async def shoot_panel(pl):
         i, pn, clip = pl["i"], pl["pn"], pl["clip"]

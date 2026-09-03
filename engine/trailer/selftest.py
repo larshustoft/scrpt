@@ -302,7 +302,7 @@ def check_gates() -> list:
     # ratio) — never by the drawing prompt — and a banked, judged take is
     # adopted under a new key before any take is bought.
     _ps2 = inspect.getsource(P.produce_storyboard)
-    if "_h(prompt + ratio" in _ps2 or "_adopt_take(" not in _ps2:
+    if "_h(prompt + ratio" in _ps2 or "_adopt_takes(" not in _ps2:
         bad.append("editing one world rule can again re-shoot the whole film")
 
     return bad
