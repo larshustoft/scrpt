@@ -3294,8 +3294,8 @@ def _adopt_take(catalog: str, tdir: Path, pn: dict, clip: Path) -> bool:
     exact picture and has already passed the judge (memo), instead of buying
     one. Keys change when a motion line or a still changes; a take that was
     judged good for this picture is good for this picture."""
-    sp = _still_path_of(pn)
-    if sp is None or not Path(sp).exists():
+    sp = tdir / str(pn.get("still") or "")
+    if not pn.get("still") or not sp.exists():
         return False
     ss = _frame_signature(sp)
     best, best_m = None, 0.0

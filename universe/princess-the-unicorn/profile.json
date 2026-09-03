@@ -1,328 +1,328 @@
 {
- "name": "Princess the Unicorn",
- "kind": "childrens_universe",
- "domain": "princesstheunicorn.com",
- "tagline": "Come along with me — through the Rainbow Forest, magic wild and free!",
- "creatives": {
-  "logo": "universe/princess-the-unicorn/logo.png",
-  "logo_alternates": [
-   "universe/princess-the-unicorn/logo-2.png",
-   "universe/princess-the-unicorn/logo-3.png",
-   "universe/princess-the-unicorn/logo-4.png"
-  ],
-  "theme_instrumental": "universe/princess-the-unicorn/theme/theme-instrumental.mp3",
-  "theme_sung": null,
-  "intro_builder": "universe/princess-the-unicorn/make_intro.py",
-  "music_direction": "Bright storybook orchestra: hummable 8-note glockenspiel motif over pizzicato strings, soft flutes, warm ukulele, gentle sparkle; never dark, never epic. The motif opens every film and belongs to the brand.",
-  "show_intro": "universe/princess-the-unicorn/show-intro-v9.mp4",
-  "show_intro_builder": "universe/princess-the-unicorn/make_show_intro2.py",
-  "leap_take": "universe/princess-the-unicorn/leap-white.mp4",
-  "intro_storyboard": "intro-storyboard.json",
-  "logo_blink": "universe/princess-the-unicorn/logo-blink.png",
-  "intro_takes": [
-   "intro-s1.mp4",
-   "test-gallop.mp4",
-   "intro-s3.mp4",
-   "intro-s4.mp4",
-   "intro-sky.mp4"
-  ],
-  "logo_ending": "universe/princess-the-unicorn/make_logo_ending.py",
-  "logo_twins": [
-   "logo-textonly.png",
-   "logo-wink.png",
-   "logo-blink.png"
-  ],
-  "show_outro": "universe/princess-the-unicorn/episode-outro.mp4",
-  "show_intro_4k": "universe/princess-the-unicorn/show-intro-4K.mp4",
-  "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Princess the Unicorn",
-  "lullaby_brief": "universe/princess-the-unicorn/unicorn-lullaby-brief.md",
-  "credits_card": "credits-card.mp4",
-  "theme_continuation_candidate": "theme/theme-continuation.mp3",
-  "episode_format": "episode-format.md",
-  "logo_transparent": "logo-transparent.png",
-  "logo_transparent_note": "Canva cutout by Lars 2026-08-30 — THE transparent logo for all composites and the website",
-  "show_outro_note": "THE episode ending: lullaby tuck-in + minimalist TigerWorks card (Lars 2026-08-30 — never the old gold credits card)",
-  "credits_ending": "credits-ending.mp4",
-  "credits_ending_spec": "10s over the living kingdom (credits-scene.mp4, locked camera): 5.5s names + 4.5s TigerWorks mark, ONE steady dim (118) set before frame one, clean type with NO shadow, single fade to black at the end, theme instrumental entering at its own last 10s so the music ends on its real final chord (Lars, 2026-08-31)",
-  "theme_continuation": "theme/theme-continuation.mp3",
-  "theme_continuation_note": "THE episode opening music: the instrumental continuation of the main theme that plays after the intro under the storyteller's wide-world introduction (Lars approved 2026-08-29). The film score must never generate its own cue for this beat.",
-  "show_intro_prev": "universe/princess-the-unicorn/show-intro-v8.mp4",
-  "intro_blink_pling": "pling-e6.wav",
-  "intro_blink_note": "ONE simple pling on Princess's blink at 18.20s — a single glockenspiel note on E6, the note the theme resolves to. The v8 bell was wrong (Lars 2026-08-31). Never a chord, never a chime cluster: one note, quick mallet attack, clean decay to silence.",
-  "locked_elements": {
-   "show_intro": "show-intro-v9.mp4 — approved 2026-08-31 (with the E6 pling on the blink)",
-   "show_outro": "episode-outro.mp4 — lullaby tuck-in + TigerWorks credits, approved 2026-08-31",
-   "theme_continuation": "theme/theme-continuation.mp3 — the opening after the intro, approved 2026-08-29",
-   "note": "These are the EPISODE FURNITURE. They are not regenerated, restyled or re-scored for a new episode — every film is cut between them. Only Lars reopens a locked element.",
-   "bells": "bell-glitter.mp3 (Glitter) and bell-princess.mp3 (Princess) — approved 2026-09-01"
-  },
-  "scale_chart": "SIZE CHART — obey exactly, in every shot of every episode. Glitter is a full-grown unicorn mare. Princess is a small foal: her back reaches only to Glitter's knee, and she is about one third of Glitter's length. Moss the little dragon is SMALLER than Princess — standing, his head reaches Princess's chest. Pip the bird is tiny: about the size of Princess's head, and he can perch on her back. These sizes NEVER change.",
-  "scale_plate": "scale-plate.png",
-  "bells": {
-   "glitter": "bell-glitter.mp3",
-   "princess": "bell-princess.mp3"
-  },
-  "bells_note": "Lars 2026-09-01: Glitter's bell is the bright brass dinner bell (D); Princess's little bell, given at the end of episode 1, is the clear silver service bell (F). THE UNIVERSE OWNS ITS BELLS — no shot may generate its own, which is where the metallic computer-ish bell came from. Every bell heard in every episode is one of these two files.",
-  "world_rules": [
-   "RAINBOW FOREST HAS ONE CAVE: the spring cave behind the crack at the foot of the white cliff at Moonwater Spring, seen only in the scenes set there. Everywhere else, cliffs, banks and hillsides are solid unbroken pale rock with moss and flowers.",
-   "THE GROUND is soft grass, bare earth path and small flat pebbles. Objects the story names appear exactly where the shot says and nowhere else.",
-   "EVERY CHARACTER'S THINGS are on the character: a bell hangs at the neck of whoever wears it and appears only there.",
-   "SOUND CUES name concrete things — water over stones, hoofsteps, leaves, small birds, a bell. Never wind, breeze, whisper, murmur, hum, sigh, echo or 'distant': a sound generator turns those into a voice.",
-   "Fireflies are tiny soft yellow-green points of light — plain glowing dots with no bodies, wings or faces; they are never drawn as insects or little characters."
-  ],
-  "locations": {
-   "rope-bridge": "locations/rope-bridge.png",
-   "moonwater-spring": "locations/moonwater-spring.png",
-   "forest-path-dust": "locations/forest-path-dust.png",
-   "forest-path-morning": "locations/forest-path-morning.png",
-   "forest-path-quiet": "locations/forest-path-quiet.png",
-   "path-home-dusk": "locations/path-home-dusk.png",
-   "spring-dry": "locations/spring-dry.png",
-   "spring-outlet": "locations/spring-outlet.png",
-   "spring-restored": "locations/spring-restored.png",
-   "inside-the-cave": "locations/inside-the-cave.png",
-   "rainbow-valley": "locations/rainbow-valley.png"
-  },
-  "props": {
-   "white-stone": {
-    "words": [
-     "white stone",
-     "round stone",
-     "the stone",
-     "boulder"
+  "name": "Princess the Unicorn",
+  "kind": "childrens_universe",
+  "domain": "princesstheunicorn.com",
+  "tagline": "Come along with me — through the Rainbow Forest, magic wild and free!",
+  "creatives": {
+    "logo": "universe/princess-the-unicorn/logo.png",
+    "logo_alternates": [
+      "universe/princess-the-unicorn/logo-2.png",
+      "universe/princess-the-unicorn/logo-3.png",
+      "universe/princess-the-unicorn/logo-4.png"
     ],
-    "look": "A single smooth rounded white stone, about the size of a small foal's body, pale chalky white with faint grey veining and a few small chips along one edge."
-   },
-   "fallen-branch": {
-    "words": [
-     "branch"
+    "theme_instrumental": "universe/princess-the-unicorn/theme/theme-instrumental.mp3",
+    "theme_sung": null,
+    "intro_builder": "universe/princess-the-unicorn/make_intro.py",
+    "music_direction": "Bright storybook orchestra: hummable 8-note glockenspiel motif over pizzicato strings, soft flutes, warm ukulele, gentle sparkle; never dark, never epic. The motif opens every film and belongs to the brand.",
+    "show_intro": "universe/princess-the-unicorn/show-intro-v9.mp4",
+    "show_intro_builder": "universe/princess-the-unicorn/make_show_intro2.py",
+    "leap_take": "universe/princess-the-unicorn/leap-white.mp4",
+    "intro_storyboard": "intro-storyboard.json",
+    "logo_blink": "universe/princess-the-unicorn/logo-blink.png",
+    "intro_takes": [
+      "intro-s1.mp4",
+      "test-gallop.mp4",
+      "intro-s3.mp4",
+      "intro-s4.mp4",
+      "intro-sky.mp4"
     ],
-    "look": "One slim fallen branch, silver-grey bark, bare but for a few small leaves, about as long as a small unicorn foal's body and no thicker than her leg — light enough for a small foal to lift on her horn. Three thin forking twigs. A branch, not a log and not a trunk."
-   },
-   "glitter-bell": {
-    "words": [
-     "silver bell",
-     "her bell",
-     "mama's bell",
-     "bell"
+    "logo_ending": "universe/princess-the-unicorn/make_logo_ending.py",
+    "logo_twins": [
+      "logo-textonly.png",
+      "logo-wink.png",
+      "logo-blink.png"
     ],
-    "look": "A small polished silver bell on a soft lilac ribbon, plain and round, with a narrow slot across its base.",
-    "worn_by": [
-     "Glitter",
-     "Princess"
+    "show_outro": "universe/princess-the-unicorn/episode-outro.mp4",
+    "show_intro_4k": "universe/princess-the-unicorn/show-intro-4K.mp4",
+    "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Princess the Unicorn",
+    "lullaby_brief": "universe/princess-the-unicorn/unicorn-lullaby-brief.md",
+    "credits_card": "credits-card.mp4",
+    "theme_continuation_candidate": "theme/theme-continuation.mp3",
+    "episode_format": "episode-format.md",
+    "logo_transparent": "logo-transparent.png",
+    "logo_transparent_note": "Canva cutout by Lars 2026-08-30 — THE transparent logo for all composites and the website",
+    "show_outro_note": "THE episode ending: lullaby tuck-in + minimalist TigerWorks card (Lars 2026-08-30 — never the old gold credits card)",
+    "credits_ending": "credits-ending.mp4",
+    "credits_ending_spec": "10s over the living kingdom (credits-scene.mp4, locked camera): 5.5s names + 4.5s TigerWorks mark, ONE steady dim (118) set before frame one, clean type with NO shadow, single fade to black at the end, theme instrumental entering at its own last 10s so the music ends on its real final chord (Lars, 2026-08-31)",
+    "theme_continuation": "theme/theme-continuation.mp3",
+    "theme_continuation_note": "THE episode opening music: the instrumental continuation of the main theme that plays after the intro under the storyteller's wide-world introduction (Lars approved 2026-08-29). The film score must never generate its own cue for this beat.",
+    "show_intro_prev": "universe/princess-the-unicorn/show-intro-v8.mp4",
+    "intro_blink_pling": "pling-e6.wav",
+    "intro_blink_note": "ONE simple pling on Princess's blink at 18.20s — a single glockenspiel note on E6, the note the theme resolves to. The v8 bell was wrong (Lars 2026-08-31). Never a chord, never a chime cluster: one note, quick mallet attack, clean decay to silence.",
+    "locked_elements": {
+      "show_intro": "show-intro-v9.mp4 — approved 2026-08-31 (with the E6 pling on the blink)",
+      "show_outro": "episode-outro.mp4 — lullaby tuck-in + TigerWorks credits, approved 2026-08-31",
+      "theme_continuation": "theme/theme-continuation.mp3 — the opening after the intro, approved 2026-08-29",
+      "note": "These are the EPISODE FURNITURE. They are not regenerated, restyled or re-scored for a new episode — every film is cut between them. Only Lars reopens a locked element.",
+      "bells": "bell-glitter.mp3 (Glitter) and bell-princess.mp3 (Princess) — approved 2026-09-01"
+    },
+    "scale_chart": "SIZE CHART — obey exactly, in every shot of every episode. Glitter is a full-grown unicorn mare. Princess is a small foal: her back reaches only to Glitter's knee, and she is about one third of Glitter's length. Moss the little dragon is SMALLER than Princess — standing, his head reaches Princess's chest. Pip the bird is tiny: about the size of Princess's head, and he can perch on her back. These sizes NEVER change.",
+    "scale_plate": "scale-plate.png",
+    "bells": {
+      "glitter": "bell-glitter.mp3",
+      "princess": "bell-princess.mp3"
+    },
+    "bells_note": "Lars 2026-09-01: Glitter's bell is the bright brass dinner bell (D); Princess's little bell, given at the end of episode 1, is the clear silver service bell (F). THE UNIVERSE OWNS ITS BELLS — no shot may generate its own, which is where the metallic computer-ish bell came from. Every bell heard in every episode is one of these two files.",
+    "world_rules": [
+      "RAINBOW FOREST HAS ONE CAVE: the spring cave behind the crack at the foot of the white cliff at Moonwater Spring, seen only in the scenes set there. Everywhere else, cliffs, banks and hillsides are solid unbroken pale rock with moss and flowers.",
+      "THE GROUND is soft grass, bare earth path and small flat pebbles. Objects the story names appear exactly where the shot says and nowhere else.",
+      "EVERY CHARACTER'S THINGS are on the character: a bell hangs at the neck of whoever wears it and appears only there.",
+      "SOUND CUES name concrete things — water over stones, hoofsteps, leaves, small birds, a bell. Never wind, breeze, whisper, murmur, hum, sigh, echo or 'distant': a sound generator turns those into a voice.",
+      "Fireflies are tiny soft yellow-green points of light — plain glowing dots with no bodies, wings or faces; they are never drawn as insects or little characters."
+    ],
+    "locations": {
+      "rope-bridge": "locations/rope-bridge.png",
+      "moonwater-spring": "locations/moonwater-spring.png",
+      "forest-path-dust": "locations/forest-path-dust.png",
+      "forest-path-morning": "locations/forest-path-morning.png",
+      "forest-path-quiet": "locations/forest-path-quiet.png",
+      "path-home-dusk": "locations/path-home-dusk.png",
+      "spring-dry": "locations/spring-dry.png",
+      "spring-outlet": "locations/spring-outlet.png",
+      "spring-restored": "locations/spring-restored.png",
+      "inside-the-cave": "locations/inside-the-cave.png",
+      "rainbow-valley": "locations/rainbow-valley.png"
+    },
+    "props": {
+      "white-stone": {
+        "words": [
+          "white stone",
+          "round stone",
+          "the stone",
+          "boulder"
+        ],
+        "look": "A single smooth rounded white stone, about the size of a small foal's body, pale chalky white with faint grey veining and a few small chips along one edge."
+      },
+      "fallen-branch": {
+        "words": [
+          "branch"
+        ],
+        "look": "One slim fallen branch, silver-grey bark, bare but for a few small leaves, about as long as a small unicorn foal's body and no thicker than her leg — light enough for a small foal to lift on her horn. Three thin forking twigs. A branch, not a log and not a trunk."
+      },
+      "glitter-bell": {
+        "words": [
+          "silver bell",
+          "her bell",
+          "mama's bell",
+          "bell"
+        ],
+        "look": "A small polished silver bell on a soft lilac ribbon, plain and round, with a narrow slot across its base.",
+        "worn_by": [
+          "Glitter",
+          "Princess"
+        ]
+      },
+      "spring-opening": {
+        "words": [
+          "spring opening",
+          "the opening",
+          "dark crack",
+          "the crack",
+          "cave mouth"
+        ],
+        "look": "A narrow dark crack at the foot of a pale white limestone cliff — an opening just tall enough for a small unicorn foal and a baby dragon to walk into, dark inside, with a thin trickle of water running out over wet grey stones and moss. Rough white rock around it, small flowers at its base. The one way into the spring cave.",
+        "name": "the crack in the cliff"
+      },
+      "rope-bridge": {
+        "words": [
+          "bridge",
+          "planks",
+          "handrail"
+        ],
+        "look": "THE rope bridge of Rainbow Forest, exactly as in the reference: a long rope-and-plank suspension bridge hanging HIGH across a deep dry stony gorge, two thick rope handrails, plank deck, anchored to stout posts on the green banks. There is one bridge and it always looks like this.",
+        "name": "the rope bridge"
+      }
+    },
+    "place_briefs": {
+      "rope-bridge": "A plain rope-and-plank footbridge across a green gorge in Rainbow Forest. Two straight thick rope handrails at chest height run the whole length; short vertical rope ties every few planks join the handrails down to the deck; flat wooden planks lie side by side across the deck; the ropes are anchored to stout posts at both banks. The ropes are neat and taut — never tangled, never floating, never looping. Solid rocky banks, no cave and no boulder. Warm midday light.",
+      "moonwater-spring": "A round green clearing in Rainbow Forest where a clear spring fills a shallow pool of pale flat stones. Soft grass and small flowers run to the water's edge, tall leafy trees stand back around the rim, and a low white cliff rises behind the pool. No cave, no dark opening and no large rounded boulder anywhere. Bright late-morning light, the water sparkling.",
+      "forest-path-dust": "Forest-path-dust follows a dry creek bed cutting through the woods, its grey stones and damp moss marking where water once ran. Flowering vines tangle along the path's edge, with a fallen branch resting across them. A dusty cliff of loose white stone rises nearby, prone to shedding grit into the air. Daylight filters soft and hazy through drifting dust and surrounding trees.",
+      "forest-path-morning": "Forest-path-morning is a soft dirt trail winding beneath towering rainbow-hued flowers and thick flowering vines, their giant petals arching overhead like canopies. Dew clings to leaves and blossoms, catching early light. Low mist drifts along the ground between smooth stones bordering the path. Golden sunrise light filters through pastel foliage, warm and hazy, with no water features, only stillness, color, and glowing morning air.",
+      "forest-path-quiet": "A dry dirt path winds through open forest, packed pale earth studded with small stones. Tall trees rise on either side, their canopies loose enough to let soft grey-gold light filter down. Oversized flowers and low undergrowth crowd the path's edges in muted colors. No cave, den, hollow, tunnel, boulder, or standing stone breaks the ground anywhere. In the distance, a white cliff is faintly visible beyond the tree line.",
+      "path-home-dusk": "Path-home-dusk winds through Rainbow Forest as a dusty trail scattered with smooth white stones, bordered by tall trees and soft undergrowth. The path dips near a fallen log and opens toward a quiet spring at its end. Rolling hills rise beyond the treeline. Golden dusk light filters low through the branches, casting long warm shadows and a peaceful, glowing stillness over the ground.",
+      "spring-dry": "Moonwater Spring sits in a green clearing beneath a tall white stone cliff. The pool bed is cracked and dry, pale grey stones bare where water once pooled, with only a thin trickle winding through damp moss at the lowest point. A fresh pale scar and scattered rubble mark the cliff base—solid rock throughout, no openings. Grass and soft ferns ring the basin under flat, even daylight.",
+      "spring-outlet": "A pale white cliff rises above a stony channel where spring water once ran, now damp moss and bare stones drying in the light. At the cliff's foot lies a small low opening, barely tall as a round stone, no cave mouth or doorway. Nearby the rock bears a fresh pale scar and a narrow dark crack beyond it. Morning-to-afternoon light slants through surrounding trees and drifting dust.",
+      "spring-restored": "Moonwater Spring lies in a wide clearing at the foot of a pale white cliff, its stone rising smooth and ancient above the trees. Smooth stones ring the pool's edge, worn soft by time. Grass grows thick and green around the water, dotted with small wildflowers. The spring itself glimmers, fed by unseen currents. Warm late-afternoon light gilds everything, casting long, gentle shadows across the clearing.",
+      "inside-the-cave": "Inside the spring cave: a dim, quiet rock chamber behind the crack in the white cliff, walls of pale damp stone, a low tunnel at the back where an underground river comes out — its mouth blocked by one big round white stone about the size of a small unicorn foal — a thin trickle escaping past it, wet grey stones on the floor. Fireflies are the only light.",
+      "rainbow-valley": "The whole Unicorn Universe from high above at sunrise: Rainbow Forest with its giant rainbow flowers in the foreground, the golden winding path across green meadows, the river with its stone bridge and waterfalls, the rainbow over the valley, the white castle on its hill far away, blue mountains behind, the great tree with the round door, red-spotted mushrooms, low morning mist, warm golden light."
+    },
+    "place_exemptions": {
+      "cliff-crack": [
+        "cave",
+        "stone"
+      ],
+      "spring-outlet": [
+        "cave",
+        "stone"
+      ],
+      "spring-dry": [
+        "cave",
+        "stone"
+      ],
+      "inside-the-cave": [
+        "cave",
+        "stone"
+      ],
+      "rainbow-valley": [
+        "cave"
+      ],
+      "spring-restored": [
+        "stone"
+      ],
+      "moonwater-spring": [
+        "stone"
+      ]
+    },
+    "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there.",
+    "scale_chart_stone": "The big round white stone is about as tall as Princess — big for her, but a stone, not a boulder the size of a house.",
+    "location_md5": {
+      "rope-bridge": "f331f257e99f5ed97c4a34fc0cd8e382",
+      "moonwater-spring": "d80f788bcad8bbc26583bcf1b0013b4a",
+      "forest-path-dust": "0d121cc984c4733d4c0861dfe304d60b",
+      "forest-path-morning": "ee60399539e013c6e258febbc3199e47",
+      "forest-path-quiet": "bb927c6ff0f218d00aa3dead7a943f34",
+      "path-home-dusk": "32394c4cb595a4f8a5bf01781dfe24c4",
+      "spring-dry": "b7f036941c3b7768bf009df9eda1de81",
+      "spring-outlet": "be3447c56c999140c6c4fc7348aa1dfd",
+      "spring-restored": "2b2e2cf574fb96660fc19b331ba6b092",
+      "inside-the-cave": "65bc62ae89f202e2fc6d1a32e9c2972b",
+      "rainbow-valley": "c65733bb133b11b99a21100ea9944bce"
+    }
+  },
+  "world": {
+    "bible_book": "SC-039",
+    "register": "magical wonder — Disney-family warmth, nothing scary",
+    "cast": [
+      "Princess",
+      "Glitter",
+      "Pip",
+      "Moss"
+    ],
+    "plates": {
+      "princess": {
+        "file": "plates/princess.png",
+        "md5": "53dd20e18f1241a6fdfaa0c7354908eb"
+      },
+      "glitter": {
+        "file": "plates/glitter.png",
+        "md5": "8ad0621973ce00ed62f245f292fe97e8"
+      },
+      "pip": {
+        "file": "plates/pip.png",
+        "md5": "2314ec945bf495c8aa8166da31820076"
+      },
+      "moss": {
+        "file": "plates/moss.png",
+        "md5": "8765ebf25ad2a96c3a0519d9d3002baa"
+      }
+    },
+    "plates_note": "These four pictures are the characters — the ones in the Character Bible Lars approved on 2026-09-01 09:18. Every episode copies them in and verifies them by hash; nothing redraws them. Glitter's plate replaced on 2026-09-02 (candidate A, chosen by Lars): the portrait's colours with the stylised-cute face the bible text describes.",
+    "props_plates": {
+      "white-stone": {
+        "file": "props/white-stone.png",
+        "md5": "36aaaafbd13ce8fd4d5db6ef9f0c1084"
+      },
+      "glitter-bell": {
+        "file": "props/glitter-bell.png",
+        "md5": "9a4fd4539886435df8c3f97068dd5a84"
+      },
+      "spring-opening": {
+        "file": "props/spring-opening.png",
+        "md5": "c703f1f25d9e828a931f069de0a8ee9d"
+      },
+      "rope-bridge": {
+        "file": "props/rope-bridge.png",
+        "md5": "6a7704050f18c0a879c42643d5186025"
+      },
+      "fallen-branch": {
+        "file": "props/fallen-branch.png",
+        "md5": "7491cfd90bd97d552ce972077fc271ac"
+      }
+    },
+    "props_note": "Universe objects. Each has one plate, drawn once and kept here with its hash; every episode copies it in and verifies it before drawing. The bell (Lars, 2026-09-02): Glitter's silver bell on a lilac ribbon, and Princess's — the same bell a little smaller, on a sky-blue ribbon — are the same object at two sizes."
+  },
+  "members": [
+    "SC-039"
+  ],
+  "channels": {
+    "youtube": null,
+    "site": "https://princesstheunicorn.com"
+  },
+  "voice_cast": {
+    "Princess": {
+      "id": "MkTSSXNgnBULS6ek4pon",
+      "name": "Tilly - Bright, Spirited, Naive, Scrappy",
+      "direction": "bright and open; frightened only where the story is frightening"
+    },
+    "Glitter": {
+      "id": "ok2PCXNXA9PMVYmBj7QJ",
+      "name": "Beth - Warm, Grounded, Narrator",
+      "note": "Lars 2026-08-31: Beth, performed ENERGIZED (stability .28 / style .8 / speed 1.02 — see VOICE_SETTINGS in producer.py). Hope read too flat; Glitter needs life.",
+      "direction": "warm, tender, full of life"
+    },
+    "Pip": {
+      "id": "thfYL0Elyru2qqTtNQsE",
+      "name": "Aurelia - High Quality Realistic Princess "
+    },
+    "Moss": {
+      "id": "loY1uopAz31XyhAEhNSa",
+      "name": "Valf - Young, Playful & Sarcastic",
+      "direction": "nervous, shaky, small"
+    },
+    "Fireflies": {
+      "id": "d8WcCpplp8meHt10UhL8",
+      "name": "Emily - Bright & Energetic"
+    },
+    "Storyteller": {
+      "id": "v9LgF91V36LGgbLX3iHW",
+      "name": "David - American Narrator",
+      "note": "Lars 2026-08-30: THE storyteller — grandfather type, American, warm. Chosen over Sarah and four warmer female voices; standing until told otherwise.",
+      "direction": "warm, gentle, caring, unhurried",
+      "direction_note": "Lars 2026-08-31: the storyteller is NEVER dramatic. Warm, sweet and caring — especially where the story is sad. The sadness is in the words; he carries the child through it, he does not perform it at them. (Interim wording until Lars picks A/B/C from Storyteller_Warm_Registers.mp3.)"
+    }
+  },
+  "episode_sound_structure": {
+    "note": "Lars 2026-08-29 — the fixed musical arc of every episode",
+    "1_intro": "show-intro-v8.mp4 (sung theme)",
+    "2_opening_underscore": "instrumental continuation of the theme, no vocals, bridges intro into the first section of the story (candidate: theme/theme-continuation.mp3)",
+    "3_score": "additional moods/alternatives added as the library grows",
+    "4_ending_scene": "Princess falls asleep while Glitter sings The Unicorn Lullaby (short sung version) — TO BE SHOT once lullaby take is chosen",
+    "5_credits": "credits-card.mp4 — minimal TigerWorks wordmark, year, princesstheunicorn.com, fades to black"
+  },
+  "lullaby": {
+    "rule": "MAJOR KEY ONLY — bright, warm, safe; never minor (Lars 2026-08-29)",
+    "frontrunner": "theme/lullaby-short-harp.mp3 (the first harp version)",
+    "candidates": [
+      "theme/lullaby-short-harp.mp3",
+      "theme/lullaby-harp-5.mp3",
+      "theme/lullaby-harp-6.mp3",
+      "theme/lullaby-harp-7.mp3"
+    ],
+    "retired": [
+      "theme/lullaby-short-try.mp3 (no harp)",
+      "theme/lullaby-harp-2.mp3",
+      "theme/lullaby-harp-3.mp3",
+      "theme/lullaby-harp-4.mp3"
     ]
-   },
-   "spring-opening": {
-    "words": [
-     "spring opening",
-     "the opening",
-     "dark crack",
-     "the crack",
-     "cave mouth"
-    ],
-    "look": "A narrow dark crack at the foot of a pale white limestone cliff — an opening just tall enough for a small unicorn foal and a baby dragon to walk into, dark inside, with a thin trickle of water running out over wet grey stones and moss. Rough white rock around it, small flowers at its base. The one way into the spring cave.",
-    "name": "the crack in the cliff"
-   },
-   "rope-bridge": {
-    "words": [
-     "bridge",
-     "planks",
-     "handrail"
-    ],
-    "look": "THE rope bridge of Rainbow Forest, exactly as in the reference: a long rope-and-plank suspension bridge hanging HIGH across a deep dry stony gorge, two thick rope handrails, plank deck, anchored to stout posts on the green banks. There is one bridge and it always looks like this.",
-    "name": "the rope bridge"
-   }
   },
-  "place_briefs": {
-   "rope-bridge": "A plain rope-and-plank footbridge across a green gorge in Rainbow Forest. Two straight thick rope handrails at chest height run the whole length; short vertical rope ties every few planks join the handrails down to the deck; flat wooden planks lie side by side across the deck; the ropes are anchored to stout posts at both banks. The ropes are neat and taut — never tangled, never floating, never looping. Solid rocky banks, no cave and no boulder. Warm midday light.",
-   "moonwater-spring": "A round green clearing in Rainbow Forest where a clear spring fills a shallow pool of pale flat stones. Soft grass and small flowers run to the water's edge, tall leafy trees stand back around the rim, and a low white cliff rises behind the pool. No cave, no dark opening and no large rounded boulder anywhere. Bright late-morning light, the water sparkling.",
-   "forest-path-dust": "Forest-path-dust follows a dry creek bed cutting through the woods, its grey stones and damp moss marking where water once ran. Flowering vines tangle along the path's edge, with a fallen branch resting across them. A dusty cliff of loose white stone rises nearby, prone to shedding grit into the air. Daylight filters soft and hazy through drifting dust and surrounding trees.",
-   "forest-path-morning": "Forest-path-morning is a soft dirt trail winding beneath towering rainbow-hued flowers and thick flowering vines, their giant petals arching overhead like canopies. Dew clings to leaves and blossoms, catching early light. Low mist drifts along the ground between smooth stones bordering the path. Golden sunrise light filters through pastel foliage, warm and hazy, with no water features, only stillness, color, and glowing morning air.",
-   "forest-path-quiet": "A dry dirt path winds through open forest, packed pale earth studded with small stones. Tall trees rise on either side, their canopies loose enough to let soft grey-gold light filter down. Oversized flowers and low undergrowth crowd the path's edges in muted colors. No cave, den, hollow, tunnel, boulder, or standing stone breaks the ground anywhere. In the distance, a white cliff is faintly visible beyond the tree line.",
-   "path-home-dusk": "Path-home-dusk winds through Rainbow Forest as a dusty trail scattered with smooth white stones, bordered by tall trees and soft undergrowth. The path dips near a fallen log and opens toward a quiet spring at its end. Rolling hills rise beyond the treeline. Golden dusk light filters low through the branches, casting long warm shadows and a peaceful, glowing stillness over the ground.",
-   "spring-dry": "Moonwater Spring sits in a green clearing beneath a tall white stone cliff. The pool bed is cracked and dry, pale grey stones bare where water once pooled, with only a thin trickle winding through damp moss at the lowest point. A fresh pale scar and scattered rubble mark the cliff base—solid rock throughout, no openings. Grass and soft ferns ring the basin under flat, even daylight.",
-   "spring-outlet": "A pale white cliff rises above a stony channel where spring water once ran, now damp moss and bare stones drying in the light. At the cliff's foot lies a small low opening, barely tall as a round stone, no cave mouth or doorway. Nearby the rock bears a fresh pale scar and a narrow dark crack beyond it. Morning-to-afternoon light slants through surrounding trees and drifting dust.",
-   "spring-restored": "Moonwater Spring lies in a wide clearing at the foot of a pale white cliff, its stone rising smooth and ancient above the trees. Smooth stones ring the pool's edge, worn soft by time. Grass grows thick and green around the water, dotted with small wildflowers. The spring itself glimmers, fed by unseen currents. Warm late-afternoon light gilds everything, casting long, gentle shadows across the clearing.",
-   "inside-the-cave": "Inside the spring cave: a dim, quiet rock chamber behind the crack in the white cliff, walls of pale damp stone, a low tunnel at the back where an underground river comes out — its mouth blocked by one big round white stone about the size of a small unicorn foal — a thin trickle escaping past it, wet grey stones on the floor. Fireflies are the only light.",
-   "rainbow-valley": "The whole Unicorn Universe from high above at sunrise: Rainbow Forest with its giant rainbow flowers in the foreground, the golden winding path across green meadows, the river with its stone bridge and waterfalls, the rainbow over the valley, the white castle on its hill far away, blue mountains behind, the great tree with the round door, red-spotted mushrooms, low morning mist, warm golden light."
-  },
-  "place_exemptions": {
-   "cliff-crack": [
-    "cave",
-    "stone"
-   ],
-   "spring-outlet": [
-    "cave",
-    "stone"
-   ],
-   "spring-dry": [
-    "cave",
-    "stone"
-   ],
-   "inside-the-cave": [
-    "cave",
-    "stone"
-   ],
-   "rainbow-valley": [
-    "cave"
-   ],
-   "spring-restored": [
-    "stone"
-   ],
-   "moonwater-spring": [
-    "stone"
-   ]
-  },
-  "world_rules_note": "Positive form on purpose (2026-09-02). Rules that said 'no caves' and 'the round white stone exists once' put caves and stones into shots that had neither — a model draws what it is told about. Say what IS there.",
-  "scale_chart_stone": "The big round white stone is about as tall as Princess — big for her, but a stone, not a boulder the size of a house.",
-  "location_md5": {
-   "rope-bridge": "f331f257e99f5ed97c4a34fc0cd8e382",
-   "moonwater-spring": "d80f788bcad8bbc26583bcf1b0013b4a",
-   "forest-path-dust": "0d121cc984c4733d4c0861dfe304d60b",
-   "forest-path-morning": "ee60399539e013c6e258febbc3199e47",
-   "forest-path-quiet": "bb927c6ff0f218d00aa3dead7a943f34",
-   "path-home-dusk": "32394c4cb595a4f8a5bf01781dfe24c4",
-   "spring-dry": "b7f036941c3b7768bf009df9eda1de81",
-   "spring-outlet": "be3447c56c999140c6c4fc7348aa1dfd",
-   "spring-restored": "2b2e2cf574fb96660fc19b331ba6b092",
-   "inside-the-cave": "65bc62ae89f202e2fc6d1a32e9c2972b",
-   "rainbow-valley": "c65733bb133b11b99a21100ea9944bce"
-  }
- },
- "world": {
-  "bible_book": "SC-039",
-  "register": "magical wonder — Disney-family warmth, nothing scary",
-  "cast": [
-   "Princess",
-   "Glitter",
-   "Pip",
-   "Moss"
+  "episode_format": "episode-format.md",
+  "lullaby_lyrics_short": [
+    "Sleep now... sleep now...",
+    "the forest holds you near.",
+    "Sleep now... sleep now...",
+    "your dreams are safe in here.",
+    "Goodnight, goodnight, little unicorn...",
+    "sleep tight."
   ],
-  "plates": {
-   "princess": {
-    "file": "plates/princess.png",
-    "md5": "53dd20e18f1241a6fdfaa0c7354908eb"
-   },
-   "glitter": {
-    "file": "plates/glitter.png",
-    "md5": "8ad0621973ce00ed62f245f292fe97e8"
-   },
-   "pip": {
-    "file": "plates/pip.png",
-    "md5": "2314ec945bf495c8aa8166da31820076"
-   },
-   "moss": {
-    "file": "plates/moss.png",
-    "md5": "8765ebf25ad2a96c3a0519d9d3002baa"
-   }
-  },
-  "plates_note": "These four pictures are the characters — the ones in the Character Bible Lars approved on 2026-09-01 09:18. Every episode copies them in and verifies them by hash; nothing redraws them. Glitter's plate replaced on 2026-09-02 (candidate A, chosen by Lars): the portrait's colours with the stylised-cute face the bible text describes.",
-  "props_plates": {
-   "white-stone": {
-    "file": "props/white-stone.png",
-    "md5": "36aaaafbd13ce8fd4d5db6ef9f0c1084"
-   },
-   "glitter-bell": {
-    "file": "props/glitter-bell.png",
-    "md5": "9a4fd4539886435df8c3f97068dd5a84"
-   },
-   "spring-opening": {
-    "file": "props/spring-opening.png",
-    "md5": "c703f1f25d9e828a931f069de0a8ee9d"
-   },
-   "rope-bridge": {
-    "file": "props/rope-bridge.png",
-    "md5": "6a7704050f18c0a879c42643d5186025"
-   },
-   "fallen-branch": {
-    "file": "props/fallen-branch.png",
-    "md5": "7491cfd90bd97d552ce972077fc271ac"
-   }
-  },
-  "props_note": "Universe objects. Each has one plate, drawn once and kept here with its hash; every episode copies it in and verifies it before drawing. The bell (Lars, 2026-09-02): Glitter's silver bell on a lilac ribbon, and Princess's — the same bell a little smaller, on a sky-blue ribbon — are the same object at two sizes."
- },
- "members": [
-  "SC-039"
- ],
- "channels": {
-  "youtube": null,
-  "site": "https://princesstheunicorn.com"
- },
- "voice_cast": {
-  "Princess": {
-   "id": "MkTSSXNgnBULS6ek4pon",
-   "name": "Tilly - Bright, Spirited, Naive, Scrappy",
-   "direction": "bright and open; frightened only where the story is frightening"
-  },
-  "Glitter": {
-   "id": "ok2PCXNXA9PMVYmBj7QJ",
-   "name": "Beth - Warm, Grounded, Narrator",
-   "note": "Lars 2026-08-31: Beth, performed ENERGIZED (stability .28 / style .8 / speed 1.02 — see VOICE_SETTINGS in producer.py). Hope read too flat; Glitter needs life.",
-   "direction": "warm, tender, full of life"
-  },
-  "Pip": {
-   "id": "thfYL0Elyru2qqTtNQsE",
-   "name": "Aurelia - High Quality Realistic Princess "
-  },
-  "Moss": {
-   "id": "loY1uopAz31XyhAEhNSa",
-   "name": "Valf - Young, Playful & Sarcastic",
-   "direction": "nervous, shaky, small"
-  },
-  "Fireflies": {
-   "id": "d8WcCpplp8meHt10UhL8",
-   "name": "Emily - Bright & Energetic"
-  },
-  "Storyteller": {
-   "id": "v9LgF91V36LGgbLX3iHW",
-   "name": "David - American Narrator",
-   "note": "Lars 2026-08-30: THE storyteller — grandfather type, American, warm. Chosen over Sarah and four warmer female voices; standing until told otherwise.",
-   "direction": "warm, gentle, caring, unhurried",
-   "direction_note": "Lars 2026-08-31: the storyteller is NEVER dramatic. Warm, sweet and caring — especially where the story is sad. The sadness is in the words; he carries the child through it, he does not perform it at them. (Interim wording until Lars picks A/B/C from Storyteller_Warm_Registers.mp3.)"
-  }
- },
- "episode_sound_structure": {
-  "note": "Lars 2026-08-29 — the fixed musical arc of every episode",
-  "1_intro": "show-intro-v8.mp4 (sung theme)",
-  "2_opening_underscore": "instrumental continuation of the theme, no vocals, bridges intro into the first section of the story (candidate: theme/theme-continuation.mp3)",
-  "3_score": "additional moods/alternatives added as the library grows",
-  "4_ending_scene": "Princess falls asleep while Glitter sings The Unicorn Lullaby (short sung version) — TO BE SHOT once lullaby take is chosen",
-  "5_credits": "credits-card.mp4 — minimal TigerWorks wordmark, year, princesstheunicorn.com, fades to black"
- },
- "lullaby": {
-  "rule": "MAJOR KEY ONLY — bright, warm, safe; never minor (Lars 2026-08-29)",
-  "frontrunner": "theme/lullaby-short-harp.mp3 (the first harp version)",
-  "candidates": [
-   "theme/lullaby-short-harp.mp3",
-   "theme/lullaby-harp-5.mp3",
-   "theme/lullaby-harp-6.mp3",
-   "theme/lullaby-harp-7.mp3"
+  "season_titles": [
+    "Princess and the Hidden Spring",
+    "Princess and the Thunder Sky",
+    "Princess and the Broken Wing",
+    "Princess and the Waiting Seed",
+    "Princess and the Tangled Truth",
+    "Princess and the Sharing Tree"
   ],
-  "retired": [
-   "theme/lullaby-short-try.mp3 (no harp)",
-   "theme/lullaby-harp-2.mp3",
-   "theme/lullaby-harp-3.mp3",
-   "theme/lullaby-harp-4.mp3"
-  ]
- },
- "episode_format": "episode-format.md",
- "lullaby_lyrics_short": [
-  "Sleep now... sleep now...",
-  "the forest holds you near.",
-  "Sleep now... sleep now...",
-  "your dreams are safe in here.",
-  "Goodnight, goodnight, little unicorn...",
-  "sleep tight."
- ],
- "season_titles": [
-  "Princess and the Hidden Spring",
-  "Princess and the Thunder Sky",
-  "Princess and the Broken Wing",
-  "Princess and the Waiting Seed",
-  "Princess and the Tangled Truth",
-  "Princess and the Sharing Tree"
- ],
- "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Princess the Unicorn",
- "slug": "princess-the-unicorn",
- "profile_path": "universe/princess-the-unicorn/profile.json"
+  "desktop_mirror": "/Users/tiger/TigerWorks/Universes/Princess the Unicorn",
+  "slug": "princess-the-unicorn",
+  "profile_path": "universe/princess-the-unicorn/profile.json"
 }
