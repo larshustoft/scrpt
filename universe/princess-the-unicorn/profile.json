@@ -93,7 +93,12 @@
    "rope-bridge-valley": "locations/rope-bridge-valley.png",
    "moonwater-spring-wide": "locations/moonwater-spring-wide.png",
    "great-tree-door": "locations/great-tree-door.png",
-   "path-home-dusk-wide": "locations/path-home-dusk-wide.png"
+   "path-home-dusk-wide": "locations/path-home-dusk-wide.png",
+   "castle-from-the-meadow": "locations/castle-from-the-meadow.png",
+   "castle-courtyard": "locations/castle-courtyard.png",
+   "castle-great-hall": "locations/castle-great-hall.png",
+   "princess-tower-room": "locations/princess-tower-room.png",
+   "castle-balcony-dusk": "locations/castle-balcony-dusk.png"
   },
   "props": {
    "white-stone": {
@@ -187,10 +192,10 @@
    "forest-path-morning": "Forest-path-morning is a soft dirt trail winding beneath towering rainbow-hued flowers and thick flowering vines, their giant petals arching overhead like canopies. Dew clings to leaves and blossoms, catching early light. Low mist drifts along the ground between smooth stones bordering the path. Golden sunrise light filters through pastel foliage, warm and hazy, with no water features, only stillness, color, and glowing morning air.",
    "forest-path-quiet": "A dry dirt path winds through open forest, packed pale earth studded with small stones. Tall trees rise on either side, their canopies loose enough to let soft grey-gold light filter down. Oversized flowers and low undergrowth crowd the path's edges in muted colors. No cave, den, hollow, tunnel, boulder, or standing stone breaks the ground anywhere. In the distance, a white cliff is faintly visible beyond the tree line.",
    "path-home-dusk": "Path-home-dusk winds through Rainbow Forest as a dusty trail scattered with smooth white stones, bordered by tall trees and soft undergrowth. The path dips near a fallen log and opens toward a quiet spring at its end. Rolling hills rise beyond the treeline. Golden dusk light filters low through the branches, casting long warm shadows and a peaceful, glowing stillness over the ground.",
-   "spring-dry": "Moonwater Spring sits in a green clearing beneath a tall white stone cliff. The pool bed is cracked and dry, pale grey stones bare where water once pooled, with only a thin trickle winding through damp moss at the lowest point. A fresh pale scar and scattered rubble mark the cliff base—solid rock throughout, no openings. Grass and soft ferns ring the basin under flat, even daylight.",
+   "spring-dry": "A dry creek bed in the green clearing: smooth wet stones and mud where the creek used to run, only a thin trickle of water left between them, and BEHIND it the spring outlet — the same rocky bowl and stone spout as the spring-outlet picture — now almost silent. Same place, same rocks, same trees as the reference.",
    "spring-outlet": "A pale white cliff rises above a stony channel where spring water once ran, now damp moss and bare stones drying in the light. At the cliff's foot lies a small low opening, barely tall as a round stone, no cave mouth or doorway. Nearby the rock bears a fresh pale scar and a narrow dark crack beyond it. Morning-to-afternoon light slants through surrounding trees and drifting dust.",
    "spring-restored": "Moonwater Spring lies in a wide clearing at the foot of a pale white cliff, its stone rising smooth and ancient above the trees. Smooth stones ring the pool's edge, worn soft by time. Grass grows thick and green around the water, dotted with small wildflowers. The spring itself glimmers, fed by unseen currents. Warm late-afternoon light gilds everything, casting long, gentle shadows across the clearing.",
-   "inside-the-cave": "Inside the spring cave: a dim, quiet rock chamber behind the crack in the white cliff, walls of pale damp stone, a low tunnel at the back where an underground river comes out — its mouth blocked by one big round white stone about the size of a small unicorn foal — a thin trickle escaping past it, wet grey stones on the floor. Fireflies are the only light.",
+   "inside-the-cave": "Inside the mountain, in the dark rounded cave where the underground river runs: we look from INSIDE toward the cave's mouth, and the mouth is blocked from inside by the BACK of one large pale rounded stone wedged tight in the round hole, daylight glowing in a thin ring around its edge; wet rock walls, a thin trickle of water at the bottom, a few tiny soft points of light. Seen so that characters standing inside could push the stone outward.",
    "rainbow-valley": "The whole Unicorn Universe from high above at sunrise: Rainbow Forest with its giant rainbow flowers in the foreground, the golden winding path across green meadows, the river with its stone bridge and waterfalls, the rainbow over the valley, the white castle on its hill far away, blue mountains behind, the great tree with the round door, red-spotted mushrooms, low morning mist, warm golden light.",
    "valley-from-above": "the whole Unicorn Universe from high above at sunrise, Rainbow Forest in front, the golden path, the river and its bridge, the rainbow, the white castle on its hill, blue mountains behind",
    "castle-hill": "the white castle with rose-gold roofs on its green hill, a rainbow behind it, flags in a soft wind, the winding path climbing to its gate",
@@ -203,7 +208,12 @@
    "rope-bridge-valley": "the rope bridge from a distance, high above the river gorge, trees on both sides",
    "moonwater-spring-wide": "Moonwater Spring in its rocky bowl, the stone spout, the pool, ferns, seen from a little way off",
    "great-tree-door": "the great tree with the round wooden door in its trunk, lanterns, roots like steps",
-   "path-home-dusk-wide": "the golden path home at dusk, long shadows, the castle small and warm in the distance, first stars"
+   "path-home-dusk-wide": "the golden path home at dusk, long shadows, the castle small and warm in the distance, first stars",
+   "castle-from-the-meadow": "The white castle with rose-gold roofs seen from the meadow below at midday, its hill green, the winding golden path climbing to the gate, the rainbow faint behind, no characters",
+   "castle-courtyard": "Inside the castle walls: a sunny cobbled courtyard with a small fountain, flower boxes at every window, a round tower, pennants in a soft wind, no characters",
+   "castle-great-hall": "The castle's great hall: tall arched windows full of daylight, a long carpet to a pair of gentle thrones woven with flowers, banners with a rainbow and a bell, warm and welcoming, no characters",
+   "princess-tower-room": "Princess's little round tower room: a bed of soft straw and cushions, a round window looking over the valley, a shelf of shells and feathers, morning light, no characters",
+   "castle-balcony-dusk": "A castle balcony at dusk looking out over the whole valley, the rainbow forest darkening below, the first stars, warm lamp light from the doorway, no characters"
   },
   "place_exemptions": {
    "cliff-crack": [
@@ -282,10 +292,10 @@
    "forest-path-morning": "ee60399539e013c6e258febbc3199e47",
    "forest-path-quiet": "bb927c6ff0f218d00aa3dead7a943f34",
    "path-home-dusk": "32394c4cb595a4f8a5bf01781dfe24c4",
-   "spring-dry": "b7f036941c3b7768bf009df9eda1de81",
+   "spring-dry": "409a9d74db655152d70986a4e8db4a6e",
    "spring-outlet": "be3447c56c999140c6c4fc7348aa1dfd",
    "spring-restored": "2b2e2cf574fb96660fc19b331ba6b092",
-   "inside-the-cave": "65bc62ae89f202e2fc6d1a32e9c2972b",
+   "inside-the-cave": "c75fdc70e22c45f95df61429e0fb4493",
    "rainbow-valley": "c65733bb133b11b99a21100ea9944bce",
    "valley-from-above": "81e745887fd696f085c93343f5d64730",
    "castle-hill": "fd2ca8e8011e4cad921b2a30f7cad017",
@@ -298,7 +308,12 @@
    "rope-bridge-valley": "12d83e142ff5c06a08cae4d56b18c9ae",
    "moonwater-spring-wide": "8ae45c334e5337f74ecd006f7fd74f6e",
    "great-tree-door": "7c0a3c3b3efbf4853498845e01935ef7",
-   "path-home-dusk-wide": "99672776580414720becfcf4dda6ab5f"
+   "path-home-dusk-wide": "99672776580414720becfcf4dda6ab5f",
+   "castle-from-the-meadow": "600bb6c5411af9f3b9bb51d7c256bd20",
+   "castle-courtyard": "9e8aa1d6018f5b8b9fe71d1c93d02e84",
+   "castle-great-hall": "4fbb54c8b5bbf064cc1cbba13d17b0d4",
+   "princess-tower-room": "0cba75f1f77574f478a32004dc04ecac",
+   "castle-balcony-dusk": "c41de7ebe828bbccc5a78cd60d7d6641"
   },
   "atlas": {
    "note": "Show Bible extension (Lars, 2026-09-03): the universe defined in wide pictures, each approved once and reused as the place plate for every shot set there.",
@@ -314,7 +329,12 @@
     "rope-bridge-valley": "the rope bridge from a distance, high above the river gorge, trees on both sides",
     "moonwater-spring-wide": "Moonwater Spring in its rocky bowl, the stone spout, the pool, ferns, seen from a little way off",
     "great-tree-door": "the great tree with the round wooden door in its trunk, lanterns, roots like steps",
-    "path-home-dusk-wide": "the golden path home at dusk, long shadows, the castle small and warm in the distance, first stars"
+    "path-home-dusk-wide": "the golden path home at dusk, long shadows, the castle small and warm in the distance, first stars",
+    "castle-from-the-meadow": "The white castle with rose-gold roofs seen from the meadow below at midday, its hill green, the winding golden path climbing to the gate, the rainbow faint behind, no characters",
+    "castle-courtyard": "Inside the castle walls: a sunny cobbled courtyard with a small fountain, flower boxes at every window, a round tower, pennants in a soft wind, no characters",
+    "castle-great-hall": "The castle's great hall: tall arched windows full of daylight, a long carpet to a pair of gentle thrones woven with flowers, banners with a rainbow and a bell, warm and welcoming, no characters",
+    "princess-tower-room": "Princess's little round tower room: a bed of soft straw and cushions, a round window looking over the valley, a shelf of shells and feathers, morning light, no characters",
+    "castle-balcony-dusk": "A castle balcony at dusk looking out over the whole valley, the rainbow forest darkening below, the first stars, warm lamp light from the doorway, no characters"
    }
   },
   "object_sets_note": "Every story declares its object set: each object has ONE approved image per STATE (e.g. white-stone: alone / in-the-hole / hole-empty). A shot names the state it shows; the still is drawn with that state's plate and only that."
@@ -354,11 +374,12 @@
    },
    "glitter-bell": {
     "file": "props/glitter-bell.png",
-    "md5": "9a4fd4539886435df8c3f97068dd5a84"
+    "md5": "c3539d851e981a51f651e60209f1a8f0",
+    "brief": "Glitter's bell: a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon, about the size of a plum, shown large and clear against soft meadow bokeh; no characters, no text"
    },
    "spring-opening": {
     "file": "props/spring-opening.png",
-    "md5": "c703f1f25d9e828a931f069de0a8ee9d"
+    "md5": "73959cad46ac2696b745c65b11cc787a"
    },
    "rope-bridge": {
     "file": "props/rope-bridge.png",
@@ -366,25 +387,8 @@
    },
    "fallen-branch": {
     "file": "props/fallen-branch.png",
-    "md5": "7491cfd90bd97d552ce972077fc271ac"
-   },
-   "glitter-bell--on-the-ribbon": {
-    "file": "props/glitter-bell--on-the-ribbon.png",
-    "md5": "5f2c347596cddb83f2e0925841ded230",
-    "state_of": "glitter-bell",
-    "brief": "Glitter's small silver bell hanging on its lilac ribbon around a white unicorn mare's neck, close, the bell polished and round with a tiny clapper"
-   },
-   "glitter-bell--lying-in-grass": {
-    "file": "props/glitter-bell--lying-in-grass.png",
-    "md5": "495c1de0d2dc95fece0071deba109674",
-    "state_of": "glitter-bell",
-    "brief": "the same small silver bell with its lilac ribbon lying loose in tall green meadow grass, a little sunlight on it, seen close"
-   },
-   "glitter-bell--in-a-foal-mouth": {
-    "file": "props/glitter-bell--in-a-foal-mouth.png",
-    "md5": "a4370ea17d71cb4fbd4094a5c8f1e9e1",
-    "state_of": "glitter-bell",
-    "brief": "the same small silver bell dangling from its lilac ribbon held gently in a small white unicorn foal's teeth, close on the muzzle and bell"
+    "md5": "85dee7bea3896d5db341a27ff51a9138",
+    "brief": "a thick leafy limb BROKEN OFF a big oak-like tree in a storm, lying across a cobbled forest path: the break end splintered and torn (never sawn or cut clean), the branch as thick as a small tree trunk, dense with green leaves and a few twigs, bark rough and wet; no characters, no text"
    },
    "hollow-log--empty": {
     "file": "props/hollow-log--empty.png",
@@ -397,6 +401,29 @@
     "md5": "c7a5c3f134862520455dca91fee9d06a",
     "state_of": "hollow-log",
     "brief": "the same old hollow log with a small round green-teal baby dragon's head peeking nervously out of its dark opening"
+   },
+   "princess-bell": {
+    "file": "props/princess-bell.png",
+    "md5": "ca29f33c33e2c8f58692a65fa84c2c15",
+    "brief": "Princess's bell: a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon, a little smaller than Glitter's — the size of a cherry — on a thinner lilac ribbon, shown large and clear against soft meadow bokeh; no characters, no text"
+   },
+   "glitter-bell--on-the-ribbon": {
+    "file": "props/glitter-bell--on-the-ribbon.png",
+    "md5": "c03636b1fe530701938bbba62c015a68",
+    "state_of": "glitter-bell",
+    "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon hanging around a white unicorn mare's neck, close on the bell"
+   },
+   "glitter-bell--lying-in-grass": {
+    "file": "props/glitter-bell--lying-in-grass.png",
+    "md5": "f9d07a38ec620fc5e04e427e22755a55",
+    "state_of": "glitter-bell",
+    "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon, lying loose in tall green meadow grass, sunlight on the metal, seen close"
+   },
+   "glitter-bell--in-a-foal-mouth": {
+    "file": "props/glitter-bell--in-a-foal-mouth.png",
+    "md5": "92bde36f5921705798c4b92d78d6c2fb",
+    "state_of": "glitter-bell",
+    "brief": "a REAL small polished silver bell, like a tiny handbell or sleigh-harness bell: a proper bell shape with a flared rim, a small loop at the top, a visible clapper inside, bright metallic reflections, hanging on a lilac satin ribbon dangling from its ribbon held gently in a small white unicorn foal's teeth, close on the muzzle and bell"
    }
   },
   "props_note": "Universe objects. Each has one plate, drawn once and kept here with its hash; every episode copies it in and verifies it before drawing. The bell (Lars, 2026-09-02): Glitter's silver bell on a lilac ribbon, and Princess's — the same bell a little smaller, on a sky-blue ribbon — are the same object at two sizes.",
