@@ -82,7 +82,10 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
     # lines of episode one were recorded by the narrator. A line whose
     # speaker has a cast voice always carries it; a speaker with no voice
     # is a hard stop, never a silent fallback to the storyteller.
-    vc = (book["data"]["movie"].get("voice_cast") or {})
+    # THE VOICES BELONG TO THE UNIVERSE (Lars, 2026-09-03: "we set the voices
+    # for each universe"). The universe's voice_cast is the cast of every
+    # book in it; a book's own list only fills gaps.
+    vc = {**(book["data"]["movie"].get("voice_cast") or {}), **(profile.get("voice_cast") or {})}
     _unvoiced = set()
     for pn in board["panels"]:
         ln = pn.get("line")

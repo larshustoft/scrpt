@@ -67,7 +67,7 @@ def parse_manuscript(text: str) -> dict:
         elif para.startswith("*") and para.endswith("*") and cur["script"]:
             cur["script"].append({"type": "sound", "text": para.strip("*").strip()})
         elif para.startswith("[") and para.endswith("]"):
-            cur["setting"] = para.strip("[]").strip()
+            cur["setting"] = re.sub(r"^(place|setting)\s*:\s*", "", para.strip("[]").strip(), flags=re.I)
     return {"title": title, "object_set": objects, "places": places, "scenes": scenes}
 
 
