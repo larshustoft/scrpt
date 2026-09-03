@@ -967,7 +967,7 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
             # no clip over five seconds). A 5s take stretches to 7.5s at most;
             # a narration beat that needs more is two shots, split at a
             # sentence, the second one a continuation of the first.
-            if pn["dur"] > 7.0 and pn.get("vo") and not pn.get("line"):
+            if pn["dur"] > 5.0 and pn.get("vo") and not pn.get("line"):
                 import re as _re
                 sents = [x.strip() for x in _re.split(r"(?<=[.!?])\s+", pn["vo"]) if x.strip()]
                 if len(sents) >= 2:
@@ -976,6 +976,11 @@ async def build_film_board(catalog: str, minutes: int = 8, handle=None,
                     first["dur"] = max(3.5, _needed_seconds(first))
                     second = dict(pn); second["vo"] = " ".join(sents[cut:])
                     second["n"] = f"{idx}b"; second["continues"] = str(idx)
+                    # the second half is its own shot: one step closer (Lars, 2026-09-03:
+                    # no clip over five seconds — two takes, not one stretched)
+                    _closer = {"wide": "medium", "medium": "close", "close": "detail", "detail": "detail"}
+                    second["framing"] = _closer.get(str(pn.get("framing") or "medium"), "medium")
+                    second["shot"] = f"Closer on the same moment: {pn.get('shot', '')}"
                     second["dur"] = max(3.5, _needed_seconds(second))
                     panels.append(first); panels.append(second)
                     continue

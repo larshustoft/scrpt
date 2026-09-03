@@ -314,7 +314,7 @@ def check_gates() -> list:
     # 38. HOUSE RULES (Lars, 2026-09-03): no video generation longer than 5s,
     # and no lip sync — every take is asked for with mouths closed.
     from . import filters as _F2
-    if getattr(_F2, "MAX_TAKE_SECONDS", 99) > 5 or "no video generation longer than" not in inspect.getsource(P.produce_storyboard):
+    if getattr(_F2, "MAX_TAKE_SECONDS", 99) > 5 or inspect.getsource(P.produce_storyboard).count("no video generation longer than") < 2 or "secs = 10 if secs > 5 else 5" in inspect.getsource(P.produce_storyboard):
         bad.append("a take longer than 5 seconds can be bought again")
     if "All mouths stay closed" not in inspect.getsource(P.produce_storyboard):
         bad.append("takes are no longer asked for with closed mouths — lip sync is off until a model can do it")

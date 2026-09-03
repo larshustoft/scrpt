@@ -3553,7 +3553,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         need = off + max(want, (vo_durs[i] + GAP if vo_durs[i] else 0), spoken_end)
         secs = int(max(4, min(12, round(need + 0.6))))
         if (pn.get("still") or "").strip():
-            secs = 10 if secs > 5 else 5      # gen4_turbo shoots 5s or 10s
+            secs = 5                           # HOUSE RULE (Lars, 2026-09-03): every take is 5 seconds, on every camera
         return need, off, secs, lf, lgap
 
     def _panel_seconds(i: int, pn: dict) -> int:
@@ -3866,7 +3866,10 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             # the intro and the lullaby were shot — judged by identity against
             # those plates, two paid tries, then the drift.
             if pn.get("camera") == "seedance" and _sp is not None:
-                from .filters import SEEDANCE_RATE as _SD_RATE
+                from .filters import SEEDANCE_RATE as _SD_RATE, MAX_TAKE_SECONDS as _MAX_T
+                secs = _MAX_T                      # HOUSE RULE: no video generation longer than 5s, on any camera
+                if secs > _MAX_T:
+                    raise RuntimeError(f"shot {pn.get('n')}: a {secs}s take was requested — house rule: no video generation longer than {_MAX_T}s")
                 from .takecheck import check_take_refs as _check_refs, de_name as _de_name2
                 _prof = _universe_profile(catalog); _udir = _universe_dir(catalog)
                 _present = list(pn.get("present") or [])
