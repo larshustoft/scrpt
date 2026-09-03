@@ -170,7 +170,7 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
                     f.rename(f.with_name(f.stem + f".prev-{_stamp}" + f.suffix))
         log(f"redrawing by order: {' '.join(str(x) for x in redraw)}")
         await draw_and_check_stills(catalog, board, profile, rounds=picture_rounds, only=list(redraw))
-        update_book(book["id"], book["data"])
+        _save()
     if shoot_only:
         _missing = [str(p.get("n")) for p in board["panels"]
                     if not (Path(OUTPUT_DIR) / catalog / "trailer" / str(p.get("still") or "")).exists()]
