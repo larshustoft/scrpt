@@ -81,7 +81,7 @@ RISKY = re.compile(r"\b(lift|lifts|lifting|raise|raises|carr(y|ies|ying)|run|run
 # a stranger. Only an INDEFINITE newcomer counts ("a bird flies in", "another
 # unicorn appears", "a second foal joins") — a cast member arriving, emerging
 # or being revealed is her own shot and stays.
-ARRIVAL = re.compile(r"\b(a|an|another|some|two|three|several|more|new)\s+(?:\w+\s+){0,2}?"
+ARRIVAL = re.compile(r"\b(a|an|another|some|two|three|several|more|new)\s+(?:\w+\s+){0,3}?"
                      r"(enters?|entering|appears?|appearing|arrives?|arriving|comes? (?:in|into|out|along)|"
                      r"joins?|joining|emerges?|emerging|walks? (?:in|into|up)|flies (?:in|into|down)|lands?)\b"
                      r"|\ba (?:new|second|another) (?:unicorn|foal|dragon|bird|creature|character|animal)\b", re.I)
