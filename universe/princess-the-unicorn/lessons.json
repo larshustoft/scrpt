@@ -12143,6 +12143,198 @@
    "round": 0,
    "kind": "other",
    "reason": "not the shot on the board: The shot should show Rainbow Forest, but no named characters (Glitter, Princess, Pip, Moss"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "28",
+   "round": 0,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "30",
+   "round": 0,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "50",
+   "round": 0,
+   "kind": "other",
+   "reason": "not the shot on the board: The shot should be a wide view showing Moss on the high rope bridge over the gorge with th"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "64",
+   "round": 0,
+   "kind": "other",
+   "reason": "not the shot on the board: The line specifies Princess (compact, round-bellied, short stubby legs, small horn) accomp"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "72",
+   "round": 0,
+   "kind": "other",
+   "reason": "Is any ribbon, rope, string or vine strung BETWEEN two chara"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "83",
+   "round": 0,
+   "kind": "other",
+   "reason": "Is any ribbon, rope, string or vine strung BETWEEN two chara"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "28",
+   "round": 1,
+   "kind": "open_mouth",
+   "reason": "Is any character's mouth open AS IF TALKING — jaw dropped mi"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "28",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "28",
+   "round": 1,
+   "kind": "missing_character",
+   "reason": "not the shot on the board: The fireflies mentioned in the shot description are missing, and Glitter is not shown smal"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "30",
+   "round": 1,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "50",
+   "round": 1,
+   "kind": "other",
+   "reason": "not the shot on the board: The scene is a tight close-up on the three characters' faces and upper bodies on the bridg"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "72",
+   "round": 1,
+   "kind": "other",
+   "reason": "Is any ribbon, rope, string or vine strung BETWEEN two chara"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "28",
+   "round": 2,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "30",
+   "round": 2,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "72",
+   "round": 2,
+   "kind": "other",
+   "reason": "Is any ribbon, rope, string or vine strung BETWEEN two chara"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "72",
+   "round": 2,
+   "kind": "other",
+   "reason": "not the shot on the board: The shot requires the stone to be wedged in the mouth of an underground river with dark wa"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "28",
+   "round": 3,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "28",
+   "round": 3,
+   "kind": "other",
+   "reason": "not the shot on the board: The fireflies (Pip) mentioned in the line are not visible in the picture, only Glitter and"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "30",
+   "round": 3,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "72",
+   "round": 3,
+   "kind": "other",
+   "reason": "Is any ribbon, rope, string or vine strung BETWEEN two chara"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "28",
+   "round": 4,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "28",
+   "round": 4,
+   "kind": "other",
+   "reason": "not the shot on the board: The fireflies mentioned in the shot description are not visible in the picture."
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "30",
+   "round": 4,
+   "kind": "boulder",
+   "reason": "Is there a large pale rounded boulder or standing stone anyw"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "72",
+   "round": 4,
+   "kind": "other",
+   "reason": "Is any ribbon, rope, string or vine strung BETWEEN two chara"
   }
  ]
 }
