@@ -3838,6 +3838,9 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                     from .filters import take_seconds as _take_seconds
                     secs = _take_seconds(need)
                     _mark(pn, "take_length", f"{secs}s for {float(need):.1f}s of words")
+                    from .filters import MAX_TAKE_SECONDS as _MAX_TAKE
+                    if secs > _MAX_TAKE:
+                        raise RuntimeError(f"shot {pn.get('n')}: a {secs}s take was requested — house rule: no video generation longer than {_MAX_TAKE}s")
                     _BUDGET.launch(secs, 5.0, f"shot {pn.get('n')} try {attempt + 1}")   # the cap, before the money
                     task = await runway.generate_shot(
                         _motion + " Keep everything else exactly as it is in "

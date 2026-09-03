@@ -130,10 +130,14 @@ def motion_for_attempt(motion: str, attempt: int, profile: dict | None = None) -
     return ladder[min(attempt, len(ladder) - 1)], lint
 
 
+MAX_TAKE_SECONDS = 5      # HOUSE RULE (Lars, 2026-09-03): no clip and no video generation longer than 5 seconds
+
+
 def take_seconds(need: float) -> int:
-    """5s covers up to 8s of words once the cut stretches ≤1.5× and bounces the
-    tail; only longer lines pay for a 10s take (gen4_turbo shoots 5 or 10)."""
-    return 10 if float(need) > 8.0 else 5
+    """Always 5. A line that needs more than 5s of picture is a board fault
+    (the board splits it into two shots); the cut may stretch ≤1.5× and bounce
+    the tail, never buy a longer take."""
+    return MAX_TAKE_SECONDS
 
 
 # ── post: sound effects that came back as voices ────────────────────────────
