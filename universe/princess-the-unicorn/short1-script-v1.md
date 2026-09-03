@@ -11,7 +11,7 @@ seconds, no lip sync — voices act over closed mouths.
 · PRINCESS Tilly · GLITTER Beth · PIP Aurelia · MOSS Valf.
 
 **Object set** — `glitter-bell` (states: on-the-ribbon / lying-in-grass /
-back-on-the-ribbon) · `hollow-log` (states: empty / moss-peeking-out).
+in-a-foal-mouth) · `hollow-log` (states: empty / moss-peeking-out).
 
 **Places (atlas)** — valley-from-above · meadow-by-the-river ·
 hollow-log-clearing · path-home-dusk-wide.
@@ -19,6 +19,8 @@ hollow-log-clearing · path-home-dusk-wide.
 ---
 
 ## 1 · THE VALLEY
+
+[place: valley-from-above]
 
 **STORYTELLER** *(warm, gentle)*: Far away, where the rainbows go to
 rest, there is a valley.
@@ -35,6 +37,8 @@ silver bell. When Princess hears it, she knows her mother is near.
 
 ## 2 · THE QUIET MEADOW
 
+[place: meadow-by-the-river]
+
 **STORYTELLER** *(soft)*: One morning the meadow was very quiet.
 
 **PRINCESS** *(small, calling)*: Mama?
@@ -50,6 +54,8 @@ by the river. She looked under the big leaves.
 ---
 
 ## 3 · PIP
+
+[place: meadow-by-the-river]
 
 **STORYTELLER** *(brightening)*: Then a small blue bird landed on a stone
 in front of her. It was Pip.
@@ -68,6 +74,8 @@ low and looked under things.
 ---
 
 ## 4 · THE HOLLOW LOG
+
+[place: hollow-log-clearing]
 
 **STORYTELLER** *(warm, wondering)*: By the old hollow log, something
 shone in the grass.
@@ -98,6 +106,8 @@ the bell along the grass, all the way to Princess.
 
 ## 5 · TING
 
+[place: hollow-log-clearing]
+
 **STORYTELLER** *(warm)*: Princess picked up the ribbon in her teeth. The
 bell went ting.
 
@@ -122,6 +132,8 @@ bell back on its ribbon.
 ---
 
 ## 6 · HOME
+
+[place: path-home-dusk-wide]
 
 **STORYTELLER** *(warm, gentle)*: That evening, three friends walked home
 together along the golden path.

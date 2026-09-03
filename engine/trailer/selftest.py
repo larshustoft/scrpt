@@ -333,4 +333,14 @@ def check_gates() -> list:
     if "if attempt < 3:" in inspect.getsource(P.produce_storyboard) or "if attempt < 1:" not in inspect.getsource(P.produce_storyboard):
         bad.append("a shot can again buy a third take after two refusals")
 
+    # 41. No film is narrated by a default voice: the book's narrator or the universe's.
+    if "storyteller_voice" not in inspect.getsource(_ME.make_episode):
+        bad.append("a film can again be narrated by a voice nobody chose")
+
+    # 42. A film is born through the line: new_film registers the universe,
+    # its voices and its object set; make_episode casts from the universe.
+    from . import new_film as _NF
+    if "members" not in inspect.getsource(_NF.new_film) or 'profile.get("voice_cast")' not in inspect.getsource(_ME.make_episode):
+        bad.append("a film can again be created outside the universe (wrong voices, no bookends)")
+
     return bad

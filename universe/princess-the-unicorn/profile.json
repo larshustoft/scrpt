@@ -341,7 +341,12 @@
     "cave-entrance-cliff": "The entrance of the cave in the pale cliff: a tall dark crack in the white-grey rock at the foot of the mountain, moss and ferns around it, a thin trickle of water running out over stones into the clearing — the same pale rock, the same clearing and the same light as the spring outlet, seen from a few steps back so the whole crack is visible. No characters, no text."
    }
   },
-  "object_sets_note": "Every story declares its object set: each object has ONE approved image per STATE (e.g. white-stone: alone / in-the-hole / hole-empty). A shot names the state it shows; the still is drawn with that state's plate and only that."
+  "object_sets_note": "Every story declares its object set: each object has ONE approved image per STATE (e.g. white-stone: alone / in-the-hole / hole-empty). A shot names the state it shows; the still is drawn with that state's plate and only that.",
+  "storyteller_voice": {
+   "id": "v9LgF91V36LGgbLX3iHW",
+   "name": "David - American Narrator",
+   "note": "mirror of voice_cast.Storyteller"
+  }
  },
  "world": {
   "bible_book": "SC-039",

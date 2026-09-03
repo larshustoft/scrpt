@@ -96,6 +96,18 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
         raise RuntimeError("these speakers have lines but no voice in the cast: "
                            + ", ".join(sorted(_unvoiced)))
     log(f"voice cast applied: {sum(1 for p in board['panels'] if isinstance(p.get('line'), dict) and p['line'].get('voice'))} lines in character voices")
+    # THE STORYTELLER IS THE UNIVERSE'S (2026-09-03): the short SC-042 had no
+    # audio.voice_id and was narrated by the engine's default voice. A book
+    # of this universe without its own narrator gets the universe's, and a
+    # universe with none is a hard stop — never a random voice.
+    _sv = ((profile.get("creatives") or {}).get("storyteller_voice") or {}).get("id")
+    _bv = ((book["data"].get("audio") or {}).get("voice_id"))
+    if not _bv:
+        if not _sv:
+            raise RuntimeError("no narrator voice: the book has no audio.voice_id and the universe names no storyteller_voice")
+        _d = dict(book["data"]); _d["audio"] = {**(_d.get("audio") or {}), "voice_id": _sv}
+        update_book(book["id"], _d); book = get_book_by_catalog(catalog)
+        log(f"storyteller voice applied from the universe ({_sv[:8]}…)")
 
     # THE MAP BELONGS TO THE EPISODE (2026-09-02). Without `board["world"]`,
     # apply_world falls back to episode one's constants — and every fix a
