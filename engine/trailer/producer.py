@@ -3894,7 +3894,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                             # camera-only; a third paid try was money for the same
                             # coin toss. A slow drift on the approved picture is always
                             # on-model, and costs nothing.
-                            if attempt < 2:
+                            if attempt < 1:          # one more paid try (camera-only), then the picture
                                 clip.rename(clip.with_name(clip.stem + f".bad{attempt}.mp4"))
                                 await asyncio.sleep(4)
                                 continue
