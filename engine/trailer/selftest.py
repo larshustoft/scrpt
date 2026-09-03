@@ -329,4 +329,8 @@ def check_gates() -> list:
     if 'pn["framing"] = fr' not in _bs or "two shots, split at a" not in _bs:
         bad.append("the board drops framing/motion again or lets a beat outrun its take")
 
+    # 40. Two paid takes per shot, then the picture holds (never a third coin toss).
+    if "if attempt < 3:" in inspect.getsource(P.produce_storyboard) or "if attempt < 2:" not in inspect.getsource(P.produce_storyboard):
+        bad.append("a shot can again buy a third take after two refusals")
+
     return bad

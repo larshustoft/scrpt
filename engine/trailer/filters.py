@@ -123,10 +123,12 @@ def motion_for_attempt(motion: str, attempt: int, profile: dict | None = None) -
     almost nothing. Returns (line, lint)."""
     lint = motion_lint(motion, profile)
     m = lint["motion"] or CALM
+    # try 0: the action (gently if risky); try 1: camera-only; after that the
+    # shot holds on its picture — there is no paid try 2 (2026-09-03).
     if lint["risky"]:
-        ladder = [m + " Everything happens slowly and only a little; nothing else moves.", CALM, CALM]
+        ladder = [m + " Everything happens slowly and only a little; nothing else moves.", CALM]
     else:
-        ladder = [m, m + " Everything happens slowly and only a little; nothing else moves.", CALM]
+        ladder = [m, CALM]
     return ladder[min(attempt, len(ladder) - 1)], lint
 
 

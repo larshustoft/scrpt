@@ -3888,7 +3888,13 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                             if handle:
                                 handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
                                                 f"panel {pn.get('n')} — {_v['reasons'][0][:70]} — shooting again")
-                            if attempt < 3:
+                            # TWO PAID TRIES, THEN THE PICTURE (Lars, 2026-09-03). On the
+                            # short, 17 of 46 takes were refused for real inventions —
+                            # extra unicorns, a dragon, a human. The second try is
+                            # camera-only; a third paid try was money for the same
+                            # coin toss. A slow drift on the approved picture is always
+                            # on-model, and costs nothing.
+                            if attempt < 2:
                                 clip.rename(clip.with_name(clip.stem + f".bad{attempt}.mp4"))
                                 await asyncio.sleep(4)
                                 continue
@@ -3904,7 +3910,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                             pn["held_on_still"] = pn.pop("take_problem", "")[:160]
                             if handle:
                                 handle.progress(0.1 + 0.6 * i / max(1, len(panels)), "shooting",
-                                                f"panel {pn.get('n')} holds on its picture after three refused takes")
+                                                f"panel {pn.get('n')} holds on its picture after two refused takes")
                             ok = True; break
                         else:
                             pn.pop("take_problem", None)
