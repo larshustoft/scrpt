@@ -12335,6 +12335,54 @@
    "round": 4,
    "kind": "other",
    "reason": "Is any ribbon, rope, string or vine strung BETWEEN two chara"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "24",
+   "round": 0,
+   "kind": "other",
+   "reason": "Are there insects, bugs, fairies, sprites or firefly-creatur"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "24",
+   "round": 1,
+   "kind": "other",
+   "reason": "Are there insects, bugs, fairies, sprites or firefly-creatur"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "24",
+   "round": 2,
+   "kind": "other",
+   "reason": "Are there insects, bugs, fairies, sprites or firefly-creatur"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "24",
+   "round": 3,
+   "kind": "cave",
+   "reason": "Is there a cave, den, tunnel, burrow, hollow or any dark ope"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "24",
+   "round": 3,
+   "kind": "other",
+   "reason": "Are there insects, bugs, fairies, sprites or firefly-creatur"
+  },
+  {
+   "date": "2026-09-03",
+   "episode": "SC-039",
+   "shot": "24",
+   "round": 4,
+   "kind": "other",
+   "reason": "Are there insects, bugs, fairies, sprites or firefly-creatur"
   }
  ]
 }
