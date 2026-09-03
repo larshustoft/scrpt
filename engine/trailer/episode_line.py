@@ -192,7 +192,7 @@ def quality_sheet(catalog: str, board: dict, film: Path = None,
     sheet["passes"] = (not sheet["desk_check"]
                        and not (sheet["board_check"] or {}).get("off_board")
                        and (sheet.get("lufs") is None or -15.5 < sheet["lufs"] < -12.5)
-                       and (sheet.get("seconds") is None or sheet["seconds"] < 13 * 60))
+                       and (sheet.get("seconds") is None or sheet["seconds"] < 15 * 60))   # an episode with all its scenes runs ~13 min
     return sheet
 
 
