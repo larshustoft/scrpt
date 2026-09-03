@@ -229,6 +229,16 @@ async def draw_atlas(slug: str, style: str = "", quality: str = "high", handle=N
     briefs = prof.setdefault("creatives", {}).setdefault("place_briefs", {})
     for k, v in todo.items():
         briefs.setdefault(k, v)
+    # AN ATLAS PLATE IS APPROVED BY LARS, NOT BY THE READER (2026-09-03): the
+    # first run after the atlas was drawn tore up three plates on "cave" and
+    # "stone" reads (a hollow log's opening, a spring's rocky bowl) and redrew
+    # pictures he had already been shown. Every atlas plate is recorded as
+    # approved by its bytes the moment it is drawn; the gallery is the review.
+    approved = prof["creatives"].setdefault("location_md5", {})
+    for k, rel in made.items():
+        f = udir / rel
+        if f.exists():
+            approved[k] = _md5(f)
     _save_profile(pp, prof)
     return {"drawn": made}
 
