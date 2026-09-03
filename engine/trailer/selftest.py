@@ -289,4 +289,8 @@ def check_gates() -> list:
             not any("firefly-creatures" in q for q in _V.WORLD_QUESTIONS):
         bad.append("a take that dies early can again hold a frame / firefly people can again be drawn")
 
+    # 34. A take is judged by vision once; a re-cut never buys a second opinion.
+    if "_judged_ok" not in inspect.getsource(P.produce_storyboard):
+        bad.append("banked takes are judged again on every re-cut — stochastic refusals cost re-shoots")
+
     return bad

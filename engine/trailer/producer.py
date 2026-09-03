@@ -22,6 +22,7 @@ trailer runs ~320 credits; "voiceover" ~140.
 
 import asyncio
 import os
+import time
 import hashlib
 import json
 import re
@@ -3221,6 +3222,43 @@ def _cap_to_house_length(panels: list, handle=None,
     return kept
 
 
+def _judged_file(catalog: str) -> Path:
+    return OUTPUT_DIR / catalog / "trailer" / "judged.json"
+
+
+def _take_id(path: Path) -> str:
+    """Identity of a take file: size + md5 of its first MB (fast, stable)."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(1 << 20)
+        return f"{path.stat().st_size}-{hashlib.md5(head).hexdigest()[:16]}"
+    except Exception:
+        return ""
+
+
+def _judged_ok(catalog: str, path: Path) -> bool:
+    """A TAKE IS JUDGED ONCE (2026-09-03). The vision judge is stochastic: a
+    take that passed on Monday was refused on Tuesday's re-cut, re-shot for
+    25–50 credits, and the new take judged again next time — every re-cut
+    of a finished film cost money. A take that passed the whole-length judge
+    is remembered by its bytes and never asked again; the deterministic
+    checks (opens on its still, drift, motion) still run every time."""
+    try:
+        return _take_id(path) in (json.loads(_judged_file(catalog).read_text()) if _judged_file(catalog).exists() else {})
+    except Exception:
+        return False
+
+
+def _remember_judged(catalog: str, path: Path, verdict: str = "ok") -> None:
+    try:
+        f = _judged_file(catalog)
+        d = json.loads(f.read_text()) if f.exists() else {}
+        d[_take_id(path)] = {"verdict": verdict, "file": path.name, "at": time.strftime("%Y-%m-%d %H:%M")}
+        f.write_text(json.dumps(d, indent=0))
+    except Exception:
+        pass
+
+
 def _hold_on_still(clip, still, secs: float) -> None:
     """A slow push-in on the approved still, silent — used when a shot may
     not be filmed (picture failed) or the camera refused it three times."""
@@ -3540,11 +3578,14 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
             m = _take_matches_still(clip, _sp) if _sp is not None else None
             if _sp is not None and not _off_board(m):
                 from .takecheck import check_take as _check_take
-                _v = await _check_take(clip, _sp)
+                _already = _judged_ok(catalog, clip)
+                _v = await _check_take(clip, _sp, ask_vision=not _already)   # judged once: no second opinion
                 if not _v["ok"]:
                     m = 0.0                              # treated as not this shot's take
                     pn["take_problem"] = "; ".join(_v["reasons"])[:200]
                 elif _ledger_ok:
+                    if not _already:
+                        _remember_judged(catalog, clip)
                     pn.pop("take_problem", None)
                     return
             if _off_board(m):
@@ -3713,6 +3754,7 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                             ok = True; break
                         else:
                             pn.pop("take_problem", None)
+                            _remember_judged(catalog, clip)
                         pn.pop("off_board", None)
                     _remember_take(catalog, pl["key"], pl["src"])
                     ok = True; break
