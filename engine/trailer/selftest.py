@@ -274,4 +274,9 @@ def check_gates() -> list:
     if "_master_has" not in inspect.getsource(_V.verify_stills):
         bad.append("a continuation can again be refused for scenery its approved master has")
 
+    # 31. ffmpeg never receives an iCloud placeholder: inputs are pulled back
+    # first, or the run stops naming the file (no credits lost either way).
+    if "_materialize" not in inspect.getsource(P._run):
+        bad.append("an evicted iCloud file can again kill a cut mid-mix")
+
     return bad

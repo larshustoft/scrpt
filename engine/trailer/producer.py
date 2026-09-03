@@ -252,9 +252,43 @@ def _hw_encode(args: list) -> list:
                            "-allow_sw", "1"] + rest[j + 1:]
 
 
+SF_DATALESS = 0x40000000       # macOS st_flags bit: the file is an iCloud placeholder
+
+
+def _is_dataless(path) -> bool:
+    try:
+        return bool(os.stat(path).st_flags & SF_DATALESS)
+    except Exception:
+        return False
+
+
+def _materialize(args: list, label: str) -> None:
+    """ICLOUD GUARD (2026-09-03). The disk was 93% full and iCloud evicted the
+    project's own takes and music minutes after they were written; ffmpeg then
+    died with "Operation timed out" in the middle of the score mix, after the
+    shoot had spent 1,025 credits. Every existing file handed to ffmpeg is
+    checked for the placeholder flag and pulled back first; a file that will
+    not come back is named, instead of a timeout."""
+    import time as _t
+    missing = [a for a in args if isinstance(a, (str, Path)) and os.path.isfile(str(a)) and _is_dataless(a)]
+    if not missing:
+        return
+    print(f"[icloud] {label}: {len(missing)} input(s) are iCloud placeholders — pulling back", flush=True)
+    for m in missing:
+        subprocess.run(["brctl", "download", str(m)], capture_output=True, timeout=30)
+    deadline = _t.time() + 240
+    while _t.time() < deadline and any(_is_dataless(m) for m in missing):
+        _t.sleep(5)
+    still = [os.path.basename(str(m)) for m in missing if _is_dataless(m)]
+    if still:
+        raise RuntimeError(f"{label}: iCloud will not give back {len(still)} file(s): {' '.join(still[:4])} — "
+                           "free disk space / move the workspace off iCloud, then run again (no credits lost)")
+
+
 def _run(args: list, label: str):
     # every x264 encode must be 4:2:0 — QuickTime/Safari cannot play 4:4:4
     args = list(args)
+    _materialize(args, label)
     if "libx264" in args and "-pix_fmt" not in args and "copy" not in args[args.index("libx264") - 1:args.index("libx264") + 1]:
         args = args[:-1] + ["-pix_fmt", "yuv420p", args[-1]]
     args = _hw_encode(args)
