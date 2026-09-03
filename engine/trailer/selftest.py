@@ -283,4 +283,10 @@ def check_gates() -> list:
     if "the picture join lost time" not in inspect.getsource(P.produce_storyboard):
         bad.append("a segment on a different clock can again shorten the film silently")
 
+    # 33. A take's frozen tail is trimmed before the stretch, and fireflies
+    # with faces are refused at the picture stage.
+    if "frozen_trimmed" not in inspect.getsource(P.produce_storyboard) or \
+            not any("firefly-creatures" in q for q in _V.WORLD_QUESTIONS):
+        bad.append("a take that dies early can again hold a frame / firefly people can again be drawn")
+
     return bad

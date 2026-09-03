@@ -3829,6 +3829,22 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
         # (≤1.35×) and then holds its final beat — the words never bleed
         # into the next panel's mouth.
         _seg_real = _probe_seconds(seg) or need
+        # A TAKE THAT DIES BEFORE ITS END IS TRIMMED (2026-09-03): gen4 can
+        # go still in its last second (28b, 55b: 0.5–0.9s frozen). The frozen
+        # tail is cut off and the live part is stretched/bounced to the
+        # words like any short take — the film never shows a held frame.
+        from .takecheck import frozen_tail as _frozen_tail_of
+        _fz = _frozen_tail_of(seg, 0.4)
+        if _fz >= 0.4 and _seg_real - _fz >= 1.0:
+            _live = seg.with_name(seg.stem + "-live.mp4")
+            _run(["-y", "-i", str(seg), "-an", "-t", f"{_seg_real - _fz:.2f}", "-r", "24",
+                  "-video_track_timescale", "12288", "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+                  str(_live)], f"seg trim frozen tail {i}")
+            if _live.exists() and _live.stat().st_size > 10_000:
+                import shutil as _sh3
+                _sh3.move(str(_live), str(seg))
+                _seg_real = _probe_seconds(seg) or (_seg_real - _fz)
+                pn["frozen_trimmed"] = round(_fz, 2)
         if _seg_real < need - 0.05:
             # NEVER A FREEZE-FRAME (Lars, 2026-09-03: "the clip stops and
             # turns into a still image" — 26 of 135 shots in v6 ended on a

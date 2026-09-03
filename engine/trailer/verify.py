@@ -113,6 +113,12 @@ WORLD_QUESTIONS = [
     # later stills carried a log or branch nobody asked for.
     "Is there a fallen tree branch, log, or large stick lying on the ground, "
     "across a path or in the water anywhere in this picture?",
+    # FIREFLIES ARE LIGHTS, NOT PEOPLE (2026-09-03: shot 24's fireflies were
+    # drawn as bugs with faces and wings, and the camera animated them as
+    # characters). Anything with a face that is not on the cast list fails.
+    "Are there insects, bugs, fairies, sprites or firefly-creatures drawn WITH "
+    "faces, eyes or little bodies — i.e. as characters rather than as plain "
+    "points of light?",
 ]
 
 # Questions 5 and 6 only apply where the story did not ask for the thing.
