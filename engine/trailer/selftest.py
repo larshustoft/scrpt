@@ -279,4 +279,8 @@ def check_gates() -> list:
     if "_materialize" not in inspect.getsource(P._run):
         bad.append("an evicted iCloud file can again kill a cut mid-mix")
 
+    # 32. The picture join is checked against the sum of its segments.
+    if "the picture join lost time" not in inspect.getsource(P.produce_storyboard):
+        bad.append("a segment on a different clock can again shorten the film silently")
+
     return bad

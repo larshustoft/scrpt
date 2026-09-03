@@ -3847,14 +3847,19 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
                 _fc = (f"[0:v]setpts=PTS*{_factor:.4f},fps=24,split=3[a][b][c];"
                        f"[b]trim=start={_stretched - _tail:.3f},setpts=PTS-STARTPTS,reverse[r];"
                        f"[c]trim=start={_stretched - _tail:.3f},setpts=PTS-STARTPTS[f];"
-                       f"[a][r][f]concat=n=3:v=1:a=0,trim=0:{need:.2f},setpts=PTS-STARTPTS[v]")
+                       f"[a][r][f]concat=n=3:v=1:a=0,trim=0:{need:.2f},setpts=PTS-STARTPTS,fps=24[v]")
             else:
-                _fc = f"[0:v]setpts=PTS*{_factor:.4f},fps=24,trim=0:{need:.2f},setpts=PTS-STARTPTS[v]"
+                _fc = f"[0:v]setpts=PTS*{_factor:.4f},fps=24,trim=0:{need:.2f},setpts=PTS-STARTPTS,fps=24[v]"
             # the segments carry PICTURE ONLY (shots are shot audio=False;
             # every sound is added in the mix), so no [0:a] chain here.
+            # SAME CLOCK AS EVERY OTHER SEGMENT (2026-09-03): the picture is
+            # joined with -c copy, and a segment on a different timebase
+            # (1000k after setpts/concat vs 12288) lost its stretched seconds
+            # in the join — v7 came out 47s short. fps=24 after the trim and
+            # a fixed track timescale keep the join honest.
             _run(["-y", "-i", str(seg), "-an", "-filter_complex", _fc,
-                  "-map", "[v]", "-c:v", "libx264",
-                  "-preset", "fast", "-crf", "18", str(_fixed)], f"seg hold {i}")
+                  "-map", "[v]", "-r", "24", "-video_track_timescale", "12288",
+                  "-c:v", "libx264", "-preset", "fast", "-crf", "18", str(_fixed)], f"seg hold {i}")
             if _fixed.exists() and _fixed.stat().st_size > 10_000:
                 import shutil as _sh2
                 _sh2.move(str(_fixed), str(seg))
@@ -3911,6 +3916,14 @@ async def produce_storyboard(catalog: str, board: dict, format_name: str = "wide
     lst = tdir / "sb-list.txt"
     lst.write_text("".join(f"file '{x.name}'\n" for x in segs))
     _run(["-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(footage)], "storyboard concat")
+    # THE JOIN KEEPS EVERY SECOND (2026-09-03). Segments on mismatched clocks
+    # silently shrank the picture by 47s; a join that is not the sum of its
+    # parts is a broken join, and the run says so instead of shipping it.
+    _sum = sum((_probe_seconds(s_) or 0.0) for s_ in segs)
+    _got = _probe_seconds(footage) or 0.0
+    if abs(_sum - _got) > 1.0:
+        raise RuntimeError(f"the picture join lost time: segments {_sum:.1f}s, joined {_got:.1f}s — "
+                           "a segment is on a different clock; re-encode it before joining")
 
     # 3. the real cover, the title read, the score, the mix — as the work order does
     if handle:
