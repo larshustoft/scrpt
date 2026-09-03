@@ -190,9 +190,12 @@ async def make_episode(catalog: str, slug: str = "princess-the-unicorn",
         _tdir = Path(OUTPUT_DIR) / catalog / "trailer"
         _stamp = time.strftime("%Y%m%d-%H%M")
         for p in board["panels"]:
-            if str(p.get("n")) in {str(x) for x in redraw}:
+            if str(p.get("n")) in {str(x) for x in redraw} and p.get("still"):
+                # a panel WITHOUT a picture has nothing to set aside — an empty
+                # still path resolved to the trailer folder itself and the whole
+                # folder was renamed away (2026-09-04, 00:42; recovered)
                 f = _tdir / str(p.get("still") or "")
-                if f.exists():
+                if f.is_file():
                     f.rename(f.with_name(f.stem + f".prev-{_stamp}" + f.suffix))
         log(f"redrawing by order: {' '.join(str(x) for x in redraw)}")
         await draw_and_check_stills(catalog, board, profile, rounds=picture_rounds, only=list(redraw))
