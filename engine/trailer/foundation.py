@@ -191,6 +191,8 @@ def pose_for(prof: dict, udir: Path, name: str, pn: dict) -> Path | None:
     text = " ".join([str(pn.get("shot") or ""), str(pn.get("motion") or "")]).lower()
     best, score = None, 0
     for pslug, rec in reg.items():
+        if rec.get("kind") == "sheet":          # a multi-figure model sheet is never a single-pose reference
+            continue
         ptext = str(rec.get("text") or pslug).lower()
         s = 0
         for key, words in _POSE_WORDS.items():
