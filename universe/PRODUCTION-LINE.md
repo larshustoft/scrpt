@@ -1,3 +1,54 @@
+# THE WORK PROCESS — starting point from 2026-09-04
+
+Saved on Lars's instruction after the first Seedance short (*Princess and the
+Lost Bell*, SC-042): "much better; not yet publishable; stick to Seedance for
+all clips; save this work process and make it our starting point." Every film
+begins here. The laws below are the detail; this is the order of work.
+
+1. **Foundation first** (`engine/trailer/foundation.py`). The universe owns,
+   approved once in FOUNDATION.html: canonical character plates, a pose sheet
+   per character (angles, expressions, movements, identity-verified), the
+   atlas of wide places drawn in one palette, and for every story an object
+   set with ONE picture per state. Nothing is drawn from text alone.
+2. **The manuscript** in the house format (STORYTELLER / character lines with
+   direction, `[place: …]` per scene, header naming the object set and
+   places). Wrapped paragraphs are read whole; every word ships.
+3. **Born through the line**: `python3 -m engine.trailer.new_film <universe>
+   <manuscript.md>` creates the book inside the universe — member, voices,
+   bibles, style, object set, places — and builds the board.
+4. **The board**: one shot per beat, no shot over 5 s of picture (longer
+   beats become two shots, the second one closer), framing/motion/cast/place/
+   object state on every shot, desk check clean, world map applied.
+   Storyboard published for Lars's approval before any take is bought.
+5. **Pictures**: drawn from the foundation references (pose first, then plate,
+   object states, place plate), checked by the world rules, redrawn only
+   where refused; scenery inherited from an approved master. First-pass yield
+   is logged.
+6. **The camera**: every shot, wide or close, is a Seedance 2.5 take with the
+   cast plates, the closest pose, the object states and the storyboard frame
+   attached; 5 seconds, judged by identity against the plates; refused twice
+   → third try; refused three times → the run stops and names the shot. No
+   drifts, no held pictures, no other camera. Takes are banked and reused by
+   an exact camera-aware map; a take is judged once.
+7. **The cut**: the join is measured against its parts, no freeze-frames,
+   sound cues that turn into voices are thrown away, the score follows the
+   universe's music direction, the universe's intro and outro are attached
+   untouched, −14 LUFS; narration and lines in the universe's voices.
+8. **Scans before delivery**: clip lengths, frozen tails, a cast-aware
+   stranger check on every shot, and a frame sheet looked at by eye.
+9. **Delivery** to `~/Movies/<universe>/…` (never iCloud), with a written
+   report: what was spent against the cap, what the checks found, what to
+   look at.
+
+**Money**: every run is quoted with the camera's real price (150 cr per
+Seedance take) and stops itself at the cap; nothing is spent past what Lars
+was told; a creative downgrade to save money is asked, never defaulted.
+
+**Known next lever**: story logic between clips (Lars will send notes) — a
+desk check for staging and consequence before pictures are drawn.
+
+---
+
 # The TigerWorks Animation Production Line
 
 The method, as it now stands (2026-08-31). It is universe-agnostic: any
