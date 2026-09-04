@@ -146,6 +146,19 @@ async def scheduler():
         except Exception:
             print("  dated kindle publish failed:\n" + traceback.format_exc()[-600:])
         try:
+            # THE RELEASE DESK (Lars, 2026-09-04): once a day, plan every
+            # finished book and push the due ones through the line to KDP.
+            from ..database import get_setting as _gs2, set_setting as _ss2
+            _today = datetime.now().date().isoformat()
+            if settings()["enabled"] and datetime.now().hour >= settings()["hour"] and (_gs2("release_desk_last_day", "") or "") != _today:
+                _ss2("release_desk_last_day", _today)
+                from .release_desk import daily as _desk_daily
+                print(f"  ⚙ release desk: daily duty at {datetime.now():%H:%M}")
+                _res = await _desk_daily()
+                print(f"  release desk: planned {len(_res['plan']['planned'])}, due {len(_res['run']['due'])}, ran {len(_res['run']['ran'])}" + (f" — stopped: {_res['run']['stopped']}" if _res['run'].get('stopped') else ""))
+        except Exception:
+            print("  release desk failed:\n" + traceback.format_exc()[-600:])
+        try:
             from ..reports.sync import due as _sync_due, run_sync as _run_sync
             if _sync_due():
                 print("  ⚙ kdp reports: weekly sync")

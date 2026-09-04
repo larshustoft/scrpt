@@ -2867,6 +2867,23 @@ def book_cost(catalog: str):
     return _bc(catalog)
 
 
+@router.get("/release-desk")
+def release_desk_status():
+    """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""
+    from ..market.release_desk import status
+    return status()
+
+
+@router.post("/release-desk/run")
+async def release_desk_run(body: dict = None):
+    """Run the desk now: plan, then upload what is due (publish unless {"publish": false})."""
+    from ..market.release_desk import daily, plan, run_due
+    body = body or {}
+    if body.get("plan_only"):
+        return {"plan": plan()}
+    return {"plan": plan(), "run": await run_due(publish=bool(body.get("publish", True)))}
+
+
 @router.post("/line/run")
 async def line_run(body: dict = Body(default={})):
     """Run the factory line for one or more books, all the way to KDP.
