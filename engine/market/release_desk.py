@@ -117,7 +117,28 @@ def due(today: date | None = None) -> list[dict]:
 
 
 async def run_due(handle=None, max_per_day: int = MAX_PER_DAY, publish: bool = True) -> dict:
-    """Push the due books through the line, serially, at most max_per_day."""
+    """Push the due books through the line, serially, at most max_per_day.
+    ONE DESK AT A TIME (2026-09-04): the daily duty and a manual run fired in
+    the same minute and both started the line on the same book. A lock in
+    the settings (with its time) keeps a second run out for three hours."""
+    from .line import run_line
+    from . import kdp as kdp_mod
+    lock = get_setting("release_desk_running", "") or ""
+    if lock:
+        try:
+            age_h = (datetime.now() - datetime.fromisoformat(lock)).total_seconds() / 3600
+        except ValueError:
+            age_h = 99
+        if age_h < 3:
+            return {"due": [], "ran": [], "stopped": f"the desk is already running (since {lock[:16]})"}
+    set_setting("release_desk_running", datetime.now().isoformat(timespec="minutes"))
+    try:
+        return await _run_due_locked(handle, max_per_day, publish)
+    finally:
+        set_setting("release_desk_running", "")
+
+
+async def _run_due_locked(handle, max_per_day, publish) -> dict:
     from .line import run_line
     from . import kdp as kdp_mod
     todo = due()
