@@ -70,6 +70,16 @@ AI_DEFAULTS = {
     "images": "One or a few AI-generated images, with minimal or no editing",
     "images_tool": "ChatGPT (GPT Image)", "translations": "None",
 }
+# the PRINT category tree (Books > …), which names things differently from the Kindle tree
+PRINT_CATEGORY_DEFAULTS = {
+    "action_thriller": [["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Suspense"],
+                        ["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Technothrillers"],
+                        ["Literature & Fiction", "Action & Adventure", "Men's Adventure"]],
+    "thriller": [["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Suspense"],
+                 ["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Psychological Thrillers"]],
+    "psychological_thriller": [["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Psychological Thrillers"],
+                               ["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Domestic"]],
+}
 TRIM_LABEL = {"5x8": "5 x 8 in", "5.25x8": "5.25 x 8 in", "5.5x8.5": "5.5 x 8.5 in", "6x9": "6 x 9 in"}
 PAPER_LABEL = {"cream_bw": "Black and white interior with cream paper",
                "white_bw": "Black and white interior with white paper",
@@ -143,46 +153,114 @@ class Stager:
         }""", pattern)
 
     async def _place_categories_picker(self, cats: list) -> int:
+        """KDP's print category picker: cascading selects, then placement
+        checkboxes. The PRINT tree is not the Kindle tree (2026-09-05:
+        "Thrillers" is "Thrillers & Suspense" in print, and its leaves are
+        Suspense / Technothrillers / Psychological Thrillers …), so every
+        level and leaf is matched exactly first and by containment second,
+        and a book that matches nothing still gets "General" under its first
+        resolvable path — KDP refuses to publish with no category at all."""
         p = self.page
-        SEL = """(t) => { const ss=[...document.querySelectorAll('select')].filter(s=>s.offsetParent!==null); const s=ss[ss.length-1]; if(!s) return 'noselect'; const o=[...s.options].find(o=>o.text.trim()===t); if(!o) return 'nooption'; s.value=o.value; s.dispatchEvent(new Event('change',{bubbles:true})); return 'ok'; }"""
+        SEL = """(t) => {
+            const ss = [...document.querySelectorAll('select')].filter(s => s.offsetParent !== null && /react-aui/.test(s.name || s.id));
+            const s = ss[ss.length - 1]; if (!s) return 'noselect';
+            const opts = [...s.options].filter(o => o.text.trim() !== 'Select one');
+            const norm = x => x.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const w = norm(t); const first = w.split(' ')[0];
+            let o = opts.find(o => norm(o.text) === w) || opts.find(o => norm(o.text).includes(w)) || opts.find(o => w.includes(norm(o.text)))
+                 || opts.find(o => norm(o.text).split(' ').includes(first));
+            if (!o) return 'nooption:' + opts.map(o => o.text.trim()).join(';');
+            s.value = o.value; s.dispatchEvent(new Event('change', {bubbles: true})); return 'ok:' + o.text.trim(); }"""
+        LEAF = """(t) => {
+            const labels = [...document.querySelectorAll('[role=dialog] label, [aria-modal=true] label')].filter(l => l.offsetParent !== null);
+            const norm = x => x.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const w = norm(t); const first = w.split(' ')[0];
+            let l = labels.find(l => norm(l.innerText) === w) || labels.find(l => norm(l.innerText).includes(w)) || labels.find(l => w.includes(norm(l.innerText)) && norm(l.innerText).length > 3)
+                 || labels.find(l => norm(l.innerText).split(' ').includes(first) && first.length > 3);
+            if (!l) return 'noleaf:' + labels.map(l => l.innerText.trim()).join(';');
+            const box = l.querySelector('input[type=checkbox]') || document.getElementById(l.htmlFor || '');
+            if (box && box.checked) return 'already:' + l.innerText.trim();
+            l.click(); return 'ok:' + l.innerText.trim(); }"""
+        COUNT = """() => { const m = document.body.innerText.match(/(\\d) out of 3 category placements/); return m ? +m[1] : -1; }"""
         btn = p.locator("#categories-modal-button")
         if await btn.count():
             await btn.click(timeout=10000)
         else:
             await self.click_text("Choose categories", 2000)
         await p.wait_for_timeout(2500)
-        groups: dict = {}
-        for chain in cats[:3]:
-            groups.setdefault(tuple(chain[:-1]), []).append(chain[-1])
         placed = 0
-        first = True
-        for path, leaves in groups.items():
-            if not first:
-                await p.get_by_role("button", name="Add another category").click(timeout=8000)
-                await p.wait_for_timeout(1500)
-            first = False
-            ok = True
-            for level in path:
-                r = await p.evaluate(SEL, level)
-                await p.wait_for_timeout(1500)
-                if r != "ok":
-                    ok = False
-                    self.note(f"category level missing: {level}")
+        first_group = True
+        chains = [list(c) for c in cats[:3]]
+        for attempt_general in (False, True):
+            for chain in chains:
+                if placed >= 3:
                     break
-            if not ok:
-                continue
-            for leaf in leaves:
-                try:
-                    loc = p.get_by_text(leaf, exact=True)
-                    n = await loc.count()
-                    await loc.nth(n - 1).click(timeout=5000)
-                    await p.wait_for_timeout(800)
-                    placed += 1
-                except Exception:
-                    self.note(f"category leaf missing: {leaf}")
+                path, leaf = chain[:-1], (chain[-1] if not attempt_general else "General")
+                if not first_group:
+                    try:
+                        await p.get_by_role("button", name="Add another category").click(timeout=6000)
+                        await p.wait_for_timeout(1500)
+                    except Exception:
+                        pass
+                first_group = False
+                ok = True
+                for level in path:
+                    r = await p.evaluate(SEL, level)
+                    await p.wait_for_timeout(1500)
+                    if not r.startswith("ok"):
+                        self.note(f"category level '{level}' not in the print tree ({r[:90]})")
+                        ok = False; break
+                if not ok:
+                    continue
+                r = await p.evaluate(LEAF, leaf)
+                await p.wait_for_timeout(900)
+                if r.startswith("ok") or r.startswith("already"):
+                    n = await p.evaluate(COUNT)
+                    if n >= 0:
+                        placed = n
+                    else:
+                        placed += 1
+                    self.note(f"category placed: {' > '.join(path)} > {r.split(':',1)[1]}")
+                else:
+                    self.note(f"category leaf '{leaf}' not under {' > '.join(path)} ({r[:80]})")
+            if placed:
+                break
+            self.note("no planned category exists in the print tree — placing General")
         await p.get_by_role("button", name="Save categories").click(timeout=8000)
         await p.wait_for_timeout(2500)
         return placed
+
+    async def _schedule_release(self, iso_date: str) -> bool:
+        """Release Date → "Schedule my book's release" + the date, via KDP's
+        read-only jQuery datepicker (typing into it does nothing, and a
+        value pushed by script leaves "Release now" selected — which is how
+        Fracture Point lost its 15 September date, 2026-09-05)."""
+        import re as _re
+        p = self.page
+        y, mo, da = (int(x) for x in iso_date.split("-"))
+        MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
+                  "September", "October", "November", "December"]
+        await p.get_by_text("Schedule my book", exact=False).first.click(timeout=8000)
+        await p.wait_for_timeout(1500)
+        inp = p.locator("#release-date-picker-input")
+        await inp.wait_for(timeout=8000)
+        await inp.click(timeout=5000)
+        await p.wait_for_timeout(1000)
+        for _ in range(8):
+            title = (await p.locator(".ui-datepicker-title").first.inner_text()).strip()
+            if title.startswith(MONTHS[mo - 1]) and str(y) in title:
+                break
+            await p.locator(".ui-datepicker-next").first.click(timeout=4000)
+            await p.wait_for_timeout(600)
+        day = p.locator("td:not(.ui-datepicker-other-month) a.ui-state-default", has_text=_re.compile(rf"^{da}$"))
+        if not await day.count():
+            day = p.locator("td:not(.ui-datepicker-other-month)", has_text=_re.compile(rf"^{da}$"))
+        await day.first.click(timeout=5000)
+        await p.wait_for_timeout(1200)
+        val = await inp.input_value()
+        ok = val.strip() == f"{mo:02d}/{da:02d}/{y}"
+        self.note(f"release scheduled {iso_date}: picker shows {val!r}")
+        return ok
 
     # ── metadata from the record, house rules applied ────────────
     def metadata(self) -> dict:
@@ -287,7 +365,10 @@ class Stager:
         else:
             # the same picker as the Kindle page: cascade selects + placement boxes
             from .kdp_ebook import KINDLE_CATEGORY_DEFAULTS
-            plan = (self.d.get("kdp") or {}).get("kindle_categories_plan") or KINDLE_CATEGORY_DEFAULTS.get(self.d.get("genre_preset") or "", [])
+            plan = ((self.d.get("kdp") or {}).get("print_categories_plan")
+                    or PRINT_CATEGORY_DEFAULTS.get(self.d.get("genre_preset") or "")
+                    or (self.d.get("kdp") or {}).get("kindle_categories_plan")
+                    or KINDLE_CATEGORY_DEFAULTS.get(self.d.get("genre_preset") or "", []))
             plan = [c.split(" > ") if isinstance(c, str) else c for c in plan] or [
                 [x.strip() for x in c.replace("Kindle Store > Kindle eBooks > ", "").replace("Books > ", "").split(">")] for c in m["categories"][:3]]
             try:
@@ -344,12 +425,13 @@ class Stager:
                 pass
         # release
         if m["release_mode"] == "scheduled" and m["release_date"]:
-            await self.radio_by_label("Schedule my book")
-            await p.wait_for_timeout(800)
-            y, mo, da = m["release_date"].split("-")
-            await p.evaluate("""(v) => { const i=document.querySelector('#release-date-picker-input'); if(i){ i.value=v; i.dispatchEvent(new Event('input',{bubbles:true})); i.dispatchEvent(new Event('change',{bubbles:true})); } }""",
-                             f"{mo}/{da}/{y}")
-            self.note(f"release scheduled {m['release_date']}")
+            try:
+                if not await self._schedule_release(m["release_date"]):
+                    raise RuntimeError("the datepicker did not take the date")
+            except Exception as e:
+                self.note(f"release date NOT scheduled ({str(e)[:80]}) — stopping rather than releasing today")
+                await self.shot("release-date")
+                raise RuntimeError(f"could not schedule the release for {m['release_date']}: {str(e)[:100]}")
         await self.shot("details")
         if not await self._dismiss_dialogs():
             raise RuntimeError("a KDP dialog is still covering the details page — nothing was saved")

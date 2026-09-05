@@ -216,7 +216,8 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
         handle.progress(0.7, "kdp", f"{title[:30]}: paperback on KDP")
     pb = await stage_paperback(catalog, publish=True)
     if not pb.get("ok"):
-        step("paperback", False, pb.get("message") or pb.get("error") or json.dumps(pb)[:160])
+        step("paperback", False, (pb.get("message") or pb.get("error") or json.dumps(pb)[:160])
+             + (" · " + " | ".join(str(x)[:90] for x in (pb.get("log") or [])[-3:]) if pb.get("log") else ""))
         report["stopped_at"] = "paperback"; report["kdp"] = pb; return report
     step("paperback", True, f"published · release {rel['date']}")
     _patch(catalog, release={**rel, "status": "submitted", "submitted_at": dt.datetime.now().isoformat(timespec="minutes")})
