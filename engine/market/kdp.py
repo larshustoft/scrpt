@@ -33,10 +33,10 @@ async def session_status() -> dict:
         async with Page(persistent=True) as page:
             await page.goto(BOOKSHELF, timeout=45000, wait_until="domcontentloaded")
             url = page.url
-            signed_in = "signin" not in url and "ap/signin" not in url
+            from .kdp_signin import auto_signin, _is_signin_url
+            signed_in = not _is_signin_url(url)
             signin = ""
             if not signed_in:
-                from .kdp_signin import auto_signin
                 signin = await auto_signin(page)
                 signed_in = signin in ("signed_in", "signed_in_after")
                 url = page.url

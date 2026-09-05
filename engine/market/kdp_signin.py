@@ -97,7 +97,12 @@ def totp_now(secret_b32: str, digits: int = 6, period: int = 30) -> str:
 
 # ── the sign-in itself ──────────────────────────────────────────────
 def _is_signin_url(url: str) -> bool:
-    return "/ap/signin" in url or "/ap/mfa" in url or "/ap/cvf" in url or "signin" in url
+    """Amazon's auth pages live under /ap/ on amazon.com. The PATH decides:
+    a signed-in KDP page can carry 'signin' in its query (ref_=ap_signin),
+    and matching on the whole url made a signed-in page look signed out."""
+    from urllib.parse import urlparse
+    u = urlparse(url)
+    return u.path.startswith("/ap/") and "amazon." in u.netloc
 
 
 async def _visible(page, sel: str) -> bool:
@@ -145,6 +150,20 @@ async def auto_signin(page, note=None) -> str:
             await page.locator("#auth-signin-button, input[type=submit]").first.click(timeout=10000)
             await page.wait_for_timeout(5000)
             continue
+        # "Switch accounts": the chooser Amazon shows when the account is
+        # remembered but the session has aged — pick the stored email's row
+        if not await _visible(page, "#ap_password") and not await _visible(page, "#ap_email"):
+            picked = await page.evaluate("""(mail) => {
+                const cands = [...document.querySelectorAll('a, div[role=button], .a-row, li, button')]
+                  .filter(e => e.offsetParent !== null && (e.innerText || '').toLowerCase().includes(mail.toLowerCase()) && (e.innerText || '').length < 200);
+                if (!cands.length) return false;
+                cands.sort((a, b) => a.innerText.length - b.innerText.length);
+                const el = cands[0].closest('a') || cands[0].querySelector('a') || cands[0];
+                el.click(); return true; }""", acct)
+            if picked:
+                say("account chooser: picked the stored account")
+                await page.wait_for_timeout(4000)
+                continue
         if await _visible(page, "#ap_email"):
             try:
                 cur = await page.input_value("#ap_email")
@@ -212,6 +231,8 @@ async def signin_test() -> dict:
                         wait_until="domcontentloaded")
         await page.wait_for_timeout(4000)
         r = await auto_signin(page, log.append)
+        if r == "signed_in":
+            _mark("ok")
         url = page.url
         if r in ("signed_in", "signed_in_after") and "/title-setup/" in url:
             # leave no half-made title behind: back to the bookshelf without saving

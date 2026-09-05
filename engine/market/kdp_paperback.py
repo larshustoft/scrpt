@@ -109,7 +109,8 @@ class Stager:
         self.log.append(msg)
 
     async def signed_in(self) -> bool:
-        if "signin" not in self.page.url and "ap/signin" not in self.page.url:
+        from .kdp_signin import _is_signin_url
+        if not _is_signin_url(self.page.url):
             return True
         # SIGNS ITSELF IN (2026-09-05): the password lives in the keychain, put
         # there through Settings → Amazon KDP; a sign-in page is no longer a stop.
