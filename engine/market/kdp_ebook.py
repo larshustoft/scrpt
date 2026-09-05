@@ -33,9 +33,11 @@ KINDLE_CATEGORY_DEFAULTS = {
                            ["Romance", "Historical Romance", "General"],
                            ["Romance", "Enemies to Lovers"]],
     "romance": [["Romance", "Contemporary"], ["Romance", "Enemies to Lovers"]],
-    "action_thriller": [["Mystery, Thriller & Suspense", "Thrillers", "Action & Adventure"],
-                        ["Mystery, Thriller & Suspense", "Thrillers", "Conspiracy"]],
-    "thriller": [["Mystery, Thriller & Suspense", "Thrillers", "Suspense"]],
+    "action_thriller": [["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Suspense"],
+                        ["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Technothrillers"],
+                        ["Literature & Fiction", "Action & Adventure", "Men's Adventure"]],
+    "thriller": [["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Suspense"],
+                 ["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Psychological Thrillers"]],
     "superhero": [["Science Fiction & Fantasy", "Fantasy", "Superhero"],
                   ["Science Fiction & Fantasy", "Science Fiction", "Superhero"]],
 }
@@ -176,12 +178,33 @@ class KindleStager:
         return "ok"
 
     async def _place_categories(self, cats: list) -> int:
+        """Same picker as the paperback's: cascading selects, placement
+        checkboxes, exact match first and containment second (2026-09-05:
+        the Kindle tree also says "Thrillers & Suspense" now, and an exact
+        "Thrillers" placed nothing, which KDP refuses). A book that matches
+        nothing gets "General" under its first resolvable path."""
         p = self.page
-        SEL = """(t) => { const ss=[...document.querySelectorAll('select')].filter(s=>s.offsetParent!==null); const s=ss[ss.length-1]; if(!s) return 'noselect'; const o=[...s.options].find(o=>o.text.trim()===t); if(!o) return 'nooption'; s.value=o.value; s.dispatchEvent(new Event('change',{bubbles:true})); return 'ok'; }"""
-        # KDP renders this button disabled while the details form is still
-        # wiring itself up, and a click on a disabled button waits out its
-        # whole timeout and fails the run. Wait for it to actually become
-        # usable instead of racing it.
+        SEL = """(t) => {
+            const ss = [...document.querySelectorAll('select')].filter(s => s.offsetParent !== null && /react-aui/.test(s.name || s.id));
+            const s = ss[ss.length - 1]; if (!s) return 'noselect';
+            const opts = [...s.options].filter(o => o.text.trim() !== 'Select one');
+            const norm = x => x.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const w = norm(t); const first = w.split(' ')[0];
+            let o = opts.find(o => norm(o.text) === w) || opts.find(o => norm(o.text).includes(w)) || opts.find(o => w.includes(norm(o.text)))
+                 || opts.find(o => norm(o.text).split(' ').includes(first));
+            if (!o) return 'nooption:' + opts.map(o => o.text.trim()).join(';');
+            s.value = o.value; s.dispatchEvent(new Event('change', {bubbles: true})); return 'ok:' + o.text.trim(); }"""
+        LEAF = """(t) => {
+            const labels = [...document.querySelectorAll('[role=dialog] label, [aria-modal=true] label')].filter(l => l.offsetParent !== null);
+            const norm = x => x.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+            const w = norm(t); const first = w.split(' ')[0];
+            let l = labels.find(l => norm(l.innerText) === w) || labels.find(l => norm(l.innerText).includes(w)) || labels.find(l => w.includes(norm(l.innerText)) && norm(l.innerText).length > 3)
+                 || labels.find(l => norm(l.innerText).split(' ').includes(first) && first.length > 3);
+            if (!l) return 'noleaf:' + labels.map(l => l.innerText.trim()).join(';');
+            const box = l.querySelector('input[type=checkbox]') || document.getElementById(l.htmlFor || '');
+            if (box && box.checked) return 'already:' + l.innerText.trim();
+            l.click(); return 'ok:' + l.innerText.trim(); }"""
+        COUNT = """() => { const m = document.body.innerText.match(/(\\d) out of 3 category placements/); return m ? +m[1] : -1; }"""
         btn = p.locator("#categories-modal-button")
         for _ in range(20):
             try:
@@ -196,34 +219,40 @@ class KindleStager:
         await btn.click(timeout=10000)
         await p.wait_for_timeout(2500)
         placed = 0
-        groups: dict = {}
-        for chain in cats[:3]:
-            groups.setdefault(tuple(chain[:-1]), []).append(chain[-1])
-        first = True
-        for path, leaves in groups.items():
-            if not first:
-                await p.get_by_role("button", name="Add another category").click(timeout=8000)
-                await p.wait_for_timeout(1500)
-            first = False
-            ok = True
-            for level in path:
-                r = await p.evaluate(SEL, level)
-                await p.wait_for_timeout(1500)
-                if r != "ok":
-                    ok = False
-                    self.note(f"category level missing: {level}")
+        first_group = True
+        chains = [list(c) for c in cats[:3]]
+        for attempt_general in (False, True):
+            for chain in chains:
+                if placed >= 3:
                     break
-            if not ok:
-                continue
-            for leaf in leaves:
-                try:
-                    loc = p.get_by_text(leaf, exact=True)
-                    n = await loc.count()
-                    await loc.nth(n - 1).click(timeout=5000)
-                    await p.wait_for_timeout(800)
-                    placed += 1
-                except Exception:
-                    self.note(f"category leaf missing: {leaf}")
+                path, leaf = chain[:-1], (chain[-1] if not attempt_general else "General")
+                if not first_group:
+                    try:
+                        await p.get_by_role("button", name="Add another category").click(timeout=6000)
+                        await p.wait_for_timeout(1500)
+                    except Exception:
+                        pass
+                first_group = False
+                ok = True
+                for level in path:
+                    r = await p.evaluate(SEL, level)
+                    await p.wait_for_timeout(1500)
+                    if not r.startswith("ok"):
+                        self.note(f"category level '{level}' not in the Kindle tree ({r[:90]})")
+                        ok = False; break
+                if not ok:
+                    continue
+                r = await p.evaluate(LEAF, leaf)
+                await p.wait_for_timeout(900)
+                if r.startswith("ok") or r.startswith("already"):
+                    n = await p.evaluate(COUNT)
+                    placed = n if n >= 0 else placed + 1
+                    self.note(f"category placed: {' > '.join(path)} > {r.split(':', 1)[1]}")
+                else:
+                    self.note(f"category leaf '{leaf}' not under {' > '.join(path)} ({r[:80]})")
+            if placed:
+                break
+            self.note("no planned category exists in the Kindle tree — placing General")
         await p.get_by_role("button", name="Save categories").click(timeout=8000)
         await p.wait_for_timeout(2500)
         return placed
