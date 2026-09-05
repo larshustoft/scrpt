@@ -2897,6 +2897,13 @@ async def kdp_signin_test():
     return await signin_test()
 
 
+@router.post("/kdp/dedupe/{catalog}")
+async def kdp_dedupe(catalog: str):
+    """Delete the Bookshelf drafts of this title that SCRPT does not own."""
+    from ..market.kdp_paperback import remove_duplicate_drafts
+    return await remove_duplicate_drafts(catalog)
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""

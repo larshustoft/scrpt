@@ -459,18 +459,24 @@ class Stager:
                 txt = await p.inner_text("body")
                 if "has been assigned a free KDP ISBN" in txt:
                     break
+                # FRACTURE POINT (2026-09-05): KDP's "Free KDP ISBN" dialog no
+                # longer carries role=dialog; the confirm button is found by
+                # its own text anywhere on the page, the dialog wrapper second.
                 confirmed = await p.evaluate("""() => {
-                    const dlg = [...document.querySelectorAll(
-                        '[role=dialog],[aria-modal=true],.a-modal-content')]
-                        .find(d => d.offsetParent !== null);
-                    if (!dlg) return null;
-                    const b = [...dlg.querySelectorAll('button,[role=button]')]
-                        .find(x => x.offsetParent !== null
-                                && /assign/i.test(x.innerText || '')
-                                && !/cancel/i.test(x.innerText || ''));
+                    const vis = x => x.offsetParent !== null;
+                    let b = [...document.querySelectorAll('button,[role=button],input[type=submit]')]
+                        .find(x => vis(x) && /^\\s*assign isbn\\s*$/i.test(x.innerText || x.value || ''));
+                    if (!b) {
+                        const dlg = [...document.querySelectorAll(
+                            '[role=dialog],[aria-modal=true],.a-modal-content,[class*="modal" i]')]
+                            .find(d => vis(d));
+                        if (!dlg) return null;
+                        b = [...dlg.querySelectorAll('button,[role=button]')]
+                            .find(x => vis(x) && /assign/i.test(x.innerText || '') && !/cancel/i.test(x.innerText || ''));
+                    }
                     if (!b) return null;
                     b.click();
-                    return (b.innerText || '').trim();
+                    return (b.innerText || b.value || '').trim();
                 }""")
                 if confirmed:
                     self.note(f"ISBN: confirmed the dialog ({confirmed!r})")
@@ -772,3 +778,97 @@ async def stage_paperback(catalog: str, publish: bool = False,
                 "reason": f"already on KDP ({state}) — nothing uploaded. "
                           f"Pass force to edit it anyway."}
     return await Stager(catalog, publish=publish, force=force).run()
+
+
+
+async def remove_duplicate_drafts(catalog: str) -> dict:
+    """Delete every DRAFT of this book's title on the Bookshelf that SCRPT
+    does not own (Lars, 2026-09-05: "delete the copies that should not be in
+    Amazon KDP"). A run that died before it wrote the id down left a second
+    Fracture Point; only ids in data.kdp are kept, and only drafts are ever
+    deleted — a live or in-review title is never touched."""
+    import re as _re
+    from playwright.async_api import async_playwright
+    from .browser import PROFILE_DIR, _ARGS, _STEALTH, context_kwargs
+    from .kdp_signin import auto_signin
+    global _OPEN
+    book = get_book_by_catalog(catalog)
+    if not book:
+        raise ValueError("Book not found")
+    d = book["data"]; title = (book.get("title") or d.get("title") or "").strip()
+    keep = {v for v in (d.get("kdp") or {}).values() if isinstance(v, str)}
+    shots = OUTPUT_DIR / catalog / "kdp"; shots.mkdir(parents=True, exist_ok=True)
+    if _OPEN:
+        try:
+            await _OPEN[0].close(); await _OPEN[1].stop()
+        except Exception:
+            pass
+        _OPEN = None
+    pw = await async_playwright().start()
+    ctx = await pw.chromium.launch_persistent_context(str(PROFILE_DIR), headless=False, args=_ARGS,
+                                                      **context_kwargs(viewport={"width": 1400, "height": 900}))
+    log, deleted, seen = [], [], []
+    try:
+        await ctx.add_init_script(_STEALTH)
+        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+        for _round in range(6):
+            await page.goto(BOOKSHELF, timeout=60000, wait_until="domcontentloaded")
+            await page.wait_for_timeout(6000)
+            r = await auto_signin(page, log.append)
+            if r not in ("signed_in", "signed_in_after"):
+                log.append(f"not signed in: {r}"); break
+            # the Bookshelf: one <tr id=ID> per title, the title text in
+            # #zme-indie-bookshelf-dual-itemset-itemset-metadata-title-ID,
+            # a draft paperback in #zme-indie-bookshelf-dual-print-status-draft-status-popover-ID
+            cards = await page.evaluate("""(title) => {
+                const out = [];
+                for (const t of document.querySelectorAll('span[id^="zme-indie-bookshelf-dual-itemset-itemset-metadata-title-"]')) {
+                    const id = t.id.split('-').pop();
+                    const draft = !!document.querySelector('#zme-indie-bookshelf-dual-print-status-draft-status-popover-' + id);
+                    const live = !!document.querySelector('[id^="zme-indie-bookshelf-dual-print-price-asin-' + id + '"]') && !draft;
+                    const menu = document.querySelector('#zme-indie-bookshelf-dual-print-actions-draft-book-actions-' + id + '-other-actions-announce, #zme-indie-bookshelf-dual-print-actions-draft-book-actions-' + id + '-other-actions');
+                    out.push({id, title: (t.innerText || '').trim(), status: draft ? 'draft' : (live ? 'live' : 'other'), has_menu: !!menu});
+                }
+                return out; }""", title)
+            seen = [c for c in cards if c["title"].lower() == title.lower()]
+            extra = [c for c in seen if c["id"] not in keep and c["status"] == "draft" and c["has_menu"]]
+            if not extra:
+                log.append(f"{len(seen)} card(s) titled '{title}', none extra"); break
+            tid = extra[0]["id"]
+            log.append(f"extra draft {tid}")
+            await page.locator(f'#zme-indie-bookshelf-dual-print-actions-draft-book-actions-{tid}-other-actions-announce, '
+                               f'#zme-indie-bookshelf-dual-print-actions-draft-book-actions-{tid}-other-actions').first.click(timeout=8000)
+            await page.wait_for_timeout(1500)
+            await page.screenshot(path=str(shots / f"dedupe-{tid}-menu.png"))
+            # the menu renders in a popover of its own; its "Delete Paperback"
+            # link is simply the visible one on the page right now
+            link = page.get_by_role("link", name=_re.compile(r"^\s*Delete Paperback\s*$", _re.I))
+            if not await link.count():
+                link = page.get_by_text(_re.compile(r"^\s*Delete Paperback\s*$", _re.I))
+            await link.first.click(timeout=8000)
+            await page.wait_for_timeout(1500)
+            await page.screenshot(path=str(shots / f"dedupe-{tid}-confirm.png"))
+            ok = await page.evaluate("""() => {
+                const vis = x => x.offsetParent !== null;
+                const b = [...document.querySelectorAll('button,[role=button],input[type=submit],a.a-button-text,.a-button-inner')]
+                    .filter(vis).find(x => /^\\s*(ok|delete|confirm|yes)\\s*$/i.test(x.innerText || x.value || ''));
+                if (!b) return null; b.click(); return (b.innerText || b.value || '').trim(); }""")
+            log.append(f"confirm: {ok}")
+            await page.wait_for_timeout(5000)
+            if ok:
+                deleted.append(tid)
+            else:
+                break
+        await page.screenshot(path=str(shots / "dedupe-after.png"), full_page=True)
+    except Exception as e:
+        log.append("error: " + str(e).splitlines()[0][:160])
+        try:
+            await page.screenshot(path=str(shots / "dedupe-error.png"))
+        except Exception:
+            pass
+    finally:
+        try:
+            await ctx.close()
+        finally:
+            await pw.stop()
+    return {"catalog": catalog, "title": title, "kept": sorted(keep), "deleted": deleted, "cards": seen, "log": log}
