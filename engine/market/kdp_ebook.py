@@ -327,14 +327,23 @@ class KindleStager:
         # Accessibility at least). Tick the actual checkboxes, all of them —
         # clicking the label text toggled nothing and blocked the page.
         async def _tick_confirms():
+            # 2026-09-05: the box is no longer an <input>. KDP draws it as
+            # <div role="checkbox" aria-checked="false"> inside the label, so
+            # both shapes are ticked — anything unticked whose label reads
+            # "I confirm that my answers are accurate".
             return await p.evaluate("""() => {
                 let n = 0;
+                const re = /confirm that my answers are accurate/i;
                 for (const box of document.querySelectorAll('input[type=checkbox]')) {
                     const wrap = box.closest('div, label, section');
                     const t = wrap ? (wrap.innerText || '') : '';
-                    if (/confirm that my answers are accurate/i.test(t) && !box.checked) {
-                        box.click(); n++;
-                    }
+                    if (re.test(t) && !box.checked) { box.click(); n++; }
+                }
+                for (const box of document.querySelectorAll('[role=checkbox]')) {
+                    if (box.getAttribute('aria-checked') === 'true' || box.offsetParent === null) continue;
+                    const wrap = box.closest('label') || box.parentElement;
+                    const t = wrap ? (wrap.innerText || '') : '';
+                    if (re.test(t)) { box.click(); n++; }
                 }
                 return n;
             }""")

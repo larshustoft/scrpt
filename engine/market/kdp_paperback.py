@@ -649,6 +649,15 @@ class Stager:
             """Tick 'I confirm that my answers are accurate' (a custom control —
             click its label once; judge by whether Save and Continue enables)."""
             try:
+                # the custom control first (div role=checkbox), then the label text
+                n = await p.evaluate("""() => { let n = 0; for (const box of document.querySelectorAll('[role=checkbox]')) {
+                    if (box.getAttribute('aria-checked') === 'true' || box.offsetParent === null) continue;
+                    const wrap = box.closest('label') || box.parentElement;
+                    if (/confirm that my answers are accurate/i.test(wrap ? wrap.innerText || '' : '')) { box.click(); n++; } } return n; }""")
+                if n:
+                    await p.wait_for_timeout(1500)
+                    self.note(f"upload confirmation ticked ({n} box)")
+                    return
                 t = p.get_by_text("I confirm that my answers are accurate", exact=False)
                 if await t.count() == 0:
                     self.note("upload confirmation: not shown")
