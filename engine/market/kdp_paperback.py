@@ -464,8 +464,12 @@ class Stager:
                 # its own text anywhere on the page, the dialog wrapper second.
                 confirmed = await p.evaluate("""() => {
                     const vis = x => x.offsetParent !== null;
-                    let b = [...document.querySelectorAll('button,[role=button],input[type=submit]')]
-                        .find(x => vis(x) && /^\\s*assign isbn\\s*$/i.test(x.innerText || x.value || ''));
+                    // two "Assign ISBN" buttons are visible at once: the one on
+                    // the page that was just clicked and the dialog's. The
+                    // dialog's is the one inside a role=dialog, else the last.
+                    const all = [...document.querySelectorAll('button,[role=button],input[type=submit]')]
+                        .filter(x => vis(x) && /^\\s*assign isbn\\s*$/i.test(x.innerText || x.value || ''));
+                    let b = all.find(x => x.closest('[role=dialog],[aria-modal=true]')) || all[all.length - 1];
                     if (!b) {
                         const dlg = [...document.querySelectorAll(
                             '[role=dialog],[aria-modal=true],.a-modal-content,[class*="modal" i]')]
