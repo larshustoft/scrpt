@@ -2867,6 +2867,36 @@ def book_cost(catalog: str):
     return _bc(catalog)
 
 
+# ── KDP credentials: keychain-backed, entered once in Settings ────────
+@router.get("/kdp/credentials")
+async def kdp_credentials_status():
+    from ..market.kdp_signin import credentials_status
+    return credentials_status()
+
+
+@router.post("/kdp/credentials")
+async def kdp_credentials_store(body: dict = Body(...)):
+    """Body: {email, password?, totp_secret?}. Written to the macOS login
+    keychain by `security`; nothing is kept in the database or logs."""
+    from ..market.kdp_signin import store_credentials
+    try:
+        return store_credentials(body.get("email") or "", body.get("password") or "", body.get("totp_secret") or "")
+    except Exception as e:
+        raise HTTPException(400, str(e)[:160])
+
+
+@router.delete("/kdp/credentials")
+async def kdp_credentials_forget():
+    from ..market.kdp_signin import forget_credentials
+    return forget_credentials()
+
+
+@router.post("/kdp/signin-test")
+async def kdp_signin_test():
+    from ..market.kdp_signin import signin_test
+    return await signin_test()
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""

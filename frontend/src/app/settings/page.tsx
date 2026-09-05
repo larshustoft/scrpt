@@ -101,11 +101,7 @@ export default function SettingsPage() {
 
       <AccountSection />
 
-      <Section title="Amazon KDP"
-               sub="For reference only. SCRPT never automates KDP logins and never stores your KDP password — uploads are manual (3/day cap), royalties come from report file imports.">
-        <Field label="KDP account email" k="kdp_email" placeholder="you@example.com"
-               settings={settings} save={save} savedField={savedField} />
-      </Section>
+      <KdpSection />
 
       <ModelSection settings={settings} save={save} />
 
@@ -124,6 +120,103 @@ export default function SettingsPage() {
       <IdentSection />
       <AssistantVoiceSection />
     </div>
+  );
+}
+
+/** KDP sign-in. The engine drives KDP in a browser of its own for the daily
+ *  release desk, and Amazon asks for the password whenever a title is set
+ *  up. The credentials go from this form to the local engine and into the
+ *  macOS Keychain — never the database, never a log. */
+function KdpSection() {
+  const [st, setSt] = useState<{ email?: string; has_password?: boolean; has_totp?: boolean;
+                                 last_signin?: string; last_signin_result?: string } | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const load = async () => {
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/kdp/credentials`);
+      if (r.ok) { const j = await r.json(); setSt(j); if (!email && j.email) setEmail(j.email); }
+    } catch { /* engine offline */ }
+  };
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveCreds = async () => {
+    setBusy("save"); setMsg("");
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/kdp/credentials`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, totp_secret: totp }),
+      });
+      const j = await r.json();
+      if (!r.ok) { setMsg(j.detail || "Could not save"); }
+      else { setSt(j); setPassword(""); setTotp(""); setMsg("Saved to the Keychain."); }
+    } catch { setMsg("The engine is offline."); }
+    setBusy("");
+  };
+  const test = async () => {
+    setBusy("test"); setMsg("Opening KDP in the engine's window…");
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/kdp/signin-test`, { method: "POST" });
+      const j = await r.json();
+      setSt(j);
+      setMsg(j.ok ? "Signed in by itself." : `Not signed in: ${j.result}${j.log?.length ? " — " + j.log[j.log.length - 1] : ""}`);
+    } catch { setMsg("The engine is offline."); }
+    setBusy("");
+  };
+  const forget = async () => {
+    setBusy("forget");
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/kdp/credentials`, { method: "DELETE" });
+      setSt(await r.json()); setMsg("Removed from the Keychain.");
+    } catch { setMsg("The engine is offline."); }
+    setBusy("");
+  };
+
+  const status = st?.has_password
+    ? `Password stored${st.has_totp ? " · authenticator stored" : " · no authenticator"}`
+      + (st.last_signin ? ` · last sign-in ${st.last_signin.replace("T", " ")}: ${st.last_signin_result}` : "")
+    : "No password stored — the release desk stops at Amazon's sign-in page.";
+
+  return (
+    <Section title="Amazon KDP"
+             sub="The release desk signs in to KDP by itself. Your email, password and (if your Amazon account uses one) the authenticator secret are written to the macOS Keychain on this Mac and read only when Amazon shows a sign-in page. Nothing is kept in SCRPT's database or logs.">
+      <div className="text-[12px] text-text-secondary">{status}</div>
+      <div>
+        <div className="label-scrpt">KDP account email</div>
+        <input className="input-scrpt" type="text" placeholder="you@example.com" autoComplete="off"
+               value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div>
+        <div className="label-scrpt">Password</div>
+        <input className="input-scrpt" type="password" placeholder={st?.has_password ? "•••••••• (stored — type to replace)" : ""}
+               autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </div>
+      <div>
+        <div className="label-scrpt">Authenticator secret (optional)</div>
+        <input className="input-scrpt" type="password" autoComplete="off"
+               placeholder={st?.has_totp ? "stored — type to replace" : "the setup key Amazon shows when adding an authenticator app"}
+               value={totp} onChange={(e) => setTotp(e.target.value)} />
+        <div className="text-[11px] text-text-tertiary mt-1">
+          Only if your Amazon account asks for a code at sign-in. Amazon → Login &amp; security → 2-step verification → add an authenticator app → &ldquo;Can&apos;t scan the barcode&rdquo; shows the key. Without it, a code request stops the desk for the day.
+        </div>
+      </div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <button className="btn-brass text-[12px]" disabled={!!busy || !email || (!password && !totp)} onClick={saveCreds}>
+          {busy === "save" ? "Saving…" : "Save to Keychain"}
+        </button>
+        <button className="btn-ghost text-[12px]" disabled={!!busy || !st?.has_password} onClick={test}>
+          {busy === "test" ? "Testing…" : "Test sign-in"}
+        </button>
+        <button className="btn-ghost text-[12px]" disabled={!!busy || !st?.has_password} onClick={forget}>
+          Remove
+        </button>
+        {msg && <span className="text-[12px] text-text-secondary">{msg}</span>}
+      </div>
+    </Section>
   );
 }
 

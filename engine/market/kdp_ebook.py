@@ -105,7 +105,13 @@ class KindleStager:
                 pass
 
     async def signed_in(self) -> bool:
-        return "signin" not in self.page.url and "ap/signin" not in self.page.url
+        if "signin" not in self.page.url and "ap/signin" not in self.page.url:
+            return True
+        # SIGNS ITSELF IN (2026-09-05): the password lives in the keychain, put
+        # there through Settings → Amazon KDP; a sign-in page is no longer a stop.
+        from .kdp_signin import auto_signin
+        r = await auto_signin(self.page, self.note)
+        return r in ("signed_in", "signed_in_after")
 
     # ── details ──────────────────────────────────────────────────
     async def details(self) -> str:
