@@ -321,8 +321,13 @@ class Stager:
             self.note(f"series not linked ({str(e)[:70]}) — "
                       f"link '{m['series_title']}' from the Bookshelf")
             try:                       # leave no dialog covering what follows
-                await p.keyboard.press("Escape")
-                await p.wait_for_timeout(800)
+                # FRACTURE POINT, 2026-09-05: Escape did not close KDP's new
+                # "Add title to a series" dialog; it stayed over the page and
+                # the Save and Continue click below timed out under it, so a
+                # book the gate had cleared never reached the content step.
+                # The dialog's own close button is tried first, three times,
+                # and the step goes on only when no dialog is left on screen.
+                await self._dismiss_dialogs()
                 # series setup is a page of its own; failing there strands us
                 # away from the title, where the rest of this step cannot work
                 if "/series" in p.url:
@@ -339,6 +344,8 @@ class Stager:
                              f"{mo}/{da}/{y}")
             self.note(f"release scheduled {m['release_date']}")
         await self.shot("details")
+        if not await self._dismiss_dialogs():
+            raise RuntimeError("a KDP dialog is still covering the details page — nothing was saved")
         await self.click_text("Save and Continue", 6000)
         if not await self.signed_in():
             return "needs_signin"
@@ -346,6 +353,34 @@ class Stager:
         if pid and pid != "new":
             self._remember({"paperback_id": pid})
         return "ok"
+
+    async def _dismiss_dialogs(self) -> bool:
+        """Close whatever modal KDP left open (series picker, category picker).
+        Returns True when the page is clear."""
+        p = self.page
+        js = """(doClick) => {
+            const dl = [...document.querySelectorAll('[role=dialog], .a-popover-modal, [class*="modal" i], [class*="Modal"]')]
+                .filter(e => e.offsetParent !== null && e.getBoundingClientRect().height > 40);
+            let clicked = 0;
+            if (doClick) for (const d of dl) {
+                const b = d.querySelector('button[aria-label*="close" i], button[data-action="a-popover-close"], .a-button-close, button[class*="close" i], [class*="close" i][role=button]');
+                if (b) { b.click(); clicked++; }
+            }
+            return {open: dl.length, clicked};
+        }"""
+        for _ in range(3):
+            st = await p.evaluate(js, True)
+            if not st["open"]:
+                return True
+            await p.wait_for_timeout(700)
+            await p.keyboard.press("Escape")
+            await p.wait_for_timeout(700)
+        st = await p.evaluate(js, False)
+        if st["open"]:
+            self.note(f"{st['open']} dialog(s) would not close")
+            await self.shot("dialog-stuck")
+            return False
+        return True
 
     async def _series(self, m: dict):
         """Attach the title to its series. Optional, and isolated for it."""

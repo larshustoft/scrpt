@@ -30,7 +30,8 @@ from datetime import date, datetime, timedelta
 from ..database import get_book_by_catalog, get_setting, list_books, set_setting, update_book
 
 MAX_PER_DAY = 2            # KDP titles started per day
-UPLOAD_WINDOW_DAYS = 14    # upload when the release date is this close (gate wants ≥10 days of lead)
+UPLOAD_WINDOW_DAYS = 14    # upload when the release date is this close
+LEAD_DAYS = 10             # ...and no closer: the launch gate refuses fewer days of lead (launch_gate.LEAD_DAYS)
 
 
 def _notify(title: str, text: str) -> None:
@@ -66,10 +67,10 @@ def _blocked(d: dict) -> str:
 
 def plan(today: date | None = None) -> dict:
     """Give every plannable book a release date; keep the dates that exist."""
-    from .scheduler import suggest_schedule
+    from .scheduler import suggest_schedule, _next_launch_day
     today = today or date.today()
     s = suggest_schedule(today=today)
-    planned, kept, skipped = [], [], []
+    planned, kept, skipped, moved = [], [], [], []
     for p in s.get("proposals") or []:
         cat = p["catalog"]
         b = get_book_by_catalog(cat)
@@ -79,8 +80,27 @@ def plan(today: date | None = None) -> dict:
         if _on_kdp(d) or _blocked(d):
             skipped.append(cat); continue
         rel = dict(d.get("release") or {})
-        if rel.get("date") and rel.get("status") in ("planned", "submitted", "released"):
+        if rel.get("date") and rel.get("status") in ("submitted", "released"):
             kept.append((cat, rel["date"])); continue
+        if rel.get("date") and rel.get("status") == "planned":
+            # TOO CLOSE (2026-09-05): Fracture Point sat on 8 Sep with four days of lead; the desk
+            # rebuilt the interior three mornings in a row and the gate refused it each time
+            # ("release date set ≥ 10 days out"). A planned date that has slid inside the lead
+            # window is moved to the planner's next lawful day, once, and written to the ledger.
+            try:
+                rd = date.fromisoformat(str(rel["date"])[:10])
+            except ValueError:
+                rd = today
+            if (rd - today).days >= LEAD_DAYS or rel.get("locked"):
+                kept.append((cat, rel["date"])); continue
+            new_date = p["date"] if p.get("date") and (date.fromisoformat(p["date"][:10]) - today).days >= LEAD_DAYS \
+                else _next_launch_day(today + timedelta(days=LEAD_DAYS)).isoformat()
+            rel.update({"date": new_date, "status": "planned", "planned_by": "release-desk",
+                        "planned_at": datetime.now().isoformat(timespec="minutes"),
+                        "why": [f"moved from {rd.isoformat()}: fewer than {LEAD_DAYS} days of lead"] + (p.get("why") or [])[:3]})
+            d["release"] = rel
+            update_book(b["id"], d)
+            moved.append((cat, rd.isoformat(), new_date)); continue
         if not p.get("ready"):
             skipped.append(cat); continue          # still in production: no date until it is a book
         rel.update({"date": p["date"], "mode": "scheduled", "status": "planned",
@@ -89,7 +109,7 @@ def plan(today: date | None = None) -> dict:
         d["release"] = rel
         update_book(b["id"], d)
         planned.append((cat, p["date"]))
-    out = {"planned": planned, "kept": kept, "skipped": skipped}
+    out = {"planned": planned, "kept": kept, "skipped": skipped, "moved": moved}
     _log({"duty": "plan", **{k: v for k, v in out.items() if v}})
     return out
 
@@ -109,7 +129,7 @@ def due(today: date | None = None) -> list[dict]:
             rd = date.fromisoformat(str(rel["date"])[:10])
         except ValueError:
             continue
-        if rd - today <= timedelta(days=UPLOAD_WINDOW_DAYS):
+        if timedelta(days=LEAD_DAYS) <= rd - today <= timedelta(days=UPLOAD_WINDOW_DAYS):
             out.append({"catalog": b["catalog_number"], "title": b.get("title"), "release_date": rd.isoformat(),
                         "days_to_release": (rd - today).days})
     out.sort(key=lambda x: x["release_date"])
