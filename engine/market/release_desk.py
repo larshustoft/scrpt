@@ -65,12 +65,37 @@ def _blocked(d: dict) -> str:
     return ""
 
 
+def _series_blocker(d: dict, books: list) -> str:
+    """Why this book may not be dated yet because of its series: the name of
+    an earlier book that is neither released nor dated. SERIES ORDER
+    (2026-09-07): the desk dated Vector: Terminal Sky (book 2) while Zero
+    Point (book 1) was still at 'revise'; the gate refused it every morning.
+    A book gets a date only when every earlier book in its series is on KDP,
+    or accepted and dated before it."""
+    s = d.get("series") or {}
+    title, no = s.get("series_title"), s.get("book_number")
+    if not title or not no:
+        return ""
+    for b in books:
+        bd = b.get("data") or {}; bs = bd.get("series") or {}
+        if bs.get("series_title") != title or not bs.get("book_number") or int(bs["book_number"]) >= int(no):
+            continue
+        if _on_kdp(bd):
+            continue
+        prev_rel = bd.get("release") or {}
+        if (bd.get("acceptance") or {}).get("verdict") == "accept" and prev_rel.get("date") and prev_rel.get("status") in ("planned", "submitted", "released"):
+            continue
+        return f"{b.get('title')} (book {bs['book_number']}) is not ready"
+    return ""
+
+
 def plan(today: date | None = None) -> dict:
     """Give every plannable book a release date; keep the dates that exist."""
     from .scheduler import suggest_schedule, _next_launch_day
     today = today or date.today()
     s = suggest_schedule(today=today)
-    planned, kept, skipped, moved = [], [], [], []
+    books = list_books(per_page=500).get("books", [])
+    planned, kept, skipped, moved, undated = [], [], [], [], []
     for p in s.get("proposals") or []:
         cat = p["catalog"]
         b = get_book_by_catalog(cat)
@@ -80,6 +105,16 @@ def plan(today: date | None = None) -> dict:
         if _on_kdp(d) or _blocked(d):
             skipped.append(cat); continue
         rel = dict(d.get("release") or {})
+        why_not = _series_blocker(d, books)
+        if why_not:
+            if rel.get("date") and rel.get("status") == "planned" and not rel.get("locked"):
+                rel.update({"date": None, "status": "waiting", "waiting_for": why_not,
+                            "undated_at": datetime.now().isoformat(timespec="minutes")})
+                d["release"] = rel; update_book(b["id"], d)
+                undated.append((cat, why_not))
+            else:
+                skipped.append(cat)
+            continue
         if rel.get("date") and rel.get("status") in ("submitted", "released"):
             kept.append((cat, rel["date"])); continue
         if rel.get("date") and rel.get("status") == "planned":
@@ -109,7 +144,7 @@ def plan(today: date | None = None) -> dict:
         d["release"] = rel
         update_book(b["id"], d)
         planned.append((cat, p["date"]))
-    out = {"planned": planned, "kept": kept, "skipped": skipped, "moved": moved}
+    out = {"planned": planned, "kept": kept, "skipped": skipped, "moved": moved, "undated": undated}
     _log({"duty": "plan", **{k: v for k, v in out.items() if v}})
     return out
 

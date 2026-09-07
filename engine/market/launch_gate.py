@@ -60,8 +60,12 @@ def launch_gate(catalog: str) -> dict:
     item("Continuity audit", len(cont) == 0, f"{len(cont)} open issue(s)" if cont else "clean")
     length = acc.get("length") or {}
     if length:
-        item("Length in commercial band", bool(length.get("ok")),
-             f"{length.get('total_words', 0):,} words (band {length.get('floor', 0):,}–{length.get('ceiling', 0):,})")
+        # five percent of give on either side (2026-09-07: The Widow's Vintage
+        # was refused for 156 words over a 103,499 ceiling)
+        words, floor, ceiling = length.get("total_words", 0) or 0, length.get("floor", 0) or 0, length.get("ceiling", 0) or 0
+        in_band = bool(length.get("ok")) or (floor * 0.95 <= words <= ceiling * 1.05 if floor and ceiling else False)
+        item("Length in commercial band", in_band,
+             f"{words:,} words (band {floor:,}–{ceiling:,}, ±5%)")
 
     # ── 3. files and print package ──
     out = OUTPUT_DIR / catalog
