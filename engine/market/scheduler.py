@@ -78,8 +78,11 @@ def _ready(book: dict) -> tuple[bool, str]:
     pub = d.get("publishing") or {}
     if pub.get("asin") or d.get("external"):
         return True, "already released"
-    if (d.get("acceptance") or {}).get("verdict") == "accept":
+    verdict = (d.get("acceptance") or {}).get("verdict")
+    if verdict == "accept":
         return True, "passed the acceptance desk"
+    if verdict:
+        return False, f"at the acceptance desk ({verdict})"
     ms = d.get("manuscript") or {}
     chapters = ms.get("chapters") or []
     if chapters and all(c.get("blocks") for c in chapters) and d.get("interior"):

@@ -2904,6 +2904,18 @@ async def kdp_dedupe(catalog: str):
     return await remove_duplicate_drafts(catalog)
 
 
+@router.post("/release-desk/prep")
+async def release_desk_prep(body: dict = Body(default={})):
+    """Ready the next not-ready books (acceptance rounds → gate), no publishing."""
+    from ..market.release_desk import prep
+    n = int(body.get("max_per_day") or 3)
+
+    async def job(handle):
+        return await prep(handle=handle, max_per_day=n)
+
+    return {"job_id": start_job("release_desk_prep", job)}
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""
