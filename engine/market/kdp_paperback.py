@@ -861,9 +861,10 @@ def _already_on_kdp(catalog: str):
     from ..database import get_book_by_catalog
     b = get_book_by_catalog(catalog) or {}
     pub = ((b.get("data") or {}).get("publishing") or {})
-    if pub.get("kdp_present"):
+    st = str(pub.get("kdp_status") or "").lower()
+    if pub.get("asin") or (pub.get("kdp_present") and st not in ("", "draft")):
         return pub.get("kdp_status") or "already on KDP"
-    return None
+    return None                      # a draft is ours to resume
 
 
 async def stage_paperback(catalog: str, publish: bool = False,

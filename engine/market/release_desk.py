@@ -53,8 +53,14 @@ def _log(entry: dict) -> None:
 
 
 def _on_kdp(d: dict) -> bool:
+    """Published, in review or scheduled on KDP. A DRAFT is not on KDP
+    (2026-09-07: The Companion's Clause sat as a KDP draft and the desk
+    treated it as done — it would never have been uploaded)."""
     pub = d.get("publishing") or {}
-    return bool(pub.get("asin") or pub.get("kdp_present"))
+    if pub.get("asin"):
+        return True
+    st = str(pub.get("kdp_status") or (d.get("kdp") or {}).get("status") or "").lower()
+    return bool(pub.get("kdp_present")) and st not in ("", "draft", "draft_complete_awaiting_publish")
 
 
 def _blocked(d: dict) -> str:
@@ -235,12 +241,76 @@ async def _run_due_locked(handle, max_per_day, publish) -> dict:
     return report
 
 
+def prep_candidates() -> list[dict]:
+    """Finished books the desk should get ready BEFORE their window opens:
+    first the ones holding a series back (their successors sit 'waiting'),
+    then dated books the gate still refuses. PREP (2026-09-07): the desk
+    only ever worked a book once it was due, so a 'revise' verdict was
+    discovered ten days before launch and the whole series behind it waited."""
+    from .launch_gate import launch_gate
+    books = list_books(per_page=500).get("books", [])
+    blocking: dict[str, str] = {}
+    for b in books:
+        rel = (b.get("data") or {}).get("release") or {}
+        if rel.get("status") == "waiting" and rel.get("waiting_for"):
+            blocking[rel["waiting_for"].split(" (book")[0]] = b["catalog_number"]
+    out = []
+    for b in books:
+        d = b.get("data") or {}
+        if _on_kdp(d) or _blocked(d):
+            continue
+        ms = d.get("manuscript") or {}
+        if not (ms.get("chapters") and all(c.get("blocks") for c in ms["chapters"])):
+            continue                                   # not written yet: not the desk's job
+        rel = d.get("release") or {}
+        holds = b.get("title") in blocking
+        dated = bool(rel.get("date")) and rel.get("status") == "planned"
+        if not (holds or dated):
+            continue
+        try:
+            g = launch_gate(b["catalog_number"])
+        except Exception:
+            continue
+        if g.get("ready"):
+            continue
+        fails = [c["name"] for c in g.get("checks", []) if c.get("blocking") and not c.get("ok")]
+        out.append({"catalog": b["catalog_number"], "title": b.get("title"), "holds_up": blocking.get(b.get("title")),
+                    "date": rel.get("date"), "blocked_by": fails, "priority": 0 if holds else 1})
+    out.sort(key=lambda x: (x["priority"], x["date"] or "9999"))
+    return out
+
+
+async def prep(handle=None, max_per_day: int = 1) -> dict:
+    """Run the line WITHOUT publishing on the books that need readying:
+    acceptance rounds, continuity, interior, wrap, keywords, gate. One a day
+    (each round costs model time); the setting release_desk_prep=0 turns it off."""
+    from .line import run_line
+    if (get_setting("release_desk_prep", "1") or "1") != "1":
+        return {"skipped": "release_desk_prep=0"}
+    cands = prep_candidates()
+    report = {"candidates": [(c["catalog"], c["title"], c["blocked_by"]) for c in cands], "ran": []}
+    for c in cands[:max_per_day]:
+        try:
+            r = await run_line(c["catalog"], handle=handle, publish=False)
+            entry = {"catalog": c["catalog"], "title": c["title"], "ready": bool(r.get("ok")), "stopped_at": r.get("stopped_at"),
+                     "steps": [(s["step"], s["ok"], (s.get("detail") or "")[:80]) for s in r.get("steps", [])]}
+        except Exception as e:
+            entry = {"catalog": c["catalog"], "title": c["title"], "ready": False, "error": str(e)[:200]}
+        report["ran"].append(entry)
+        _log({"duty": "prep", **entry})
+    if not cands:
+        _log({"duty": "prep", "note": "nothing to ready"})
+    return report
+
+
 async def daily(handle=None) -> dict:
-    """The desk's day: plan, then upload what is due."""
+    """The desk's day: plan, upload what is due, then ready what is next."""
     p = plan()
     r = await run_due(handle=handle)
+    pr = await prep(handle=handle)
+    p2 = plan()                                   # a book readied today may take its date now
     set_setting("release_desk_last_run", datetime.now().isoformat(timespec="minutes"))
-    return {"plan": p, "run": r}
+    return {"plan": p, "run": r, "prep": pr, "replan": p2}
 
 
 def status() -> dict:
@@ -258,4 +328,8 @@ def status() -> dict:
         rows.append({"catalog": b["catalog_number"], "title": b.get("title"), "release_date": rel.get("date"),
                      "release_status": rel.get("status"), "on_kdp": _on_kdp(d), "asin": pub.get("asin"),
                      "blocked": _blocked(d), "acceptance": (d.get("acceptance") or {}).get("verdict")})
-    return {"last_run": get_setting("release_desk_last_run", ""), "due": due(), "books": rows, "log": log[-30:]}
+    try:
+        nxt = prep_candidates()[:5]
+    except Exception:
+        nxt = []
+    return {"last_run": get_setting("release_desk_last_run", ""), "due": due(), "prep_next": nxt, "books": rows, "log": log[-30:]}
