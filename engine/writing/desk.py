@@ -188,6 +188,7 @@ async def line_edit(catalog: str, handle=None) -> dict:
     system = _fiction_system(ms) if ms.kind == BookKind.FICTION else _nonfiction_system(ms)
     digest = _bible_digest(ms, include_facts=False)
     edited, kept = [], []
+    kept_reasons: dict = {}
     n = len(ms.chapters)
     for i, ch in enumerate(ms.chapters):
         if handle:
@@ -206,23 +207,28 @@ async def line_edit(catalog: str, handle=None) -> dict:
             f"CHAPTER:\n{text[:16000]}\n\n"
             "Return the edited chapter text only — no commentary, no notes."
         )
-        new_text = ""
+        new_text = ""; reason = ""
+        orig = len(text.split())
         for attempt in range(2):
             try:
                 # the line edit runs on the mechanical model (Sonnet): it keeps
                 # the words, it does not invent them — and it is a fifth of the price
-                raw = await complete(system, prompt, max_tokens=16000, mechanical=True)
+                extra = (f"\n\nThe previous attempt {reason}. Return the WHOLE chapter, every scene, "
+                         f"within 5% of {orig} words, ending on the chapter's last sentence." if reason else "")
+                raw = await complete(system, prompt + extra, max_tokens=16000, mechanical=True)
             except ContentRefused:
-                break
+                reason = "was refused"; break
             new_text = raw.strip()
-            words, orig = len(new_text.split()), len(text.split())
+            words = len(new_text.split())
             tail = new_text.rstrip().rstrip('*_"\'”’»)—– \t\n')
             ends_clean = bool(tail) and (tail[-1] in '.!?…' or new_text.rstrip()[-1:] in '"”’')
-            if 0.82 * orig <= words <= 1.10 * orig and ends_clean:
-                break
+            if 0.75 * orig <= words <= 1.12 * orig and ends_clean:
+                reason = ""; break
+            reason = (f"came back at {words} words against {orig}" if not (0.75 * orig <= words <= 1.12 * orig)
+                      else "did not end on a finished sentence")
             new_text = ""
         if not new_text:
-            kept.append(ch.index); continue
+            kept.append(ch.index); kept_reasons[ch.index] = reason; continue
         ch.blocks = parse_chapter_text(new_text)
         ch.word_count = count_words(ch.blocks)
         edited.append(ch.index)
@@ -231,12 +237,13 @@ async def line_edit(catalog: str, handle=None) -> dict:
         book, ms = _load(catalog)
     b = get_book_by_catalog(catalog); data = dict(b["data"])
     data["line_edit"] = {"sig": manuscript_sig(data), "done": True, "edited": edited, "kept": kept,
+                         "kept_reasons": {str(k): v for k, v in kept_reasons.items()},
                          "at": datetime.now().isoformat(timespec="minutes")}
     update_book(b["id"], data)
     return data["line_edit"]
 
 
-async def ready_manuscript(catalog: str, handle=None, max_fix_rounds: int = 1) -> dict:
+async def ready_manuscript(catalog: str, handle=None, max_fix_rounds: int = 2) -> dict:
     """triage → (targeted fix → triage again) → accept or shelve. Returns
     {accepted, verdict, rounds, spend_note}. Sets data.acceptance.verdict so
     the launch gate can read it; the old editor score is kept for reference."""
