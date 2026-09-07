@@ -276,7 +276,10 @@ def prep_candidates() -> list[dict]:
         fails = [c["name"] for c in g.get("checks", []) if c.get("blocking") and not c.get("ok")]
         out.append({"catalog": b["catalog_number"], "title": b.get("title"), "holds_up": blocking.get(b.get("title")),
                     "date": rel.get("date"), "blocked_by": fails, "priority": 0 if holds else 1})
-    out.sort(key=lambda x: (x["priority"], x["date"] or "9999"))
+    # nearest launch first (it is the one the calendar promised), then the
+    # books holding a series back, then the rest by date
+    soon = (date.today() + timedelta(days=45)).isoformat()
+    out.sort(key=lambda x: (0 if (x["date"] and x["date"] <= soon) else 1, x["priority"], x["date"] or "9999"))
     return out
 
 
