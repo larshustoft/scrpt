@@ -274,6 +274,9 @@ def prep_candidates() -> list[dict]:
         if g.get("ready"):
             continue
         fails = [c["name"] for c in g.get("checks", []) if c.get("blocking") and not c.get("ok")]
+        # blockers the desk cannot work on: the publisher's read, series order, the calendar
+        if fails and all(f in ("Chapter one read by the publisher", "Series order respected", "Release date set ≥ 10 days out") for f in fails):
+            continue
         out.append({"catalog": b["catalog_number"], "title": b.get("title"), "holds_up": blocking.get(b.get("title")),
                     "date": rel.get("date"), "blocked_by": fails, "priority": 0 if holds else 1})
     # nearest launch first (it is the one the calendar promised), then the
