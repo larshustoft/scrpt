@@ -209,7 +209,9 @@ async def line_edit(catalog: str, handle=None) -> dict:
         new_text = ""
         for attempt in range(2):
             try:
-                raw = await complete(system, prompt, max_tokens=16000)
+                # the line edit runs on the mechanical model (Sonnet): it keeps
+                # the words, it does not invent them — and it is a fifth of the price
+                raw = await complete(system, prompt, max_tokens=16000, mechanical=True)
             except ContentRefused:
                 break
             new_text = raw.strip()
