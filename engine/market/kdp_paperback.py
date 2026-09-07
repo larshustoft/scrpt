@@ -119,8 +119,10 @@ class Stager:
         self.log.append(msg)
 
     async def signed_in(self) -> bool:
-        from .kdp_signin import _is_signin_url
+        from .kdp_signin import _is_signin_url, _mark
         if not _is_signin_url(self.page.url):
+            if "title-setup" in self.page.url or "print-setup" in self.page.url:
+                _mark("ok")
             return True
         # SIGNS ITSELF IN (2026-09-05): the password lives in the keychain, put
         # there through Settings → Amazon KDP; a sign-in page is no longer a stop.
@@ -310,6 +312,24 @@ class Stager:
     # ── pages ────────────────────────────────────────────────────
     async def details(self, m: dict):
         p = self.page
+        if not m["paperback_id"]:
+            # ADOPT BEFORE CREATE (2026-09-07): a run that died before it wrote
+            # the id down left a second Fracture Point on the Bookshelf. If a
+            # draft with this title already sits there and nothing owns it,
+            # it is ours — continue it instead of minting a twin.
+            await p.goto(BOOKSHELF, timeout=60000, wait_until="domcontentloaded")
+            await p.wait_for_timeout(6000)
+            if not await self.signed_in():
+                return "needs_signin"
+            try:
+                cards = await _bookshelf_cards(p, m["title"])
+            except Exception:
+                cards = []
+            drafts = [c for c in cards if c["status"] == "draft"]
+            if len(drafts) == 1 and not any(c["status"] != "draft" for c in cards):
+                m["paperback_id"] = drafts[0]["id"]
+                self._remember({"paperback_id": m["paperback_id"]})
+                self.note(f"adopted the existing draft {m['paperback_id']} from the Bookshelf")
         if m["paperback_id"]:
             await p.goto(f"https://kdp.amazon.com/en_US/title-setup/paperback/{m['paperback_id']}/details",
                          timeout=60000, wait_until="domcontentloaded")
@@ -795,28 +815,11 @@ class Stager:
         if not gate["ready"] and self.publish:
             return {"ok": False, "stopped_at": "gate", "blocking": gate["blocking_failures"],
                     "message": "The launch gate is not clear — nothing was published."}
-        from playwright.async_api import async_playwright
-        from .browser import PROFILE_DIR, _ARGS, _STEALTH, context_kwargs
-        # one window at a time: the previous run's window (left open for
-        # review) holds the profile lock — close it before we open ours
-        global _OPEN
-        try:
-            if _OPEN:
-                await _OPEN[0].close()
-                await _OPEN[1].stop()
-        except Exception:
-            pass
-        _OPEN = None
-        pw = await async_playwright().start()
-        ctx = await pw.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=False,  # HEADFUL, deliberately: the first headless STAGING run got the
-            # session signed out mid-flight (2026-08-27) — Amazon re-challenges heavy
-            # flows in headless. Reads/scans may run headless; uploads keep a window.
-            args=_ARGS,
-            **context_kwargs(viewport={"width": 1400, "height": 900}))
-        await ctx.add_init_script(_STEALTH)
-        _OPEN = (ctx, pw)
-        self.page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+        from .browser import open_profile, close_profile
+        # the profile is shared by every KDP job: take the lock, and CLOSE the
+        # window when done (2026-09-07: a window "left open for review" kept
+        # the profile busy and the next job on it died)
+        pw, ctx, self.page = await open_profile(headless=False)
         m = self.metadata()
         result = {"catalog": self.catalog, "gate": gate["ready"], "gate_blocking": gate["blocking_failures"]}
         try:
@@ -844,7 +847,7 @@ class Stager:
         finally:
             result["log"] = self.log
             result["shots"] = str(self.shots)
-            # leave the window open for the publisher's review
+            await close_profile(pw, ctx)
         return result
 
 
@@ -876,6 +879,23 @@ async def stage_paperback(catalog: str, publish: bool = False,
 
 
 
+async def _bookshelf_cards(page, title: str) -> list:
+    """[{id, title, status, has_menu}] for every Bookshelf card whose title
+    matches (case-insensitive). The card is a <tr id=ID>; the title lives in
+    #zme-indie-bookshelf-dual-itemset-itemset-metadata-title-ID."""
+    cards = await page.evaluate("""(title) => {
+        const out = [];
+        for (const t of document.querySelectorAll('span[id^="zme-indie-bookshelf-dual-itemset-itemset-metadata-title-"]')) {
+            const id = t.id.split('-').pop();
+            const draft = !!document.querySelector('#zme-indie-bookshelf-dual-print-status-draft-status-popover-' + id);
+            const live = !!document.querySelector('[id^="zme-indie-bookshelf-dual-print-price-asin-' + id + '"]') && !draft;
+            const menu = document.querySelector('#zme-indie-bookshelf-dual-print-actions-draft-book-actions-' + id + '-other-actions-announce, #zme-indie-bookshelf-dual-print-actions-draft-book-actions-' + id + '-other-actions');
+            out.push({id, title: (t.innerText || '').trim(), status: draft ? 'draft' : (live ? 'live' : 'other'), has_menu: !!menu});
+        }
+        return out; }""", title)
+    return [c for c in cards if c["title"].lower() == title.lower()]
+
+
 async def remove_duplicate_drafts(catalog: str) -> dict:
     """Delete every DRAFT of this book's title on the Bookshelf that SCRPT
     does not own (Lars, 2026-09-05: "delete the copies that should not be in
@@ -883,29 +903,17 @@ async def remove_duplicate_drafts(catalog: str) -> dict:
     Fracture Point; only ids in data.kdp are kept, and only drafts are ever
     deleted — a live or in-review title is never touched."""
     import re as _re
-    from playwright.async_api import async_playwright
-    from .browser import PROFILE_DIR, _ARGS, _STEALTH, context_kwargs
+    from .browser import open_profile, close_profile
     from .kdp_signin import auto_signin
-    global _OPEN
     book = get_book_by_catalog(catalog)
     if not book:
         raise ValueError("Book not found")
     d = book["data"]; title = (book.get("title") or d.get("title") or "").strip()
     keep = {v for v in (d.get("kdp") or {}).values() if isinstance(v, str)}
     shots = OUTPUT_DIR / catalog / "kdp"; shots.mkdir(parents=True, exist_ok=True)
-    if _OPEN:
-        try:
-            await _OPEN[0].close(); await _OPEN[1].stop()
-        except Exception:
-            pass
-        _OPEN = None
-    pw = await async_playwright().start()
-    ctx = await pw.chromium.launch_persistent_context(str(PROFILE_DIR), headless=False, args=_ARGS,
-                                                      **context_kwargs(viewport={"width": 1400, "height": 900}))
+    pw, ctx, page = await open_profile(headless=False)
     log, deleted, seen = [], [], []
     try:
-        await ctx.add_init_script(_STEALTH)
-        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
         for _round in range(6):
             await page.goto(BOOKSHELF, timeout=60000, wait_until="domcontentloaded")
             await page.wait_for_timeout(6000)
@@ -915,17 +923,8 @@ async def remove_duplicate_drafts(catalog: str) -> dict:
             # the Bookshelf: one <tr id=ID> per title, the title text in
             # #zme-indie-bookshelf-dual-itemset-itemset-metadata-title-ID,
             # a draft paperback in #zme-indie-bookshelf-dual-print-status-draft-status-popover-ID
-            cards = await page.evaluate("""(title) => {
-                const out = [];
-                for (const t of document.querySelectorAll('span[id^="zme-indie-bookshelf-dual-itemset-itemset-metadata-title-"]')) {
-                    const id = t.id.split('-').pop();
-                    const draft = !!document.querySelector('#zme-indie-bookshelf-dual-print-status-draft-status-popover-' + id);
-                    const live = !!document.querySelector('[id^="zme-indie-bookshelf-dual-print-price-asin-' + id + '"]') && !draft;
-                    const menu = document.querySelector('#zme-indie-bookshelf-dual-print-actions-draft-book-actions-' + id + '-other-actions-announce, #zme-indie-bookshelf-dual-print-actions-draft-book-actions-' + id + '-other-actions');
-                    out.push({id, title: (t.innerText || '').trim(), status: draft ? 'draft' : (live ? 'live' : 'other'), has_menu: !!menu});
-                }
-                return out; }""", title)
-            seen = [c for c in cards if c["title"].lower() == title.lower()]
+            cards = await _bookshelf_cards(page, title)
+            seen = cards
             extra = [c for c in seen if c["id"] not in keep and c["status"] == "draft" and c["has_menu"]]
             if not extra:
                 log.append(f"{len(seen)} card(s) titled '{title}', none extra"); break
@@ -962,8 +961,5 @@ async def remove_duplicate_drafts(catalog: str) -> dict:
         except Exception:
             pass
     finally:
-        try:
-            await ctx.close()
-        finally:
-            await pw.stop()
+        await close_profile(pw, ctx)
     return {"catalog": catalog, "title": title, "kept": sorted(keep), "deleted": deleted, "cards": seen, "log": log}

@@ -107,8 +107,10 @@ class KindleStager:
                 pass
 
     async def signed_in(self) -> bool:
-        from .kdp_signin import _is_signin_url
+        from .kdp_signin import _is_signin_url, _mark
         if not _is_signin_url(self.page.url):
+            if "title-setup" in self.page.url or "print-setup" in self.page.url:
+                _mark("ok")
             return True
         # SIGNS ITSELF IN (2026-09-05): the password lives in the keychain, put
         # there through Settings → Amazon KDP; a sign-in page is no longer a stop.
@@ -416,25 +418,8 @@ class KindleStager:
         if not gate["ready"] and self.publish:
             return {"ok": False, "stopped_at": "gate", "blocking": gate["blocking_failures"],
                     "message": "The launch gate is not clear — nothing was published."}
-        from playwright.async_api import async_playwright
-        from . import kdp_paperback as _pb
-        try:
-            if _pb._OPEN:
-                await _pb._OPEN[0].close()
-                await _pb._OPEN[1].stop()
-        except Exception:
-            pass
-        _pb._OPEN = None
-        pw = await async_playwright().start()
-        ctx = await pw.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=False,  # HEADFUL, deliberately: the first headless STAGING run got the
-            # session signed out mid-flight (2026-08-27) — Amazon re-challenges heavy
-            # flows in headless. Reads/scans may run headless; uploads keep a window.
-            args=_ARGS,
-            **context_kwargs(viewport={"width": 1400, "height": 900}))
-        await ctx.add_init_script(_STEALTH)
-        _pb._OPEN = (ctx, pw)
-        self.page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+        from .browser import open_profile, close_profile
+        pw, ctx, self.page = await open_profile(headless=False)
         result = {"catalog": self.catalog, "gate": gate["ready"]}
         try:
             for step, fn in (("details", self.details), ("content", self.content), ("pricing", self.pricing)):
@@ -453,6 +438,7 @@ class KindleStager:
             await self.shot("error", full=True)
         finally:
             result["log"] = self.log
+            await close_profile(pw, ctx)
         return result
 
 

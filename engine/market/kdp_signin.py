@@ -214,18 +214,13 @@ def _mark(result: str) -> None:
 async def signin_test() -> dict:
     """Open the engine's own KDP window on a page that demands a fresh
     sign-in, let auto_signin work, report — no secrets in the report."""
-    from playwright.async_api import async_playwright
-    from .browser import PROFILE_DIR, _ARGS, _STEALTH, context_kwargs
+    from .browser import open_profile, close_profile
     st = credentials_status()
     if not st["has_password"]:
         return {"ok": False, "result": "no_credentials", **st}
     log: list[str] = []
-    pw_ = await async_playwright().start()
-    ctx = await pw_.chromium.launch_persistent_context(str(PROFILE_DIR), headless=False, args=_ARGS,
-                                                       **context_kwargs(viewport={"width": 1400, "height": 900}))
+    pw_, ctx, page = await open_profile(headless=False)
     try:
-        await ctx.add_init_script(_STEALTH)
-        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
         # title setup always re-authenticates (max_auth_age=0): the real test
         await page.goto("https://kdp.amazon.com/en_US/title-setup/paperback/new/details", timeout=60000,
                         wait_until="domcontentloaded")
@@ -240,7 +235,4 @@ async def signin_test() -> dict:
         return {"ok": r in ("signed_in", "signed_in_after"), "result": r, "url": url.split("?")[0][:120], "log": log,
                 **credentials_status()}
     finally:
-        try:
-            await ctx.close()
-        finally:
-            await pw_.stop()
+        await close_profile(pw_, ctx)

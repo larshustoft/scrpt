@@ -142,16 +142,30 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
     except Exception as e:
         step("continuity", True, f"audit skipped: {str(e)[:80]}")
 
-    # 2. interior + EPUB
-    res = await export_interior(catalog)
-    if not (res.get("validation") or {}).get("passed"):
-        step("interior", False, "validation failed"); report["stopped_at"] = "interior"; return report
-    step("interior", True, f"{res.get('page_count')} pages")
-    try:
-        build_epub(catalog)
-        step("epub", True, "")
-    except Exception as e:
-        step("epub", False, str(e)[:120])
+    # 2. interior + EPUB — built once per manuscript. A relaunch with the same
+    # text (2026-09-05: Fracture Point went through the line six times in a
+    # day) spent ~25 minutes re-typesetting before it ever reached KDP.
+    out_dir = OUTPUT_DIR / catalog
+    built = (_d(catalog).get("line") or {}).get("built") or {}
+    have_files = all((out_dir / f).is_file() and (out_dir / f).stat().st_size > 0
+                     for f in ("interior.pdf", "ebook.epub"))
+    if built.get("sig") == ms_sig and have_files:
+        step("interior", True, f"{built.get('pages')} pages — unchanged, kept")
+        step("epub", True, "unchanged, kept")
+    else:
+        res = await export_interior(catalog)
+        if not (res.get("validation") or {}).get("passed"):
+            step("interior", False, "validation failed"); report["stopped_at"] = "interior"; return report
+        step("interior", True, f"{res.get('page_count')} pages")
+        try:
+            build_epub(catalog)
+            step("epub", True, "")
+        except Exception as e:
+            step("epub", False, str(e)[:120])
+        _b = get_book_by_catalog(catalog); _data = dict(_b["data"])
+        _data["line"] = {**(_data.get("line") or {}), "built": {"sig": ms_sig, "pages": res.get("page_count"),
+                                                                 "at": dt.datetime.now().isoformat(timespec="minutes")}}
+        update_book(_b["id"], _data)
 
     # 3. front cover (generate if missing) + print wrap
     front = OUTPUT_DIR / catalog / "cover-front.png"
@@ -164,22 +178,38 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
         step("cover", True, "front cover generated")
     else:
         step("cover", True, "front cover present")
-    async with httpx.AsyncClient(timeout=600) as c:
-        r = await c.post(f"{ENGINE}/cover/print-wrap/{catalog}", json={})
-        wrap = r.json() if r.status_code == 200 else {}
-    if not (wrap.get("validation") or {}).get("passed"):
-        step("wrap", False, str(wrap.get("detail") or wrap)[:160]); report["stopped_at"] = "wrap"; return report
-    step("wrap", True, f"{wrap.get('pages_used')} pages, spine {(wrap.get('spec') or {}).get('spine_width_in')} in")
+    wrap_f = out_dir / "cover-wrap.pdf"
+    built = (_d(catalog).get("line") or {}).get("built") or {}
+    if built.get("sig") == ms_sig and built.get("wrap") and wrap_f.is_file() and wrap_f.stat().st_mtime >= front.stat().st_mtime:
+        step("wrap", True, "unchanged, kept")
+    else:
+        async with httpx.AsyncClient(timeout=600) as c:
+            r = await c.post(f"{ENGINE}/cover/print-wrap/{catalog}", json={})
+            wrap = r.json() if r.status_code == 200 else {}
+        if not (wrap.get("validation") or {}).get("passed"):
+            step("wrap", False, str(wrap.get("detail") or wrap)[:160]); report["stopped_at"] = "wrap"; return report
+        step("wrap", True, f"{wrap.get('pages_used')} pages, spine {(wrap.get('spec') or {}).get('spine_width_in')} in")
+        _b = get_book_by_catalog(catalog); _data = dict(_b["data"])
+        _data["line"] = {**(_data.get("line") or {}), "built": {**((_data.get("line") or {}).get("built") or {}), "wrap": True}}
+        update_book(_b["id"], _data)
 
-    # 4. keywords (live research, applied)
-    async with httpx.AsyncClient(timeout=900) as c:
-        r = await c.post(f"{ENGINE}/keywords/research/{catalog}", json={"apply": True})
-        kw = r.json() if r.status_code == 200 else {}
-        if kw.get("job_id"):
-            j = await _wait_job(kw["job_id"], handle, "keywords", 0.5, 0.05)
-            kw = j.get("result") or {}
-    chosen = kw.get("chosen") or _d(catalog).get("keywords") or []
-    step("keywords", bool(chosen), f"{len(chosen)} slots")
+    # 4. keywords (live research, applied) — once per manuscript as well
+    chosen = _d(catalog).get("keywords") or []
+    if built.get("sig") == ms_sig and built.get("keywords") and len(chosen) >= 5:
+        step("keywords", True, f"{len(chosen)} slots — kept")
+    else:
+        async with httpx.AsyncClient(timeout=900) as c:
+            r = await c.post(f"{ENGINE}/keywords/research/{catalog}", json={"apply": True})
+            kw = r.json() if r.status_code == 200 else {}
+            if kw.get("job_id"):
+                j = await _wait_job(kw["job_id"], handle, "keywords", 0.5, 0.05)
+                kw = j.get("result") or {}
+        chosen = kw.get("chosen") or _d(catalog).get("keywords") or []
+        step("keywords", bool(chosen), f"{len(chosen)} slots")
+        if chosen:
+            _b = get_book_by_catalog(catalog); _data = dict(_b["data"])
+            _data["line"] = {**(_data.get("line") or {}), "built": {**((_data.get("line") or {}).get("built") or {}), "keywords": True}}
+            update_book(_b["id"], _data)
 
     # 5. house fields + release date
     d = _d(catalog)
@@ -215,12 +245,28 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
     if handle:
         handle.progress(0.7, "kdp", f"{title[:30]}: paperback on KDP")
     pb = await stage_paperback(catalog, publish=True)
+    # KDP converts a fresh upload for minutes; "still converting" is not a
+    # failure. Wait and try the stage again, up to three times, in the same run.
+    for _try in range(3):
+        if pb.get("ok") or not pb.get("retryable"):
+            break
+        if handle:
+            handle.progress(0.75, "kdp", f"{title[:30]}: KDP is still converting — retry {_try + 1} in 10 min")
+        await asyncio.sleep(600)
+        pb = await stage_paperback(catalog, publish=True)
     if not pb.get("ok"):
         step("paperback", False, (pb.get("message") or pb.get("error") or json.dumps(pb)[:160])
              + (" · " + " | ".join(str(x)[:90] for x in (pb.get("log") or [])[-3:]) if pb.get("log") else ""))
         report["stopped_at"] = "paperback"; report["kdp"] = pb; return report
     step("paperback", True, f"published · release {rel['date']}")
     _patch(catalog, release={**rel, "status": "submitted", "submitted_at": dt.datetime.now().isoformat(timespec="minutes")})
+    try:                                   # a run that died before writing its id down leaves a twin: remove it
+        from .kdp_paperback import remove_duplicate_drafts
+        dd = await remove_duplicate_drafts(catalog)
+        if dd.get("deleted"):
+            step("dedupe", True, f"removed {len(dd['deleted'])} duplicate draft(s)")
+    except Exception as e:
+        step("dedupe", True, f"skipped: {str(e)[:60]}")
 
     # 8. Kindle — drafted now, published on the same day by the scheduler
     if handle:

@@ -26,6 +26,56 @@ TIMEZONE = "Europe/Paris"
 
 PROFILE_DIR = Path(os.path.expanduser("~/.scrpt/browser-profile"))
 
+# ONE PROFILE, ONE USER AT A TIME (2026-09-07): the weekly KDP report sync
+# started while a stage's window was still open on the profile and died on
+# Chrome's ProcessSingleton ("profile is already in use"). Every opener of
+# the persistent profile takes this lock; a second caller waits its turn
+# instead of crashing, and nothing is ever left open between jobs.
+_profile_lock = None
+
+
+def profile_lock() -> "asyncio.Lock":
+    global _profile_lock
+    if _profile_lock is None:
+        _profile_lock = asyncio.Lock()
+    return _profile_lock
+
+
+async def open_profile(headless: bool = False, viewport=None):
+    """Acquire the profile lock and open the persistent context. Returns
+    (playwright, context, page); close with close_profile()."""
+    from playwright.async_api import async_playwright
+    await profile_lock().acquire()
+    try:
+        PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+        pw = await async_playwright().start()
+        ctx = await pw.chromium.launch_persistent_context(
+            str(PROFILE_DIR), headless=headless, args=_ARGS,
+            **context_kwargs(viewport=viewport or {"width": 1400, "height": 900}))
+        await ctx.add_init_script(_STEALTH)
+        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+        return pw, ctx, page
+    except Exception:
+        profile_lock().release()
+        raise
+
+
+async def close_profile(pw, ctx) -> None:
+    try:
+        if ctx:
+            await ctx.close()
+    except Exception:
+        pass
+    try:
+        if pw:
+            await pw.stop()
+    except Exception:
+        pass
+    try:
+        profile_lock().release()
+    except RuntimeError:
+        pass
+
 _STEALTH = "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
 
 # --no-sandbox and --disable-dev-shm-usage are container workarounds that do
@@ -63,6 +113,9 @@ class Page:
 
     async def __aenter__(self):
         from playwright.async_api import async_playwright
+        if self.persistent:
+            await profile_lock().acquire()
+            self._locked = True
         self._pw = await async_playwright().start()
         if self.persistent:
             PROFILE_DIR.mkdir(parents=True, exist_ok=True)
@@ -87,6 +140,11 @@ class Page:
             if self._browser:
                 await self._browser.close()
         finally:
+            if getattr(self, "_locked", False):
+                try:
+                    profile_lock().release()
+                except RuntimeError:
+                    pass
             if self._pw:
                 await self._pw.stop()
 
