@@ -2916,6 +2916,41 @@ async def release_desk_prep(body: dict = Body(default={})):
     return {"job_id": start_job("release_desk_prep", job)}
 
 
+@router.post("/publisher-read/{catalog}")
+def publisher_read(catalog: str, body: dict = Body(default={})):
+    """The publisher has read chapter one: {ok: true|false, note?}."""
+    import datetime as _dt
+    b = db.get_book_by_catalog(catalog)
+    if not b:
+        raise HTTPException(status_code=404, detail="Book not found")
+    d = dict(b["data"]); d["publisher_read"] = {"ok": bool(body.get("ok")), "note": str(body.get("note") or "")[:400],
+                                                "at": _dt.datetime.now().isoformat(timespec="minutes")}
+    db.update_book(b["id"], d)
+    return d["publisher_read"]
+
+
+@router.post("/desk/triage/{catalog}")
+async def desk_triage(catalog: str):
+    """The reader's triage read only (no fixes): the verdict and the faults."""
+    from ..writing.desk import triage_read
+    async def job(handle):
+        handle.progress(0.1, "triage", "the reader reads")
+        return await triage_read(catalog)
+    return {"job_id": start_job("desk_triage", job, book_catalog=catalog)}
+
+
+@router.post("/desk/ready/{catalog}")
+async def desk_ready(catalog: str):
+    """triage → targeted fix → triage → accept/shelve, then the line edit."""
+    from ..writing.desk import ready_manuscript, line_edit
+    async def job(handle):
+        r = await ready_manuscript(catalog, handle)
+        if r["accepted"]:
+            r["line_edit"] = await line_edit(catalog, handle)
+        return r
+    return {"job_id": start_job("desk_ready", job, book_catalog=catalog)}
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""

@@ -75,20 +75,38 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
         if handle:
             handle.progress(min(0.99, 0.05 + 0.9 * len(report["steps"]) / 9), name, f"{title[:30]}: {detail or name}")
 
-    # 1. the acceptance desk
-    for rnd in range(MAX_DESK_ROUNDS + 1):
-        acc = _d(catalog).get("acceptance") or {}
-        if acc.get("verdict") == "accept":
-            break
-        if rnd == MAX_DESK_ROUNDS:
-            step("acceptance", False, f"still '{acc.get('verdict')}' at {acc.get('score')} after {MAX_DESK_ROUNDS} rounds — the line stops here")
-            report["stopped_at"] = "acceptance"
-            return report
-        if handle:
-            handle.progress(0.05, "acceptance", f"{title[:30]}: the desk reads (round {rnd + 1})")
-        await acceptance_job(handle or _Null(), catalog)
+    # 1. THE READER'S DESK (2026-09-07, replaces the score loop): a triage read
+    # of the opening, midpoint, climax and ending; targeted fixes only on the
+    # chapters the reader named; then accept or shelve. Never a blanket rewrite.
+    from ..writing.desk import ready_manuscript, line_edit, manuscript_sig
     acc = _d(catalog).get("acceptance") or {}
-    step("acceptance", True, f"accept · {acc.get('score')}")
+    tri = _d(catalog).get("triage") or {}
+    if acc.get("verdict") == "accept" and (acc.get("accepted_by") == "reader's desk" or tri.get("sig") == manuscript_sig(_d(catalog))):
+        step("acceptance", True, f"accept · reader's desk ({tri.get('verdict') or 'ship'})")
+    elif acc.get("verdict") == "accept" and not tri:
+        # accepted by the old editor: the reader still reads it once (cheap), and can only confirm or fix
+        if handle:
+            handle.progress(0.05, "triage", f"{title[:30]}: the reader reads")
+        r = await ready_manuscript(catalog, handle or _Null())
+        step("acceptance", r["accepted"], f"reader's desk: {r['verdict']} after {r['rounds']} fix round(s)")
+        if not r["accepted"]:
+            report["stopped_at"] = "acceptance"; return report
+    else:
+        if handle:
+            handle.progress(0.05, "triage", f"{title[:30]}: the reader reads")
+        r = await ready_manuscript(catalog, handle or _Null())
+        step("acceptance", r["accepted"], f"reader's desk: {r['verdict']} after {r['rounds']} fix round(s)")
+        if not r["accepted"]:
+            report["stopped_at"] = "acceptance"; return report
+
+    # 1b. THE LINE EDIT — every chapter once per manuscript version
+    try:
+        if handle:
+            handle.progress(0.3, "line-edit", f"{title[:30]}: line edit")
+        le = await line_edit(catalog, handle)
+        step("line-edit", True, le.get("skipped") or f"{len(le.get('edited') or [])} chapters edited, {len(le.get('kept') or [])} kept")
+    except Exception as e:
+        step("line-edit", True, f"skipped: {str(e)[:80]}")
 
     # no rework on a relaunch: if the manuscript is unchanged since the last
     # insurance pass, skip it (every audit and rewrite costs money)

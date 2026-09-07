@@ -130,6 +130,14 @@ def launch_gate(catalog: str) -> dict:
                 prev_detail = f"#{int(series['book_number'])-1} {'released' if pub.get('asin') else 'planned ' + str(pr.get('date'))}"
                 break
         item("Series order respected", prev_ok, prev_detail)
+    # THE PUBLISHER'S READ (Lars, 2026-09-07): the first book of a series
+    # ships only after he has read chapter one and said yes. Later books in
+    # a series he has approved do not wait.
+    series = d.get("series") or {}
+    if int(series.get("book_number") or 0) == 1 and (d.get("release") or {}).get("status") not in ("submitted", "released"):
+        pr = d.get("publisher_read") or {}
+        item("Chapter one read by the publisher", bool(pr.get("ok")),
+             ("approved " + str(pr.get("at") or "")) if pr.get("ok") else ("declined: " + str(pr.get("note") or "") if pr.get("at") else "waiting for the publisher to read chapter one"))
     item("Trailer produced", (out / "trailer.mp4").exists(), "", False)
     ai = (d.get("kdp") or {}).get("ai_disclosure")
     item("AI disclosure prepared", True, "house default: Yes · texts extensive editing (Claude) · images one-or-few (GPT Image)", False)
