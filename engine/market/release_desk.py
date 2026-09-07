@@ -310,7 +310,11 @@ async def daily(handle=None) -> dict:
     """The desk's day: plan, upload what is due, then ready what is next."""
     p = plan()
     r = await run_due(handle=handle)
-    pr = await prep(handle=handle)
+    try:
+        prep_n = int(get_setting("release_desk_prep_per_day", "3") or 3)
+    except ValueError:
+        prep_n = 3
+    pr = await prep(handle=handle, max_per_day=prep_n)
     p2 = plan()                                   # a book readied today may take its date now
     set_setting("release_desk_last_run", datetime.now().isoformat(timespec="minutes"))
     return {"plan": p, "run": r, "prep": pr, "replan": p2}

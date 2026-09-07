@@ -34,7 +34,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Optional
 
-from ..database import list_books
+from ..database import list_books, get_setting
 
 CADENCE_DAYS = {            # between books of the same series
     "historical_romance": 28,
@@ -91,6 +91,14 @@ def suggest_schedule(today: Optional[dt.date] = None) -> dict:
     today = today or dt.date.today()
     books = list_books(per_page=500).get("books", [])
     earliest = today + dt.timedelta(days=LEAD_DAYS)
+    # PACE (Lars, 2026-09-07: "upload the books as soon as the upload schedule
+    # allows"): 'fast' = one book a day, any day but the dead zone, no series
+    # cadence and no pen-name spacing — only series ORDER and the ten days of
+    # lead; KDP's own cap is ten title creations per format per week.
+    # 'slate' = the marketing calendar (Tue/Wed, 28-35 day cadence).
+    fast = (get_setting("release_pace", "fast") or "fast") == "fast"
+    per_day = 1 if fast else 2
+    per_week = 7 if fast else 1
 
     # anchors: released titles and pinned plans occupy their dates
     taken_days: dict[dt.date, int] = {}
@@ -158,32 +166,33 @@ def suggest_schedule(today: Optional[dt.date] = None) -> dict:
             candidate = today + dt.timedelta(days=LEAD_DAYS + PRODUCTION_FORECAST_DAYS * unready_rank)
             why.append(f"forecast: ~{PRODUCTION_FORECAST_DAYS * unready_rank} days of production ahead of it")
 
-        # series cadence
+        # series order always; cadence only on the slate pace
         if series and series in series_last:
             prev_no, prev_date = series_last[series]
             if book_no > prev_no:
-                gap = _cadence(genre)
+                gap = 1 if fast else _cadence(genre)
                 candidate = max(candidate, prev_date + dt.timedelta(days=gap))
-                why.append(f"{gap} days after {series} #{prev_no} (series cadence)")
+                why.append(f"after {series} #{prev_no}" + ("" if fast else f" ({gap} days, series cadence)"))
         elif series:
             why.append(f"opens {series}")
 
-        # pen-name spacing
-        for prev in pen_name_days.get(author, []):
-            if abs((candidate - prev).days) < PEN_NAME_GAP:
-                candidate = max(candidate, prev + dt.timedelta(days=PEN_NAME_GAP))
-                why.append(f"{PEN_NAME_GAP} days clear of {author}'s previous launch")
+        # pen-name spacing (slate pace only)
+        if not fast:
+            for prev in pen_name_days.get(author, []):
+                if abs((candidate - prev).days) < PEN_NAME_GAP:
+                    candidate = max(candidate, prev + dt.timedelta(days=PEN_NAME_GAP))
+                    why.append(f"{PEN_NAME_GAP} days clear of {author}'s previous launch")
 
         # slate density + launch day + dead zone
-        for _ in range(120):
-            candidate = _next_launch_day(candidate)
+        for _ in range(400):
+            candidate = candidate if (fast and not _in_dead_zone(candidate)) else _next_launch_day(candidate)
             wk = candidate.isocalendar()[:2]
-            if taken_days.get(candidate, 0) >= 2:
+            if taken_days.get(candidate, 0) >= per_day:
                 candidate += dt.timedelta(days=1); continue
-            if week_load.get(wk, 0) >= 1:
+            if week_load.get(wk, 0) >= per_week:
                 candidate += dt.timedelta(days=1); continue
             break
-        why.append(candidate.strftime("%A") + " launch")
+        why.append(candidate.strftime("%A") + " launch" + (" (fast pace)" if fast else ""))
         if _in_dead_zone(candidate - dt.timedelta(days=1)):
             why.append("moved past the holiday dead zone")
 

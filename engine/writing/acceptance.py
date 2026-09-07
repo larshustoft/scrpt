@@ -146,6 +146,12 @@ def measure_length(ms_data: dict, preset: dict) -> dict:
     target = ms_data.get("target_words") or preset.get("target_words") or 0
     floor = max(preset.get("min_words") or 0, int(target * LENGTH_LOW))
     ceiling = int(target * LENGTH_HIGH)
+    band = ms_data.get("length_band") or {}
+    if band.get("floor") and band.get("ceiling"):
+        # the publisher's own band for this book/series beats the genre's
+        # (Lars, 2026-09-07: Vector reads at 70-85k on purpose — an easy read)
+        floor, ceiling = int(band["floor"]), int(band["ceiling"])
+        target = target if floor <= target <= ceiling else (floor + ceiling) // 2
     ok = floor <= total <= ceiling
     return {"total_words": total, "target_words": target, "floor": floor,
             "ceiling": ceiling, "ok": ok, "chapters": per}
