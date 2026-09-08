@@ -275,8 +275,14 @@ function ManuscriptTab({ book, ms, reload, busy }: {
   // "Every book should have the Read the book section, once it's written"
   // (Lars, 2026-09-08): the built print file, page by page, on every kind
   // of book — not only picture books.
+  // the same test the shelf uses for "Written", plus anything with words or a
+  // built print file — the older non-fiction titles carry no manuscript status
+  const bd = book.data as { acceptance?: { verdict?: string }; interior?: { page_count?: number }; external?: boolean };
   const written = ["drafted", "accepted", "editing", "locked", "ready", "complete"].includes(ms.status || "")
-    || Boolean((book.data as { acceptance?: { verdict?: string } }).acceptance?.verdict)
+    || Boolean(bd.acceptance?.verdict)
+    || Boolean(bd.interior?.page_count)
+    || Boolean(bd.external)
+    || (Number(ms.word_count) || 0) > 0
     || (Boolean(ms.chapters?.length) && ms.chapters.every((c) => (c.blocks || []).length > 0));
   const [buildingInterior, setBuildingInterior] = useState(false);
   const buildInterior = async () => {
