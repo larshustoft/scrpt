@@ -25,6 +25,14 @@ export default function SuggestionsPage() {
   const [notes, setNotes] = useState("");
   const [tab, setTab] = useState<"new" | "approved" | "rejected">("new");
   const [big, setBig] = useState<number | null>(null);   // index into the visible list
+  const [designing, setDesigning] = useState<Record<string, number>>({});   // id -> started at (ms)
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!Object.keys(designing).length) return;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [designing]);
+  const EXPECT_MS = 100_000;   // a cover usually takes about a minute and a half
 
   const load = useCallback(async () => {
     try {
@@ -75,7 +83,9 @@ export default function SuggestionsPage() {
 
   const covers = async (ids: string[]) => {
     if (!ids.length) return;
-    setBusy("covers"); setMsg(`Designing ${ids.length} cover${ids.length > 1 ? "s" : ""} — about a minute each.`);
+    setBusy("covers"); setMsg(`Designing ${ids.length} cover${ids.length > 1 ? "s" : ""} — about a minute and a half each.`);
+    const started = Date.now();
+    setDesigning((d) => ({ ...d, ...Object.fromEntries(ids.map((id) => [id, started])) }));
     try {
       const r = await fetch(`${scrpt.engineUrl}/api/scrpt/suggestions/covers`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
@@ -84,7 +94,28 @@ export default function SuggestionsPage() {
       setMsg(j?.status === "done" ? `${(j.result?.done || []).length} cover(s) designed.` : `Covers ${j?.status || "timed out"}: ${j?.error || ""}`);
       await load();
     } catch { setMsg("The engine is offline."); }
+    setDesigning((d) => { const n = { ...d }; ids.forEach((id) => delete n[id]); return n; });
     setBusy("");
+  };
+
+  /** A progress ring over a cover while its redesign runs: fills with the
+   *  expected time (never past 95%), completes when the job returns. */
+  const Ring = ({ startedAt }: { startedAt: number }) => {
+    void tick;
+    const pct = Math.min(95, Math.round(((Date.now() - startedAt) / EXPECT_MS) * 100));
+    const r = 26, c = 2 * Math.PI * r;
+    return (
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "rgba(0,0,0,.55)", borderRadius: 4 }}>
+        <svg width="72" height="72" viewBox="0 0 72 72" aria-label={`designing, ${pct}%`}>
+          <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(255,255,255,.25)" strokeWidth="5" />
+          <circle cx="36" cy="36" r={r} fill="none" stroke="#c9a45c" strokeWidth="5" strokeLinecap="round"
+                  strokeDasharray={`${c}`} strokeDashoffset={`${c * (1 - pct / 100)}`}
+                  transform="rotate(-90 36 36)" style={{ transition: "stroke-dashoffset .9s linear" }} />
+          <text x="36" y="40" textAnchor="middle" fontSize="13" fill="#fff" fontWeight={600}>{pct}%</text>
+        </svg>
+      </div>
+    );
   };
 
   const saveNotes = async (id: string, notes: string) => {
@@ -209,7 +240,8 @@ export default function SuggestionsPage() {
       {shown.map((s) => (
         <div key={s.id} className="card mt-4">
           <div className="flex items-start gap-5">
-          <div className="shrink-0" style={{ width: 132 }}>
+          <div className="shrink-0" style={{ width: 132, position: "relative" }}>
+            {designing[s.id] && <Ring startedAt={designing[s.id]} />}
             {s.cover ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={`${scrpt.engineUrl}/api/scrpt/suggestions/${s.id}/cover.png?v=${s.cover_at || ""}`} alt={s.title}
