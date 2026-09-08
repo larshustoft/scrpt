@@ -127,7 +127,44 @@ def _series_line(book: dict) -> str:
     return ""
 
 
-RESPONSES_MODELS = ["gpt-5", "gpt-4.1", "gpt-4o"]  # first available wins
+RESPONSES_MODELS = ["gpt-5", "gpt-4.1", "gpt-4o"]  # the floor; the live list is asked first (see _best_text_models)
+
+_best_text_cache: dict = {}
+
+
+def pick_text_models(ids: list) -> list:
+    """The newest general models first, from the live list — never a
+    hardcoded ceiling (Lars, 2026-09-08: "SCRPT should not be limited by our
+    old setup. AI models evolve."). Ranks gpt-6-* above gpt-5.x above gpt-5,
+    skips codex/mini/nano/search/chat-latest/pro/dated variants."""
+    import re as _re
+    def key(i):
+        m = _re.match(r"^gpt-(\d+)(?:\.(\d+))?(?:-([a-z]+))?$", i)
+        if not m:
+            return None
+        major, minor, tag = int(m.group(1)), int(m.group(2) or 0), m.group(3) or ""
+        if tag in ("mini", "nano", "codex", "search", "chat", "pro"):
+            return None
+        return (major, minor, 1 if tag else 0)
+    ranked = sorted((k, i) for i in ids if (k := key(i)) is not None)
+    return [i for _, i in reversed(ranked)][:3]
+
+
+async def _best_text_models(client: httpx.AsyncClient) -> list:
+    if _best_text_cache.get("ids"):
+        return _best_text_cache["ids"]
+    best = list(RESPONSES_MODELS)
+    try:
+        r = await client.get("https://api.openai.com/v1/models",
+                             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"}, timeout=30)
+        if r.status_code == 200:
+            live = pick_text_models([m["id"] for m in r.json().get("data", [])])
+            if live:
+                best = live + [m for m in RESPONSES_MODELS if m not in live]
+    except Exception:
+        pass
+    _best_text_cache["ids"] = best
+    return best
 
 
 async def _thread_generate(client: httpx.AsyncClient, prompt: str,
@@ -158,7 +195,7 @@ async def _thread_generate(client: httpx.AsyncClient, prompt: str,
         body["tools"] = [tool]
         body["tool_choice"] = "required"
     last_err = None
-    for model in RESPONSES_MODELS:
+    for model in await _best_text_models(client):
         body["model"] = model
         for attempt in range(2):
             try:
