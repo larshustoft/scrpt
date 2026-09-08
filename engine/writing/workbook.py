@@ -26,6 +26,9 @@ import httpx
 from ..config import OUTPUT_DIR, OPENAI_API_KEY, PROJECT_ROOT
 from ..database import get_book_by_catalog, update_book
 
+# the house mark on every book (Lars, 2026-09-08: TigerWorks, never Olive Tree, never small)
+HOUSE_LOGO_BLACK = Path.home() / ".scrpt" / "house" / "brand" / "tigerworks-black.png"
+
 PAGE_SIZE = "1024x1536"
 PAGES_DEFAULT = 48
 PARALLEL = 3
@@ -217,16 +220,29 @@ def build_workbook_interior(catalog: str) -> dict:
     pdf = out_dir / "interior.pdf"
     # initialFontName: reportlab otherwise puts an unembedded Helvetica in every page's resources
     c = rl_canvas.Canvas(str(pdf), pagesize=(W, H), initialFontName=F_REG); c.setTitle(book["title"]); c.setAuthor(d.get("author_name") or "")
-    # 1. title page
-    c.setFont(F_BOLD, 30); c.drawCentredString(W / 2, H * 0.62, book["title"][:60])
-    c.setFont(F_REG, 16); c.drawCentredString(W / 2, H * 0.55, d.get("author_name") or "")
-    c.setFont(F_REG, 11); c.drawCentredString(W / 2, H * 0.12, "OLIVE TREE SCRIPTS")
+    # 1. title page — every line inside the margins (KDP flagged a long title
+    # drawn on one line, 2026-09-08), the TigerWorks mark at the foot
+    from reportlab.lib.utils import simpleSplit, ImageReader
+    text_w = W - M_IN - M_OUT - 0.4 * PT
+    size = 30
+    lines = simpleSplit(book["title"], F_BOLD, size, text_w)
+    while len(lines) > 3 and size > 18:
+        size -= 2; lines = simpleSplit(book["title"], F_BOLD, size, text_w)
+    y = H * 0.64
+    c.setFont(F_BOLD, size)
+    for ln in lines:
+        c.drawCentredString(W / 2, y, ln); y -= size * 1.2
+    c.setFont(F_REG, 16); c.drawCentredString(W / 2, y - 10, d.get("author_name") or "")
+    logo = HOUSE_LOGO_BLACK
+    if logo.exists():
+        lsz = 1.0 * PT                                   # never small (Lars, 2026-09-08)
+        c.drawImage(ImageReader(str(logo)), W / 2 - lsz / 2, M_BOT + 0.35 * PT, lsz, lsz, mask="auto")
     c.showPage()
     # 2. belongs-to + copyright
     c.setFont(F_BOLD, 22); c.drawCentredString(W / 2, H * 0.7, "This book belongs to")
     c.setLineWidth(1.2); c.line(W * 0.2, H * 0.62, W * 0.8, H * 0.62)
     c.setFont(F_REG, 9)
-    c.drawCentredString(W / 2, H * 0.1, f"© {datetime.now().year} {d.get('author_name') or ''} · Olive Tree Scripts · All rights reserved.")
+    c.drawCentredString(W / 2, H * 0.1, f"© {datetime.now().year} {d.get('author_name') or ''} · TigerWorks · All rights reserved.")
     c.drawCentredString(W / 2, H * 0.085, "For personal and classroom use. Adult supervision recommended for scissors.")
     c.showPage()
     # 3. the pages, mirrored margins

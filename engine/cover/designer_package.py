@@ -433,7 +433,8 @@ def compose_print_wrap(catalog: str, title: str, author: str, blurb: str,
     # The publisher imprint logo sits at the foot of the spine with a margin.
     spine_cx = bleed + trim_w + spine_w / 2
     logo_reserve = 0
-    logo_path = next((p for p in (base / "spine-logo.png",
+    logo_path = next((p for p in (Path.home() / ".scrpt" / "house" / "brand" / "tigerworks-black.png",
+                                  base / "spine-logo.png",
                                   Path(OUTPUT_DIR).parent / "assets" / "tigerworks-logo.png")
                       if p.exists()), None)
     if logo_path is not None:
@@ -689,7 +690,7 @@ def compose_print_wrap(catalog: str, title: str, author: str, blurb: str,
         lg = _Img.open(str(logo_path)).convert("RGBA")
         # A fixed imprint lockup: identical on every book — black mark, clean
         # sans wordmark, no country line.
-        isz = 24
+        isz = 46      # the lockup carries its own TIGERWORKS wordmark; 0.64" — never small (Lars, 2026-09-08)
         # Framed books tuck the imprint inside the frame; unframed thrillers
         # drop it to the barcode's bottom margin, level with the spine tree.
         ix = bleed + safe + (pad if framed else 0)
@@ -705,12 +706,7 @@ def compose_print_wrap(catalog: str, title: str, author: str, blurb: str,
             imprint_font = "Imprint-Sans"
         except Exception:
             imprint_font = "Helvetica"
-        c.setFillColor(Color(26 / 255, 24 / 255, 22 / 255))
-        c.setFont(imprint_font, 7.5)
-        c._charSpace = 1.2
-        # baseline sits on the foot of the tree, not its middle
-        c.drawString(ix + isz + 8, iy + 1, "OLIVE TREE SCRIPTS")
-        c._charSpace = 0
+        # no imprint text: the mark is the lockup (Olive Tree retired 2026-09-08)
 
     c.showPage()
     c.save()

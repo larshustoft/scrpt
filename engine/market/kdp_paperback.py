@@ -873,7 +873,9 @@ class Stager:
         await p.wait_for_timeout(3000)
         await self.shot("previewer")
         body = await p.inner_text("body")
-        issues = "No Issue Selected" not in body and "No issues" not in body and "issue" in body.lower()
+        import re as _re2
+        hard = bool(_re2.search(r"outside the margins|Insufficient gutter|If your book has errors|won't meet our quality standards|\bERROR\b", body))
+        issues = hard or ("No Issue Selected" not in body and "No issues" not in body and "issue" in body.lower())
         self.note("previewer: " + ("issues flagged — review" if issues else "no issues"))
         if issues:
             self.note("previewer text: " + " ".join(body.split())[:400])
