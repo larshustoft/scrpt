@@ -344,8 +344,16 @@ def _commission_workbook(r: dict) -> tuple[str, str]:
         "kind": "childrens", "book_type": "workbook", "authorship": "house", "genre_preset": "picture_book",
         "author_name": r.get("pen_name") or uni.get("author") or "", "universe": slug or None, "print_only": True,
         "trim_size": "8.5x11", "paper_type": "white_bw", "page_count": 0,
-        "list_price": float(r.get("price_paperback") or 8.99),
+        "list_price": max(9.99, float(r.get("price_paperback") or 9.99)),   # KDP pays 60% from $9.99, 50% below
         "description": (r.get("pitch") or ""), "cover_direction": r.get("cover_direction") or "",
+        # the print tree has no default for children's activity books: plan the
+        # categories at birth so the stager never lands them in General
+        "kdp": {"print_categories_plan": (
+            [["Children's Books", "Arts, Music & Photography", "Art", "Drawing"],
+             ["Children's Books", "Activities, Crafts & Games", "Activity Books"]]
+            if "draw" in (r.get("title") or "").lower() else
+            [["Children's Books", "Activities, Crafts & Games", "Activity Books"],
+             ["Children's Books", "Early Learning", "Basic Concepts"]])},
         "workbook": {"universe": slug, "pitch": (r.get("pitch") or "") + (f" PUBLISHER'S INSTRUCTIONS (binding): {r['publisher_notes']}" if r.get("publisher_notes") else ""), "ages": "3-5" if "letters" in (r.get("title") or "").lower() or "cut" in (r.get("title") or "").lower() else "4-8",
                       "pages_target": 48, "suggestion_id": r.get("id")},
         "manuscript": {"kind": "childrens", "genre_preset": "picture_book", "idea": r.get("pitch") or "", "status": "idea", "chapters": []},
