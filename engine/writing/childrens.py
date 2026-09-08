@@ -341,6 +341,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
     async def draw(prompt: str, reference: Optional[bytes]) -> bytes:
         async with httpx.AsyncClient(timeout=300) as c:
             model = await _best_image_model(c)
+            last = ""
             for attempt in range(3):
                 try:
                     if reference:
@@ -358,14 +359,18 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                             json={"model": model, "prompt": prompt[:3800],
                                   "size": "1536x1024", "quality": "high", "n": 1}),
                             timeout=240)
-                except (httpx.HTTPError, asyncio.TimeoutError):
+                except (httpx.HTTPError, asyncio.TimeoutError) as e:
+                    last = f"{type(e).__name__}: {str(e)[:120]}"
+                    print(f"  illustration attempt {attempt + 1} ({model}): {last}", flush=True)
                     await asyncio.sleep(4 * (attempt + 1)); continue
                 if r.status_code == 200:
                     return base64.b64decode(r.json()["data"][0]["b64_json"])
                 if r.status_code < 500:
                     raise RuntimeError(f"Illustration refused ({r.status_code}): {r.text[:180]}")
+                last = f"HTTP {r.status_code}: {r.text[:160]}"
+                print(f"  illustration attempt {attempt + 1} ({model}): {last}", flush=True)
                 await asyncio.sleep(4 * (attempt + 1))
-        raise RuntimeError("Illustration failed after 3 attempts")
+        raise RuntimeError(f"Illustration failed after 3 attempts on {model} — last: {last}")
 
     targets = [s for s in spreads if only is None or s["n"] == only]
     # spread 1 must exist before any other can reference it
