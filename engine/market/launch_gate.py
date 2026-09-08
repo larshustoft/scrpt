@@ -111,7 +111,7 @@ def launch_gate(catalog: str) -> dict:
     if rel.get("date"):
         try:
             rd_ = dt.date.fromisoformat(rel["date"])
-            item("Release date set ≥ 10 days out", (rd_ - today).days >= LEAD_DAYS or rel.get("status") == "released",
+            item("Release date set ≥ 10 days out", (rd_ - today).days >= LEAD_DAYS or rel.get("status") == "released" or bool(pub.get("asin")),
                  rel["date"])
         except ValueError:
             item("Release date set ≥ 10 days out", False, "invalid date")
