@@ -67,7 +67,7 @@ def _rows(status: str | None = None) -> list[dict]:
 
 
 def list_suggestions() -> dict:
-    rows = _rows()
+    rows = [r for r in _rows() if r["status"] != "drafting"]
     return {"suggestions": rows, "open": sum(1 for r in rows if r["status"] == "new"),
             "last_research": get_setting("suggest_last_research", "") or ""}
 
@@ -157,14 +157,24 @@ async def research(n: int = 8, notes: str = "") -> dict:
             it["title"] = t
             sid = uuid.uuid4().hex[:10]
             conn.execute("INSERT INTO suggestions (id, created_at, status, data) VALUES (?,?,?,?)",
-                         (sid, datetime.now().isoformat(timespec="minutes"), "new", json.dumps(it)))
+                         (sid, datetime.now().isoformat(timespec="minutes"), "drafting", json.dumps(it)))
             added.append({"id": sid, **it})
         conn.commit()
     finally:
         conn.close()
     from ..database import set_setting
     set_setting("suggest_last_research", datetime.now().isoformat(timespec="minutes"))
-    return {"added": added, "count": len(added)}
+    # NO SUGGESTION WITHOUT ITS COVER (Lars, 2026-09-08): a suggestion is shown
+    # only once its front cover exists; until then it stays 'drafting', unseen.
+    cv = await covers([a["id"] for a in added])
+    conn = get_connection()
+    try:
+        for sid in cv.get("done", []):
+            conn.execute("UPDATE suggestions SET status='new' WHERE id=? AND status='drafting'", (sid,))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"added": added, "count": len(cv.get("done", [])), "without_cover": cv.get("failed", [])}
 
 
 async def approve(ids: list[str], commission_all: bool = False) -> dict:
@@ -272,27 +282,39 @@ async def covers(ids: list[str], handle=None) -> dict:
     from ..cover.front_cover import _generate_one
     _init()
     rows = {r["id"]: r for r in _rows()}
+    import asyncio
+    from ..writing.workbook import UNIVERSE_CAST, _plate_png
     done, failed = [], []
-    conn = get_connection()
-    try:
-        async with httpx.AsyncClient() as client:
-            for i, sid in enumerate(ids):
-                r = rows.get(sid)
-                if not r:
-                    failed.append((sid, "unknown")); continue
+    sem = asyncio.Semaphore(3)
+    async with httpx.AsyncClient() as client:
+        async def one(i, sid):
+            r = rows.get(sid)
+            if not r:
+                failed.append((sid, "unknown")); return
+            async with sem:
                 if handle:
                     handle.progress(0.05 + 0.9 * i / max(1, len(ids)), "cover", f"Designing: {r.get('title')}")
                 try:
-                    png = await _generate_one(client, _cover_brief(r), gen_size=("1024x1536"))
+                    brief = _cover_brief(r)
+                    plate = None
+                    uni = UNIVERSE_CAST.get(r.get("universe") or "", {})
+                    if uni:
+                        brief += (f"\nThe character on the cover is {uni['look']} Use the attached picture as the reference "
+                                  "for her face and features, in the same friendly full-colour cartoon style.")
+                        plate = _plate_png(r["universe"], (uni.get("plates") or {}).get("Princess", ""))
+                    png = await _generate_one(client, brief, reference_png=plate, gen_size="1024x1536")
                     pth = cover_path(sid); pth.parent.mkdir(parents=True, exist_ok=True); pth.write_bytes(png)
                     d = {k: v for k, v in r.items() if k not in ("id", "created_at", "status", "catalog", "decided_at", "note")}
                     d["cover"] = str(pth); d["cover_at"] = datetime.now().isoformat(timespec="minutes")
-                    conn.execute("UPDATE suggestions SET data=? WHERE id=?", (json.dumps(d), sid)); conn.commit()
+                    conn = get_connection()
+                    try:
+                        conn.execute("UPDATE suggestions SET data=? WHERE id=?", (json.dumps(d), sid)); conn.commit()
+                    finally:
+                        conn.close()
                     done.append(sid)
                 except Exception as e:
                     failed.append((sid, str(e)[:120]))
-    finally:
-        conn.close()
+        await asyncio.gather(*[one(i, sid) for i, sid in enumerate(ids)])
     return {"done": done, "failed": failed}
 
 
