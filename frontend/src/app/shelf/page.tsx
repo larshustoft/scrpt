@@ -258,7 +258,7 @@ function deriveStatus(book: ScrptBook): ShelfStatus {
   const d = book.data as {
     publishing?: { asin?: string; uploaded_at?: string; released_at?: string };
     kdp?: { paperback_id?: string; kindle_id?: string; asin?: string; status?: string };
-    release?: { status?: string };
+    release?: { status?: string; date?: string };
     external?: boolean;
     acceptance?: { verdict?: string };
     manuscript?: { status?: string; chapters?: { blocks: unknown[] }[] };
@@ -271,10 +271,16 @@ function deriveStatus(book: ScrptBook): ShelfStatus {
   if (pub.asin || kdp.asin || d.external || d.release?.status === "released" ||
       kdp.status === "live")
     return { label: "Released", color: "var(--status-green)" };
-  // Uploaded — a KDP draft exists (either flow records it), not yet live
-  if (pub.uploaded_at || kdp.paperback_id || kdp.kindle_id ||
-      ["submitted", "in_review", "publishing", "draft_complete_awaiting_publish"].includes(kdp.status || ""))
-    return { label: "Uploaded", color: "var(--status-blue)" };
+  // Submitted — pressed on KDP, waiting for Amazon (with its release day when scheduled)
+  if (pub.uploaded_at || d.release?.status === "submitted" ||
+      ["submitted", "in_review", "publishing", "draft_complete_awaiting_publish"].includes(kdp.status || "")) {
+    const day = d.release?.date ? new Date(d.release.date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
+    return { label: day ? `Scheduled ${day}` : "Submitted", color: "var(--status-blue)" };
+  }
+  // KDP draft — a title exists on KDP (id, ISBN) but has not been submitted;
+  // the stager resumes it on its next run (Lars asked, 2026-09-08: "already uploaded?")
+  if (kdp.paperback_id || kdp.kindle_id)
+    return { label: "KDP draft", color: "var(--status-amber)" };
 
   const ms = d.manuscript;
   const finished = ms && (
