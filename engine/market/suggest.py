@@ -114,7 +114,11 @@ async def research(n: int = 8, notes: str = "") -> dict:
         "\"comparables\": [\"title by author (rank/price)\", ...], "
         "\"target_words\": N, \"price_kindle\": 4.99, \"price_paperback\": 12.99, "
         "\"cover_direction\": \"one sentence for the cover artist\", "
-        "\"estimate_monthly_usd\": {\"conservative\": N, \"realistic\": N, \"stretch\": N}, "
+        "\"estimate_monthly_usd\": {\"conservative\": N, \"realistic\": N, \"stretch\": N}  "
+        "(CALIBRATED for a NEW pen name with no readers, no reviews and a $5/day ad test — conservative = what most such "
+        "books earn (often $0-50), realistic = the median outcome after 3 books are live (typically $100-800 for a "
+        "series in KU, $30-300 for a standalone), stretch = a top-decile outcome, not the chart leader's income; "
+        "never quote the comparable's own earnings as the estimate), "
         "\"confidence\": \"low|medium|high\", \"season\": \"e.g. holiday 2026 or evergreen\"}]}"
     )
     raw = await complete("You are a data-driven acquisitions editor. Numbers over adjectives. JSON only.",
