@@ -180,7 +180,15 @@ def build_workbook_interior(catalog: str) -> dict:
     missing = [p.name for p in pngs if not p.is_file()]
     if missing:
         raise RuntimeError(f"{len(missing)} page(s) not drawn yet: {missing[:5]}")
-    PT = 72.0; W, H = 8.5 * PT, 11.0 * PT; margin = 0.5 * PT
+    # KDP MARGINS FOR A NO-BLEED 8.5 x 11 WORKBOOK (Lars, 2026-09-08: "margins
+    # according to the KDP standard for this genre"): KDP's minimum inside
+    # (gutter) margin is 0.375 in up to 150 pages and 0.5 in up to 300, outside
+    # margins at least 0.25 in. Activity books are worked flat and cut, so the
+    # house sets inside 0.75 in, outside 0.5 in, top and bottom 0.5 in — and
+    # MIRRORS them: odd pages are right-hand (gutter on the left), even pages
+    # left-hand (gutter on the right).
+    PT = 72.0; W, H = 8.5 * PT, 11.0 * PT
+    M_IN, M_OUT, M_TOP, M_BOT = 0.75 * PT, 0.5 * PT, 0.5 * PT, 0.5 * PT
     pdf = out_dir / "interior.pdf"
     c = rl_canvas.Canvas(str(pdf), pagesize=(W, H)); c.setTitle(book["title"]); c.setAuthor(d.get("author_name") or "")
     # 1. title page
@@ -195,24 +203,28 @@ def build_workbook_interior(catalog: str) -> dict:
     c.drawCentredString(W / 2, H * 0.1, f"© {datetime.now().year} {d.get('author_name') or ''} · Olive Tree Scripts · All rights reserved.")
     c.drawCentredString(W / 2, H * 0.085, "For personal and classroom use. Adult supervision recommended for scissors.")
     c.showPage()
-    # 3. the pages
-    box_w, box_h = W - 2 * margin, H - 2 * margin
+    # 3. the pages, mirrored margins
+    box_w, box_h = W - M_IN - M_OUT, H - M_TOP - M_BOT
+    page_no = 3
     for png in pngs:
         im = Image.open(png).convert("L")
         # pure black on white: lift any grey the model left, for clean print
         im = im.point(lambda v: 255 if v > 200 else (0 if v < 90 else v))
         iw, ih = im.size; scale = min(box_w / iw, box_h / ih); dw, dh = iw * scale, ih * scale
-        c.drawImage(ImageReader(im), (W - dw) / 2, (H - dh) / 2, dw, dh)
-        c.showPage()
+        right_hand = page_no % 2 == 1
+        left = (M_IN if right_hand else M_OUT) + (box_w - dw) / 2
+        c.drawImage(ImageReader(im), left, M_BOT + (box_h - dh) / 2, dw, dh)
+        c.showPage(); page_no += 1
     n_pages = 2 + len(pngs)
     if n_pages % 2:
         c.showPage(); n_pages += 1
     c.save()
     validation = validate_interior_pdf(str(pdf), trim_w=8.5, trim_h=11.0, paper_type="white_bw", trim_key="8.5x11",
-                                       gutter_used=0.5, outside_margin_used=0.5, body_font_pt=12, bleed=False)
+                                       gutter_used=0.75, outside_margin_used=0.5, body_font_pt=12, bleed=False)
     vd = validation.as_dict() if hasattr(validation, "as_dict") else (validation if isinstance(validation, dict) else {"passed": True})
     b = get_book_by_catalog(catalog); data = dict(b["data"])
-    data["interior"] = {"page_count": n_pages, "pdf_path": str(pdf), "exported_at": datetime.now().isoformat(), "validation": vd, "kind": "workbook"}
+    data["interior"] = {"page_count": n_pages, "pdf_path": str(pdf), "exported_at": datetime.now().isoformat(), "validation": vd, "kind": "workbook",
+                        "margins_in": {"inside": 0.75, "outside": 0.5, "top": 0.5, "bottom": 0.5, "mirrored": True, "bleed": False}}
     data["page_count"] = n_pages
     update_book(b["id"], data)
     return {"pdf": str(pdf), "page_count": n_pages, "validation": vd}
