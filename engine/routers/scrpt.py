@@ -3033,6 +3033,15 @@ def suggestions_notes(sid: str, body: dict = Body(default={})):
         raise HTTPException(404, str(e))
 
 
+@router.post("/childrens/{catalog}/ready")
+async def childrens_ready(catalog: str):
+    """Cover chosen by the judge → bible → spreads → interior → accepted."""
+    from ..writing.childrens_ready import ready_childrens
+    if not db.get_book_by_catalog(catalog):
+        raise HTTPException(404, "Book not found")
+    return {"job_id": start_job("childrens_ready", lambda h: ready_childrens(catalog, h), book_catalog=catalog)}
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""

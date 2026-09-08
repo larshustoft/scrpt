@@ -265,7 +265,9 @@ def prep_candidates() -> list[dict]:
         if _on_kdp(d) or _blocked(d):
             continue
         ms = d.get("manuscript") or {}
-        if not (ms.get("chapters") and all(c.get("blocks") for c in ms["chapters"])):
+        written = bool(ms.get("chapters") and all(c.get("blocks") for c in ms["chapters"]))
+        written = written or bool((d.get("childrens") or {}).get("spreads")) or bool((d.get("workbook") or {}).get("done"))
+        if not written:
             continue                                   # not written yet: not the desk's job
         rel = d.get("release") or {}
         holds = b.get("title") in blocking

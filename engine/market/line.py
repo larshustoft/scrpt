@@ -110,6 +110,28 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
         step("epub", True, "print-only book — no ebook")
         return await _finish_print_book(catalog, report, step, handle, publish, title)
 
+    # 0b. PICTURE BOOKS (2026-09-08): cover chosen by a vision judge, bible,
+    # spreads, interior — then the print tail. No reader's desk, no line edit.
+    ch = _d(catalog).get("childrens")
+    if ch and (ch.get("spreads") or []):
+        from ..writing.childrens_ready import ready_childrens, _art_complete
+        if not (_d(catalog).get("childrens_ready") or {}).get("done") or not _art_complete(_d(catalog)):
+            if handle:
+                handle.progress(0.05, "childrens", f"{title[:30]}: cover, bible, spreads")
+            r = await ready_childrens(catalog, handle)
+            for st_ in r.get("steps", []):
+                step(st_[0], st_[1], st_[2])
+            if not r.get("ok"):
+                report["stopped_at"] = r.get("stopped_at") or "childrens"; return report
+        else:
+            step("acceptance", True, "children's line · cover, bible and art complete")
+        from ..interior.childrens_interior import build_interior as _ci
+        res = await _ci(catalog, handle)
+        step("interior", True, f"{res.get('pages')} pages")
+        step("epub", True, "picture book — print first")
+        _patch(catalog, print_only=True)
+        return await _finish_print_book(catalog, report, step, handle, publish, title)
+
     # 1. THE READER'S DESK (2026-09-07, replaces the score loop): a triage read
     # of the opening, midpoint, climax and ending; targeted fixes only on the
     # chapters the reader named; then accept or shelve. Never a blanket rewrite.
