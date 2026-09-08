@@ -2951,6 +2951,16 @@ async def desk_ready(catalog: str):
     return {"job_id": start_job("desk_ready", job, book_catalog=catalog)}
 
 
+@router.post("/kdp/adopt-kindle/{catalog}")
+async def kdp_adopt_kindle(catalog: str):
+    """Find this title's existing Kindle draft on the Bookshelf and remember its id."""
+    from ..market.kdp_ebook import adopt_kindle_draft
+    async def job(handle):
+        handle.progress(0.1, "kdp", "reading the Bookshelf")
+        return await adopt_kindle_draft(catalog)
+    return {"job_id": start_job("kdp_adopt_kindle", job, book_catalog=catalog)}
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""

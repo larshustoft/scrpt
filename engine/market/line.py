@@ -155,6 +155,16 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
         a_["insurance_sig"] = _hl.sha1(_json.dumps([c.get("blocks") for c in ms_after.get("chapters", [])], sort_keys=True).encode()).hexdigest()[:16]
         data_["acceptance"] = a_; update_book(b_["id"], data_)
         step("continuity", True, f"{total_found} found, {fixed} rulings enforced, {len(remaining)} left as advisory")
+        if fixed:
+            # a ruling rewrote a chapter: line-edit THAT chapter again (facts
+            # unchanged, so no second audit), then seal the signature on the final text
+            try:
+                le2 = await line_edit(catalog, handle)
+                b_ = get_book_by_catalog(catalog); data_ = dict(b_["data"]); a_ = dict(data_.get("acceptance") or {})
+                a_["insurance_sig"] = manuscript_sig(data_); data_["acceptance"] = a_; update_book(b_["id"], data_)
+                step("line-edit", True, f"after rulings: {len(le2.get('edited') or [])} chapter(s) re-edited")
+            except Exception as e:
+                step("line-edit", True, f"after rulings: skipped ({str(e)[:60]})")
     except _Skip:
         pass
     except Exception as e:

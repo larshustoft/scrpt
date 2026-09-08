@@ -455,3 +455,52 @@ async def publish_kindle_only(catalog: str) -> dict:
     from .launch_gate import assert_publishable
     assert_publishable(catalog)
     return await KindleStager(catalog, publish=True).run()
+
+
+
+async def adopt_kindle_draft(catalog: str) -> dict:
+    """The Bookshelf already holds a Kindle draft for this title (made by an
+    earlier run that never wrote its id down): find it and remember it, so the
+    dated publish can press Publish instead of trying to create a twin.
+    2026-09-08: Lake Como 1-3 and The Botanist's Quiet Ruin were live as
+    paperbacks only — every Kindle edition sat as an unpublished draft."""
+    from .browser import open_profile, close_profile
+    from .kdp_signin import auto_signin
+    book = get_book_by_catalog(catalog)
+    if not book:
+        raise ValueError("Book not found")
+    d = book["data"]; title = (book.get("title") or "").strip(); pid = (d.get("kdp") or {}).get("paperback_id")
+    pw, ctx, page = await open_profile(headless=False)
+    log = []
+    try:
+        await page.goto("https://kdp.amazon.com/en_US/bookshelf", timeout=60000, wait_until="domcontentloaded")
+        await page.wait_for_timeout(6000)
+        r = await auto_signin(page, log.append)
+        if r not in ("signed_in", "signed_in_after"):
+            return {"ok": False, "reason": f"not signed in: {r}", "log": log}
+        found = await page.evaluate("""(args) => {
+            const [title, pid] = args; const out = [];
+            for (const t of document.querySelectorAll('span[id^="zme-indie-bookshelf-dual-itemset-itemset-metadata-title-"]')) {
+                if ((t.innerText || '').trim().toLowerCase() !== title.toLowerCase()) continue;
+                const tid = t.id.split('-').pop();
+                if (pid && tid !== pid) continue;
+                const rows = [...document.querySelectorAll('tr')].filter(r => r.id === tid);
+                const ids = {};
+                rows.forEach(r => r.querySelectorAll('[id*="digital"]').forEach(e => {
+                    const m = e.id.match(/-([A-Z0-9]{10,14})(?:-|$)/); if (m && m[1] !== tid) ids[m[1]] = (ids[m[1]] || 0) + 1; }));
+                const status = (rows.map(r => r.innerText).join(' ').match(/Kindle eBook\\s*(Draft|Live|In review|Publishing|Blocked|\\+ Create Kindle eBook)/i) || [, ''])[1];
+                out.push({title_id: tid, kindle_ids: ids, kindle_status: status});
+            }
+            return out; }""", [title, pid])
+        if not found:
+            return {"ok": False, "reason": "title not on the Bookshelf", "log": log}
+        card = found[0]
+        kid = max(card["kindle_ids"], key=card["kindle_ids"].get) if card["kindle_ids"] else None
+        if not kid:
+            return {"ok": False, "reason": f"no Kindle draft on the card (status {card.get('kindle_status')!r})", "card": card, "log": log}
+        b = get_book_by_catalog(catalog); data = dict(b["data"])
+        data["kdp"] = {**(data.get("kdp") or {}), "kindle_id": kid, "kindle_status": "draft_complete_awaiting_publish"}
+        update_book(b["id"], data)
+        return {"ok": True, "kindle_id": kid, "kindle_status": card.get("kindle_status"), "log": log}
+    finally:
+        await close_profile(pw, ctx)

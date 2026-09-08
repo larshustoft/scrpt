@@ -182,6 +182,12 @@ async def line_edit(catalog: str, handle=None) -> dict:
     prev = d.get("line_edit") or {}
     if prev.get("sig") == sig and prev.get("done"):
         return {"skipped": "already line-edited this version", **prev}
+    # PER CHAPTER (2026-09-08): a continuity ruling changes two chapters, and
+    # the whole book was being line-edited again the next morning ($4), which
+    # changed the text, which re-ran continuity ($2.5) — every day. Now each
+    # chapter carries the hash of the text the line edit last produced; only
+    # chapters whose text differs are edited.
+    done_hashes = dict(prev.get("chapters") or {})
     if (d.get("kind") or (d.get("manuscript") or {}).get("kind")) == "childrens" or d.get("childrens"):
         return {"skipped": "children's books are edited on the spread"}
     book, ms = _load(catalog)
@@ -190,12 +196,17 @@ async def line_edit(catalog: str, handle=None) -> dict:
     edited, kept = [], []
     kept_reasons: dict = {}
     n = len(ms.chapters)
+    def _h(t: str) -> str:
+        return hashlib.sha1(t.encode()).hexdigest()[:12]
+    unchanged = []
     for i, ch in enumerate(ms.chapters):
-        if handle:
-            handle.progress(0.4 + 0.4 * i / max(1, n), "line-edit", f"Line editing chapter {ch.index} of {n}")
         text = blocks_to_text(ch.blocks)
         if not text.strip():
             continue
+        if done_hashes.get(str(ch.index)) == _h(text):
+            unchanged.append(ch.index); continue
+        if handle:
+            handle.progress(0.4 + 0.4 * i / max(1, n), "line-edit", f"Line editing chapter {ch.index} of {n}")
         prompt = (
             f"VOICE AND WORLD (keep to it):\n{digest[:3500]}\n\n"
             f"LINE EDIT chapter {ch.index} (\"{ch.title}\"). This is a line edit, not a rewrite: keep every event, every fact, "
@@ -228,16 +239,19 @@ async def line_edit(catalog: str, handle=None) -> dict:
                       else "did not end on a finished sentence")
             new_text = ""
         if not new_text:
-            kept.append(ch.index); kept_reasons[ch.index] = reason; continue
+            kept.append(ch.index); kept_reasons[ch.index] = reason
+            done_hashes[str(ch.index)] = _h(text)          # judged, kept as is: do not retry daily
+            continue
         ch.blocks = parse_chapter_text(new_text)
         ch.word_count = count_words(ch.blocks)
         edited.append(ch.index)
+        done_hashes[str(ch.index)] = _h(blocks_to_text(ch.blocks))
         ms.word_count = sum(c.word_count for c in ms.chapters)
         _save(book, ms)
         book, ms = _load(catalog)
     b = get_book_by_catalog(catalog); data = dict(b["data"])
-    data["line_edit"] = {"sig": manuscript_sig(data), "done": True, "edited": edited, "kept": kept,
-                         "kept_reasons": {str(k): v for k, v in kept_reasons.items()},
+    data["line_edit"] = {"sig": manuscript_sig(data), "done": True, "edited": edited, "kept": kept, "unchanged": unchanged,
+                         "kept_reasons": {str(k): v for k, v in kept_reasons.items()}, "chapters": done_hashes,
                          "at": datetime.now().isoformat(timespec="minutes")}
     update_book(b["id"], data)
     return data["line_edit"]
