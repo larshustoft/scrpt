@@ -160,8 +160,11 @@ def outline_prompt(book: dict, ms, p: dict, story: str) -> str:
         "For each spread give:\n"
         "  · `text` — the actual words on the page, final and read-aloud ready.\n"
         "  · `picture` — what the illustration shows: who is in it, what they are "
-        "doing, where, and the feeling. Describe it so an illustrator who has not "
-        "read the book could draw it. Do NOT restate the text.\n"
+        "doing, WHERE exactly (name the place and its level — the foot of the stair, "
+        "not the top; the kitchen, not the garden), and the feeling. It must show the "
+        "story at THIS moment: what the text says is about to happen has NOT happened "
+        "yet in the picture. Describe it so an illustrator who has not read the book "
+        "could draw it. Do NOT restate the text.\n"
         "  · `turn` — the reason a child turns the page (a question, a surprise, a "
         "reveal). The last spread has none.\n\n"
         "Return JSON only:\n"
@@ -463,6 +466,36 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
             ref = ref_path.read_bytes() if ref_path.exists() else None
         return (f"{prompt}\n\n{head}" if head else prompt), ref
 
+
+    async def matches_story(png: bytes, s: dict) -> str:
+        """The publisher's rule (Lars, 2026-09-08, The Lighthouse Cat: Pip was drawn
+        at the top of the lighthouse on the page where she takes her first step):
+        every illustration must agree with its words — place, moment, who.
+        Returns "" when it does, else the contradiction in one line."""
+        from .client import complete_vision
+        try:
+            v = await complete_vision(
+                "You check picture-book illustrations against their text. Answer in JSON only.",
+                f"THE WORDS ON THIS PAGE: {s.get('text') or ''}\n\nTHE PICTURE BRIEF: {s.get('picture') or s.get('art_prompt') or ''}\n\n"
+                "Look at the attached illustration. Does it show the brief's PLACE (including level: bottom/top, inside/outside), "
+                "the story MOMENT (nothing that the words say is still to come has already happened), and the right characters? "
+                'Reply {"ok": true} or {"ok": false, "problem": "<one line: what the picture shows vs what it should show>"}',
+                png, max_tokens=200)
+            import json as _j, re as _re
+            m = _re.search(r"\{.*\}", v, _re.S)
+            j = _j.loads(m.group(0)) if m else {}
+            return "" if j.get("ok", True) else str(j.get("problem") or "does not match the words")[:300]
+        except Exception:
+            return ""                      # a failed check never blocks the book
+
+    async def draw_checked(s, pr, ref):
+        png = await draw(pr, ref)
+        problem = await matches_story(png, s)
+        if problem:
+            print(f"  spread {s['n']}: picture disagrees with the words — {problem} — redrawing", flush=True)
+            png = await draw(pr + f"\n\nCORRECTION (the previous attempt was wrong): {problem}. Draw exactly the brief's place and moment.", ref)
+        return png
+
     done = []
     # Spread 1 is the reference every other spread is drawn against, so it goes
     # first and alone. The rest only depend on IT, not on each other — drawing
@@ -474,7 +507,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
             handle.progress(0.1, "illustrating", "drawing spread 1 — the reference")
         pr, ref = prompt_for(s)
         w1 = len((s.get("text") or "").split())
-        png = await draw(pr, ref)
+        png = await draw_checked(s, pr, ref)
         for _retry in range(2):
             if air_ok(png, 1, w1):
                 break
@@ -491,7 +524,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
             async with gate:
                 try:
                     pr, ref = prompt_for(s)
-                    png = await draw(pr, ref)
+                    png = await draw_checked(s, pr, ref)
                     for _retry in range(2):
                         if air_ok(png, s["n"], len((s.get("text") or "").split())):
                             break
