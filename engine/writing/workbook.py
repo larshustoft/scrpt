@@ -39,6 +39,11 @@ UNIVERSE_CAST = {
         "look": ("Princess is a small white unicorn foal with big purple eyes and long lashes, a long wavy two-tone mane "
                  "(pink and blue), a small golden horn, a crown of little flowers on her head and a small heart mark on her hip. "
                  "Draw her as clean cartoon line art for colouring, exactly the same face and features on every page."),
+        "cast": ("Her friends, drawn ONLY like their reference pictures: GLITTER is another small unicorn with a pastel pink, "
+                 "lilac and blue wavy mane and tail, lilac hooves, a heart mark on her hip and a little silver bell on a lilac "
+                 "ribbon around her neck; PIP is a small round blue bird with a white chest, big dark eyes and an orange beak; "
+                 "MOSS is a chubby teal baby dragon with small orange wings, tan horns and spikes, big green eyes and a happy smile. "
+                 "No other creatures — no rabbits, turtles, cats or pink dragons."),
     },
 }
 
@@ -92,7 +97,7 @@ def _page_prompt(book: dict, page: dict, uni: dict) -> str:
         f"print-ready (thick clean lines, no grey fills, no gradients, no photo, no colour). Book: '{book['title']}', ages "
         f"{(book['data'].get('workbook') or {}).get('ages') or '3-5'}. Page {page['n']}: {page.get('title', '')}.\n"
         f"THE PAGE: {page['brief']}\n"
-        + (f"THE CHARACTER (use the attached picture as the reference for her face and features): {uni.get('look')}\n" if uni else "")
+        + (f"THE CHARACTERS (the attached pictures are the references, in this order: Princess, Glitter, Pip, Moss): {uni.get('look')} {uni.get('cast', '')}\n" if uni else "")
         + "Rules: one short instruction line at the top in a friendly rounded font; generous spacing so a small child can work; "
         "dashed lines for cutting, dotted outlines for tracing, ruled rows for handwriting; every element fully inside 0.5 in margins; "
         "nothing cut off; no page number; no publisher text; no watermark."
@@ -102,9 +107,10 @@ def _page_prompt(book: dict, page: dict, uni: dict) -> str:
 async def _draw_page(client: httpx.AsyncClient, book: dict, page: dict, uni: dict, slug: str, out: Path) -> str:
     from ..cover.front_cover import _best_text_models
     content = []
-    plate = _plate_png(slug, (uni.get("plates") or {}).get("Princess", "")) if uni else None
-    if plate:
-        content.append({"type": "input_image", "image_url": "data:image/png;base64," + base64.b64encode(plate).decode()})
+    for name, rel in ((uni.get("plates") or {}).items() if uni else []):
+        png = _plate_png(slug, rel)
+        if png:
+            content.append({"type": "input_image", "image_url": "data:image/png;base64," + base64.b64encode(png).decode()})
     content.append({"type": "input_text", "text": _page_prompt(book, page, uni)})
     body = {"input": [{"role": "user", "content": content}],
             "tools": [{"type": "image_generation", "size": PAGE_SIZE, "quality": "high"}], "tool_choice": "required"}
@@ -268,16 +274,16 @@ async def design_cover(catalog: str) -> dict:
     from ..cover.front_cover import _generate_one, _install_cover
     book = get_book_by_catalog(catalog); d = book["data"]; wb = d.get("workbook") or {}
     slug = wb.get("universe") or ""; uni = UNIVERSE_CAST.get(slug, {})
-    plate = _plate_png(slug, (uni.get("plates") or {}).get("Princess", "")) if uni else None
+    plates = [png for png in (_plate_png(slug, rel) for rel in (uni.get("plates") or {}).values()) if png] if uni else []
     author = d.get("author_name") or ""
     brief = (f"Create a paperback front book cover for a children's activity book called: {book['title']}\n"
              f"What the book is about (for the ARTWORK only — do not write any of this on the cover): {wb.get('pitch') or d.get('description') or ''}\n"
-             + (f"The character on the cover is {uni.get('look')} Use the attached picture as the reference for her face and features; "
-                "draw her in the same friendly full-colour cartoon style as the picture, happy and inviting.\n" if uni else "")
+             + (f"The characters: {uni.get('look')} {uni.get('cast', '')} The attached pictures are the references, in this order: "
+                "Princess, Glitter, Pip, Moss. Draw them in a friendly full-colour cartoon style, happy and inviting.\n" if uni else "")
              + f'The ONLY text anywhere on the cover is the title "{book["title"]}"' + (f' and the author name "{author}"' if author else "") + ".\n"
              "Output the FLAT COVER ARTWORK ITSELF, one flat rectangle filled edge to edge; not a mockup, no spine, no shadow.\n"
              "Bright, clean, child-safe; big readable title; it must look like a bestselling activity book on Amazon.\n"
              + (f"Author: {author}\n" if author else "") + "Book size: 8.5″ × 11″")
     async with httpx.AsyncClient() as client:
-        png = await _generate_one(client, brief, reference_png=plate, gen_size="1024x1536")
+        png = await _generate_one(client, brief, reference_png=plates or None, gen_size="1024x1536")
     return _install_cover(catalog, png, brief)

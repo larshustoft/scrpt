@@ -299,9 +299,9 @@ async def covers(ids: list[str], handle=None) -> dict:
                     plate = None
                     uni = UNIVERSE_CAST.get(r.get("universe") or "", {})
                     if uni:
-                        brief += (f"\nThe character on the cover is {uni['look']} Use the attached picture as the reference "
-                                  "for her face and features, in the same friendly full-colour cartoon style.")
-                        plate = _plate_png(r["universe"], (uni.get("plates") or {}).get("Princess", ""))
+                        brief += (f"\nThe characters: {uni['look']} {uni.get('cast', '')} The attached pictures are the "
+                                  "references, in this order: Princess, Glitter, Pip, Moss — friendly full-colour cartoon style.")
+                        plate = [png for png in (_plate_png(r["universe"], rel) for rel in (uni.get("plates") or {}).values()) if png] or None
                     png = await _generate_one(client, brief, reference_png=plate, gen_size="1024x1536")
                     pth = cover_path(sid); pth.parent.mkdir(parents=True, exist_ok=True); pth.write_bytes(png)
                     d = {k: v for k, v in r.items() if k not in ("id", "created_at", "status", "catalog", "decided_at", "note")}

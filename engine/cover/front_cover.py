@@ -484,11 +484,15 @@ async def _generate_one(client: httpx.AsyncClient, brief: str,
         try:
             if reference_png:
                 # series installment: Book 1's cover rides along as the design
-                # reference (image + prompt via the edits endpoint)
+                # reference (image + prompt via the edits endpoint). A LIST of
+                # references (2026-09-08: a universe's whole cast) goes as
+                # several image[] parts.
+                refs = reference_png if isinstance(reference_png, (list, tuple)) else [reference_png]
+                files = [("image[]", (f"reference-{i + 1}.png", png, "image/png")) for i, png in enumerate(refs)]
                 r = await client.post(
                     "https://api.openai.com/v1/images/edits",
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                    files={"image[]": ("book1-cover.png", reference_png, "image/png")},
+                    files=files,
                     data={"model": await _best_image_model(client),
                           "prompt": brief, "size": gen_size,
                           "quality": "high", "n": "1"},
