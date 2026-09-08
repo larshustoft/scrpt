@@ -136,6 +136,17 @@ async def research(n: int = 8, notes: str = "") -> dict:
             if gp not in GENRE_PRESETS and gp not in CHILDRENS_PRESETS:
                 it["genre_preset"] = "picture_book" if it.get("kind") == "childrens" else ("self_help" if it.get("kind") == "nonfiction" else "romance")
             it["kind"] = "childrens" if it["genre_preset"] in CHILDRENS_PRESETS else ("nonfiction" if GENRE_PRESETS.get(it["genre_preset"], {}).get("kind") == "nonfiction" else "fiction")
+            # the web-search model leaves <cite> tags in its prose: strip them everywhere
+            import re as _re
+            def _clean(v):
+                if isinstance(v, str):
+                    return _re.sub(r"\s+", " ", _re.sub(r"</?cite[^>]*>", "", v)).strip()
+                if isinstance(v, list):
+                    return [_clean(x) for x in v]
+                if isinstance(v, dict):
+                    return {k: _clean(x) for k, x in v.items()}
+                return v
+            it = _clean(it)
             # "Series: Book One – Title" is a label, not a title
             t = str(it.get("title") or "").strip(); st_ = str(it.get("series_title") or "").strip()
             for sep in (" – ", " — ", ": Book One - ", " - "):
