@@ -126,23 +126,48 @@ async def scheduler():
         except Exception:
             print("  autopilot cycle failed:\n" + traceback.format_exc()[-600:])
         try:
-            # dated Kindle publishes: a finished draft whose release day has come
+            # DATED KINDLE PUBLISHES — SAME DAY AS THE PAPERBACK (Lars, 2026-09-08:
+            # "Make sure the kindle versions are coming out on the same day as the
+            # other formats"). The paperback's scheduled release goes live at
+            # midnight GMT on its date; a Kindle has no schedule, only Publish, and
+            # KDP takes hours (up to 72) to put it live. So the Kindle is pressed the
+            # EVENING BEFORE (from 18:00 local on date-1), and a press that fails is
+            # tried again on every pass until it is submitted — never once and forgotten.
             from ..database import list_books as _lb, get_setting as _gs
-            from datetime import date as _date
+            from datetime import date as _date, timedelta as _td
+            now_ = datetime.now()
             for b in _lb(per_page=500).get("books", []):
                 dd = b.get("data") or {}
                 k = dd.get("kdp") or {}
                 when = k.get("kindle_publish_on")
-                if (k.get("kindle_status") == "draft_complete_awaiting_publish" and when
-                        and _date.fromisoformat(when) <= _date.today() and not k.get("kindle_publish_attempted")):
-                    from ..market.kdp_ebook import publish_kindle_only
-                    from ..database import get_book_by_catalog as _gb, update_book as _ub
-                    fresh = _gb(b["catalog_number"]); data = dict(fresh["data"])
-                    data["kdp"] = {**(data.get("kdp") or {}), "kindle_publish_attempted": datetime.now().isoformat(timespec="minutes")}
-                    _ub(fresh["id"], data)
-                    print(f"  ⚙ kindle: dated publish for {b['catalog_number']}")
+                if k.get("kindle_status") != "draft_complete_awaiting_publish" or not when:
+                    continue
+                pub_day = _date.fromisoformat(when)
+                due_now = (now_.date() >= pub_day) or (now_.date() == pub_day - _td(days=1) and now_.hour >= 18)
+                if not due_now:
+                    continue
+                tries = int(k.get("kindle_publish_tries") or 0)
+                last_try = k.get("kindle_publish_attempted") or ""
+                if last_try[:13] == now_.isoformat()[:13]:
+                    continue                                   # one press per hour at most
+                from ..market.kdp_ebook import publish_kindle_only
+                from ..database import get_book_by_catalog as _gb, update_book as _ub
+                fresh = _gb(b["catalog_number"]); data = dict(fresh["data"])
+                data["kdp"] = {**(data.get("kdp") or {}), "kindle_publish_attempted": now_.isoformat(timespec="minutes"),
+                               "kindle_publish_tries": tries + 1}
+                _ub(fresh["id"], data)
+                print(f"  ⚙ kindle: dated publish for {b['catalog_number']} (try {tries + 1})")
+                try:
                     res = await publish_kindle_only(b["catalog_number"])
-                    print(f"  kindle publish {b['catalog_number']}: {res.get('ok')} {res.get('message') or ''}")
+                except Exception as e:
+                    res = {"ok": False, "message": str(e)[:200]}
+                print(f"  kindle publish {b['catalog_number']}: {res.get('ok')} {res.get('message') or ''}")
+                if not res.get("ok") and tries + 1 >= 3:
+                    try:
+                        import subprocess as _sp
+                        _sp.run(["osascript", "-e", f'display notification "Kindle of {b.get("title")} failed {tries + 1} times: {str(res.get("message") or "")[:80]}" with title "SCRPT release desk"'], capture_output=True, timeout=10)
+                    except Exception:
+                        pass
         except Exception:
             print("  dated kindle publish failed:\n" + traceback.format_exc()[-600:])
         try:
