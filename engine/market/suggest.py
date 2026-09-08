@@ -136,6 +136,12 @@ async def research(n: int = 8, notes: str = "") -> dict:
             if gp not in GENRE_PRESETS and gp not in CHILDRENS_PRESETS:
                 it["genre_preset"] = "picture_book" if it.get("kind") == "childrens" else ("self_help" if it.get("kind") == "nonfiction" else "romance")
             it["kind"] = "childrens" if it["genre_preset"] in CHILDRENS_PRESETS else ("nonfiction" if GENRE_PRESETS.get(it["genre_preset"], {}).get("kind") == "nonfiction" else "fiction")
+            # "Series: Book One – Title" is a label, not a title
+            t = str(it.get("title") or "").strip(); st_ = str(it.get("series_title") or "").strip()
+            for sep in (" – ", " — ", ": Book One - ", " - "):
+                if sep in t and (t.lower().startswith(st_.lower()) if st_ else "book one" in t.lower()):
+                    t = t.split(sep, 1)[1].strip(); break
+            it["title"] = t
             sid = uuid.uuid4().hex[:10]
             conn.execute("INSERT INTO suggestions (id, created_at, status, data) VALUES (?,?,?,?)",
                          (sid, datetime.now().isoformat(timespec="minutes"), "new", json.dumps(it)))
