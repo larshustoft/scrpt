@@ -17,8 +17,12 @@ from ..database import get_book_by_catalog, update_book
 
 
 def _art_complete(d: dict) -> bool:
-    spreads = (d.get("childrens") or {}).get("spreads") or []
-    return bool(spreads) and all(((sp.get("illustration") or {}).get("path") or sp.get("illustrated")) for sp in spreads)
+    rec = d.get("childrens") or {}
+    spreads = rec.get("spreads") or []
+    art = rec.get("art") or {}          # illustrate() records its files here — the check read a field nobody writes,
+    return bool(spreads) and all(         # so every rerun redrew the whole book (Star Map, 2026-09-08)
+        (sp.get("illustration") or {}).get("path") or sp.get("illustrated") or str(sp.get("n")) in art
+        for sp in spreads)
 
 
 async def pick_cover(catalog: str) -> dict:
