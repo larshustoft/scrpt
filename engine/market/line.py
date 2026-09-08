@@ -83,10 +83,16 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
         spent = _c.execute("select coalesce(sum(usd),0) from token_usage where catalog=? and at like ?",
                            (catalog, dt.date.today().isoformat() + "%")).fetchone()[0]
         _c.close()
-        if spent >= cap:
+        # an accepted book has nothing left to generate: its tail (wrap, keywords,
+        # gate, upload) costs cents and is never held by the cap — the cap stops
+        # generation, not publishing (three finished workbooks sat on it, 2026-09-08)
+        _acc = ((_d(catalog).get("acceptance") or {}).get("verdict") == "accept")
+        if spent >= cap and not _acc:
             report["steps"].append({"step": "budget", "ok": False, "detail": f"${spent:.2f} spent on this book today, cap ${cap:.0f} — resumes tomorrow"})
             report["stopped_at"] = "budget"
             return report
+        if spent >= cap:
+            report["steps"].append({"step": "budget", "ok": True, "detail": f"${spent:.2f} spent today (cap ${cap:.0f}) — accepted, finishing steps only"})
     except Exception:
         pass
 
