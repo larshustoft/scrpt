@@ -26,6 +26,9 @@ def get_connection() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")     # Better concurrent reads
     conn.execute("PRAGMA foreign_keys=ON")
+    # several jobs write at once (drafts, covers, the desk): wait for a lock
+    # instead of failing with "database is locked" (2026-09-08)
+    conn.execute("PRAGMA busy_timeout=8000")
     return conn
 
 
