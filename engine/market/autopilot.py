@@ -201,6 +201,15 @@ async def scheduler():
         except Exception:
             print("  release desk failed:\n" + traceback.format_exc()[-600:])
         try:
+            from .reader_line import run as _reader_line
+            _rl = await _reader_line()
+            for _t in _rl.get("built", []):
+                print(f"  ⚙ reader line: print file built for {_t}")
+            for _f in _rl.get("failed", []):
+                print(f"  reader line: {_f['title']} — {_f['error']}")
+        except Exception:
+            print("  reader line failed:\n" + traceback.format_exc()[-600:])
+        try:
             from .series_line import advance as _advance_series
             _adv = _advance_series()
             for _st in _adv.get("started", []):
