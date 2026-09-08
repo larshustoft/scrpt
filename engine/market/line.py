@@ -70,6 +70,26 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
     _cc.set(catalog)                 # the ledger books every call to THIS title
     report: dict = {"catalog": catalog, "title": title, "steps": []}
 
+    # A DAILY CAP PER BOOK (2026-09-08): Vector: Zero Point went round the line
+    # three times in a day after two engine restarts and cost $15 in re-edits
+    # and re-audits. No book may spend more than line_daily_cap_usd (default
+    # $12) in one day; past that the line leaves it alone until tomorrow.
+    try:
+        import sqlite3 as _sq
+        from ..config import DATABASE_PATH as _dbp
+        from ..database import get_setting as _gs
+        cap = float(_gs("line_daily_cap_usd", "12") or 12)
+        _c = _sq.connect(str(_dbp))
+        spent = _c.execute("select coalesce(sum(usd),0) from token_usage where catalog=? and at like ?",
+                           (catalog, dt.date.today().isoformat() + "%")).fetchone()[0]
+        _c.close()
+        if spent >= cap:
+            report["steps"].append({"step": "budget", "ok": False, "detail": f"${spent:.2f} spent on this book today, cap ${cap:.0f} — resumes tomorrow"})
+            report["stopped_at"] = "budget"
+            return report
+    except Exception:
+        pass
+
     def step(name, ok, detail=""):
         report["steps"].append({"step": name, "ok": bool(ok), "detail": detail})
         if handle:
