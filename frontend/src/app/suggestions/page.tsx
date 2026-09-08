@@ -10,7 +10,7 @@ interface Suggestion {
   pen_name?: string; pitch?: string; why?: string; comparables?: string[]; target_words?: number;
   price_kindle?: number; price_paperback?: number; cover_direction?: string; season?: string;
   estimate_monthly_usd?: { conservative?: number; realistic?: number; stretch?: number }; confidence?: string;
-  cover?: string; cover_at?: string;
+  cover?: string; cover_at?: string; publisher_notes?: string;
 }
 
 /** SUGGESTED BOOKS — the acquisitions desk. SCRPT reads the market and lays
@@ -83,6 +83,14 @@ export default function SuggestionsPage() {
       await load();
     } catch { setMsg("The engine is offline."); }
     setBusy("");
+  };
+
+  const saveNotes = async (id: string, notes: string) => {
+    try {
+      await fetch(`${scrpt.engineUrl}/api/scrpt/suggestions/${id}/notes`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes }) });
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, publisher_notes: notes } : r)));
+    } catch { /* engine offline */ }
   };
 
   const shown = rows.filter((r) => r.status === tab);
@@ -171,6 +179,17 @@ export default function SuggestionsPage() {
           {s.why && <p className="text-[12.5px] text-text-secondary mt-2 leading-relaxed"><span className="font-medium text-text-primary">Why: </span>{s.why}</p>}
           {s.comparables && s.comparables.length > 0 && (
             <p className="text-[12px] text-text-tertiary mt-2">Comparable: {s.comparables.join(" · ")}</p>
+          )}
+          {s.status === "new" && (
+            <div className="mt-3">
+              <div className="label-scrpt">Your notes for the finished book</div>
+              <textarea className="input-scrpt text-[12.5px]" rows={2} placeholder="Anything the book must do or avoid — tone, names, scenes, what to leave out. Carried into the work order when you approve."
+                        defaultValue={s.publisher_notes || ""}
+                        onBlur={(e) => { if ((e.target.value || "") !== (s.publisher_notes || "")) saveNotes(s.id, e.target.value); }} />
+            </div>
+          )}
+          {s.status !== "new" && s.publisher_notes && (
+            <p className="text-[12px] text-text-tertiary mt-2"><span className="font-medium text-text-secondary">Your notes: </span>{s.publisher_notes}</p>
           )}
           <div className="flex items-center gap-2 mt-4">
             {s.status === "new" && (<>

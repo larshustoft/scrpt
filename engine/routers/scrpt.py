@@ -3023,6 +3023,16 @@ async def workbook_write(catalog: str):
     return {"job_id": start_job("workbook", lambda h: write_workbook(catalog, h), book_catalog=catalog)}
 
 
+@router.post("/suggestions/{sid}/notes")
+def suggestions_notes(sid: str, body: dict = Body(default={})):
+    """The publisher's instructions for this book: {notes}."""
+    from ..market.suggest import set_notes
+    try:
+        return set_notes(sid, str(body.get("notes") or ""))
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""

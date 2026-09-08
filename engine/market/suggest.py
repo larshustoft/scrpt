@@ -206,6 +206,8 @@ async def approve(ids: list[str], commission_all: bool = False) -> dict:
             n_books = int(r.get("series_books") or 1) if series_title else 1
             idea = (f"{r.get('pitch') or ''}\n\nMARKET EVIDENCE: {r.get('why') or ''}\n\nCOMPARABLES: "
                     f"{', '.join(r.get('comparables') or [])}")
+            if r.get("publisher_notes"):
+                idea += f"\n\nPUBLISHER'S INSTRUCTIONS (binding): {r['publisher_notes']}"
             req = WorkOrderRequest(
                 kind=kind, genre_preset=r["genre_preset"], idea=idea, title=r.get("title") or "",
                 pen_name=r.get("pen_name") or "", series_title=series_title, series_books=max(1, n_books),
@@ -335,7 +337,7 @@ def _commission_workbook(r: dict) -> tuple[str, str]:
         "trim_size": "8.5x11", "paper_type": "white_bw", "page_count": 0,
         "list_price": float(r.get("price_paperback") or 8.99),
         "description": (r.get("pitch") or ""), "cover_direction": r.get("cover_direction") or "",
-        "workbook": {"universe": slug, "pitch": r.get("pitch") or "", "ages": "3-5" if "letters" in (r.get("title") or "").lower() or "cut" in (r.get("title") or "").lower() else "4-8",
+        "workbook": {"universe": slug, "pitch": (r.get("pitch") or "") + (f" PUBLISHER'S INSTRUCTIONS (binding): {r['publisher_notes']}" if r.get("publisher_notes") else ""), "ages": "3-5" if "letters" in (r.get("title") or "").lower() or "cut" in (r.get("title") or "").lower() else "4-8",
                       "pages_target": 48, "suggestion_id": r.get("id")},
         "manuscript": {"kind": "childrens", "genre_preset": "picture_book", "idea": r.get("pitch") or "", "status": "idea", "chapters": []},
         "interior": {}, "cover": {}, "audio": {}, "suggestion_id": r.get("id"),
@@ -354,3 +356,19 @@ def _commission_workbook(r: dict) -> tuple[str, str]:
             pass
     job_id = start_job("workbook", lambda h, c=cat: write_workbook(c, h), book_catalog=cat)
     return cat, job_id
+
+
+def set_notes(sid: str, notes: str) -> dict:
+    """The publisher's instructions for the finished book, kept on the
+    suggestion and carried into the work order when it is approved."""
+    _init()
+    conn = get_connection()
+    try:
+        row = conn.execute("SELECT data FROM suggestions WHERE id=?", (sid,)).fetchone()
+        if not row:
+            raise ValueError("unknown suggestion")
+        d = json.loads(row[0]); d["publisher_notes"] = str(notes or "")[:4000]
+        conn.execute("UPDATE suggestions SET data=? WHERE id=?", (json.dumps(d), sid)); conn.commit()
+        return {"id": sid, "publisher_notes": d["publisher_notes"]}
+    finally:
+        conn.close()
