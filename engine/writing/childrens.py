@@ -370,7 +370,40 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                 last = f"HTTP {r.status_code}: {r.text[:160]}"
                 print(f"  illustration attempt {attempt + 1} ({model}): {last}", flush=True)
                 await asyncio.sleep(4 * (attempt + 1))
-        raise RuntimeError(f"Illustration failed after 3 attempts on {model} — last: {last}")
+        # The image-edit endpoint answered 500 three times (Star Map, 2026-09-08)
+        # while the Responses API drew all day: same prompt, same reference,
+        # the newest live model, through the image_generation tool.
+        print(f"  illustration: edits endpoint failed ({last}) — trying the Responses API", flush=True)
+        return await _draw_via_responses(prompt, reference)
+
+    async def _draw_via_responses(prompt: str, reference: Optional[bytes]) -> bytes:
+        from ..cover.front_cover import _best_text_models
+        content = []
+        if reference:
+            content.append({"type": "input_image", "image_url": "data:image/png;base64," + base64.b64encode(reference).decode()})
+        content.append({"type": "input_text", "text": prompt[:3800]})
+        body = {"input": [{"role": "user", "content": content}],
+                "tools": [{"type": "image_generation", "size": "1536x1024", "quality": "high"}], "tool_choice": "required"}
+        last = None
+        async with httpx.AsyncClient(timeout=460) as c:
+            for model in await _best_text_models(c):
+                body["model"] = model
+                for attempt in range(2):
+                    try:
+                        r = await c.post("https://api.openai.com/v1/responses", headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                                         json=body, timeout=420)
+                    except httpx.HTTPError as e:
+                        last = e; await asyncio.sleep(3); continue
+                    if r.status_code == 200:
+                        for item in r.json().get("output", []):
+                            if item.get("type") == "image_generation_call" and item.get("result"):
+                                return base64.b64decode(item["result"])
+                        last = RuntimeError("no image in the response"); continue
+                    last = RuntimeError(f"{r.status_code}: {r.text[:160]}")
+                    if r.status_code < 500:
+                        break
+                    await asyncio.sleep(3)
+        raise RuntimeError(f"Illustration failed on both routes — last: {last}")
 
     targets = [s for s in spreads if only is None or s["n"] == only]
     # spread 1 must exist before any other can reference it
