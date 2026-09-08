@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { scrpt } from "@/lib/scrpt";
 
@@ -103,9 +104,8 @@ export default function SuggestionsPage() {
   const shown = rows.filter((r) => r.status === tab);
   const money = (n?: number) => (n == null ? "–" : `$${Math.round(n).toLocaleString()}`);
 
-  return (
-    <div className="max-w-[980px] mx-auto px-8 py-10 fade-up">
-      {big && (
+  return (<>
+    {big && typeof document !== "undefined" && createPortal(
         <div onClick={() => setBig(null)} role="dialog" aria-label={big.title}
              style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,.82)", display: "flex", alignItems: "center",
                       justifyContent: "center", cursor: "zoom-out", padding: 24 }}>
@@ -115,8 +115,9 @@ export default function SuggestionsPage() {
           <div style={{ position: "absolute", bottom: 18, left: 0, right: 0, textAlign: "center", color: "rgba(255,255,255,.8)", fontSize: 12 }}>
             {big.title} · click anywhere or press Esc to close
           </div>
-        </div>
-      )}
+        </div>, document.body)}
+    <div className="max-w-[980px] mx-auto px-8 py-10 fade-up">
+
       <div className="flex items-end justify-between gap-6 flex-wrap">
         <div>
           <h1 className="serif-display text-[32px] font-semibold">Suggested Books</h1>
@@ -231,5 +232,5 @@ export default function SuggestionsPage() {
         </div>
       ))}
     </div>
-  );
+  </>);
 }
