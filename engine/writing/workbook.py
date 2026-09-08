@@ -72,7 +72,13 @@ async def plan_workbook(catalog: str) -> list[dict]:
         "pages, and the character appearing on most pages in a small supporting role (cheering, holding a sign, being coloured). "
         "Allowed page types: tracing (lines, shapes, letters, numbers, words), cutting (dashed cut lines, cut-and-paste), "
         "matching (draw a line from A to B), counting (count and circle / write the number), colouring (big simple line art, "
-        "or colour-by-number), maze (simple), find-the-difference, patterns (what comes next), and one certificate page last. "
+        "or colour-by-number), maze (simple), find-the-difference, patterns (what comes next), how-to-draw (a 2x3 grid of six "
+        "numbered steps that each add a few simple strokes to the previous step, ending in the finished drawing, with a large "
+        "empty practice box below), and one certificate page last. "
+        "THE BOOK'S OWN KIND RULES THE MIX: a 'draw with' / 'how to draw' book is at least 36 how-to-draw pages (one subject per "
+        "page: each character of the world, then its places and objects, easy to harder), with a few colouring pages; a 'cut and "
+        "paste' book is mostly cutting pages after a few tracing warm-ups; a 'letters, numbers & colours' book is mostly tracing, "
+        "counting and colouring. "
         "Every brief must be concrete enough that a designer draws the page without asking: the exact letters/numbers/objects, "
         "how many rows, what the character does, the one-line instruction printed at the top.\n"
         'Return JSON only: {"pages": [{"n": 1, "type": "tracing", "title": "Trace the letter A", "brief": "..."}]}'
@@ -98,6 +104,9 @@ def _page_prompt(book: dict, page: dict, uni: dict) -> str:
         f"{(book['data'].get('workbook') or {}).get('ages') or '3-5'}. Page {page['n']}: {page.get('title', '')}.\n"
         f"THE PAGE: {page['brief']}\n"
         + (f"THE CHARACTERS (the attached pictures are the references, in this order: Princess, Glitter, Pip, Moss): {uni.get('look')} {uni.get('cast', '')}\n" if uni else "")
+        + ("HOW-TO-DRAW PAGE: a 2x3 grid of six numbered boxes; step 1 is the simplest shape, each later box repeats the previous "
+           "drawing exactly and adds a few strokes, box 6 is the finished drawing; below the grid one large empty practice box. "
+           "The subject must be drawn identically in every step.\n" if page.get("type") == "how-to-draw" else "")
         + "Rules: one short instruction line at the top in a friendly rounded font; generous spacing so a small child can work; "
         "dashed lines for cutting, dotted outlines for tracing, ruled rows for handwriting; every element fully inside 0.5 in margins; "
         "nothing cut off; no page number; no publisher text; no watermark."
