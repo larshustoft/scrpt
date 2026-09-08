@@ -23,6 +23,13 @@ export default function SuggestionsPage() {
   const [msg, setMsg] = useState("");
   const [notes, setNotes] = useState("");
   const [tab, setTab] = useState<"new" | "approved" | "rejected">("new");
+  const [big, setBig] = useState<{ src: string; title: string } | null>(null);
+  useEffect(() => {
+    if (!big) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setBig(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [big]);
 
   const load = useCallback(async () => {
     try {
@@ -98,6 +105,18 @@ export default function SuggestionsPage() {
 
   return (
     <div className="max-w-[980px] mx-auto px-8 py-10 fade-up">
+      {big && (
+        <div onClick={() => setBig(null)} role="dialog" aria-label={big.title}
+             style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,.82)", display: "flex", alignItems: "center",
+                      justifyContent: "center", cursor: "zoom-out", padding: 24 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={big.src} alt={big.title}
+               style={{ maxHeight: "92vh", maxWidth: "92vw", borderRadius: 6, boxShadow: "0 24px 80px rgba(0,0,0,.6)" }} />
+          <div style={{ position: "absolute", bottom: 18, left: 0, right: 0, textAlign: "center", color: "rgba(255,255,255,.8)", fontSize: 12 }}>
+            {big.title} · click anywhere or press Esc to close
+          </div>
+        </div>
+      )}
       <div className="flex items-end justify-between gap-6 flex-wrap">
         <div>
           <h1 className="serif-display text-[32px] font-semibold">Suggested Books</h1>
@@ -150,7 +169,9 @@ export default function SuggestionsPage() {
             {s.cover ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={`${scrpt.engineUrl}/api/scrpt/suggestions/${s.id}/cover.png?v=${s.cover_at || ""}`} alt={s.title}
-                   style={{ width: 132, aspectRatio: "2 / 3", objectFit: "cover", borderRadius: 4, boxShadow: "0 6px 18px rgba(0,0,0,.35)" }} />
+                   title="Click to see it large"
+                   onClick={() => setBig({ src: `${scrpt.engineUrl}/api/scrpt/suggestions/${s.id}/cover.png?v=${s.cover_at || ""}`, title: s.title })}
+                   style={{ width: 132, aspectRatio: "2 / 3", objectFit: "cover", borderRadius: 4, boxShadow: "0 6px 18px rgba(0,0,0,.35)", cursor: "zoom-in" }} />
             ) : (
               <button className="btn-ghost text-[11px]" style={{ width: 132, aspectRatio: "2 / 3" }} disabled={!!busy}
                       onClick={() => covers([s.id])}>{busy === "covers" ? "Designing…" : "Design the cover"}</button>
