@@ -2978,9 +2978,18 @@ async def suggestions_research(body: dict = Body(default={})):
     return {"job_id": start_job("suggest_research", job)}
 
 
+@router.post("/series-line/advance")
+async def series_line_advance():
+    """Start the next book of every series approved in full whose previous book is drafted."""
+    from ..market.series_line import advance
+    return advance()
+
+
 @router.post("/suggestions/approve")
 async def suggestions_approve(body: dict = Body(default={})):
-    """{ids: [...], commission_all?: false} — each becomes a work order, drafted at once."""
+    """{ids: [...], commission_all?: false} — each becomes a work order. A series with
+    commission_all creates every planned book and the series line writes them in order;
+    without it only the first book is created ("Create first book")."""
     from ..market.suggest import approve
     ids = [str(x) for x in (body.get("ids") or [])]
     if not ids:

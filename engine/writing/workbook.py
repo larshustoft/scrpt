@@ -288,6 +288,129 @@ async def write_workbook(catalog: str, handle=None) -> dict:
     return {"ok": ok, "pages": len(pages), **res}
 
 
+# ── Cover framing for the trim ───────────────────────────────────────────────
+# The image model draws 2:3; an 8.5x11 cover is wider, so ~14% of the height
+# is cut. The model ignores "leave the bottom band empty" often enough that
+# the author name landed in the cut band three times out of three (Lars,
+# 2026-09-08). So the crop is chosen by looking: macOS Vision OCR finds where
+# the title and the author line actually are, the crop keeps the title whole
+# and either keeps the author line inside the safe zone or, when that is not
+# possible, the house stamps the author name itself.
+
+_OCR_BIN = Path.home() / ".scrpt" / "bin" / "ocr-boxes"
+
+
+def _ocr_boxes(png_path: Path) -> list[dict]:
+    """[{text, conf, x, y, w, h}] in image fractions (origin top-left), [] when
+    Vision is unavailable. Compiled once from engine/tools/ocr_boxes.swift."""
+    import subprocess
+    src = PROJECT_ROOT / "engine" / "tools" / "ocr_boxes.swift"
+    try:
+        if not _OCR_BIN.exists() or _OCR_BIN.stat().st_mtime < src.stat().st_mtime:
+            _OCR_BIN.parent.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["xcrun", "swiftc", "-O", str(src), "-o", str(_OCR_BIN)], check=True,
+                           capture_output=True, timeout=300)
+        out = subprocess.run([str(_OCR_BIN), str(png_path)], capture_output=True, text=True, timeout=120)
+        return json.loads(out.stdout or "[]")
+    except Exception:
+        return []
+
+
+def _similar(a: str, b: str) -> float:
+    from difflib import SequenceMatcher
+    return SequenceMatcher(None, a.lower().strip(), b.lower().strip()).ratio()
+
+
+def frame_cover_for_trim(raw_png: bytes, trim: str, author: str, work_dir: Path | None = None) -> tuple[bytes, dict]:
+    """Crop the model's image to the trim's proportions around the text it
+    drew, and stamp the author name when the model's own is lost or unsafe.
+    Returns (png bytes, report)."""
+    import io
+    from PIL import Image, ImageDraw, ImageFont
+    tw, th = (float(x) for x in trim.split("x"))
+    im = Image.open(io.BytesIO(raw_png)).convert("RGB"); W, H = im.size
+    new_h = int(W * th / tw)
+    report = {"trim": trim, "boxes": [], "cut_top": 0, "cut_bottom": 0, "stamped": False}
+    if new_h >= H:                       # not too tall: nothing to decide
+        return raw_png, report
+    surplus = H - new_h
+    tmp = (work_dir or Path(OUTPUT_DIR)) / "_frame-ocr.png"
+    tmp.parent.mkdir(parents=True, exist_ok=True); tmp.write_bytes(raw_png)
+    boxes = [b for b in _ocr_boxes(tmp) if b.get("conf", 0) >= 0.5 and b.get("w", 0) >= 0.08]
+    tmp.unlink(missing_ok=True)
+    report["boxes"] = boxes
+    author_box = next((b for b in boxes if author and _similar(b["text"], author) >= 0.7), None)
+    title_boxes = [b for b in boxes if b is not author_box]
+    margin = 0.015 * H
+    title_top = min((b["y"] * H for b in title_boxes), default=None)
+    title_bot = max(((b["y"] + b["h"]) * H for b in title_boxes), default=None)
+    safe = 0.035 * new_h               # KDP: text 0.25" inside the trim (0.25/11 = 2.3%) plus air
+
+    def author_state(cut_top):
+        if not author_box:
+            return "absent"
+        top, bot = author_box["y"] * H - cut_top, (author_box["y"] + author_box["h"]) * H - cut_top
+        if bot <= new_h - safe and top >= safe:
+            return "safe"
+        if top >= new_h or bot <= 0:
+            return "gone"
+        return "cut"
+
+    def title_ok(cut_top):
+        if title_top is None:
+            return True
+        return title_top - margin >= cut_top and title_bot + margin <= cut_top + new_h
+
+    # candidates: centred first, then every 1% of the surplus either way
+    order = sorted(range(0, surplus + 1, max(1, surplus // 100)), key=lambda c: abs(c - surplus / 2))
+    pick = None
+    for want in ("safe", "gone", "absent"):
+        for c in order:
+            if title_ok(c) and author_state(c) == want:
+                pick = c; break
+        if pick is not None:
+            break
+    if pick is None:                    # keep the title whole, whatever the author line does
+        pick = next((c for c in order if title_ok(c)), None)
+    if pick is None:                    # the title itself does not fit: cut where it hurts least
+        pick = int(min(surplus, max(0, (title_top or 0) - margin)))
+    out = im.crop((0, pick, W, pick + new_h))
+    report.update({"cut_top": pick, "cut_bottom": surplus - pick, "author": author_state(pick)})
+
+    if author and author_state(pick) != "safe":
+        draw = ImageDraw.Draw(out)
+        size = max(18, int(new_h * 0.028))
+        font = None
+        for f in ("/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf", "/Library/Fonts/Arial Rounded Bold.ttf"):
+            try:
+                font = ImageFont.truetype(f, size); break
+            except OSError:
+                continue
+        font = font or ImageFont.load_default()
+        x0, y0, x1, y1 = draw.textbbox((0, 0), author, font=font)
+        tw_px, th_px = x1 - x0, y1 - y0
+        x = (W - tw_px) / 2 - x0; y = new_h - safe - th_px - y0 - int(new_h * 0.015)
+        draw.text((x, y), author, font=font, fill="white", stroke_width=max(2, size // 9), stroke_fill=(43, 27, 61))
+        report["stamped"] = True
+    buf = io.BytesIO(); out.save(buf, format="PNG", optimize=True)
+    return buf.getvalue(), report
+
+
+def reframe_cover(catalog: str) -> dict:
+    """Re-run the framing on the model's original image (cover-art-raw.png),
+    no generation, and re-install. For covers made before the framing rule."""
+    from ..cover.front_cover import _install_cover
+    book = get_book_by_catalog(catalog); d = book["data"]
+    out_dir = Path(OUTPUT_DIR) / catalog
+    raw = out_dir / "cover-art-raw.png"
+    if not raw.exists():
+        raw.write_bytes((out_dir / "cover-art.png").read_bytes())
+    trim = (d.get("format") or {}).get("trim_size") or d.get("trim_size") or "8.5x11"
+    framed, rep = frame_cover_for_trim(raw.read_bytes(), trim, d.get("author_name") or "", out_dir)
+    res = _install_cover(catalog, framed, ((d.get("cover") or {}).get("art_brief") or ""))
+    return {**res, "framing": rep}
+
+
 async def design_cover(catalog: str) -> dict:
     """The front cover, with the universe's character plate as the identity
     reference, installed the house way (cover-art, ebook, preview files)."""
@@ -310,4 +433,9 @@ async def design_cover(catalog: str) -> dict:
              + (f"Author: {author}\n" if author else "") + "Book size: 8.5″ × 11″")
     async with httpx.AsyncClient() as client:
         png = await _generate_one(client, brief, reference_png=plates or None, gen_size="1024x1536")
-    return _install_cover(catalog, png, brief)
+    out_dir = Path(OUTPUT_DIR) / catalog; out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "cover-art-raw.png").write_bytes(png)          # the model's image, uncropped
+    trim = (d.get("format") or {}).get("trim_size") or d.get("trim_size") or "8.5x11"
+    framed, rep = frame_cover_for_trim(png, trim, author, out_dir)
+    res = _install_cover(catalog, framed, brief)
+    return {**res, "framing": rep}

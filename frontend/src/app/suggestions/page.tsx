@@ -65,16 +65,23 @@ export default function SuggestionsPage() {
     setBusy("");
   };
 
-  const decide = async (ids: string[], action: "approve" | "reject") => {
+  // scope "series": every planned book is commissioned and written one after
+  // another; "first": only book one, the rest of the series stays a plan
+  // (Lars, 2026-09-08: "only commit to create one of them")
+  const decide = async (ids: string[], action: "approve" | "reject", scope: "series" | "first" = "series") => {
     if (!ids.length) return;
     setBusy(action); setMsg("");
     try {
       const r = await fetch(`${scrpt.engineUrl}/api/scrpt/suggestions/${action}`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(action === "approve" ? { ids, commission_all: scope === "series" } : { ids }) });
       const j = await r.json();
       if (action === "approve") {
-        const ok = (j.results || []).filter((x: { ok: boolean }) => x.ok).length;
-        setMsg(`${ok} of ${ids.length} commissioned — writing has started; the release desk takes them from here.`);
+        const res = (j.results || []).filter((x: { ok: boolean }) => x.ok) as { ok: boolean; scope?: string; books?: number }[];
+        const series = res.filter((x) => x.scope === "series");
+        const extra = series.reduce((n, x) => n + Math.max(0, (x.books || 1) - 1), 0);
+        setMsg(`${res.length} of ${ids.length} commissioned — writing has started; the release desk takes them from here.` +
+          (extra ? ` ${series.length} series approved in full: ${extra} later book${extra > 1 ? "s" : ""} will be written one after another.` : ""));
       } else setMsg(`${ids.length} set aside.`);
       await load();
     } catch { setMsg("The engine is offline."); }
@@ -154,9 +161,10 @@ export default function SuggestionsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [big, step]);
   useEffect(() => { if (big != null && big >= shown.length) setBig(shown.length ? shown.length - 1 : null); }, [shown.length, big]);
-  const decideHere = async (r: Suggestion, action: "approve" | "reject") => {
-    await decide([r.id], action);            // the row leaves this list; the index now points at the next book
+  const decideHere = async (r: Suggestion, action: "approve" | "reject", scope: "series" | "first" = "series") => {
+    await decide([r.id], action, scope);     // the row leaves this list; the index now points at the next book
   };
+  const isSeries = (r: Suggestion) => !!r.series_title && (r.series_books || 1) > 1;
 
   return (<>
     {cur && typeof document !== "undefined" && createPortal(
@@ -178,7 +186,11 @@ export default function SuggestionsPage() {
             {cur.publisher_notes && <p style={{ fontSize: 12, marginTop: 10, opacity: .7 }}>Your notes: {cur.publisher_notes}</p>}
             <div style={{ display: "flex", gap: 8, marginTop: 22, alignItems: "center" }}>
               {cur.status === "new" ? (<>
-                <button className="btn-brass text-[12px]" disabled={!!busy} onClick={() => decideHere(cur, "approve")}>Approve</button>
+                <button className="btn-brass text-[12px]" disabled={!!busy} onClick={() => decideHere(cur, "approve", "series")}>
+                  {isSeries(cur) ? `Approve book series (${cur.series_books})` : "Approve"}
+                </button>
+                {isSeries(cur) && <button className="btn-ghost text-[12px]" disabled={!!busy} title="Only book one is written; the rest stays a plan"
+                  onClick={() => decideHere(cur, "approve", "first")}>Create first book</button>}
                 <button className="btn-ghost text-[12px]" disabled={!!busy} onClick={() => decideHere(cur, "reject")}>Set aside</button>
               </>) : <span style={{ fontSize: 12, opacity: .7 }}>{cur.status === "approved" ? "in production" : "set aside"}</span>}
             </div>
@@ -224,7 +236,8 @@ export default function SuggestionsPage() {
           </button>
         )}
         {tab === "new" && shown.length > 0 && (
-          <button className="btn-brass text-[12px]" disabled={!!busy} onClick={() => decide(shown.map((r) => r.id), "approve")}>
+          <button className="btn-brass text-[12px]" disabled={!!busy} title="Series are approved in full and written one book after another"
+            onClick={() => decide(shown.map((r) => r.id), "approve", "series")}>
             {busy === "approve" ? "Commissioning…" : `Approve all ${shown.length}`}
           </button>
         )}
@@ -290,7 +303,11 @@ export default function SuggestionsPage() {
           )}
           <div className="flex items-center gap-2 mt-4">
             {s.status === "new" && (<>
-              <button className="btn-brass text-[12px]" disabled={!!busy} onClick={() => decide([s.id], "approve")}>Approve</button>
+              <button className="btn-brass text-[12px]" disabled={!!busy} onClick={() => decide([s.id], "approve", "series")}>
+                {isSeries(s) ? `Approve book series (${s.series_books})` : "Approve"}
+              </button>
+              {isSeries(s) && <button className="btn-ghost text-[12px]" disabled={!!busy} title="Only book one is written; the rest stays a plan"
+                onClick={() => decide([s.id], "approve", "first")}>Create first book</button>}
               <button className="btn-ghost text-[12px]" disabled={!!busy} onClick={() => decide([s.id], "reject")}>Set aside</button>
             </>)}
             {s.status === "approved" && s.catalog && (

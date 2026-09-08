@@ -201,6 +201,13 @@ async def scheduler():
         except Exception:
             print("  release desk failed:\n" + traceback.format_exc()[-600:])
         try:
+            from .series_line import advance as _advance_series
+            _adv = _advance_series()
+            for _st in _adv.get("started", []):
+                print(f"  ⚙ series line: writing {_st['title']} (after {_st['after']})")
+        except Exception:
+            print("  series line failed:\n" + traceback.format_exc()[-600:])
+        try:
             from ..reports.sync import due as _sync_due, run_sync as _run_sync
             if _sync_due():
                 print("  ⚙ kdp reports: weekly sync")

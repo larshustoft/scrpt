@@ -217,15 +217,24 @@ async def approve(ids: list[str], commission_all: bool = False) -> dict:
             try:
                 res = await create_workorder(req)
                 cat = (res.get("books") or [{}])[0].get("catalog_number")
-                # the suggested prices ride along to the release desk
+                # the suggested prices ride along to the release desk; a series
+                # approved in full is flagged so the series line writes the
+                # later books one after another ([[series_line]])
                 from ..database import get_book_by_catalog, update_book
-                b = get_book_by_catalog(cat)
-                if b:
+                for made in (res.get("books") or []):
+                    b = get_book_by_catalog(made.get("catalog_number"))
+                    if not b:
+                        continue
                     d = dict(b["data"]); d["list_price"] = float(r.get("price_paperback") or d.get("list_price") or 12.99)
-                    d["ebook_price"] = float(r.get("price_kindle") or 4.99); d["suggestion_id"] = sid; update_book(b["id"], d)
+                    d["ebook_price"] = float(r.get("price_kindle") or 4.99); d["suggestion_id"] = sid
+                    if commission_all and n_books > 1 and d.get("series"):
+                        d["series"] = {**d["series"], "auto_advance": True}
+                    update_book(b["id"], d)
                 conn.execute("UPDATE suggestions SET status='approved', catalog=?, decided_at=? WHERE id=?",
                              (cat, datetime.now().isoformat(timespec="minutes"), sid))
-                results.append({"id": sid, "ok": True, "catalog": cat, "job_id": res.get("job_id")})
+                results.append({"id": sid, "ok": True, "catalog": cat, "job_id": res.get("job_id"),
+                                "scope": "series" if (commission_all and n_books > 1) else "first",
+                                "books": len(res.get("books") or [])})
             except Exception as e:
                 results.append({"id": sid, "ok": False, "reason": str(e)[:200]})
         conn.commit()

@@ -134,6 +134,11 @@ def launch_gate(catalog: str) -> dict:
     # ships only after he has read chapter one and said yes. Later books in
     # a series he has approved do not wait.
     series = d.get("series") or {}
+    # Picture books and workbooks have no chapter one; they are looked at,
+    # not read, and ship on the line's own checks (Lars, 2026-09-08: "get as
+    # many books out as possible").
+    if d.get("kind") == "childrens" or (d.get("book_type") or "") == "workbook":
+        series = {}
     if int(series.get("book_number") or 0) == 1 and (d.get("release") or {}).get("status") not in ("submitted", "released"):
         pr = d.get("publisher_read") or {}
         item("Chapter one read by the publisher", bool(pr.get("ok")),
