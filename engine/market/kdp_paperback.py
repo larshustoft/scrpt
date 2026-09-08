@@ -163,9 +163,9 @@ class Stager:
         and a book that matches nothing still gets "General" under its first
         resolvable path — KDP refuses to publish with no category at all."""
         p = self.page
-        SEL = """(t) => {
+        SEL = """([t, idx]) => {
             const ss = [...document.querySelectorAll('select')].filter(s => s.offsetParent !== null && /react-aui/.test(s.name || s.id));
-            const s = ss[ss.length - 1]; if (!s) return 'noselect';
+            const s = ss[idx] || ss[ss.length - 1]; if (!s) return 'noselect';
             const opts = [...s.options].filter(o => o.text.trim() !== 'Select one');
             const norm = x => x.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
             const w = norm(t); const first = w.split(' ')[0];
@@ -191,23 +191,32 @@ class Stager:
             await self.click_text("Choose categories", 2000)
         await p.wait_for_timeout(2500)
         placed = 0
-        first_group = True
         chains = [list(c) for c in cats[:3]]
+        NSEL = """() => [...document.querySelectorAll('select')].filter(s => s.offsetParent !== null && /react-aui/.test(s.name || s.id)).length"""
+        # Every level is chosen in ITS select (the group's first select + depth),
+        # never "the last visible one": after a path that failed at depth two the
+        # last select is a deep one, and the next path's top level found no
+        # option there (three workbooks landed in General that way, 2026-09-08).
+        # A new group is opened only after a placement, so a failed path is
+        # retried inside the same group.
+        base = max(0, int(await p.evaluate(NSEL)) - 1)
+        need_new_group = False
         for attempt_general in (False, True):
             for chain in chains:
                 if placed >= 3:
                     break
                 path, leaf = chain[:-1], (chain[-1] if not attempt_general else "General")
-                if not first_group:
+                if need_new_group:
                     try:
                         await p.get_by_role("button", name="Add another category").click(timeout=6000)
                         await p.wait_for_timeout(1500)
+                        base = max(0, int(await p.evaluate(NSEL)) - 1)
                     except Exception:
                         pass
-                first_group = False
+                    need_new_group = False
                 ok = True
-                for level in path:
-                    r = await p.evaluate(SEL, level)
+                for depth, level in enumerate(path):
+                    r = await p.evaluate(SEL, [level, base + depth])
                     await p.wait_for_timeout(1500)
                     if not r.startswith("ok"):
                         self.note(f"category level '{level}' not in the print tree ({r[:90]})")
@@ -222,6 +231,7 @@ class Stager:
                         placed = n
                     else:
                         placed += 1
+                    need_new_group = True
                     self.note(f"category placed: {' > '.join(path)} > {r.split(':',1)[1]}")
                 else:
                     self.note(f"category leaf '{leaf}' not under {' > '.join(path)} ({r[:80]})")
@@ -242,9 +252,25 @@ class Stager:
         y, mo, da = (int(x) for x in iso_date.split("-"))
         MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
                   "September", "October", "November", "December"]
-        await p.get_by_text("Schedule my book", exact=False).first.click(timeout=8000)
-        await p.wait_for_timeout(1500)
+        want_val = f"{mo:02d}/{da:02d}/{y}"
         inp = p.locator("#release-date-picker-input")
+        # a resumed draft already scheduled on an earlier run shows the date
+        # and no clickable "Schedule my book" text (two workbooks, 2026-09-08)
+        if await inp.count():
+            try:
+                if (await inp.first.input_value()).strip() == want_val:
+                    self.note(f"release already scheduled for {iso_date} on the draft")
+                    return True
+            except Exception:
+                pass
+        try:
+            await p.get_by_text("Schedule my book", exact=False).first.click(timeout=8000)
+        except Exception:
+            r = await p.evaluate("""() => { const rs=[...document.querySelectorAll('input[type=radio]')]; const r=rs.find(r=>/schedule/i.test(((r.closest('label')||r.parentElement||{}).innerText)||'') || /schedule/i.test(r.value||'') || /schedule/i.test(r.id||'')); if(!r) return 'missing'; r.scrollIntoView({block:'center'}); r.click(); return 'ok'; }""")
+            self.note(f"release: 'Schedule my book' chosen with a DOM click ({r})")
+            if r != "ok":
+                raise
+        await p.wait_for_timeout(1500)
         await inp.wait_for(timeout=8000)
         await inp.click(timeout=5000)
         await p.wait_for_timeout(1000)

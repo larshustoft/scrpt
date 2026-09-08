@@ -365,11 +365,14 @@ def _commission_workbook(r: dict) -> tuple[str, str]:
         # the print tree has no default for children's activity books: plan the
         # categories at birth so the stager never lands them in General
         "kdp": {"print_categories_plan": (
-            [["Children's Books", "Arts, Music & Photography", "Art", "Drawing"],
-             ["Children's Books", "Activities, Crafts & Games", "Activity Books"]]
+            # KDP's PRINT tree (read off the picker, 2026-09-08): Activities, Crafts &
+            # Games has only General / Interactive Adventures / Spies & Spying;
+            # Early Learning > Basic Concepts has Alphabet, Counting, Colors, General…
+            [["Children's Books", "Arts, Music & Photography", "Art", "General"],
+             ["Children's Books", "Activities, Crafts & Games", "General"]]
             if "draw" in (r.get("title") or "").lower() else
-            [["Children's Books", "Activities, Crafts & Games", "Activity Books"],
-             ["Children's Books", "Early Learning", "Basic Concepts"]])},
+            [["Children's Books", "Activities, Crafts & Games", "General"],
+             ["Children's Books", "Early Learning", "Basic Concepts", "General"]])},
         "workbook": {"universe": slug, "pitch": (r.get("pitch") or "") + (f" PUBLISHER'S INSTRUCTIONS (binding): {r['publisher_notes']}" if r.get("publisher_notes") else ""), "ages": "3-5" if "letters" in (r.get("title") or "").lower() or "cut" in (r.get("title") or "").lower() else "4-8",
                       "pages_target": 48, "suggestion_id": r.get("id")},
         "manuscript": {"kind": "childrens", "genre_preset": "picture_book", "idea": r.get("pitch") or "", "status": "idea", "chapters": []},
