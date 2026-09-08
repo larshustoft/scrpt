@@ -68,6 +68,9 @@ def _blocked(d: dict) -> str:
         return "never_publish"
     if d.get("external"):
         return "external"
+    # a film record (a short or an episode born through new_film) is not a book
+    if d.get("short") or (d.get("movie") or {}).get("kind") in ("short", "episode"):
+        return "film, not a book"
     return ""
 
 
