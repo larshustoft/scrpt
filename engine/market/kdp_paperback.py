@@ -878,7 +878,20 @@ class Stager:
         if issues:
             self.note("previewer text: " + " ".join(body.split())[:400])
             return "preview_issues"          # never approve a flagged preview
-        await self.click_text("Approve", 6000)
+        # The previewer renders an image-heavy book page by page and keeps
+        # "Approve" disabled until it is done — a 50-page workbook took past
+        # the old 6 s (2026-09-08). Wait for the button to become clickable;
+        # if it never does, that is "come back later", not a failed book.
+        approved = False
+        for _ in range(36):
+            r = await p.evaluate("""() => { const b=[...document.querySelectorAll('button, [role=button]')].find(x => x.offsetParent!==null && /^approve$/i.test((x.innerText||'').trim())); if(!b) return 'missing'; if (b.disabled || b.getAttribute('aria-disabled')==='true') return 'disabled'; b.click(); return 'ok'; }""")
+            if r == "ok":
+                approved = True; break
+            await p.wait_for_timeout(5000)
+        if not approved:
+            await self.shot("previewer-approve-pending")
+            self.note("previewer: Approve never became clickable — KDP still rendering; run again later")
+            return "preview_pending"
         # back on Content: KDP re-validates before it enables Save and Continue
         await p.wait_for_timeout(4000)
         if not await _save_enabled():
