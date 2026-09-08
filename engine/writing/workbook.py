@@ -66,7 +66,7 @@ async def plan_workbook(catalog: str) -> list[dict]:
     uni = _universe(d)
     prompt = (
         f"BOOK: {book['title']}\nAGES: {wb.get('ages') or '3-5'}\nWHAT IT IS: {wb.get('pitch') or d.get('description') or ''}\n"
-        + (f"CHARACTER: {uni.get('look')}\n" if uni else "")
+        + (f"CHARACTERS: {uni.get('look')} {uni.get('cast', '')}\n" if uni else "")
         + f"\nPlan exactly {n} interior exercise pages for this printable activity book (US Letter, black-and-white line art, "
         "one exercise per page, ages as stated). Order them as a child would progress: easy to harder, with variety every few "
         "pages, and the character appearing on most pages in a small supporting role (cheering, holding a sign, being coloured). "
