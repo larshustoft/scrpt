@@ -34,7 +34,7 @@ PAGE_COST_USD = 0.25          # gpt-image-2 high, 1024x1536 — for the ledger
 # the cast as the page designer must draw them (from the universe plates)
 UNIVERSE_CAST = {
     "princess-the-unicorn": {
-        "author": "Lily Tiger",
+        "author": "Poppy Marsh",   # never Lily Tiger on a suggested book (Lars, 2026-09-08)
         "plates": {"Princess": "plates/princess.png", "Glitter": "plates/glitter.png", "Pip": "plates/pip.png", "Moss": "plates/moss.png"},
         "look": ("Princess is a small white unicorn foal with big purple eyes and long lashes, a long wavy two-tone mane "
                  "(pink and blue), a small golden horn, a crown of little flowers on her head and a small heart mark on her hip. "

@@ -105,7 +105,7 @@ async def research(n: int = 8, notes: str = "") -> dict:
         f"{n} SPECIFIC books the house should produce next. Favour series with read-through, KU-native genres, "
         "growing print segments, and seasonal timing (it is early September). Vary pen names sensibly (one pen name "
         "per genre; reuse the house's existing pen names where the genre matches). Every suggestion must be concrete "
-        "enough to commission today.\n\n"
+        "enough to commission today. NEVER use the pen name 'Lily Tiger' (it is a real name); invent or reuse other pen names.\n\n"
         f"Fiction/non-fiction genre presets (use exactly one key): {json.dumps(presets)}\n"
         f"Children's presets: {json.dumps(kids)}\n\n"
         "Return JSON only: {\"suggestions\": [{"
@@ -137,6 +137,8 @@ async def research(n: int = 8, notes: str = "") -> dict:
             gp = it.get("genre_preset")
             if gp not in GENRE_PRESETS and gp not in CHILDRENS_PRESETS:
                 it["genre_preset"] = "picture_book" if it.get("kind") == "childrens" else ("self_help" if it.get("kind") == "nonfiction" else "romance")
+            if "lily tiger" in str(it.get("pen_name") or "").lower():
+                it["pen_name"] = "Poppy Marsh"
             it["kind"] = "childrens" if it["genre_preset"] in CHILDRENS_PRESETS else ("nonfiction" if GENRE_PRESETS.get(it["genre_preset"], {}).get("kind") == "nonfiction" else "fiction")
             # the web-search model leaves <cite> tags in its prose: strip them everywhere
             import re as _re
