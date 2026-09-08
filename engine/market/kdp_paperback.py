@@ -546,7 +546,19 @@ class Stager:
             await self.click_text("Add to series", 3000)
             if m["kdp_series_id"]:
                 await self.click_text("Select series", 2500)
-                self.note("existing series: select by hand if not auto-matched")
+                await p.wait_for_timeout(1500)
+                try:
+                    done = await self._pick_existing_series(m["series_title"], m.get("book_number"))
+                except Exception as e:
+                    done = False
+                    self.note(f"existing series: picker failed ({str(e)[:80]})")
+                if not done:
+                    self.note("existing series: not linked — link from the Bookshelf")
+                # The picker must never stay open: it sat over the release
+                # section and cost two workbooks their schedule (2026-09-08).
+                await self._dismiss_dialogs()
+                if not await self._dismiss_dialogs():
+                    await p.keyboard.press("Escape")
             else:
                 await self.click_text("Create series", 2500)
                 # KDP's dialog used to ask whether the series was main or
@@ -572,6 +584,61 @@ class Stager:
                     self._remember({"paperback_id": pid})
                     await p.goto(f"https://kdp.amazon.com/en_US/title-setup/paperback/{pid}/details",
                                  timeout=60000, wait_until="domcontentloaded")
+
+    async def _pick_existing_series(self, title: str, book_number=None) -> bool:
+        """Inside KDP's "Add title to series" dialog: search the series, click
+        its row (KDP shows the name in lower case), then follow the dialog's
+        Next / Add buttons, filling a volume number when asked. Returns True
+        when the dialog closed by itself, i.e. the title was added."""
+        p = self.page
+        want = title.strip().lower()
+        box = p.locator("[role=dialog] input[type=search], [role=dialog] input[type=text]").first
+        try:
+            await box.fill(title, timeout=4000)
+            try:
+                await p.locator("[role=dialog] button", has_text="Search").first.click(timeout=3000)
+            except Exception:
+                await box.press("Enter")
+            await p.wait_for_timeout(2000)
+        except Exception:
+            pass
+        r = await p.evaluate("""(w) => {
+            const dl = document.querySelector('[role=dialog], [aria-modal=true]') || document.body;
+            const els = [...dl.querySelectorAll('li, [role=option], [role=button], a, div, span')]
+                .filter(e => e.offsetParent !== null && (e.innerText||'').trim().toLowerCase().includes(w) && (e.innerText||'').length < 160);
+            if (!els.length) return 'missing';
+            const el = els[els.length - 1];       // the innermost match
+            el.scrollIntoView({block: 'center'}); el.click(); return 'ok:' + el.innerText.trim().slice(0, 60); }""", want)
+        self.note(f"existing series: row {r}")
+        if not r.startswith("ok"):
+            return False
+        for _ in range(5):
+            await p.wait_for_timeout(1500)
+            if not await p.locator("[role=dialog], [aria-modal=true]").count():
+                return True
+            if book_number:
+                try:
+                    num = p.locator("[role=dialog] input[type=number], [role=dialog] input[name*='volume' i], [role=dialog] input[id*='volume' i], [role=dialog] input[name*='number' i]").first
+                    if await num.count() and not (await num.input_value()).strip():
+                        await num.fill(str(int(book_number)), timeout=3000)
+                except Exception:
+                    pass
+            clicked = await p.evaluate("""() => {
+                const dl = document.querySelector('[role=dialog], [aria-modal=true]'); if (!dl) return 'closed';
+                const bs = [...dl.querySelectorAll('button, [role=button]')].filter(b => b.offsetParent !== null);
+                const want = /^(next|add( to series)?|add title|save|submit|confirm|continue|done)\b/i;
+                const b = bs.find(b => want.test((b.innerText||'').trim()));
+                if (!b || b.disabled) return 'nobutton:' + bs.map(b => (b.innerText||'').trim()).join('|').slice(0, 120);
+                b.click(); return 'clicked:' + (b.innerText||'').trim(); }""")
+            self.note(f"existing series: {clicked}")
+            if clicked == "closed":
+                return True
+            if clicked.startswith("nobutton"):
+                break
+        await p.wait_for_timeout(1500)
+        if not await p.locator("[role=dialog], [aria-modal=true]").count():
+            return True
+        return False
 
     async def content(self, m: dict):
         p = self.page
