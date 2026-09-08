@@ -303,9 +303,10 @@ async def design_cover(catalog: str) -> dict:
              + f'The ONLY text anywhere on the cover is the title "{book["title"]}"' + (f' and the author name "{author}"' if author else "") + ".\n"
              "Output the FLAT COVER ARTWORK ITSELF, one flat rectangle filled edge to edge; not a mockup, no spine, no shadow.\n"
              "Bright, clean, child-safe; big readable title; it must look like a bestselling activity book on Amazon.\n"
-             "IMPORTANT FRAMING: the image is 2:3 but the printed cover is 8.5 x 11, so the top 8% and bottom 8% of the "
-             "image will be trimmed off — keep the whole title, the author name and every character's face inside the middle "
-             "84% of the height; only plain sky or grass may sit in the top and bottom bands.\n"
+             "IMPORTANT FRAMING: the image is 2:3 but the printed cover is 8.5 x 11, so the top 10% and the bottom 10% of the "
+             "image WILL BE CUT OFF. Put nothing important there: the title starts at least 12% below the top edge, the author "
+             "name sits at least 15% above the bottom edge, every character's face and hands are inside the middle 80% of the "
+             "height. The top and bottom bands are plain sky and plain grass only.\n"
              + (f"Author: {author}\n" if author else "") + "Book size: 8.5″ × 11″")
     async with httpx.AsyncClient() as client:
         png = await _generate_one(client, brief, reference_png=plates or None, gen_size="1024x1536")
