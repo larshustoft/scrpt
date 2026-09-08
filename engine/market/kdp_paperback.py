@@ -886,8 +886,14 @@ class Stager:
         # if it never does, that is "come back later", not a failed book.
         approved = False
         for _ in range(36):
-            r = await p.evaluate("""() => { const b=[...document.querySelectorAll('button, [role=button]')].find(x => x.offsetParent!==null && /^approve$/i.test((x.innerText||'').trim())); if(!b) return 'missing'; if (b.disabled || b.getAttribute('aria-disabled')==='true') return 'disabled'; b.click(); return 'ok'; }""")
-            if r == "ok":
+            r = await p.evaluate("""() => {
+                const els = [...document.querySelectorAll('button, [role=button], a, input[type=button], input[type=submit], span, div')]
+                    .filter(x => x.offsetParent !== null && /^\\s*approve\\s*$/i.test(x.innerText || x.value || ''));
+                if (!els.length) return 'missing';
+                const b = els.map(x => x.closest('button, [role=button], a') || x).find(x => !(x.disabled || x.getAttribute('aria-disabled') === 'true'));
+                if (!b) return 'disabled';
+                b.scrollIntoView({block: 'center'}); b.click(); return 'ok:' + b.tagName; }""")
+            if r.startswith("ok"):
                 approved = True; break
             await p.wait_for_timeout(5000)
         if not approved:
