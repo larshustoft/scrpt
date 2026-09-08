@@ -481,9 +481,10 @@ async def adopt_kindle_draft(catalog: str) -> dict:
         found = await page.evaluate("""(args) => {
             const [title, pid] = args; const out = [];
             for (const t of document.querySelectorAll('span[id^="zme-indie-bookshelf-dual-itemset-itemset-metadata-title-"]')) {
-                if ((t.innerText || '').trim().toLowerCase() !== title.toLowerCase()) continue;
                 const tid = t.id.split('-').pop();
-                if (pid && tid !== pid) continue;
+                const shown = (t.innerText || '').trim().toLowerCase();
+                // the paperback id is the sure match; the title is the fallback (KDP shows "Title: Subtitle")
+                if (pid ? tid !== pid : !(shown === title.toLowerCase() || shown.startsWith(title.toLowerCase() + ':'))) continue;
                 const rows = [...document.querySelectorAll('tr')].filter(r => r.id === tid);
                 const ids = {};
                 rows.forEach(r => r.querySelectorAll('[id*="digital"]').forEach(e => {
