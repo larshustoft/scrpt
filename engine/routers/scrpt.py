@@ -2994,6 +2994,26 @@ def suggestions_reject(body: dict = Body(default={})):
     return reject([str(x) for x in (body.get("ids") or [])], str(body.get("note") or ""))
 
 
+@router.post("/suggestions/covers")
+async def suggestions_covers(body: dict = Body(default={})):
+    from ..market.suggest import covers
+    ids = [str(x) for x in (body.get("ids") or [])]
+    if not ids:
+        raise HTTPException(400, "ids required")
+    async def job(handle):
+        return await covers(ids, handle)
+    return {"job_id": start_job("suggest_covers", job)}
+
+
+@router.get("/suggestions/{sid}/cover.png")
+def suggestion_cover(sid: str):
+    from ..market.suggest import cover_path
+    p = cover_path(sid)
+    if not p.is_file():
+        raise HTTPException(404, "no cover yet")
+    return FileResponse(str(p), media_type="image/png")
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""

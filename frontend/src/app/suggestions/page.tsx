@@ -10,6 +10,7 @@ interface Suggestion {
   pen_name?: string; pitch?: string; why?: string; comparables?: string[]; target_words?: number;
   price_kindle?: number; price_paperback?: number; cover_direction?: string; season?: string;
   estimate_monthly_usd?: { conservative?: number; realistic?: number; stretch?: number }; confidence?: string;
+  cover?: string; cover_at?: string;
 }
 
 /** SUGGESTED BOOKS — the acquisitions desk. SCRPT reads the market and lays
@@ -70,6 +71,20 @@ export default function SuggestionsPage() {
     setBusy("");
   };
 
+  const covers = async (ids: string[]) => {
+    if (!ids.length) return;
+    setBusy("covers"); setMsg(`Designing ${ids.length} cover${ids.length > 1 ? "s" : ""} — about a minute each.`);
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/suggestions/covers`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+      const { job_id } = await r.json();
+      const j = await waitJob(job_id);
+      setMsg(j?.status === "done" ? `${(j.result?.done || []).length} cover(s) designed.` : `Covers ${j?.status || "timed out"}: ${j?.error || ""}`);
+      await load();
+    } catch { setMsg("The engine is offline."); }
+    setBusy("");
+  };
+
   const shown = rows.filter((r) => r.status === tab);
   const money = (n?: number) => (n == null ? "–" : `$${Math.round(n).toLocaleString()}`);
 
@@ -101,6 +116,11 @@ export default function SuggestionsPage() {
           </button>
         ))}
         <div className="flex-1" />
+        {tab === "new" && shown.some((r) => !r.cover) && (
+          <button className="btn-ghost text-[12px]" disabled={!!busy} onClick={() => covers(shown.filter((r) => !r.cover).map((r) => r.id))}>
+            {busy === "covers" ? "Designing…" : "Design all covers"}
+          </button>
+        )}
         {tab === "new" && shown.length > 0 && (
           <button className="btn-brass text-[12px]" disabled={!!busy} onClick={() => decide(shown.map((r) => r.id), "approve")}>
             {busy === "approve" ? "Commissioning…" : `Approve all ${shown.length}`}
@@ -117,6 +137,18 @@ export default function SuggestionsPage() {
 
       {shown.map((s) => (
         <div key={s.id} className="card mt-4">
+          <div className="flex items-start gap-5">
+          <div className="shrink-0" style={{ width: 132 }}>
+            {s.cover ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`${scrpt.engineUrl}/api/scrpt/suggestions/${s.id}/cover.png?v=${s.cover_at || ""}`} alt={s.title}
+                   style={{ width: 132, aspectRatio: "2 / 3", objectFit: "cover", borderRadius: 4, boxShadow: "0 6px 18px rgba(0,0,0,.35)" }} />
+            ) : (
+              <button className="btn-ghost text-[11px]" style={{ width: 132, aspectRatio: "2 / 3" }} disabled={!!busy}
+                      onClick={() => covers([s.id])}>{busy === "covers" ? "Designing…" : "Design the cover"}</button>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="serif-display text-[19px] font-semibold">{s.title}</div>
@@ -149,7 +181,12 @@ export default function SuggestionsPage() {
               <Link href={`/shelf/${s.catalog}`} className="btn-ghost text-[12px]">In production · open {s.title}</Link>
             )}
             {s.status === "approved" && !s.catalog && <span className="text-[12px] text-text-tertiary">approved</span>}
+            {s.cover && s.status === "new" && (
+              <button className="btn-ghost text-[11px]" disabled={!!busy} onClick={() => covers([s.id])}>Redesign cover</button>
+            )}
             <span className="text-[11px] text-text-tertiary ml-auto">{s.created_at?.replace("T", " ")}</span>
+          </div>
+          </div>
           </div>
         </div>
       ))}

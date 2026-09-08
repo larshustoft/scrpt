@@ -209,3 +209,66 @@ def reject(ids: list[str], note: str = "") -> dict:
     finally:
         conn.close()
     return {"rejected": ids}
+
+
+# ── covers: see the book before it exists ─────────────────────────────
+COVER_DIR_NAME = "suggestions"
+
+
+def cover_path(sid: str):
+    from ..config import OUTPUT_DIR
+    return OUTPUT_DIR / COVER_DIR_NAME / f"{sid}.png"
+
+
+def _cover_brief(r: dict) -> str:
+    """The house's proven shape: a flat front cover, the story for the ARTWORK
+    only, the title and the author as the only text. One angle, no lists —
+    the image engine is the designer (feedback_cover_prompts_simple)."""
+    label = (GENRE_PRESETS.get(r.get("genre_preset"), {}) or CHILDRENS_PRESETS.get(r.get("genre_preset"), {})).get("label", "book")
+    title = str(r.get("title") or "").strip(); author = str(r.get("pen_name") or "").strip()
+    about = " ".join(str(r.get("pitch") or "").split())[:500]
+    direction = " ".join(str(r.get("cover_direction") or "").split())[:200]
+    kids = r.get("kind") == "childrens"
+    lines = [
+        f"Create a paperback front book cover for a {label.lower()} called: {title}",
+        f"What the book is about (for the ARTWORK only — do not write any of this on the cover): {about}",
+        (f"Direction: {direction}" if direction else ""),
+        f'The ONLY text anywhere on the cover is the title "{title}"' + (f' and the author name "{author}"' if author else "") + ". No blurb, no tagline, no sentences.",
+        "Output the FLAT COVER ARTWORK ITSELF — one flat rectangle filled edge to edge, exactly as it would be printed. "
+        "Not a photograph of a book, not a 3D mockup, no spine, no shadow, no desk, no hands.",
+        "It must look like a bestseller in its category on Amazon today: professional typography, a single strong image, "
+        "the title readable at thumbnail size." + (" Bright, friendly, child-safe illustration." if kids else ""),
+        f"Author: {author}" if author else "",
+        "Book size: " + ("8.5″ × 11″" if kids else "5.5″ × 8.5″"),
+    ]
+    return "\n".join(l for l in lines if l)
+
+
+async def covers(ids: list[str], handle=None) -> dict:
+    """One high-quality front cover per suggestion, saved under output/suggestions/."""
+    import httpx
+    from ..cover.front_cover import _generate_one
+    _init()
+    rows = {r["id"]: r for r in _rows()}
+    done, failed = [], []
+    conn = get_connection()
+    try:
+        async with httpx.AsyncClient() as client:
+            for i, sid in enumerate(ids):
+                r = rows.get(sid)
+                if not r:
+                    failed.append((sid, "unknown")); continue
+                if handle:
+                    handle.progress(0.05 + 0.9 * i / max(1, len(ids)), "cover", f"Designing: {r.get('title')}")
+                try:
+                    png = await _generate_one(client, _cover_brief(r), gen_size=("1024x1536"))
+                    pth = cover_path(sid); pth.parent.mkdir(parents=True, exist_ok=True); pth.write_bytes(png)
+                    d = {k: v for k, v in r.items() if k not in ("id", "created_at", "status", "catalog", "decided_at", "note")}
+                    d["cover"] = str(pth); d["cover_at"] = datetime.now().isoformat(timespec="minutes")
+                    conn.execute("UPDATE suggestions SET data=? WHERE id=?", (json.dumps(d), sid)); conn.commit()
+                    done.append(sid)
+                except Exception as e:
+                    failed.append((sid, str(e)[:120]))
+    finally:
+        conn.close()
+    return {"done": done, "failed": failed}
