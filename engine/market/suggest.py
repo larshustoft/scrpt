@@ -86,10 +86,24 @@ def _shelf_brief() -> str:
     return "\n".join(lines[:60])
 
 
-async def research(n: int = 8, notes: str = "") -> dict:
-    """Write n new suggestions. Uses live web search on top of the memo."""
+class _Scaled:
+    """A job handle whose 0..1 progress is mapped into [lo, hi] of the parent's."""
+    def __init__(self, handle, lo: float, hi: float):
+        self.h, self.lo, self.hi = handle, lo, hi
+    def progress(self, fraction: float, stage: str = "", detail: str = ""):
+        if self.h:
+            self.h.progress(self.lo + (self.hi - self.lo) * max(0.0, min(1.0, fraction)), stage, detail)
+    def cancelled(self) -> bool:
+        return bool(self.h and self.h.cancelled())
+
+
+async def research(n: int = 8, notes: str = "", handle=None) -> dict:
+    """Write n new suggestions. Uses live web search on top of the memo.
+    Progress: reading the market fills 0.05→0.3, the covers 0.3→0.97."""
     from ..writing.client import complete, extract_json
     _init()
+    if handle:
+        handle.progress(0.05, "research", "Reading the market")
     existing = _rows()
     taken = [f"{r.get('title')} ({r.get('series_title') or 'standalone'}) — {r['status']}" for r in existing[:60]]
     presets = {k: v.get("label") for k, v in GENRE_PRESETS.items()}
@@ -168,7 +182,9 @@ async def research(n: int = 8, notes: str = "") -> dict:
     set_setting("suggest_last_research", datetime.now().isoformat(timespec="minutes"))
     # NO SUGGESTION WITHOUT ITS COVER (Lars, 2026-09-08): a suggestion is shown
     # only once its front cover exists; until then it stays 'drafting', unseen.
-    cv = await covers([a["id"] for a in added])
+    if handle:
+        handle.progress(0.3, "covers", f"Designing {len(added)} covers")
+    cv = await covers([a["id"] for a in added], handle=_Scaled(handle, 0.3, 0.97) if handle else None)
     conn = get_connection()
     try:
         for sid in cv.get("done", []):

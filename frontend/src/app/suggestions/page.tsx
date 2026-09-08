@@ -42,27 +42,61 @@ export default function SuggestionsPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const waitJob = async (jobId: string) => {
-    for (let i = 0; i < 120; i++) {
+  type JobRow = { status?: string; progress?: number; stage?: string; detail?: string; result?: { count?: number; done?: unknown[] }; error?: string };
+  const waitJob = async (jobId: string, onTick?: (j: JobRow) => void) => {
+    for (let i = 0; i < 240; i++) {
       await new Promise((res) => setTimeout(res, 3000));
       const r = await fetch(`${scrpt.engineUrl}/api/scrpt/jobs/${jobId}`);
-      const j = await r.json();
+      const j = (await r.json()) as JobRow;
+      onTick?.(j);
       if (j.status && j.status !== "running") return j;
     }
     return null;
   };
 
+  // "Research more" progress (Lars, 2026-09-08): reading the market is one long
+  // call (~2 min), then a cover per book (~100 s each, three at a time). The
+  // engine reports its stage; the ring fills with the engine's fraction or the
+  // expected time, whichever is further, and never past 95% until it returns.
+  const RESEARCH_N = 8;
+  const RESEARCH_EXPECT_MS = 120_000 + Math.ceil(RESEARCH_N / 3) * EXPECT_MS;
+  const [researchRun, setResearchRun] = useState<{ startedAt: number; fraction: number; detail: string } | null>(null);
+
   const research = async () => {
-    setBusy("research"); setMsg("Reading the market — a few minutes.");
+    setBusy("research"); setMsg("");
+    const startedAt = Date.now();
+    setResearchRun({ startedAt, fraction: 0, detail: "Reading the market" });
     try {
       const r = await fetch(`${scrpt.engineUrl}/api/scrpt/suggestions/research`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ n: 8, notes }) });
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ n: RESEARCH_N, notes }) });
       const { job_id } = await r.json();
-      const j = await waitJob(job_id);
+      const j = await waitJob(job_id, (row) => setResearchRun({ startedAt, fraction: row.progress || 0, detail: row.detail || row.stage || "" }));
       setMsg(j?.status === "done" ? `${j.result?.count ?? 0} new suggestions.` : `Research ${j?.status || "timed out"}: ${j?.error || ""}`);
       await load();
     } catch { setMsg("The engine is offline."); }
+    setResearchRun(null);
     setBusy("");
+  };
+
+  /** The small ring beside the button: engine fraction vs elapsed time, and the minutes left. */
+  const ResearchRing = ({ run }: { run: { startedAt: number; fraction: number; detail: string } }) => {
+    void tick;
+    const elapsed = Date.now() - run.startedAt;
+    const pct = Math.min(95, Math.max(Math.round(run.fraction * 100), Math.round((elapsed / RESEARCH_EXPECT_MS) * 100)));
+    const leftMs = Math.max(0, RESEARCH_EXPECT_MS * (1 - pct / 100));
+    const left = leftMs < 60_000 ? "under a minute left" : `about ${Math.ceil(leftMs / 60_000)} min left`;
+    const r = 11, c = 2 * Math.PI * r;
+    return (
+      <div className="flex items-center gap-2 text-[11.5px] text-text-secondary" aria-live="polite">
+        <svg width="28" height="28" viewBox="0 0 28 28" aria-label={`research ${pct}%`}>
+          <circle cx="14" cy="14" r={r} fill="none" stroke="rgba(128,128,128,.3)" strokeWidth="3" />
+          <circle cx="14" cy="14" r={r} fill="none" stroke="#c9a45c" strokeWidth="3" strokeLinecap="round"
+                  strokeDasharray={`${c}`} strokeDashoffset={`${c * (1 - pct / 100)}`}
+                  transform="rotate(-90 14 14)" style={{ transition: "stroke-dashoffset .9s linear" }} />
+        </svg>
+        <span>{pct}% · {run.detail || "Reading the market"} · {left}</span>
+      </div>
+    );
   };
 
   // scope "series": every planned book is commissioned and written one after
@@ -216,6 +250,7 @@ export default function SuggestionsPage() {
         <div className="flex items-center gap-2">
           <input className="input-scrpt text-[12px]" style={{ width: 260 }} placeholder="Notes for the next research (optional)"
                  value={notes} onChange={(e) => setNotes(e.target.value)} />
+          {researchRun && <ResearchRing run={researchRun} />}
           <button className="btn-ghost text-[12px]" disabled={!!busy} onClick={research}>
             {busy === "research" ? "Researching…" : "Research more"}
           </button>

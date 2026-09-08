@@ -2973,8 +2973,7 @@ async def suggestions_research(body: dict = Body(default={})):
     from ..market.suggest import research
     n = int(body.get("n") or 8); notes = str(body.get("notes") or "")
     async def job(handle):
-        handle.progress(0.1, "research", "reading the market")
-        return await research(n, notes)
+        return await research(n, notes, handle=handle)
     return {"job_id": start_job("suggest_research", job)}
 
 
