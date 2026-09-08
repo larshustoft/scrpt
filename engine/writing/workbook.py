@@ -300,7 +300,7 @@ async def design_cover(catalog: str) -> dict:
              f"What the book is about (for the ARTWORK only — do not write any of this on the cover): {wb.get('pitch') or d.get('description') or ''}\n"
              + (f"The characters: {uni.get('look')} {uni.get('cast', '')} The attached pictures are the references, in this order: "
                 "Princess, Glitter, Pip, Moss. Draw them in a friendly full-colour cartoon style, happy and inviting.\n" if uni else "")
-             + f'The ONLY text anywhere on the cover is the title "{book["title"]}"' + (f' and the author name "{author}"' if author else "") + ".\n"
+             + f'The ONLY text anywhere on the cover is the title "{book["title"]}"' + (f' and the author name "{author}" — the author name MUST appear, in small clean type near the bottom of the safe zone' if author else "") + ".\n"
              "Output the FLAT COVER ARTWORK ITSELF, one flat rectangle filled edge to edge; not a mockup, no spine, no shadow.\n"
              "Bright, clean, child-safe; big readable title; it must look like a bestselling activity book on Amazon.\n"
              "IMPORTANT FRAMING: the image is 2:3 but the printed cover is 8.5 x 11, so the top 10% and the bottom 10% of the "
