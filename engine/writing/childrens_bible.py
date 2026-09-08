@@ -160,7 +160,7 @@ def _series_sibling_bible(book: dict) -> Optional[dict]:
     sid = ser.get("series_id")
     if not sid:
         return None
-    sibs = [b for b in (list_books(limit=500).get("books") or [])
+    sibs = [b for b in (list_books(per_page=500).get("books") or [])
             if ((b.get("data") or {}).get("series") or {}).get("series_id") == sid
             and b.get("id") != book.get("id")]
     sibs.sort(key=lambda b: (b["data"]["series"].get("book_number") or 0))
