@@ -19,6 +19,8 @@ import uuid
 from datetime import datetime
 
 from ..database import get_connection, get_setting, list_books
+from ..config import PROJECT_ROOT as _PR
+PROJECT_ROOT_UNIVERSE = _PR / "universe"
 from ..prose.models import GENRE_PRESETS, CHILDRENS_PRESETS
 
 # what the 5 September 2026 research established (live Amazon ranks + Circana +
@@ -178,6 +180,15 @@ async def approve(ids: list[str], commission_all: bool = False) -> dict:
             r = rows.get(sid)
             if not r or r["status"] != "new":
                 results.append({"id": sid, "ok": False, "reason": "not an open suggestion"}); continue
+            if (r.get("line") == "workbook") or (r.get("kind") == "childrens" and any(w in (r.get("title") or "").lower() for w in ("workbook", "cut and paste", "draw with", "trace", "activity"))):
+                try:
+                    cat, job_id = _commission_workbook(r)
+                    conn.execute("UPDATE suggestions SET status='approved', catalog=?, decided_at=? WHERE id=?",
+                                 (cat, datetime.now().isoformat(timespec="minutes"), sid))
+                    results.append({"id": sid, "ok": True, "catalog": cat, "job_id": job_id, "line": "workbook"})
+                except Exception as e:
+                    results.append({"id": sid, "ok": False, "reason": str(e)[:200]})
+                continue
             kind = BookKind(r.get("kind") or "fiction")
             series_title = (r.get("series_title") or "").strip()
             n_books = int(r.get("series_books") or 1) if series_title else 1
@@ -283,3 +294,39 @@ async def covers(ids: list[str], handle=None) -> dict:
     finally:
         conn.close()
     return {"done": done, "failed": failed}
+
+
+def _commission_workbook(r: dict) -> tuple[str, str]:
+    """A workbook is born as a book record with a page plan to come, joins its
+    universe, and the workbook line draws it at once."""
+    from ..database import create_book
+    from ..jobs import start_job
+    from ..writing.workbook import write_workbook, UNIVERSE_CAST
+    slug = r.get("universe") or ""
+    uni = UNIVERSE_CAST.get(slug, {})
+    series_title = (r.get("series_title") or "").strip()
+    data = {
+        "kind": "childrens", "book_type": "workbook", "authorship": "house", "genre_preset": "picture_book",
+        "author_name": r.get("pen_name") or uni.get("author") or "", "universe": slug or None, "print_only": True,
+        "trim_size": "8.5x11", "paper_type": "white_bw", "page_count": 0,
+        "list_price": float(r.get("price_paperback") or 8.99),
+        "description": (r.get("pitch") or ""), "cover_direction": r.get("cover_direction") or "",
+        "workbook": {"universe": slug, "pitch": r.get("pitch") or "", "ages": "3-5" if "letters" in (r.get("title") or "").lower() or "cut" in (r.get("title") or "").lower() else "4-8",
+                      "pages_target": 48, "suggestion_id": r.get("id")},
+        "manuscript": {"kind": "childrens", "genre_preset": "picture_book", "idea": r.get("pitch") or "", "status": "idea", "chapters": []},
+        "interior": {}, "cover": {}, "audio": {}, "suggestion_id": r.get("id"),
+        "series": {"series_id": uuid.uuid4().hex[:8], "series_title": series_title, "book_number": 1,
+                   "total_planned": int(r.get("series_books") or 1)} if series_title else {},
+    }
+    book = create_book(r.get("title") or "Untitled workbook", data)
+    cat = book["catalog_number"]
+    if slug:
+        try:
+            pp = PROJECT_ROOT_UNIVERSE / slug / "profile.json"
+            pj = json.loads(pp.read_text()); mem = pj.setdefault("members", [])
+            if cat not in mem:
+                mem.append(cat); pp.write_text(json.dumps(pj, indent=1, ensure_ascii=False))
+        except Exception:
+            pass
+    job_id = start_job("workbook", lambda h, c=cat: write_workbook(c, h), book_catalog=cat)
+    return cat, job_id

@@ -95,6 +95,21 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
         if handle:
             handle.progress(min(0.99, 0.05 + 0.9 * len(report["steps"]) / 9), name, f"{title[:30]}: {detail or name}")
 
+    # 0. WORKBOOKS (2026-09-08): pages, not chapters — no reader's desk, no line
+    # edit, no continuity, no EPUB, no Kindle. Drawn and checked by the workbook line.
+    wb = _d(catalog).get("workbook")
+    if wb:
+        if not wb.get("done"):
+            step("acceptance", False, "the workbook's pages are not drawn yet"); report["stopped_at"] = "acceptance"; return report
+        step("acceptance", True, f"workbook line · {len(wb.get('pages') or [])} pages drawn")
+        from ..writing.workbook import build_workbook_interior
+        res = await asyncio.to_thread(build_workbook_interior, catalog)
+        if not (res.get("validation") or {}).get("passed", True):
+            step("interior", False, "validation failed"); report["stopped_at"] = "interior"; return report
+        step("interior", True, f"{res.get('page_count')} pages")
+        step("epub", True, "print-only book — no ebook")
+        return await _finish_print_book(catalog, report, step, handle, publish, title)
+
     # 1. THE READER'S DESK (2026-09-07, replaces the score loop): a triage read
     # of the opening, midpoint, climax and ending; targeted fixes only on the
     # chapters the reader named; then accept or shelve. Never a blanket rewrite.
@@ -215,6 +230,17 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
                                                                  "at": dt.datetime.now().isoformat(timespec="minutes")}}
         update_book(_b["id"], _data)
 
+    return await _finish_print_book(catalog, report, step, handle, publish, title, ms_sig)
+
+
+async def _finish_print_book(catalog, report, step, handle, publish, title, ms_sig=None):
+    """cover → wrap → keywords → release date → gate → paperback (→ Kindle unless print-only)."""
+    from .launch_gate import launch_gate
+    from .scheduler import suggest_schedule
+    from .kdp_paperback import stage_paperback
+    from .kdp_ebook import stage_kindle
+    out_dir = OUTPUT_DIR / catalog
+    print_only = bool(_d(catalog).get("print_only"))
     # 3. front cover (generate if missing) + print wrap
     front = OUTPUT_DIR / catalog / "cover-front.png"
     if not front.exists():
@@ -228,7 +254,7 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
         step("cover", True, "front cover present")
     wrap_f = out_dir / "cover-wrap.pdf"
     built = (_d(catalog).get("line") or {}).get("built") or {}
-    if built.get("sig") == ms_sig and built.get("wrap") and wrap_f.is_file() and wrap_f.stat().st_mtime >= front.stat().st_mtime:
+    if ms_sig and built.get("sig") == ms_sig and built.get("wrap") and wrap_f.is_file() and wrap_f.stat().st_mtime >= front.stat().st_mtime:
         step("wrap", True, "unchanged, kept")
     else:
         async with httpx.AsyncClient(timeout=600) as c:
@@ -243,7 +269,7 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
 
     # 4. keywords (live research, applied) — once per manuscript as well
     chosen = _d(catalog).get("keywords") or []
-    if built.get("sig") == ms_sig and built.get("keywords") and len(chosen) >= 5:
+    if ms_sig and built.get("sig") == ms_sig and built.get("keywords") and len(chosen) >= 5:
         step("keywords", True, f"{len(chosen)} slots — kept")
     else:
         async with httpx.AsyncClient(timeout=900) as c:
@@ -317,6 +343,10 @@ async def run_line(catalog: str, handle=None, publish: bool = True) -> dict:
         step("dedupe", True, f"skipped: {str(e)[:60]}")
 
     # 8. Kindle — drafted now, published on the same day by the scheduler
+    if print_only:
+        step("kindle", True, "print-only book — no Kindle edition")
+        report["ok"] = True
+        return report
     if handle:
         handle.progress(0.85, "kdp", f"{title[:30]}: Kindle edition")
     kb = await stage_kindle(catalog, publish=False)

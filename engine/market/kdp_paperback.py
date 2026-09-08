@@ -80,7 +80,7 @@ PRINT_CATEGORY_DEFAULTS = {
     "psychological_thriller": [["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Psychological Thrillers"],
                                ["Mystery, Thriller & Suspense", "Thrillers & Suspense", "Domestic"]],
 }
-TRIM_LABEL = {"5x8": "5 x 8 in", "5.25x8": "5.25 x 8 in", "5.5x8.5": "5.5 x 8.5 in", "6x9": "6 x 9 in"}
+TRIM_LABEL = {"5x8": "5 x 8 in", "5.25x8": "5.25 x 8 in", "5.5x8.5": "5.5 x 8.5 in", "6x9": "6 x 9 in", "8.5x11": "8.5 x 11 in"}
 PAPER_LABEL = {"cream_bw": "Black and white interior with cream paper",
                "white_bw": "Black and white interior with white paper",
                "standard_color": "Standard color interior with white paper",

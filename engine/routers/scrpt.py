@@ -3014,6 +3014,15 @@ def suggestion_cover(sid: str):
     return FileResponse(str(p), media_type="image/png")
 
 
+@router.post("/workbook/{catalog}/write")
+async def workbook_write(catalog: str):
+    """Plan, draw and assemble a workbook (the workbook line)."""
+    from ..writing.workbook import write_workbook
+    if not db.get_book_by_catalog(catalog):
+        raise HTTPException(404, "Book not found")
+    return {"job_id": start_job("workbook", lambda h: write_workbook(catalog, h), book_catalog=catalog)}
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""
