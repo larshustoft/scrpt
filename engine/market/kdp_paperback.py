@@ -843,8 +843,15 @@ class Stager:
         await _wait_processing()
         await p.wait_for_timeout(2000)
         await _confirm_box()
-        # previewer (required)
-        await self.click_text("Launch Previewer", 5000)
+        # previewer (required) — the button stays disabled while KDP is still
+        # converting even after its dialog is gone (Letters, Numbers & Colours,
+        # 2026-09-08): that is "come back later", never a failed book
+        try:
+            await self.click_text("Launch Previewer", 5000)
+        except Exception as e:
+            await self.shot("previewer-disabled")
+            self.note(f"Launch Previewer not clickable ({str(e)[:60]}) — KDP still converting; run again later")
+            return "preview_pending"
         await _wait_processing()
         for _ in range(60):
             if "print-preview" in p.url:
