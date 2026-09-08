@@ -24,6 +24,7 @@ import asyncio
 import datetime as dt
 import html as _html
 import json
+import re as _re
 from pathlib import Path
 from typing import Optional
 
@@ -886,11 +887,20 @@ class Stager:
         # if it never does, that is "come back later", not a failed book.
         approved = False
         for _ in range(36):
+            try:                                    # the real button first, by role
+                btn = p.get_by_role("button", name=_re.compile(r"^\s*approve\s*$", _re.I)).first
+                if await btn.count() and await btn.is_enabled():
+                    await btn.click(timeout=5000)
+                    approved = True; break
+            except Exception:
+                pass
             r = await p.evaluate("""() => {
                 const els = [...document.querySelectorAll('button, [role=button], a, input[type=button], input[type=submit], span, div')]
                     .filter(x => x.offsetParent !== null && /^\\s*approve\\s*$/i.test(x.innerText || x.value || ''));
                 if (!els.length) return 'missing';
-                const b = els.map(x => x.closest('button, [role=button], a') || x).find(x => !(x.disabled || x.getAttribute('aria-disabled') === 'true'));
+                // innermost match (the text node's own element) so the click bubbles up to the real button
+                const inner = els.filter(x => x.children.length === 0);
+                const b = (inner.length ? inner : els).map(x => x.closest('button, [role=button], a') || x).find(x => !(x.disabled || x.getAttribute('aria-disabled') === 'true'));
                 if (!b) return 'disabled';
                 b.scrollIntoView({block: 'center'}); b.click(); return 'ok:' + b.tagName; }""")
             if r.startswith("ok"):
