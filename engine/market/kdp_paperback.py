@@ -626,7 +626,7 @@ class Stager:
             clicked = await p.evaluate("""() => {
                 const dl = document.querySelector('[role=dialog], [aria-modal=true]'); if (!dl) return 'closed';
                 const bs = [...dl.querySelectorAll('button, [role=button]')].filter(b => b.offsetParent !== null);
-                const want = /^(next|add( to series)?|add title|save|submit|confirm|continue|done)\b/i;
+                const want = /^(main content|next|add( to series)?|add title|save|submit|confirm|continue|done)\b/i;
                 const b = bs.find(b => want.test((b.innerText||'').trim()));
                 if (!b || b.disabled) return 'nobutton:' + bs.map(b => (b.innerText||'').trim()).join('|').slice(0, 120);
                 b.click(); return 'clicked:' + (b.innerText||'').trim(); }""")
