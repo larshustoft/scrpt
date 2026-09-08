@@ -221,6 +221,11 @@ async def _run_due_locked(handle, max_per_day, publish) -> dict:
     for t in todo[:max_per_day]:
         cat = t["catalog"]
         try:
+            from .kdp_quota import can_create
+            ok_pb, why_pb = can_create("paperback"); ok_kd, why_kd = can_create("kindle")
+            if not (ok_pb and ok_kd):
+                report["stopped"] = f"KDP's weekly title quota is used up ({why_pb if not ok_pb else why_kd}) — the rest wait"
+                _log({"duty": "run", "stopped": report["stopped"]}); break
             r = await run_line(cat, handle=handle, publish=publish)
             ok = not r.get("stopped_at")
             entry = {"catalog": cat, "title": t["title"], "ok": ok, "stopped_at": r.get("stopped_at"),

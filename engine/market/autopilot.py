@@ -171,6 +171,23 @@ async def scheduler():
         except Exception:
             print("  dated kindle publish failed:\n" + traceback.format_exc()[-600:])
         try:
+            # THE ACQUISITIONS DESK (Lars, 2026-09-08): keep suggestions on the
+            # table — fresh research when fewer than six are open, at most weekly
+            from ..database import get_setting as _gs2, set_setting as _ss2
+            from ..market.suggest import list_suggestions, research as _research
+            _today = datetime.now().date().isoformat()
+            if (_gs2("suggest_auto", "1") or "1") == "1" and _gs2("suggest_last_day", "") != _today and datetime.now().hour >= 6:
+                st = list_suggestions()
+                last = st.get("last_research") or ""
+                stale = (not last) or ((datetime.now() - datetime.fromisoformat(last)).days >= 7)
+                if st.get("open", 0) < 6 or stale:
+                    _ss2("suggest_last_day", _today)
+                    print("  ⚙ acquisitions: researching new suggestions")
+                    r = await _research(8)
+                    print(f"  acquisitions: {r.get('count')} new suggestions")
+        except Exception:
+            print("  acquisitions research failed:\n" + traceback.format_exc()[-400:])
+        try:
             # THE RELEASE DESK (Lars, 2026-09-04): once a day, plan every
             # finished book and push the due ones through the line to KDP.
             from ..database import get_setting as _gs2, set_setting as _ss2

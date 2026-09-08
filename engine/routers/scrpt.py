@@ -2961,6 +2961,39 @@ async def kdp_adopt_kindle(catalog: str):
     return {"job_id": start_job("kdp_adopt_kindle", job, book_catalog=catalog)}
 
 
+# ── SUGGESTED BOOKS: the acquisitions desk ───────────────────────
+@router.get("/suggestions")
+def suggestions_list():
+    from ..market.suggest import list_suggestions
+    return list_suggestions()
+
+
+@router.post("/suggestions/research")
+async def suggestions_research(body: dict = Body(default={})):
+    from ..market.suggest import research
+    n = int(body.get("n") or 8); notes = str(body.get("notes") or "")
+    async def job(handle):
+        handle.progress(0.1, "research", "reading the market")
+        return await research(n, notes)
+    return {"job_id": start_job("suggest_research", job)}
+
+
+@router.post("/suggestions/approve")
+async def suggestions_approve(body: dict = Body(default={})):
+    """{ids: [...], commission_all?: false} — each becomes a work order, drafted at once."""
+    from ..market.suggest import approve
+    ids = [str(x) for x in (body.get("ids") or [])]
+    if not ids:
+        raise HTTPException(400, "ids required")
+    return await approve(ids, commission_all=bool(body.get("commission_all")))
+
+
+@router.post("/suggestions/reject")
+def suggestions_reject(body: dict = Body(default={})):
+    from ..market.suggest import reject
+    return reject([str(x) for x in (body.get("ids") or [])], str(body.get("note") or ""))
+
+
 @router.get("/release-desk")
 def release_desk_status():
     """The release desk: the plan, what is due, and what it did (Lars, 2026-09-04)."""

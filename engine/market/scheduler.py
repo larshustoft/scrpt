@@ -100,8 +100,8 @@ def suggest_schedule(today: Optional[dt.date] = None) -> dict:
     # lead; KDP's own cap is ten title creations per format per week.
     # 'slate' = the marketing calendar (Tue/Wed, 28-35 day cadence).
     fast = (get_setting("release_pace", "fast") or "fast") == "fast"
-    per_day = 1 if fast else 2
-    per_week = 7 if fast else 1
+    per_day = 2 if fast else 2          # KDP allows ten title creations per format per week
+    per_week = 10 if fast else 1
 
     # anchors: released titles and pinned plans occupy their dates
     taken_days: dict[dt.date, int] = {}
