@@ -294,6 +294,16 @@ function ManuscriptTab({ book, ms, reload, busy }: {
       reload();
     } catch { /* offline */ } finally { setBuildingInterior(false); }
   };
+  // a written book builds its own print file the first time its page opens —
+  // nobody should have to press "Build the book" to read it (Lars, 2026-09-08)
+  const autoBuilt = useRef(false);
+  useEffect(() => {
+    if (written && !bd.interior?.page_count && !buildingInterior && !autoBuilt.current && !busy) {
+      autoBuilt.current = true;
+      buildInterior();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [written, bd.interior?.page_count]);
   const trimForReader = String(
     (book.data?.format as { trim_size?: string } | undefined)?.trim_size
     || (book.data?.trim_size as string | undefined) || "5.5x8.5");
