@@ -15,16 +15,27 @@ approve()    turns a suggestion into a work order with auto_draft on: the
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import uuid
 from datetime import datetime
 
 from ..database import get_connection, get_setting, list_books
-from ..config import PROJECT_ROOT as _PR
+from ..config import OUTPUT_DIR, PROJECT_ROOT as _PR
 PROJECT_ROOT_UNIVERSE = _PR / "universe"
 from ..prose.models import GENRE_PRESETS, CHILDRENS_PRESETS
 
 # what the 5 September 2026 research established (live Amazon ranks + Circana +
 # K-lytics + Written Word Media); refreshed by each research run's web search
+BANNED_PEN_NAMES = {"lily tiger"}
+HOUSE_PEN_NAMES = {"princess-the-unicorn": "Poppy Marsh", "freddie-the-farmer": "Hattie Meadows"}
+
+
+def _pen_name_for(kind) -> str:
+    import random
+    firsts = ["Clara", "Nell", "Josie", "Wren", "Harriet", "Tessa", "Ada", "Iris", "Rowan", "Elliot", "Sam", "Jude"]
+    lasts = ["Ashby", "Marlow", "Fenwick", "Hale", "Whitlock", "Calder", "Pryor", "Lindqvist", "Sorrell", "Blythe"]
+    return f"{random.choice(firsts)} {random.choice(lasts)}"
+
 MARKET_MEMO = """
 STANDING MARKET MEMO (2026-09-05, live Amazon ranks read that day):
 - Kindle rank → units/day (BookBloom Nov-2025 formula): #68 ≈1,200/day, #195 ≈520, #859 ≈165, #1,483 ≈88, #2,852 ≈53, #4,591 ≈37, #38,825 ≈7.
@@ -219,6 +230,11 @@ async def approve(ids: list[str], commission_all: bool = False) -> dict:
                 continue
             kind = BookKind(r.get("kind") or "fiction")
             series_title = (r.get("series_title") or "").strip()
+            pen = (r.get("pen_name") or "").strip()
+            if pen.lower() in BANNED_PEN_NAMES:          # never Lily Tiger on a suggested book (Lars, 2026-09-08)
+                pen = HOUSE_PEN_NAMES.get(r.get("universe") or "", "") or _pen_name_for(kind)
+                r["pen_name"] = pen
+            sug_cover = Path(OUTPUT_DIR) / "suggestions" / f"{sid}.png"
             n_books = int(r.get("series_books") or 1) if series_title else 1
             idea = (f"{r.get('pitch') or ''}\n\nMARKET EVIDENCE: {r.get('why') or ''}\n\nCOMPARABLES: "
                     f"{', '.join(r.get('comparables') or [])}")
@@ -226,13 +242,22 @@ async def approve(ids: list[str], commission_all: bool = False) -> dict:
                 idea += f"\n\nPUBLISHER'S INSTRUCTIONS (binding): {r['publisher_notes']}"
             req = WorkOrderRequest(
                 kind=kind, genre_preset=r["genre_preset"], idea=idea, title=r.get("title") or "",
-                pen_name=r.get("pen_name") or "", series_title=series_title, series_books=max(1, n_books),
+                pen_name=pen, series_title=series_title, series_books=max(1, n_books),
                 commission_books=(0 if commission_all else 1), cover_direction=r.get("cover_direction") or "",
+                covers_uploaded=([1] if sug_cover.exists() else []),   # the approved cover IS the cover: no variants job
                 target_words=int(r["target_words"]) if r.get("target_words") else None,
                 generate_plot_options=False, auto_draft=True)
             try:
                 res = await create_workorder(req)
                 cat = (res.get("books") or [{}])[0].get("catalog_number")
+                # the cover Lars approved goes onto the book the moment it exists,
+                # so the shelf shows the book he said yes to (2026-09-08)
+                if cat and sug_cover.exists():
+                    try:
+                        from ..cover.front_cover import _install_cover
+                        _install_cover(cat, sug_cover.read_bytes(), brief=f"Approved on the Suggested Books page. Direction: {r.get('cover_direction') or ''}")
+                    except Exception as e:
+                        results.append({"id": sid, "ok": True, "note": f"cover not carried over: {str(e)[:120]}"})
                 # the suggested prices ride along to the release desk; a series
                 # approved in full is flagged so the series line writes the
                 # later books one after another ([[series_line]])
