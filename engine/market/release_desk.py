@@ -272,8 +272,8 @@ def prep_candidates() -> list[dict]:
         rel = d.get("release") or {}
         holds = b.get("title") in blocking
         dated = bool(rel.get("date")) and rel.get("status") == "planned"
-        if not (holds or dated):
-            continue
+        # every finished book is the desk's business (Lars, 2026-09-08: "get as
+        # many books out as possible") — dated and series-holding ones first
         try:
             g = launch_gate(b["catalog_number"])
         except Exception:
@@ -285,7 +285,7 @@ def prep_candidates() -> list[dict]:
         if fails and all(f in ("Chapter one read by the publisher", "Series order respected", "Release date set ≥ 10 days out") for f in fails):
             continue
         out.append({"catalog": b["catalog_number"], "title": b.get("title"), "holds_up": blocking.get(b.get("title")),
-                    "date": rel.get("date"), "blocked_by": fails, "priority": 0 if holds else 1})
+                    "date": rel.get("date"), "blocked_by": fails, "priority": 0 if holds else (1 if dated else 2)})
     # nearest launch first (it is the one the calendar promised), then the
     # books holding a series back, then the rest by date
     soon = (date.today() + timedelta(days=45)).isoformat()
