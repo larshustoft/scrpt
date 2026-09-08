@@ -24,13 +24,7 @@ export default function SuggestionsPage() {
   const [msg, setMsg] = useState("");
   const [notes, setNotes] = useState("");
   const [tab, setTab] = useState<"new" | "approved" | "rejected">("new");
-  const [big, setBig] = useState<{ src: string; title: string } | null>(null);
-  useEffect(() => {
-    if (!big) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setBig(null); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [big]);
+  const [big, setBig] = useState<number | null>(null);   // index into the visible list
 
   const load = useCallback(async () => {
     try {
@@ -103,19 +97,68 @@ export default function SuggestionsPage() {
 
   const shown = rows.filter((r) => r.status === tab);
   const money = (n?: number) => (n == null ? "–" : `$${Math.round(n).toLocaleString()}`);
+  const coverUrl = (r: Suggestion) => `${scrpt.engineUrl}/api/scrpt/suggestions/${r.id}/cover.png?v=${r.cover_at || ""}`;
+  const shortPitch = (t?: string) => {
+    const sents = (t || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]+/g) || [t || ""];
+    return sents.slice(0, 3).join(" ").trim();
+  };
+  const marketLine = (r: Suggestion) => {
+    const first = ((r.why || "").match(/[^.!?]+[.!?]/) || [""])[0].trim();
+    const e = r.estimate_monthly_usd || {};
+    return `${first}${first ? " " : ""}Realistic ${money(e.realistic)} a month per book for a new pen name, ${money(e.conservative)} to ${money(e.stretch)}.`;
+  };
+  const cur = big != null && big >= 0 && big < shown.length ? shown[big] : null;
+  const step = useCallback((d: number) => {
+    setBig((i) => (i == null ? i : Math.max(0, Math.min(shown.length - 1, i + d))));
+  }, [shown.length]);
+  useEffect(() => {
+    if (big == null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+      if (e.key === "Escape") setBig(null);
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); step(1); }
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); step(-1); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [big, step]);
+  useEffect(() => { if (big != null && big >= shown.length) setBig(shown.length ? shown.length - 1 : null); }, [shown.length, big]);
+  const decideHere = async (r: Suggestion, action: "approve" | "reject") => {
+    await decide([r.id], action);            // the row leaves this list; the index now points at the next book
+  };
 
   return (<>
-    {big && typeof document !== "undefined" && createPortal(
-        <div onClick={() => setBig(null)} role="dialog" aria-label={big.title}
-             style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,.82)", display: "flex", alignItems: "center",
-                      justifyContent: "center", cursor: "zoom-out", padding: 24 }}>
+    {cur && typeof document !== "undefined" && createPortal(
+      <div onClick={() => setBig(null)} role="dialog" aria-label={cur.title}
+           style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(0,0,0,.84)", display: "flex", alignItems: "center",
+                    justifyContent: "center", padding: 24 }}>
+        <div onClick={(e) => e.stopPropagation()}
+             style={{ display: "flex", gap: 28, alignItems: "stretch", maxWidth: "94vw", maxHeight: "92vh" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={big.src} alt={big.title}
-               style={{ maxHeight: "92vh", maxWidth: "92vw", borderRadius: 6, boxShadow: "0 24px 80px rgba(0,0,0,.6)" }} />
-          <div style={{ position: "absolute", bottom: 18, left: 0, right: 0, textAlign: "center", color: "rgba(255,255,255,.8)", fontSize: 12 }}>
-            {big.title} · click anywhere or press Esc to close
+          <img src={coverUrl(cur)} alt={cur.title}
+               style={{ height: "88vh", maxWidth: "58vw", objectFit: "contain", borderRadius: 6, boxShadow: "0 24px 80px rgba(0,0,0,.6)" }} />
+          <div style={{ width: 380, maxWidth: "36vw", display: "flex", flexDirection: "column", justifyContent: "center", color: "#f2ede4" }}>
+            <div className="serif-display" style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.15 }}>{cur.title}</div>
+            <div style={{ fontSize: 12, opacity: .7, marginTop: 6 }}>
+              {cur.kind} · {cur.genre_preset.replace(/_/g, " ")}{cur.series_title ? ` · ${cur.series_title}, ${cur.series_books || 1} books` : " · standalone"}{cur.pen_name ? ` · ${cur.pen_name}` : ""}
+            </div>
+            <p style={{ fontSize: 14, lineHeight: 1.55, marginTop: 16 }}>{shortPitch(cur.pitch)}</p>
+            <p style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 12, opacity: .8 }}>{marketLine(cur)}</p>
+            {cur.publisher_notes && <p style={{ fontSize: 12, marginTop: 10, opacity: .7 }}>Your notes: {cur.publisher_notes}</p>}
+            <div style={{ display: "flex", gap: 8, marginTop: 22, alignItems: "center" }}>
+              {cur.status === "new" ? (<>
+                <button className="btn-brass text-[12px]" disabled={!!busy} onClick={() => decideHere(cur, "approve")}>Approve</button>
+                <button className="btn-ghost text-[12px]" disabled={!!busy} onClick={() => decideHere(cur, "reject")}>Set aside</button>
+              </>) : <span style={{ fontSize: 12, opacity: .7 }}>{cur.status === "approved" ? "in production" : "set aside"}</span>}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 18, alignItems: "center", fontSize: 12, opacity: .65 }}>
+              <button className="btn-ghost text-[12px]" disabled={big === 0} onClick={() => step(-1)}>← Previous</button>
+              <button className="btn-ghost text-[12px]" disabled={big === shown.length - 1} onClick={() => step(1)}>Next →</button>
+              <span style={{ marginLeft: "auto" }}>{(big ?? 0) + 1} of {shown.length} · arrow keys · Esc closes</span>
+            </div>
           </div>
-        </div>, document.body)}
+        </div>
+      </div>, document.body)}
     <div className="max-w-[980px] mx-auto px-8 py-10 fade-up">
 
       <div className="flex items-end justify-between gap-6 flex-wrap">
@@ -171,7 +214,7 @@ export default function SuggestionsPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={`${scrpt.engineUrl}/api/scrpt/suggestions/${s.id}/cover.png?v=${s.cover_at || ""}`} alt={s.title}
                    title="Click to see it large"
-                   onClick={() => setBig({ src: `${scrpt.engineUrl}/api/scrpt/suggestions/${s.id}/cover.png?v=${s.cover_at || ""}`, title: s.title })}
+                   onClick={() => setBig(shown.findIndex((r) => r.id === s.id))}
                    style={{ width: 132, aspectRatio: "2 / 3", objectFit: "cover", borderRadius: 4, boxShadow: "0 6px 18px rgba(0,0,0,.35)", cursor: "zoom-in" }} />
             ) : (
               <button className="btn-ghost text-[11px]" style={{ width: 132, aspectRatio: "2 / 3" }} disabled={!!busy}
