@@ -409,6 +409,12 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
         raise RuntimeError(f"Illustration failed on both routes — last: {last}")
 
     targets = [s for s in spreads if only is None or s["n"] == only]
+    # a rerun draws only what is missing: two Star Map reruns redrew the whole
+    # book (2026-09-08). One named spread is always redrawn — that is a request.
+    if only is None:
+        targets = [s for s in targets if not (art_dir / f"spread-{s['n']:02d}.png").exists()]
+        if not targets:
+            print("  illustrate: every spread already drawn — nothing to do", flush=True)
     # spread 1 must exist before any other can reference it
     if only is not None and only != 1 and not ref_path.exists():
         targets = [spreads[0]] + targets
