@@ -598,10 +598,35 @@ class Stager:
         cur = await p.evaluate("""() => { const el=[...document.querySelectorAll('*')].find(e=>e.children.length===0 && / x [\\d.]+ in \\(/.test((e.innerText||'').trim()) && e.offsetParent!==null && (e.innerText||'').length<40); return el ? el.innerText.trim() : ''; }""")
         want = TRIM_LABEL.get(m["trim"], m["trim"])
         if want not in cur:
-            await p.get_by_text(cur, exact=False).first.click()
+            # Right after "Assign ISBN" the block re-renders under a toast and a
+            # Playwright click waits forever for a "stable" element (two workbooks
+            # lost their run to a 30 s timeout here, 2026-09-08). Let the page
+            # settle, then click; when that still hangs, a DOM click gets through.
+            await self._dismiss_dialogs()
+            await p.wait_for_timeout(1200)
+            dom_click = """(t) => { const el=[...document.querySelectorAll('*')].find(e=>e.children.length===0 && (e.innerText||'').trim().includes(t) && e.offsetParent!==null && (e.innerText||'').length<60); if(!el) return 'missing'; el.scrollIntoView({block:'center'}); el.click(); return 'ok'; }"""
+            opened = False
+            for _ in range(2):
+                try:
+                    await p.get_by_text(cur, exact=False).first.click(timeout=8000)
+                    opened = True; break
+                except Exception:
+                    if await p.evaluate(dom_click, cur) == "ok":
+                        self.note("trim: opened the dropdown with a DOM click"); opened = True; break
+                    await p.wait_for_timeout(1500)
+            if not opened:
+                raise RuntimeError(f"trim dropdown ({cur!r}) would not open")
             await p.wait_for_timeout(800)
-            await p.get_by_text(want, exact=False).first.click()
+            try:
+                await p.get_by_text(want, exact=False).first.click(timeout=8000)
+            except Exception:
+                r = await p.evaluate(dom_click, want)
+                self.note(f"trim: chose {want!r} with a DOM click ({r})")
             await p.wait_for_timeout(1000)
+            now = await p.evaluate("""() => { const el=[...document.querySelectorAll('*')].find(e=>e.children.length===0 && / x [\\d.]+ in \\(/.test((e.innerText||'').trim()) && e.offsetParent!==null && (e.innerText||'').length<40); return el ? el.innerText.trim() : ''; }""")
+            if want not in now:
+                raise RuntimeError(f"trim size not set: wanted {want!r}, page shows {now!r}")
+            self.note(f"trim: {now}")
         # files (titled delivery copies) — uploaded only when they changed:
         # a re-upload restarts KDP's multi-minute conversion from zero
         import hashlib as _hl
