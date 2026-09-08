@@ -204,17 +204,27 @@ def build_workbook_interior(catalog: str) -> dict:
     # left-hand (gutter on the right).
     PT = 72.0; W, H = 8.5 * PT, 11.0 * PT
     M_IN, M_OUT, M_TOP, M_BOT = 0.75 * PT, 0.5 * PT, 0.5 * PT, 0.5 * PT
+    # fonts must be EMBEDDED (KDP's check): the house serif from the frontend's font folder
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    fdir = PROJECT_ROOT / "frontend" / "public" / "fonts"
+    try:
+        pdfmetrics.registerFont(TTFont("HouseSerif", str(fdir / "EBGaramond-Regular.ttf")))
+        pdfmetrics.registerFont(TTFont("HouseSerif-Bold", str(fdir / "EBGaramond-Bold.ttf")))
+        F_REG, F_BOLD = "HouseSerif", "HouseSerif-Bold"
+    except Exception:
+        F_REG, F_BOLD = "Helvetica", "Helvetica-Bold"
     pdf = out_dir / "interior.pdf"
     c = rl_canvas.Canvas(str(pdf), pagesize=(W, H)); c.setTitle(book["title"]); c.setAuthor(d.get("author_name") or "")
     # 1. title page
-    c.setFont("Helvetica-Bold", 30); c.drawCentredString(W / 2, H * 0.62, book["title"][:60])
-    c.setFont("Helvetica", 16); c.drawCentredString(W / 2, H * 0.55, d.get("author_name") or "")
-    c.setFont("Helvetica", 11); c.drawCentredString(W / 2, H * 0.12, "OLIVE TREE SCRIPTS")
+    c.setFont(F_BOLD, 30); c.drawCentredString(W / 2, H * 0.62, book["title"][:60])
+    c.setFont(F_REG, 16); c.drawCentredString(W / 2, H * 0.55, d.get("author_name") or "")
+    c.setFont(F_REG, 11); c.drawCentredString(W / 2, H * 0.12, "OLIVE TREE SCRIPTS")
     c.showPage()
     # 2. belongs-to + copyright
-    c.setFont("Helvetica-Bold", 22); c.drawCentredString(W / 2, H * 0.7, "This book belongs to")
+    c.setFont(F_BOLD, 22); c.drawCentredString(W / 2, H * 0.7, "This book belongs to")
     c.setLineWidth(1.2); c.line(W * 0.2, H * 0.62, W * 0.8, H * 0.62)
-    c.setFont("Helvetica", 9)
+    c.setFont(F_REG, 9)
     c.drawCentredString(W / 2, H * 0.1, f"© {datetime.now().year} {d.get('author_name') or ''} · Olive Tree Scripts · All rights reserved.")
     c.drawCentredString(W / 2, H * 0.085, "For personal and classroom use. Adult supervision recommended for scissors.")
     c.showPage()
@@ -292,6 +302,9 @@ async def design_cover(catalog: str) -> dict:
              + f'The ONLY text anywhere on the cover is the title "{book["title"]}"' + (f' and the author name "{author}"' if author else "") + ".\n"
              "Output the FLAT COVER ARTWORK ITSELF, one flat rectangle filled edge to edge; not a mockup, no spine, no shadow.\n"
              "Bright, clean, child-safe; big readable title; it must look like a bestselling activity book on Amazon.\n"
+             "IMPORTANT FRAMING: the image is 2:3 but the printed cover is 8.5 x 11, so the top 8% and bottom 8% of the "
+             "image will be trimmed off — keep the whole title, the author name and every character's face inside the middle "
+             "84% of the height; only plain sky or grass may sit in the top and bottom bands.\n"
              + (f"Author: {author}\n" if author else "") + "Book size: 8.5″ × 11″")
     async with httpx.AsyncClient() as client:
         png = await _generate_one(client, brief, reference_png=plates or None, gen_size="1024x1536")
