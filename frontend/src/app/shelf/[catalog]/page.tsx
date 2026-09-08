@@ -272,8 +272,33 @@ function ManuscriptTab({ book, ms, reload, busy }: {
     } catch { /* offline */ }
   };
 
+  // "Every book should have the Read the book section, once it's written"
+  // (Lars, 2026-09-08): the built print file, page by page, on every kind
+  // of book — not only picture books.
+  const written = ["drafted", "accepted", "editing", "locked", "ready", "complete"].includes(ms.status || "")
+    || Boolean((book.data as { acceptance?: { verdict?: string } }).acceptance?.verdict)
+    || (Boolean(ms.chapters?.length) && ms.chapters.every((c) => (c.blocks || []).length > 0));
+  const [buildingInterior, setBuildingInterior] = useState(false);
+  const buildInterior = async () => {
+    setBuildingInterior(true);
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/interior/export/${catalog}`, { method: "POST" });
+      const d = await r.json();
+      if (d.job_id) await pollJob(d.job_id, () => {});
+      reload();
+    } catch { /* offline */ } finally { setBuildingInterior(false); }
+  };
+  const trimForReader = String(
+    (book.data?.format as { trim_size?: string } | undefined)?.trim_size
+    || (book.data?.trim_size as string | undefined) || "5.5x8.5");
+
   return (
     <div className="mt-6 space-y-5">
+      {written && (
+        <ReadThrough catalog={catalog} trim={trimForReader}
+                     coverSig={String((book.data.cover as { selected_variant?: number } | undefined)?.selected_variant ?? "none")}
+                     building={buildingInterior} onBuild={buildInterior} />
+      )}
       {/* idea */}
       <div className="card">
         <div className="label-scrpt">The idea</div>
@@ -4448,15 +4473,28 @@ function SpreadsTab({ book, reload, busy }: { book: ScrptBook; reload: () => voi
     (book.data?.format as { trim_size?: string } | undefined)?.trim_size
     || (book.data?.trim_size as string | undefined) || "8.5x8.5");
 
+  // a workbook has no spreads: its pages are drawn one by one and the print
+  // file is built by the workbook line, so its reader builds through that
+  const isWorkbook = (book.data as { book_type?: string }).book_type === "workbook";
+  const buildWorkbook = async () => {
+    setWorking("Building the interior"); setMsg("");
+    try {
+      const r = await fetch(`${scrpt.engineUrl}/api/scrpt/workbook/${catalog}/write`, { method: "POST" });
+      const d = await r.json();
+      if (d.job_id) { const job = await pollJob(d.job_id, (j) => setMsg(j.detail || "")); setMsg(job.status === "done" ? "" : `Failed: ${(job.error || "").split("\n")[0]}`); }
+      await load(); reload();
+    } catch { setMsg("Failed"); } finally { setWorking(""); }
+  };
+
   return (
     <div className="mt-6 space-y-5">
-      {spreads.length > 0 && (
+      {(spreads.length > 0 || isWorkbook) && (
         <ReadThrough catalog={catalog} trim={trim}
                      coverSig={String(
                        (book.data.cover as { selected_variant?: number } | undefined)
                          ?.selected_variant ?? "none")}
                      building={working === "Building the interior"}
-                     onBuild={() => run("/interior", "Building the interior")} />
+                     onBuild={() => (isWorkbook ? buildWorkbook() : run("/interior", "Building the interior"))} />
       )}
       {drawn > 0 && (
         <LayoutDesk catalog={catalog} spreads={spreads} art={art}
