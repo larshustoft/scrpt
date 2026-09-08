@@ -640,10 +640,12 @@ async def generate_cover_variants(catalog: str, count: int = 4,
 
     data = dict(get_book_by_catalog(catalog)["data"])
     cover = dict(data.get("cover") or {})
-    cover["variants"] = variants
+    # a fresh set of variants never throws the original away (Lars, 2026-09-08)
+    keep = [v for v in (cover.get("variants") or []) if v.get("index") == 0]
+    cover["variants"] = keep + variants
     data["cover"] = cover
     update_book(book["id"], data, sections=["cover"])
-    return {"variants": variants}
+    return {"variants": cover["variants"]}
 
 
 async def generate_series_suite(catalog: str, on_progress=None) -> dict:
@@ -723,12 +725,28 @@ def select_cover_variant(catalog: str, index: int) -> dict:
     if not vpath.exists():
         raise ValueError(f"Variant {index} not found")
     book = get_book_by_catalog(catalog)
-    stored = (book["data"].get("cover") or {}).get("variants") or []
+    cov = book["data"].get("cover") or {}
+    stored = list(cov.get("variants") or [])
+    # THE ORIGINAL IS ALWAYS AN ALTERNATIVE (Lars, 2026-09-08, after the approved
+    # Innkeeper cover vanished on one click): a cover that is not itself one of
+    # the variants is kept as variant 0 before anything replaces it.
+    out = Path(OUTPUT_DIR) / catalog
+    cur = out / "cover-art.png"
+    if cur.exists() and cov.get("selected_variant") in (None, 0) and not any(v.get("index") == 0 for v in stored):
+        (out / "cover-variant-0.png").write_bytes(cur.read_bytes())
+        try:
+            from PIL import Image
+            im = Image.open(cur); im.thumbnail((400, 600)); im.save(out / "cover-variant-0-preview.png")
+        except Exception:
+            (out / "cover-variant-0-preview.png").write_bytes(cur.read_bytes())
+        stored.insert(0, {"index": 0, "preview": "cover-variant-0-preview.png", "concept": "The original",
+                          "brief": cov.get("art_brief") or ""})
     brief = next((v.get("brief", "") for v in stored if v.get("index") == index),
-                 ((book["data"].get("cover") or {}).get("art_brief")) or "")
+                 (cov.get("art_brief")) or "")
     result = _install_cover(catalog, vpath.read_bytes(), brief)
     data = dict(get_book_by_catalog(catalog)["data"])
     data["cover"] = dict(data.get("cover") or {})
+    data["cover"]["variants"] = stored
     data["cover"]["selected_variant"] = index
     update_book(book["id"], data, sections=["cover"])
     # a chosen series cover becomes part of the series' design conversation:

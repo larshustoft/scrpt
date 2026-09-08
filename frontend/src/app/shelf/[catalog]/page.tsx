@@ -680,12 +680,14 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
         )}
         {variants.length > 0 && (
           <div className="flex-1 min-w-[300px]">
-            <div className="label-scrpt">Alternatives — click to make it the cover</div>
+            <div className="label-scrpt">Alternatives — click to see it large, then choose</div>
             <div className="grid grid-cols-4 gap-3 mt-1">
               {variants.map((v) => (
                 <div key={v.index}>
-                  <button onClick={() => choose(v.index)}
+                  {/* a look first, the choice second (Lars, 2026-09-08) */}
+                  <button onClick={() => openCover(`${scrpt.engineUrl}/api/files/${catalog}/cover-variant-${v.index}.png?v=${imgKey}`, v.index === 0 ? "The original" : `Variant ${v.index}`)}
                           disabled={selecting !== null}
+                          title="See it large"
                           className="relative rounded-[5px] overflow-hidden transition-transform hover:scale-[1.04] w-full"
                           style={{
                             boxShadow: cover.selected_variant === v.index
@@ -704,11 +706,12 @@ function AICoverCard({ book, reload }: { book: ScrptBook; reload: () => void }) 
                     )}
                   </button>
                   <button
-                    onClick={() => openCover(`${scrpt.engineUrl}/api/files/${catalog}/cover-variant-${v.index}.png?v=${imgKey}`, `Variant ${v.index}`)}
-                    className="mt-1 w-full text-[10px] text-text-faint hover:text-accent transition-colors"
-                    title="View this option fullscreen">
-                    Enlarge
+                    onClick={() => choose(v.index)} disabled={selecting !== null || cover.selected_variant === v.index}
+                    className="mt-1 w-full text-[10.5px] btn-ghost"
+                    title="Make this the cover">
+                    {cover.selected_variant === v.index ? "Current cover" : "Use this cover"}
                   </button>
+                  {v.index === 0 && <div className="text-[10px] text-text-faint text-center mt-1">The original</div>}
                   {v.concept && (
                     <div className="text-[10px] text-text-faint text-center mt-1.5 leading-snug">
                       {v.concept}

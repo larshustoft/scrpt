@@ -1441,8 +1441,9 @@ def select_variant(catalog: str, req: SelectVariantRequest):
     kind = d.get("kind") or d.get("book_type")
     spreads = ((d.get("childrens") or {}).get("spreads")
                or d.get("spreads") or [])
+    art = (d.get("childrens") or {}).get("art") or {}
     undrawn = [sp for sp in spreads
-               if not ((sp.get("illustration") or {}).get("path") or sp.get("illustrated"))]
+               if not ((sp.get("illustration") or {}).get("path") or sp.get("illustrated") or str(sp.get("n")) in art)]
     if kind == "childrens" and spreads and undrawn:
         from ..writing.childrens import illustrate
         from ..writing.childrens_bible import build_bible
