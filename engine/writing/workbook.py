@@ -256,6 +256,34 @@ def build_workbook_interior(catalog: str) -> dict:
     return {"pdf": str(pdf), "page_count": n_pages, "validation": vd}
 
 
+async def write_blurb(catalog: str) -> str:
+    """The back-cover / KDP description, written for the parent who is buying.
+    The suggestion's pitch is publisher talk (market, cross-promotion,
+    'customers also bought') and printed once on a back cover (2026-09-08);
+    the blurb is what a parent reads in the shop."""
+    from .client import complete
+    book = get_book_by_catalog(catalog); d = book["data"]; wb = d.get("workbook") or {}
+    uni = _universe(d)
+    pages = wb.get("pages") or []
+    sample = "; ".join(f"{p.get('type') or ''}: {p.get('title') or p.get('brief') or ''}" for p in pages[:12])
+    prompt = (f"BOOK: {book['title']}\nAGES: {wb.get('ages') or '3-5'}\nAUTHOR: {d.get('author_name') or ''}\n"
+              f"WHAT IT IS (publisher's note, do not copy its language): {wb.get('pitch') or d.get('description') or ''}\n"
+              + (f"CHARACTERS: {uni.get('cast', '')}\n" if uni else "")
+              + f"PAGES INSIDE ({len(pages)} total), first ones: {sample}\n\n"
+              "Write the back-cover text a parent reads in the shop: 3 short paragraphs, 70-110 words in total. "
+              "Paragraph 1: what the child does in this book, in warm concrete words (name two or three actual activities). "
+              "Paragraph 2: the characters who keep them company and what the pages build (pencil control, letters, scissor skills...). "
+              "Paragraph 3: one line on the format (big pages, one activity per page, ages) and an invitation. "
+              "Speak to the parent, never about 'the market', 'the brand', 'the series', 'cross-promotion' or Amazon. "
+              "No hype words (ultimate, amazing, perfect). No bullet points, no headings, no quotes. Plain text, paragraphs separated by a blank line.")
+    text = (await complete("You write the back covers of children's activity books for a small publishing house. Warm, exact, never salesy.",
+                           prompt, max_tokens=600, mechanical=True)).strip()
+    b = get_book_by_catalog(catalog); data = dict(b["data"])
+    data["description"] = text; data["back_cover_blurb"] = text
+    update_book(b["id"], data, sections=["description", "back_cover_blurb"])
+    return text
+
+
 async def write_workbook(catalog: str, handle=None) -> dict:
     """Plan → draw → interior → accepted (there is no manuscript to read)."""
     if handle:
@@ -279,6 +307,11 @@ async def write_workbook(catalog: str, handle=None) -> dict:
         handle.progress(0.9, "interior", "assembling the PDF")
     res = await asyncio.to_thread(build_workbook_interior, catalog)
     ok = bool((res.get("validation") or {}).get("passed", True))
+    if handle: handle.progress(0.93, "blurb", "the back cover text")
+    try:
+        await write_blurb(catalog)
+    except Exception as e:
+        print(f"  workbook blurb failed for {catalog}: {e}")
     b = get_book_by_catalog(catalog); data = dict(b["data"])
     data["workbook"] = {**(data.get("workbook") or {}), "done": ok, "drawn_at": datetime.now().isoformat(timespec="minutes")}
     data["acceptance"] = {"verdict": "accept" if ok else "revise", "accepted_by": "workbook line", "score": None,
