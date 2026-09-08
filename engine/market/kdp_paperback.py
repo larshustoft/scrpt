@@ -998,7 +998,14 @@ class Stager:
             result["ok"] = True
             result["published"] = self.publish
         except Exception as e:
-            result.update(ok=False, error=str(e)[:300])
+            msg = str(e)
+            # KDP bounced the page mid-load (a redirect while it re-checks the
+            # title, 2026-09-08): come back in ten minutes, the book is fine
+            if "interrupted by another navigation" in msg or "net::ERR" in msg:
+                result.update(ok=False, stopped_at="navigation", retryable=True,
+                              message="KDP redirected mid-page — run again in a few minutes.", error=msg[:300])
+            else:
+                result.update(ok=False, error=msg[:300])
             await self.shot("error")
         finally:
             result["log"] = self.log
