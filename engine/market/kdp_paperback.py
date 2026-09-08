@@ -246,7 +246,23 @@ class Stager:
         """Release Date → "Schedule my book's release" + the date, via KDP's
         read-only jQuery datepicker (typing into it does nothing, and a
         value pushed by script leaves "Release now" selected — which is how
-        Fracture Point lost its 15 September date, 2026-09-05)."""
+        Fracture Point lost its 15 September date, 2026-09-05).
+        A failure leaves a screenshot and the release section's text behind
+        (output/<catalog>/kdp-schedule-fail.png) so the page can be read."""
+        try:
+            return await self._schedule_release_inner(iso_date)
+        except Exception:
+            try:
+                shot = OUTPUT_DIR / self.catalog / "kdp-schedule-fail.png"
+                await self.page.screenshot(path=str(shot), full_page=True)
+                body = await self.page.inner_text("body")
+                i = body.lower().find("release date")
+                self.note("release section reads: " + " ".join(body[max(0, i - 200): i + 700].split())[:600])
+            except Exception:
+                pass
+            raise
+
+    async def _schedule_release_inner(self, iso_date: str) -> bool:
         import re as _re
         p = self.page
         y, mo, da = (int(x) for x in iso_date.split("-"))
