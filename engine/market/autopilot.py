@@ -180,10 +180,10 @@ async def scheduler():
                 st = list_suggestions()
                 last = st.get("last_research") or ""
                 stale = (not last) or ((datetime.now() - datetime.fromisoformat(last)).days >= 7)
-                if st.get("open", 0) < 6 or stale:
+                if st.get("open", 0) < 10 or stale:
                     _ss2("suggest_last_day", _today)
                     print("  ⚙ acquisitions: researching new suggestions")
-                    r = await _research(8)
+                    r = await _research(10)
                     print(f"  acquisitions: {r.get('count')} new suggestions")
         except Exception:
             print("  acquisitions research failed:\n" + traceback.format_exc()[-400:])
