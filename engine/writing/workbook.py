@@ -215,7 +215,8 @@ def build_workbook_interior(catalog: str) -> dict:
     except Exception:
         F_REG, F_BOLD = "Helvetica", "Helvetica-Bold"
     pdf = out_dir / "interior.pdf"
-    c = rl_canvas.Canvas(str(pdf), pagesize=(W, H)); c.setTitle(book["title"]); c.setAuthor(d.get("author_name") or "")
+    # initialFontName: reportlab otherwise puts an unembedded Helvetica in every page's resources
+    c = rl_canvas.Canvas(str(pdf), pagesize=(W, H), initialFontName=F_REG); c.setTitle(book["title"]); c.setAuthor(d.get("author_name") or "")
     # 1. title page
     c.setFont(F_BOLD, 30); c.drawCentredString(W / 2, H * 0.62, book["title"][:60])
     c.setFont(F_REG, 16); c.drawCentredString(W / 2, H * 0.55, d.get("author_name") or "")
