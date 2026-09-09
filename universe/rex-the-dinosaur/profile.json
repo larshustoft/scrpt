@@ -1,0 +1,60 @@
+{
+ "name": "Rex the Dinosaur",
+ "tagline": "Stomp, roar, wonder. Big questions, little dinosaur.",
+ "world": "Fern Valley — a bright, friendly prehistoric valley with giant ferns, a winding river, a sleepy volcano that only ever puffs a small cloud, and a sky full of things to notice.",
+ "guiding_message": "Being small is no reason to think small. Look closely, ask why, try again — and roar when you get there.",
+ "learning_pillars": [
+  "Counting & shapes",
+  "Nature & science",
+  "Letters & sounds",
+  "Feelings & courage",
+  "Trying again"
+ ],
+ "audience": "ages 3-7",
+ "members": [],
+ "domain": "rexthedinosaur.com",
+ "author": "Bennie Clay",
+ "cast": {
+  "Rex": {
+   "plate": "plates/rex.png",
+   "role": "Lead — a young T. rex, curious, brave, proud of his little arms",
+   "line": "Roar! Let's find out."
+  },
+  "Dot the Triceratops": {
+   "plate": "plates/dot.png",
+   "role": "Planner and counter — careful, kind, always has a plan",
+   "line": "One, two, three... let's count before we go."
+  },
+  "Skye the Pterodactyl": {
+   "plate": "plates/skye.png",
+   "role": "Scout — quick, curious, sees things from above",
+   "line": "I can see it from up here!"
+  },
+  "Bramble the Ankylosaurus": {
+   "plate": "plates/bramble.png",
+   "role": "Gentle strength — shy, patient, never gives up",
+   "line": "I'll go slow... but I'll get there."
+  },
+  "Professor Fern": {
+   "plate": "plates/professor_fern.png",
+   "role": "The wise brachiosaurus — names every plant and star",
+   "line": "Every question is a seed. Let's plant it."
+  }
+ },
+ "locations": [
+  "Rex's Nest",
+  "The Big Fern Forest",
+  "Ripple River",
+  "Puff the Volcano",
+  "The Counting Stones",
+  "Skye's Lookout",
+  "The Star Meadow",
+  "Professor Fern's Library Tree"
+ ],
+ "creatives": {
+  "plates_dir": "plates",
+  "site_hero": "site-hero.png",
+  "universe_bible": "universe-bible.md"
+ },
+ "note": "Created 2026-09-09 on Lars's request (rexthedinosaur.com bought in Cloudflare): a child-friendly learn-and-play universe in the house plate style."
+}

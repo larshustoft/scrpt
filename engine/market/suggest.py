@@ -27,7 +27,7 @@ from ..prose.models import GENRE_PRESETS, CHILDRENS_PRESETS
 # what the 5 September 2026 research established (live Amazon ranks + Circana +
 # K-lytics + Written Word Media); refreshed by each research run's web search
 BANNED_PEN_NAMES = {"lily tiger"}
-HOUSE_PEN_NAMES = {"princess-the-unicorn": "Poppy Marsh", "freddie-the-farmer": "Hattie Meadows"}
+HOUSE_PEN_NAMES = {"princess-the-unicorn": "Poppy Marsh", "freddie-the-farmer": "Hattie Meadows", "rex-the-dinosaur": "Bennie Clay"}
 
 
 def _pen_name_for(kind) -> str:

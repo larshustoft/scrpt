@@ -61,6 +61,19 @@ UNIVERSE_CAST = {
                  "No other main creatures — no pigs, no invented animals as the lead."),
     },
 }
+UNIVERSE_CAST["rex-the-dinosaur"] = {
+    "author": "Bennie Clay",
+    "display": "Rex the Dinosaur",
+    "plates": {"Rex": "plates/rex.png", "Dot the Triceratops": "plates/dot.png", "Skye the Pterodactyl": "plates/skye.png",
+               "Bramble the Ankylosaurus": "plates/bramble.png", "Professor Fern": "plates/professor_fern.png"},
+    "look": ("REX is a small young Tyrannosaurus rex: soft moss-green skin, pale cream belly, darker green spots on his back, big round "
+             "amber eyes, a wide friendly smile with tiny harmless teeth, stubby little arms and a red bandana knotted at his neck. "
+             "Draw him exactly like his reference picture on every page — never scary."),
+    "cast": ("His friends, drawn ONLY like their reference pictures: DOT is a small lilac-grey triceratops with a peach frill and a yellow "
+             "flower; SKYE is a slim sky-blue pterodactyl with an orange beak and goggles on her head; BRAMBLE is a sturdy brown "
+             "ankylosaurus with a club tail and a leaf on his back; PROFESSOR FERN is an old sage-green brachiosaurus with half-moon "
+             "spectacles. No other dinosaurs as leads."),
+}
 UNIVERSE_DISPLAY = {slug: v.get("display") or slug.replace("-", " ").title() for slug, v in UNIVERSE_CAST.items()}
 UNIVERSE_DISPLAY["princess-the-unicorn"] = "Princess the Unicorn"
 
