@@ -337,7 +337,7 @@ async def covers(ids: list[str], handle=None) -> dict:
     _init()
     rows = {r["id"]: r for r in _rows()}
     import asyncio
-    from ..writing.workbook import UNIVERSE_CAST, _plate_png
+    from ..writing.workbook import UNIVERSE_CAST, UNIVERSE_DISPLAY, _plate_png
     done, failed = [], []
     sem = asyncio.Semaphore(3)
     async with httpx.AsyncClient() as client:
@@ -351,11 +351,19 @@ async def covers(ids: list[str], handle=None) -> dict:
                 try:
                     brief = _cover_brief(r)
                     plate = None
-                    uni = UNIVERSE_CAST.get(r.get("universe") or "", {})
+                    from ..writing.workbook import detect_universe
+                    slug = r.get("universe") or detect_universe(r.get("title"), r.get("pitch"), r.get("series_title"))
+                    if slug and not r.get("universe"):
+                        r["universe"] = slug
+                    uni = UNIVERSE_CAST.get(slug, {})
                     if uni:
-                        brief += (f"\nThe characters: {uni['look']} {uni.get('cast', '')} The attached pictures are the "
-                                  "references, in this order: Princess, Glitter, Pip, Moss — friendly full-colour cartoon style.")
-                        plate = [png for png in (_plate_png(r["universe"], rel) for rel in (uni.get("plates") or {}).values()) if png] or None
+                        names = list((uni.get("plates") or {}).keys())
+                        lead = names[0] if names else ""
+                        brief += (f"\nThis book belongs to the {UNIVERSE_DISPLAY.get(slug, slug)} universe. {lead.upper()} IS THE LEAD: "
+                                  f"large, front and centre, the first thing seen, exactly as in the reference. The characters: {uni['look']} "
+                                  f"{uni.get('cast', '')} The attached pictures are the references, in this order: {', '.join(names)} — "
+                                  "friendly full-colour cartoon style, faithful to the references.")
+                        plate = [png for png in (_plate_png(slug, rel) for rel in (uni.get("plates") or {}).values()) if png] or None
                     png = await _generate_one(client, brief, reference_png=plate, gen_size="1024x1536")
                     pth = cover_path(sid); pth.parent.mkdir(parents=True, exist_ok=True); pth.write_bytes(png)
                     d = {k: v for k, v in r.items() if k not in ("id", "created_at", "status", "catalog", "decided_at", "note")}
@@ -377,7 +385,7 @@ def _commission_workbook(r: dict) -> tuple[str, str]:
     universe, and the workbook line draws it at once."""
     from ..database import create_book
     from ..jobs import start_job
-    from ..writing.workbook import write_workbook, UNIVERSE_CAST
+    from ..writing.workbook import write_workbook, UNIVERSE_CAST, UNIVERSE_DISPLAY
     slug = r.get("universe") or ""
     uni = UNIVERSE_CAST.get(slug, {})
     series_title = (r.get("series_title") or "").strip()

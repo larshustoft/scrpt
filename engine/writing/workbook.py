@@ -48,7 +48,33 @@ UNIVERSE_CAST = {
                  "MOSS is a chubby teal baby dragon with small orange wings, tan horns and spikes, big green eyes and a happy smile. "
                  "No other creatures — no rabbits, turtles, cats or pink dragons."),
     },
+    "freddie-the-farmer": {
+        "author": "Hattie Meadows",
+        "display": "Freddie the Farmer",
+        "plates": {"Freddie": "plates/freddie.png", "Tilly the Tractor": "plates/tilly.png", "Pip the Sheepdog": "plates/pip.png",
+                   "Daisy the Cow": "plates/daisy.png"},
+        "look": ("FREDDIE is a small farm boy, about seven: a mop of brown hair under a green flat cap, freckles and rosy cheeks, "
+                 "big brown eyes, a red-and-cream checked shirt under blue denim dungarees, a brown tool belt with a pouch, and "
+                 "yellow wellington boots. He is a BOY, never an animal. Draw him exactly like his reference picture on every page."),
+        "cast": ("His friends, drawn ONLY like their reference pictures: TILLY is a friendly little red tractor with a face; "
+                 "PIP is a black-and-white sheepdog; DAISY is a gentle brown-and-white cow. "
+                 "No other main creatures — no pigs, no invented animals as the lead."),
+    },
 }
+UNIVERSE_DISPLAY = {slug: v.get("display") or slug.replace("-", " ").title() for slug, v in UNIVERSE_CAST.items()}
+UNIVERSE_DISPLAY["princess-the-unicorn"] = "Princess the Unicorn"
+
+
+def detect_universe(*texts: str) -> str:
+    """The universe a title or pitch belongs to, by its established character's
+    name — a suggestion that says "Freddie the Farmer" is Freddie's, and its
+    cover must lead with Freddie (Lars, 2026-09-09)."""
+    blob = " ".join(t or "" for t in texts).lower()
+    for slug, name in UNIVERSE_DISPLAY.items():
+        first = name.split()[0].lower()
+        if name.lower() in blob or (first in blob and len(first) > 4):
+            return slug
+    return ""
 
 
 def _universe(d: dict) -> dict:
