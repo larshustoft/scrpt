@@ -366,6 +366,46 @@ def _ocr_boxes(png_path: Path) -> list[dict]:
         return []
 
 
+def outpaint_for_trim(raw_png: bytes, trim: str) -> bytes | None:
+    """Extend the model's 2:3 picture sideways so the WHOLE composition fits
+    the trim: the picture is set at 88% inside a 1024x1536 canvas, the border
+    is masked, and the image model continues sky, meadow and flowers outward
+    (Letters, Numbers & Colours, 2026-09-09: its horn sat on the trim line
+    under any crop). Returns the 2:3 result to be cropped centred, or None
+    when the edit endpoint fails. About $0.25 a cover."""
+    import io, httpx
+    from PIL import Image
+    try:
+        raw = Image.open(io.BytesIO(raw_png)).convert("RGBA")
+        W, H = 1024, 1536
+        inner = raw.resize((int(W * 0.88), int(H * 0.88)), Image.LANCZOS)
+        canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0)); mask = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        ox, oy = (W - inner.width) // 2, (H - inner.height) // 2
+        canvas.paste(inner, (ox, oy)); mask.paste(Image.new("RGBA", inner.size, (0, 0, 0, 255)), (ox, oy))
+        cb, mb = io.BytesIO(), io.BytesIO(); canvas.save(cb, format="PNG"); mask.save(mb, format="PNG")
+        prompt = ("Extend this children's book cover artwork outward to fill the whole canvas: continue the sky, clouds, "
+                  "meadow, grass and flowers seamlessly beyond the current edges in the same painted style and colours. "
+                  "Do not change, move or redraw anything inside the existing picture; add no new characters and no text.")
+        from ..cover.front_cover import pick_image_model
+        with httpx.Client(timeout=420) as c:
+            try:      # the newest live image model, never a pinned version
+                ids = [m["id"] for m in c.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {OPENAI_API_KEY}"}, timeout=30).json().get("data", [])]
+                model = pick_image_model(ids)
+            except Exception:
+                model = "gpt-image-2"
+            for attempt in range(2):
+                r = c.post("https://api.openai.com/v1/images/edits", headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                           files={"image[]": ("cover.png", cb.getvalue(), "image/png"), "mask": ("mask.png", mb.getvalue(), "image/png")},
+                           data={"model": model, "prompt": prompt, "size": "1024x1536", "quality": "high", "n": "1"})
+                if r.status_code == 200:
+                    return base64.b64decode(r.json()["data"][0]["b64_json"])
+                if r.status_code < 500:
+                    break
+        return None
+    except Exception:
+        return None
+
+
 def _similar(a: str, b: str) -> float:
     from difflib import SequenceMatcher
     return SequenceMatcher(None, a.lower().strip(), b.lower().strip()).ratio()
@@ -391,7 +431,10 @@ def frame_cover_for_trim(raw_png: bytes, trim: str, author: str, work_dir: Path 
     report["boxes"] = boxes
     author_box = next((b for b in boxes if author and _similar(b["text"], author) >= 0.7), None)
     title_boxes = [b for b in boxes if b is not author_box]
-    margin = 0.015 * H
+    # The title usually wears an ornament (horn, flowers, stars) that OCR does
+    # not see: give the top of the title real air, or the ornament sits on the
+    # trim and the bleed cuts it (Letters, Numbers & Colours, 2026-09-09).
+    margin = 0.06 * H
     title_top = min((b["y"] * H for b in title_boxes), default=None)
     title_bot = max(((b["y"] + b["h"]) * H for b in title_boxes), default=None)
     safe = 0.035 * new_h               # KDP: text 0.25" inside the trim (0.25/11 = 2.3%) plus air
@@ -409,7 +452,7 @@ def frame_cover_for_trim(raw_png: bytes, trim: str, author: str, work_dir: Path 
     def title_ok(cut_top):
         if title_top is None:
             return True
-        return title_top - margin >= cut_top and title_bot + margin <= cut_top + new_h
+        return title_top - margin >= cut_top and title_bot + 0.015 * H <= cut_top + new_h
 
     # candidates: centred first, then every 1% of the surplus either way
     order = sorted(range(0, surplus + 1, max(1, surplus // 100)), key=lambda c: abs(c - surplus / 2))
@@ -424,8 +467,19 @@ def frame_cover_for_trim(raw_png: bytes, trim: str, author: str, work_dir: Path 
         pick = next((c for c in order if title_ok(c)), None)
     if pick is None:                    # the title itself does not fit: cut where it hurts least
         pick = int(min(surplus, max(0, (title_top or 0) - margin)))
+    # When the crop would still crowd the title's ornament (less than 10% of
+    # the height above the title, with a real cut at the top), the picture is
+    # extended sideways instead of cut — the whole composition survives.
+    crowded = pick > 0.02 * H and title_top is not None and (title_top - pick) < 0.10 * H
+    if crowded and not report.get("outpainted"):
+        ext = outpaint_for_trim(raw_png, trim)
+        if ext:
+            im = Image.open(io.BytesIO(ext)).convert("RGB"); W, H = im.size
+            new_h = int(W * th / tw); surplus = H - new_h; pick = surplus // 2
+            report.update({"outpainted": True})
+            author_box = None                # the model drops the name; it is stamped below
     out = im.crop((0, pick, W, pick + new_h))
-    report.update({"cut_top": pick, "cut_bottom": surplus - pick, "author": author_state(pick)})
+    report.update({"cut_top": pick, "cut_bottom": surplus - pick, "author": author_state(pick) if not report.get("outpainted") else "gone"})
 
     if author and author_state(pick) != "safe":
         draw = ImageDraw.Draw(out)
