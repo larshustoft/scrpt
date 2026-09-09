@@ -56,8 +56,14 @@ async def run(max_starts: int = 2) -> dict:
     for b in candidates()[:max_starts]:
         cat = b["catalog_number"]
 
-        async def job(handle, c=cat, kind=(b.get("data") or {}).get("kind")):
+        async def job(handle, c=cat, kind=(b.get("data") or {}).get("kind"), slug=(b.get("data") or {}).get("universe") or ""):
             try:
+                from ..writing.workbook import UNIVERSE_CAST, detect_universe
+                bk = __import__("engine.database", fromlist=["get_book_by_catalog"]).get_book_by_catalog(c)
+                slug = slug or detect_universe(bk["title"], (bk["data"].get("manuscript") or {}).get("idea", ""))
+                if kind == "childrens" and slug in UNIVERSE_CAST:
+                    from ..writing.childrens_ready import design_universe_cover
+                    return await design_universe_cover(c)        # the established character leads, from the plates
                 res = await generate_cover_variants(c, 4, "", on_progress=lambda f, d: handle.progress(f, "creating", d))
             except Exception as e:
                 msg = str(e)

@@ -409,6 +409,23 @@ def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
     book = get_book_by_catalog(catalog)
     out_dir = Path(OUTPUT_DIR) / catalog
     out_dir.mkdir(parents=True, exist_ok=True)
+    # A trim wider than the art (8.5x11, 8.5x8.5 against a 2:3 picture) is
+    # framed by looking — the title kept whole, the sides extended when a
+    # crop would crowd it — never centre-cropped blind (Freddie books lost
+    # their titles that way, 2026-09-09). The model's image is kept as
+    # cover-art-raw.png; cover-art.png is the framed print art.
+    try:
+        _d0 = book["data"]; _trim = (_d0.get("format") or {}).get("trim_size") or _d0.get("trim_size") or "5.5x8.5"
+        _tw, _th = (float(x) for x in _trim.split("x"))
+        from PIL import Image as _Im
+        import io as _io
+        _im = _Im.open(_io.BytesIO(raw_png)); _ar = _im.width / _im.height
+        if (_tw / _th) - _ar > 0.03 and (_d0.get("kind") == "childrens" or _tw >= 8):
+            (out_dir / "cover-art-raw.png").write_bytes(raw_png)
+            from ..writing.workbook import frame_cover_for_trim
+            raw_png, _rep = frame_cover_for_trim(raw_png, _trim, _d0.get("author_name") or "", out_dir)
+    except Exception as _e:
+        print(f"  cover framing skipped for {catalog}: {str(_e)[:80]}")
     art_path = out_dir / "cover-art.png"
     art_path.write_bytes(raw_png)
 
