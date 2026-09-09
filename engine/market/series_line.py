@@ -46,11 +46,15 @@ def advance(max_starts: int = 2) -> dict:
             d = m["data"]
             if (d.get("book_type") or "") == "workbook":
                 return bool((d.get("workbook") or {}).get("done"))
+            if d.get("kind") == "childrens":
+                return bool((d.get("childrens") or {}).get("spreads")) and bool((d.get("acceptance") or {}).get("verdict"))
             return ((d.get("manuscript") or {}).get("status") or "") in ("drafted", "editing", "locked", "complete")
         def _started(m):
             d = m["data"]
             if (d.get("book_type") or "") == "workbook":
                 return bool((d.get("workbook") or {}).get("pages")) or bool((d.get("workbook") or {}).get("done")) or m["catalog_number"] in active
+            if d.get("kind") == "childrens":
+                return bool((d.get("childrens") or {}).get("spreads")) or m["catalog_number"] in active
             return ((d.get("manuscript") or {}).get("status") or "idea") in STARTED or m.get("status") == "generating"
         for m in members:
             if _started(m):
@@ -66,6 +70,9 @@ def advance(max_starts: int = 2) -> dict:
             if is_wb:
                 from ..writing.workbook import write_workbook
                 job_id = start_job("workbook", lambda h, c=cat: write_workbook(c, h), book_catalog=cat)
+            elif (m["data"].get("kind") or "") == "childrens":
+                from ..writing.childrens import write_childrens_book
+                job_id = start_job("childrens_book", lambda h, c=cat: write_childrens_book(c, h), book_catalog=cat)
             else:
                 job_id = start_job("full_draft", lambda h, c=cat: wp.full_draft_job(h, c), book_catalog=cat)
             active.add(cat)
