@@ -4538,7 +4538,7 @@ function SpreadsTab({ book, reload, busy }: { book: ScrptBook; reload: () => voi
              href={`${scrpt.engineUrl}/api/files/${catalog}/interior.pdf`}>Open PDF</a>
         </div>
       )}
-      <div className="card">
+      {!isWorkbook && (<div className="card">
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <div className="serif-display text-[17px] font-semibold">The picture book</div>
           {rec?.label && (
@@ -4575,7 +4575,7 @@ function SpreadsTab({ book, reload, busy }: { book: ScrptBook; reload: () => voi
           )}
         </div>
         {msg && <div className="text-[12px] mt-2" style={{ color: "var(--status-amber)" }}>{msg}</div>}
-      </div>
+      </div>)}
 
       {rec?.characters && Object.keys(rec.characters).length > 0 && (
         <div className="card">
@@ -4624,7 +4624,7 @@ function SpreadsTab({ book, reload, busy }: { book: ScrptBook; reload: () => voi
         </div>
       ))}
 
-      {!spreads.length && (
+      {!spreads.length && !isWorkbook && (
         <div className="card text-[12.5px] text-text-tertiary">
           No spreads yet. Write the book and it will appear here, page turn by page turn.
         </div>

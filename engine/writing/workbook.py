@@ -258,7 +258,8 @@ def build_workbook_interior(catalog: str) -> dict:
         c.drawImage(ImageReader(im), left, M_BOT + (box_h - dh) / 2, dw, dh)
         c.showPage(); page_no += 1
     n_pages = 2 + len(pngs)
-    if n_pages % 2:
+    # a print binder wants a page count divisible by 8 — always (Lars, 2026-09-09)
+    while n_pages % 8:
         c.showPage(); n_pages += 1
     c.save()
     validation = validate_interior_pdf(str(pdf), trim_w=8.5, trim_h=11.0, paper_type="white_bw", trim_key="8.5x11",

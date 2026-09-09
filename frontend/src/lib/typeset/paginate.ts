@@ -413,7 +413,8 @@ function buildPagination(
   }
 
   // even page count
-  if (pages.length % 2 === 1) pushBlank();
+  // a print binder wants a page count divisible by 8 — always (Lars, 2026-09-09)
+  while (pages.length % 8 !== 0) pushBlank();
 
   // fill ToC entries now that body pages are known
   if (wantToc) {
