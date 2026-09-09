@@ -430,7 +430,8 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
         # a spread counts as drawn only when the RECORD says so AND the file
         # exists — files left behind by a cleared book (a rewrite, a new cover)
         # are stale and get moved aside, never reused (Star Map, 2026-09-09)
-        art_map = ((get_book_by_catalog(catalog)["data"].get("childrens") or {}).get("art") or {})
+        from ..database import get_book_by_catalog as _gb
+        art_map = (((_gb(catalog) or {}).get("data") or {}).get("childrens") or {}).get("art") or {}
         stale = [s for s in targets if (art_dir / f"spread-{s['n']:02d}.png").exists() and str(s["n"]) not in {str(k) for k in art_map}]
         if stale and not art_map:
             old_dir = art_dir.parent / "spreads-stale"; old_dir.mkdir(exist_ok=True)
