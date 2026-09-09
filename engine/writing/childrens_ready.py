@@ -156,7 +156,7 @@ async def ready_childrens(catalog: str, handle=None) -> dict:
     b = get_book_by_catalog(catalog); data = dict(b["data"])
     data["acceptance"] = {"verdict": "accept", "accepted_by": "children's line", "readability": {"meets_target": True, "house_target": "read-aloud"},
                           "length": {"ok": True}, "continuity": [], "accepted_at": datetime.now().isoformat(timespec="minutes")}
-    data["manuscript"] = {**(data.get("manuscript") or {}), "status": "complete"}
+    data["manuscript"] = {**(data.get("manuscript") or {}), "status": "drafted"}
     data["childrens_ready"] = {"done": True, "at": datetime.now().isoformat(timespec="minutes"), "steps": steps}
     update_book(b["id"], data)
     return {"ok": True, "steps": steps, **res}
