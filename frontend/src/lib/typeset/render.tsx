@@ -12,6 +12,41 @@ import type { PageModel, Paginated, PublisherSettings } from "./paginate";
 import { buildCopyrightHTML } from "./paginate";
 import { inline } from "./html";
 
+
+// THE TITLE-LINE RULE (Lars, 2026-09-09): a divided title never puts one
+// word alone on a line — at least three words a line, balanced in length.
+// Measured by character count here (the print engine measures in points).
+const TITLE_LINE_CHARS = 24;
+export function titleLines(title: string, minWords = 3): string[] {
+  const t = title.trim().replace(/\s+/g, " ");
+  if (t.length <= TITLE_LINE_CHARS) return [t];
+  const ws = t.split(" ");
+  let best: string[] | null = null, bestScore = Infinity;
+  const parts = (start: number, left: number): string[][][] => {
+    if (left === 1) return ws.length - start >= minWords ? [[ws.slice(start)]] : [];
+    const out: string[][][] = [];
+    for (let n = minWords; n <= ws.length - start - minWords * (left - 1); n++)
+      for (const rest of parts(start + n, left - 1)) out.push([ws.slice(start, start + n), ...rest]);
+    return out;
+  };
+  for (let k = 2; k <= 3; k++) {
+    if (ws.length < k * minWords) break;
+    for (const split of parts(0, k)) {
+      const lines = split.map((p) => p.join(" "));
+      const lens = lines.map((l) => l.length);
+      if (Math.max(...lens) > TITLE_LINE_CHARS + 6) continue;
+      const score = k * 100 + (Math.max(...lens) - Math.min(...lens));
+      if (score < bestScore) { best = lines; bestScore = score; }
+    }
+    if (best) return best;
+  }
+  return [t];                                   // too few words to divide well: one line, scaled down
+}
+export function titleScale(title: string): number {
+  const longest = Math.max(...titleLines(title).map((l) => l.length));
+  return longest <= TITLE_LINE_CHARS ? 1 : Math.max(0.6, TITLE_LINE_CHARS / longest);
+}
+
 export function pageStyleCSS(): string {
   return `
     .sc-page {
@@ -122,8 +157,10 @@ export function PageView({
         <div style={{ height: "100%", display: "flex", flexDirection: "column",
                       alignItems: "center", textAlign: "center" }}>
           <div style={{ marginTop: `${0.24 * 100}%` }}>
-            <div style={{ fontSize: `${basePt * 2.3}pt`, lineHeight: 1.15 }}>
-              {book.title}
+            <div style={{ fontSize: `${basePt * 2.3 * titleScale(book.title)}pt`, lineHeight: 1.15 }}>
+              {titleLines(book.title).map((ln, i) => (
+                <span key={i} style={{ display: "block", whiteSpace: "nowrap" }}>{ln}</span>
+              ))}
             </div>
             {ms.tagline && (
               <div style={{ fontSize: `${basePt * 0.95}pt`, fontStyle: "italic",

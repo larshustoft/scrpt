@@ -208,7 +208,20 @@ export async function paginate(
 
   await document.fonts.ready;
 
-  const chapters = ms.chapters.filter((c) => c.blocks.length > 0);
+  // a writer sometimes repeats the chapter heading as the first line of the
+  // text; the heading is set once, by the typesetter (seen on The
+  // Innkeeper's Christmas Wish, 2026-09-09)
+  const norm = (t: string) => t.replace(/[\s\u2014\u2013—–:.\-]+/g, " ").trim().toLowerCase();
+  const chapters = ms.chapters
+    .map((c) => {
+      const first = c.blocks[0] as { text?: string } | undefined;
+      const heading = norm(c.title || "");
+      const firstText = norm(first?.text || "");
+      const dup = !!first && !!heading && (firstText === heading || firstText === norm(`Chapter ${c.index} ${c.title}`)
+        || firstText === norm(`Chapter ${c.index}`));
+      return dup ? { ...c, blocks: c.blocks.slice(1) } : c;
+    })
+    .filter((c) => c.blocks.length > 0);
 
   // back matter pseudo-sections
   const backSections: { key: string; label: string; title: string; blocks: Block[] }[] = [];

@@ -439,11 +439,10 @@ def _build_interior(catalog: str, handle=None) -> dict:
                 if gap is None or d < gap:
                     best, gap = [a, b], d
         return best
-    t_lines = _balanced_title(title, t_size)
-    while t_lines is None and t_size > 14:
-        t_size -= 1
-        t_lines = _balanced_title(title, t_size)
-    t_lines = t_lines or [title]
+    # the house title-line rule: ≥3 words a line, balanced, shrink before
+    # breaking badly (Lars, 2026-09-09) — _balanced_title above is superseded
+    from ..typeset_rules import fit_title
+    t_lines, t_size = fit_title(title, lambda txt, sz: c.stringWidth(txt, serif_bold, sz), max_tw, t_size, 14)
     c.setFont(serif_bold, t_size)
     for _i, ln in enumerate(t_lines):
         c.drawCentredString(page_w / 2, y, ln)

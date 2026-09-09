@@ -225,9 +225,9 @@ def build_workbook_interior(catalog: str) -> dict:
     from reportlab.lib.utils import simpleSplit, ImageReader
     text_w = W - M_IN - M_OUT - 0.4 * PT
     size = 30
-    lines = simpleSplit(book["title"], F_BOLD, size, text_w)
-    while len(lines) > 3 and size > 18:
-        size -= 2; lines = simpleSplit(book["title"], F_BOLD, size, text_w)
+    from ..typeset_rules import fit_title            # ≥3 words a line, balanced (Lars, 2026-09-09)
+    from reportlab.pdfbase.pdfmetrics import stringWidth as _sw
+    lines, size = fit_title(book["title"], lambda t, sz: _sw(t, F_BOLD, sz), text_w, size, 18)
     y = H * 0.64
     c.setFont(F_BOLD, size)
     for ln in lines:
