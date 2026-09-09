@@ -69,6 +69,45 @@ async def pick_cover(catalog: str) -> dict:
     return {"index": idx, "why": j.get("why"), **(res if isinstance(res, dict) else {})}
 
 
+async def design_universe_cover(catalog: str) -> dict:
+    """A picture-book cover for a book that belongs to a universe: the
+    established character LEADS, drawn from the universe's plates (Lars,
+    2026-09-09: "created with the main character as the lead"). Four
+    variants, then the judge picks."""
+    import httpx
+    from ..cover.front_cover import _generate_one, _install_cover
+    from ..writing.workbook import UNIVERSE_CAST, UNIVERSE_DISPLAY, _plate_png, detect_universe
+    book = get_book_by_catalog(catalog); d = book["data"]
+    slug = d.get("universe") or detect_universe(book["title"], (d.get("manuscript") or {}).get("idea", ""))
+    uni = UNIVERSE_CAST.get(slug, {})
+    if not uni:
+        raise RuntimeError(f"{catalog} belongs to no known universe")
+    names = list((uni.get("plates") or {}).keys()); lead = names[0]
+    plates = [png for png in (_plate_png(slug, rel) for rel in (uni.get("plates") or {}).values()) if png]
+    author = d.get("author_name") or uni.get("author") or ""
+    idea = " ".join(str((d.get("manuscript") or {}).get("idea") or d.get("description") or "").split())[:500]
+    brief = (f"Create a picture-book front cover for: {book['title']}\nWhat the story is about (for the ARTWORK only): {idea}\n"
+             f"This book belongs to the {UNIVERSE_DISPLAY.get(slug, slug)} universe. {lead.upper()} IS THE LEAD: large, front and centre, "
+             f"exactly as in the reference. The characters: {uni['look']} {uni.get('cast', '')} The attached pictures are the references, "
+             f"in this order: {', '.join(names)}.\nThe ONLY text on the cover is the title \"{book['title']}\" and the author name \"{author}\".\n"
+             "Output the flat cover artwork itself, edge to edge; bright, warm, child-safe; a bestselling picture-book look.")
+    out = OUTPUT_DIR / catalog; out.mkdir(parents=True, exist_ok=True)
+    async with httpx.AsyncClient() as c:
+        pngs = await asyncio.gather(*(_generate_one(c, brief, reference_png=plates, gen_size="1024x1536") for _ in range(4)), return_exceptions=True)
+    n = 0
+    for png in pngs:
+        if isinstance(png, (bytes, bytearray)):
+            n += 1; (out / f"cover-variant-{n}.png").write_bytes(png)
+            from PIL import Image; import io
+            im = Image.open(io.BytesIO(png)).convert("RGB"); im.thumbnail((400, 600)); im.save(out / f"cover-variant-{n}-preview.png")
+    if not n:
+        raise RuntimeError("no variant survived")
+    b = get_book_by_catalog(catalog); data = dict(b["data"]); data["universe"] = slug
+    update_book(b["id"], data, sections=["universe"])
+    pick = await pick_cover(catalog)
+    return {"variants": n, "pick": pick}
+
+
 async def ready_childrens(catalog: str, handle=None) -> dict:
     """Words written → cover chosen → bible → illustrations → interior → accepted."""
     from .childrens_bible import build_bible
