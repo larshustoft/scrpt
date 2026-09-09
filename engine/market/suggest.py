@@ -119,22 +119,50 @@ async def research(n: int = 8, notes: str = "", handle=None) -> dict:
     taken = [f"{r.get('title')} ({r.get('series_title') or 'standalone'}) — {r['status']}" for r in existing[:60]]
     presets = {k: v.get("label") for k, v in GENRE_PRESETS.items()}
     kids = {k: v.get("label") for k, v in CHILDRENS_PRESETS.items()}
-    prompt = (
+    # ── THE MEASURED MARKET (Lars, 2026-09-09: "books that sell... the same
+    # method Bookbeam is using"). First the editor names candidate niches as
+    # Amazon search phrases; each is MEASURED on the live store (first-page
+    # titles, BSR per book, sales curve); only measured niches can be proposed.
+    from .niche import measure_many, brief as niche_brief
+    cand_raw = await complete(
+        "You are a data-driven acquisitions editor. JSON only.",
         f"{MARKET_MEMO}\n\nTHE HOUSE'S SHELF TODAY:\n{_shelf_brief()}\n\n"
+        + (f"PUBLISHER'S NOTES: {notes}\n\n" if notes else "")
+        + "Name 8 niches worth measuring on Amazon right now for a house that can produce fiction series, non-fiction and "
+        "children's picture/activity books — each as the exact phrase a buyer types into the Amazon Books search box "
+        "(e.g. 'cozy mystery series', 'hockey romance', 'unicorn activity book for kids', 'dinosaur coloring book ages 4-8'). "
+        "Mix genres; include at least two children's niches and at least two series-fiction niches. "
+        "Return JSON only: {\"niches\": [\"phrase\", ...]}", max_tokens=600, mechanical=True)
+    cand = (extract_json(cand_raw) or {}).get("niches") or []
+    cand = [str(c).strip() for c in cand if str(c).strip()][:8]
+    if handle:
+        handle.progress(0.08, "measuring", f"Measuring {len(cand)} niches on Amazon")
+    measured = {}
+    for i, seed in enumerate(cand):
+        try:
+            measured[seed] = await measure_many([seed])[seed]
+        except Exception as e:
+            measured[seed] = {"seed": seed, "error": str(e)[:100]}
+        if handle:
+            handle.progress(0.08 + 0.17 * (i + 1) / max(1, len(cand)), "measuring", f"Measured: {seed}")
+    prompt = (
+        f"{MARKET_MEMO}\n\n{niche_brief(measured)}\n\nTHE HOUSE'S SHELF TODAY:\n{_shelf_brief()}\n\n"
         f"ALREADY SUGGESTED (do not repeat):\n" + ("\n".join(taken) or "none") + "\n\n"
         + (f"PUBLISHER'S NOTES: {notes}\n\n" if notes else "")
         + "You are the acquisitions editor of an automated publishing house that writes, edits, designs and uploads books "
         "to Amazon KDP by itself (fiction to ~100k words, non-fiction, and illustrated children's books incl. activity "
         "books). Web-search the live Amazon market now to confirm or update the memo (bestseller lists, what indie "
         "titles at #20–#100 in a category look like, prices, page counts, what is trending this month), then propose "
-        f"{n} SPECIFIC books the house should produce next. Favour series with read-through, KU-native genres, "
+        f"{n} SPECIFIC books the house should produce next, EACH INSIDE ONE OF THE MEASURED NICHES ABOVE (name it in "
+        "\"niche\"); a niche that measured badly (few units, or hundreds of thousands of competing titles) is not proposed. "
+        "Favour series with read-through, KU-native genres, "
         "growing print segments, and seasonal timing (it is early September). Vary pen names sensibly (one pen name "
         "per genre; reuse the house's existing pen names where the genre matches). Every suggestion must be concrete "
         "enough to commission today. NEVER use the pen name 'Lily Tiger' (it is a real name); invent or reuse other pen names.\n\n"
         f"Fiction/non-fiction genre presets (use exactly one key): {json.dumps(presets)}\n"
         f"Children's presets: {json.dumps(kids)}\n\n"
         "Return JSON only: {\"suggestions\": [{"
-        "\"title\": \"...\", \"kind\": \"fiction|nonfiction|childrens\", \"genre_preset\": \"key\", "
+        "\"title\": \"...\", \"niche\": \"the measured niche phrase\", \"kind\": \"fiction|nonfiction|childrens\", \"genre_preset\": \"key\", "
         "\"series_title\": \"... or empty\", \"series_books\": N, \"pen_name\": \"...\", "
         "\"pitch\": \"2-3 sentences: the book, the hook, the reader\", "
         "\"why\": \"the market evidence in numbers (ranks, units/day, growth, prices)\", "
@@ -142,7 +170,9 @@ async def research(n: int = 8, notes: str = "", handle=None) -> dict:
         "\"target_words\": N, \"price_kindle\": 4.99, \"price_paperback\": 12.99, "
         "\"cover_direction\": \"one sentence for the cover artist\", "
         "\"estimate_monthly_usd\": {\"conservative\": N, \"realistic\": N, \"stretch\": N}  "
-        "(CALIBRATED for a NEW pen name with no readers, no reviews and a $5/day ad test — conservative = what most such "
+        "(DERIVED FROM THE MEASURED NICHE: the new-title units/month (cons/real/stretch) × the book's royalty per unit "
+        "(Kindle ≈ 70% of price; paperback ≈ 60% of price minus ~$3 print) — show the arithmetic in \"why\"; "
+        "CALIBRATED for a NEW pen name with no readers, no reviews and a $5/day ad test — conservative = what most such "
         "books earn (often $0-50), realistic = the median outcome after 3 books are live (typically $100-800 for a "
         "series in KU, $30-300 for a standalone), stretch = a top-decile outcome, not the chart leader's income; "
         "never quote the comparable's own earnings as the estimate), "
@@ -182,6 +212,16 @@ async def research(n: int = 8, notes: str = "", handle=None) -> dict:
                 if sep in t and (t.lower().startswith(st_.lower()) if st_ else "book one" in t.lower()):
                     t = t.split(sep, 1)[1].strip(); break
             it["title"] = t
+            # the measured evidence rides on the suggestion, so the card shows numbers read off Amazon
+            nd = measured.get(str(it.get("niche") or "")) or next((v for k, v in measured.items() if k.lower() in str(it.get("niche") or "").lower()), None)
+            if nd and not nd.get("error"):
+                it["niche_data"] = {k: nd.get(k) for k in ("seed", "competing_titles", "measured", "units_month_top", "median_units_month",
+                                                           "avg_price", "revenue_month_top", "new_book_units_month", "measured_at")}
+                it["niche_data"]["leaders"] = [{"title": x["title"], "bsr": x["bsr"], "price": x["price"]} for x in nd.get("top", [])[:3] if x.get("bsr")]
+            from ..writing.workbook import detect_universe
+            it["universe"] = it.get("universe") or detect_universe(it.get("title"), it.get("pitch"), it.get("series_title"))
+            if it["universe"] and HOUSE_PEN_NAMES.get(it["universe"]):
+                it["pen_name"] = HOUSE_PEN_NAMES[it["universe"]]
             sid = uuid.uuid4().hex[:10]
             conn.execute("INSERT INTO suggestions (id, created_at, status, data) VALUES (?,?,?,?)",
                          (sid, datetime.now().isoformat(timespec="minutes"), "drafting", json.dumps(it)))
@@ -221,7 +261,11 @@ async def approve(ids: list[str], commission_all: bool = False) -> dict:
                 results.append({"id": sid, "ok": False, "reason": "not an open suggestion"}); continue
             if (r.get("line") == "workbook") or (r.get("kind") == "childrens" and any(w in (r.get("title") or "").lower() for w in ("workbook", "cut and paste", "draw with", "trace", "activity"))):
                 try:
-                    cat, job_id = _commission_workbook(r)
+                    n_wb = int(r.get("series_books") or 1) if (r.get("series_title") or "").strip() else 1
+                    if commission_all and n_wb > 1:
+                        cat, job_id = await _commission_workbook_series(r, n_wb)
+                    else:
+                        cat, job_id = _commission_workbook(r)
                     conn.execute("UPDATE suggestions SET status='approved', catalog=?, decided_at=? WHERE id=?",
                                  (cat, datetime.now().isoformat(timespec="minutes"), sid))
                     results.append({"id": sid, "ok": True, "catalog": cat, "job_id": job_id, "line": "workbook"})
@@ -380,7 +424,7 @@ async def covers(ids: list[str], handle=None) -> dict:
     return {"done": done, "failed": failed}
 
 
-def _commission_workbook(r: dict) -> tuple[str, str]:
+def _commission_workbook(r: dict, draw_now: bool = True, series_id: str = "", book_number: int = 1, total: int = 1, ages: str = "") -> tuple[str, str]:
     """A workbook is born as a book record with a page plan to come, joins its
     universe, and the workbook line draws it at once."""
     from ..database import create_book
@@ -410,9 +454,11 @@ def _commission_workbook(r: dict) -> tuple[str, str]:
                       "pages_target": 48, "suggestion_id": r.get("id")},
         "manuscript": {"kind": "childrens", "genre_preset": "picture_book", "idea": r.get("pitch") or "", "status": "idea", "chapters": []},
         "interior": {}, "cover": {}, "audio": {}, "suggestion_id": r.get("id"),
-        "series": {"series_id": uuid.uuid4().hex[:8], "series_title": series_title, "book_number": 1,
-                   "total_planned": int(r.get("series_books") or 1)} if series_title else {},
+        "series": {"series_id": series_id or uuid.uuid4().hex[:8], "series_title": series_title, "book_number": book_number,
+                   "total_planned": max(total, int(r.get("series_books") or 1)), "auto_advance": total > 1} if series_title else {},
     }
+    if ages:
+        data["workbook"]["ages"] = ages
     book = create_book(r.get("title") or "Untitled workbook", data)
     cat = book["catalog_number"]
     if slug:
@@ -423,8 +469,50 @@ def _commission_workbook(r: dict) -> tuple[str, str]:
                 mem.append(cat); pp.write_text(json.dumps(pj, indent=1, ensure_ascii=False))
         except Exception:
             pass
+    if not draw_now:
+        return cat, None                      # the series line draws it after the one before
     job_id = start_job("workbook", lambda h, c=cat: write_workbook(c, h), book_catalog=cat)
     return cat, job_id
+
+
+async def _commission_workbook_series(r: dict, n: int) -> tuple[str, str]:
+    """A series of workbooks (Lars, 2026-09-09: "a series of 10 workbooks
+    teaching kids things"): the editor plans N distinct titles across the
+    universe's learning pillars, every record is created with its number,
+    book one is drawn now and the series line draws the rest one at a time."""
+    from ..database import create_book, get_book_by_catalog, update_book
+    from ..writing.client import complete, extract_json
+    from ..writing.workbook import UNIVERSE_CAST, UNIVERSE_DISPLAY
+    slug = r.get("universe") or ""; uni = UNIVERSE_CAST.get(slug, {})
+    pillars = ""
+    try:
+        pj = json.loads((PROJECT_ROOT_UNIVERSE / slug / "profile.json").read_text()) if slug else {}
+        pillars = ", ".join(pj.get("learning_pillars") or []); world = pj.get("world") or ""
+    except Exception:
+        world = ""
+    raw = await complete("You plan children's activity-book series. JSON only.",
+        f"UNIVERSE: {UNIVERSE_DISPLAY.get(slug, slug) or 'none'}. WORLD: {world}\nLEARNING PILLARS: {pillars or 'counting, letters, shapes, nature, feelings'}\n"
+        f"CAST: {uni.get('cast', '')}\nSERIES: {r.get('series_title')}\nFIRST BOOK (already decided): {r.get('title')} — {r.get('pitch')}\n"
+        f"AGES: 4-8. FORMAT: 8.5 x 11 black-and-white activity pages, ~48 pages each.\n\n"
+        f"Plan exactly {n} books for this series, book 1 being the first book above. Each book teaches ONE thing a parent "
+        "would buy it for (counting to 20, letters and sounds, shapes and patterns, colours, mazes and pencil control, "
+        "cut and paste, how to draw the cast, seasons and nature, feelings, telling the time...). Titles are short, "
+        "start with the character's name where natural, and never repeat a topic. Return JSON only: "
+        "{\"books\": [{\"n\": 1, \"title\": \"...\", \"pitch\": \"2 sentences: what the child does, what it teaches\", \"ages\": \"4-6\"}, ...]}",
+        max_tokens=3000, mechanical=True)
+    plan = (extract_json(raw) or {}).get("books") or []
+    plan = sorted([b for b in plan if isinstance(b, dict) and b.get("title")], key=lambda b: int(b.get("n") or 0))[:n]
+    if not plan:
+        plan = [{"n": 1, "title": r.get("title"), "pitch": r.get("pitch"), "ages": "4-8"}]
+    plan[0]["title"] = r.get("title") or plan[0]["title"]; plan[0]["pitch"] = r.get("pitch") or plan[0]["pitch"]
+    series_id = uuid.uuid4().hex[:8]
+    first_cat, first_job = None, None
+    for i, b in enumerate(plan, start=1):
+        rr = {**r, "title": b["title"], "pitch": b.get("pitch") or r.get("pitch"), "series_books": len(plan)}
+        cat, job_id = _commission_workbook(rr, draw_now=(i == 1), series_id=series_id, book_number=i, total=len(plan), ages=b.get("ages"))
+        if i == 1:
+            first_cat, first_job = cat, job_id
+    return first_cat, first_job
 
 
 def set_notes(sid: str, notes: str) -> dict:

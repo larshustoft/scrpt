@@ -11,7 +11,10 @@ interface Suggestion {
   pen_name?: string; pitch?: string; why?: string; comparables?: string[]; target_words?: number;
   price_kindle?: number; price_paperback?: number; cover_direction?: string; season?: string;
   estimate_monthly_usd?: { conservative?: number; realistic?: number; stretch?: number }; confidence?: string;
-  cover?: string; cover_at?: string; publisher_notes?: string;
+  cover?: string; cover_at?: string; publisher_notes?: string; universe?: string; niche?: string;
+  niche_data?: { seed?: string; competing_titles?: number; measured?: number; units_month_top?: number; median_units_month?: number;
+                 avg_price?: number; revenue_month_top?: number; new_book_units_month?: { conservative?: number; realistic?: number; stretch?: number };
+                 leaders?: { title: string; bsr: number; price?: number }[]; measured_at?: string };
 }
 
 /** SUGGESTED BOOKS — the acquisitions desk. SCRPT reads the market and lays
@@ -174,6 +177,14 @@ export default function SuggestionsPage() {
     const sents = (t || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]+/g) || [t || ""];
     return sents.slice(0, 3).join(" ").trim();
   };
+  // what was READ OFF AMAZON for this niche (the Bookbeam method, Lars 2026-09-09) — shown before any opinion
+  const measuredLine = (r: Suggestion) => {
+    const d = r.niche_data; if (!d || !d.measured) return "";
+    const nb = d.new_book_units_month || {};
+    return `Measured on Amazon (${(d.measured_at || "").slice(0, 10)}): "${d.seed}" · ${d.competing_titles?.toLocaleString() ?? "?"} competing titles · ` +
+      `top ${d.measured} sell about ${d.units_month_top?.toLocaleString()} units a month (≈${money(d.revenue_month_top)}) · median title ${d.median_units_month} a month · ` +
+      `avg price ${money(d.avg_price)} · a new title landing mid-page: ${nb.conservative}/${nb.realistic}/${nb.stretch} units a month.`;
+  };
   const marketLine = (r: Suggestion) => {
     const first = ((r.why || "").match(/[^.!?]+[.!?]/) || [""])[0].trim();
     const e = r.estimate_monthly_usd || {};
@@ -322,6 +333,7 @@ export default function SuggestionsPage() {
           </div>
           {s.pitch && <p className="text-[13.5px] mt-3 leading-relaxed">{s.pitch}</p>}
           {s.why && <p className="text-[12.5px] text-text-secondary mt-2 leading-relaxed"><span className="font-medium text-text-primary">Why: </span>{s.why}</p>}
+          {measuredLine(s) && <p className="text-[12px] text-text-secondary mt-1 leading-relaxed"><span className="font-medium text-text-primary">Measured: </span>{measuredLine(s)}</p>}
           {s.comparables && s.comparables.length > 0 && (
             <p className="text-[12px] text-text-tertiary mt-2">Comparable: {s.comparables.join(" · ")}</p>
           )}
