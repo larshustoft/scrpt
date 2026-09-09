@@ -36,13 +36,14 @@ def candidates() -> list[dict]:
             continue                              # films and formats are not books
         if d.get("film") or d.get("short") or d.get("never_publish") or (d.get("movie") or {}).get("kind") in ("short", "episode"):
             continue                              # a film record, the release desk's test
-        if (b.get("created_at") or "") < "2026-08-20":
-            continue                              # old shelf leftovers are not re-covered on their own
         if (d.get("book_type") or "") == "workbook":
             continue                              # the workbook line designs its own cover
         if b["catalog_number"] in active:
             continue
         out.append(b)
+    # newest first: today's books before the March leftovers (Lars, 2026-09-09:
+    # "Create covers for all the books currently in the bookshelf that don't have any cover")
+    out.sort(key=lambda b: b.get("created_at") or "", reverse=True)
     return out
 
 
