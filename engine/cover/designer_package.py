@@ -690,7 +690,8 @@ def compose_print_wrap(catalog: str, title: str, author: str, blurb: str,
         lg = _Img.open(str(logo_path)).convert("RGBA")
         # A fixed imprint lockup: identical on every book — black mark, clean
         # sans wordmark, no country line.
-        isz = 46      # the lockup carries its own TIGERWORKS wordmark; 0.64" — never small (Lars, 2026-09-08)
+        from ..typeset_rules import HOUSE_MARK_IN
+        isz = HOUSE_MARK_IN["back_cover"] * 72      # 0.51" — the house mark rule (Lars, 2026-09-09: 20% smaller)
         # Framed books tuck the imprint inside the frame; unframed thrillers
         # drop it to the barcode's bottom margin, level with the spine tree.
         ix = bleed + safe + (pad if framed else 0)

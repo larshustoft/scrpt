@@ -274,7 +274,8 @@ def build_workbook_interior(catalog: str) -> dict:
     c.setFont(F_REG, 16); c.drawCentredString(W / 2, y - 10, d.get("author_name") or "")
     logo = HOUSE_LOGO_BLACK
     if logo.exists():
-        lsz = 1.0 * PT                                   # never small (Lars, 2026-09-08)
+        from ..typeset_rules import HOUSE_MARK_IN
+        lsz = HOUSE_MARK_IN["workbook_title"] * PT       # 0.8" — the house mark rule (Lars, 2026-09-09)
         c.drawImage(ImageReader(str(logo)), W / 2 - lsz / 2, M_BOT + 0.35 * PT, lsz, lsz, mask="auto")
     c.showPage()
     # 2. belongs-to + copyright

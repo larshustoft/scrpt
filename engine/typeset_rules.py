@@ -58,3 +58,8 @@ def fit_title(title: str, width_at: Callable[[str, float], float], max_w: float,
             return lines, s
         s -= step
     return [" ".join(title.split())], floor
+
+
+# THE HOUSE MARK (Lars, 2026-09-09: "The TigerWorks logo is a little too large.
+# Make it 20% smaller. And make that a rule."): the lockup's side, in inches.
+HOUSE_MARK_IN = {"title_page": 0.8, "back_cover": 0.51, "workbook_title": 0.8, "picture_title": 0.47}

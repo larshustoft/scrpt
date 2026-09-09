@@ -183,7 +183,7 @@ export function PageView({
                 the lockup carries its own wordmark, so no text beside it */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand/tigerworks-black.png" alt="TigerWorks"
-                 style={{ width: "1in", height: "1in", objectFit: "contain", marginTop: "1.4em",
+                 style={{ width: "0.8in", height: "0.8in", objectFit: "contain", marginTop: "1.4em",
                           display: "block", marginLeft: "auto", marginRight: "auto" }} />
           </div>
         </div>

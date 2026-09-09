@@ -469,7 +469,8 @@ def _build_interior(catalog: str, handle=None) -> dict:
         flat = Image.new("RGB", lg.size, (255, 255, 255))
         flat.paste(lg, (0, 0), lg)
         buf = io.BytesIO(); flat.save(buf, format="PNG"); buf.seek(0)
-        side = 42.0
+        from ..typeset_rules import HOUSE_MARK_IN
+        side = HOUSE_MARK_IN["picture_title"] * 72      # the house mark rule (Lars, 2026-09-09: 20% smaller)
         lw = side * (flat.width / flat.height)
         c.drawImage(ImageReader(buf), (page_w - lw) / 2, safe + 30,
                     width=lw, height=side)
