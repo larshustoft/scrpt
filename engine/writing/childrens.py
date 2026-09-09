@@ -197,6 +197,21 @@ async def write_childrens_book(catalog: str, handle=None) -> dict:
     ms = Manuscript.model_validate(d.get("manuscript", {}))
     p = preset(ms.genre_preset)
     story = (ms.idea or "").strip()
+    # A book that belongs to a universe is written WITH its cast and world —
+    # never a new cast (Star Map was written with a human princess and a
+    # grandmother while wearing Princess the Unicorn's cover, 2026-09-09).
+    try:
+        from .workbook import UNIVERSE_CAST, UNIVERSE_DISPLAY, detect_universe
+        slug = d.get("universe") or detect_universe(book["title"], story)
+        uni = UNIVERSE_CAST.get(slug)
+        if uni:
+            story = (f"THIS IS A {UNIVERSE_DISPLAY.get(slug, slug).upper()} BOOK. The lead is {list(uni['plates'].keys())[0]} and the ONLY "
+                     f"characters are this cast: {uni['look']} {uni.get('cast', '')} Keep every name and every look exactly; invent no new "
+                     f"main characters (no human princesses, no grandmothers, no new animals as leads).\n\nTHE STORY: {story}")
+            if not d.get("universe"):
+                d["universe"] = slug
+    except Exception:
+        pass
     if not story:
         raise RuntimeError("The book has no idea to write from")
 
