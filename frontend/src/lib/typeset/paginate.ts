@@ -181,10 +181,10 @@ export function buildCopyrightHTML(
   }
   const year = new Date(book.created_at || Date.now()).getFullYear();
   const author = (book.data.author_name as string) || "the Author";
-  const publisher = settings.publisher_name || "";
+  const publisher = settings.publisher_name || "TigerWorks";
   const fiction = ms.kind === "fiction";
   const parts = [
-    `<p>Copyright © ${year} ${author}</p>`,
+    `<p>Copyright © ${year} ${publisher || author}</p>`,   // the house holds the copyright (Lars, 2026-09-09)
     `<p>All rights reserved. No part of this publication may be reproduced, distributed, or transmitted in any form or by any means, including photocopying, recording, or other electronic or mechanical methods, without the prior written permission of the publisher, except in the case of brief quotations embodied in critical reviews and certain other noncommercial uses permitted by copyright law.</p>`,
   ];
   if (fiction) {

@@ -142,12 +142,12 @@ export function PageView({
             <div style={{ fontSize: `${basePt * 1.15}pt`, letterSpacing: "0.06em" }}>
               {author}
             </div>
-            {settings.publisher_name && (
-              <div style={{ fontSize: `${basePt * 0.72}pt`, fontVariant: "small-caps",
-                            letterSpacing: "0.2em", opacity: 0.55, marginTop: "1.6em" }}>
-                {settings.publisher_name}
-              </div>
-            )}
+            {/* the house mark: the TigerWorks lockup, never small (Lars, 2026-09-08/09);
+                the lockup carries its own wordmark, so no text beside it */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/tigerworks-black.png" alt="TigerWorks"
+                 style={{ width: "1in", height: "1in", objectFit: "contain", marginTop: "1.4em",
+                          display: "block", marginLeft: "auto", marginRight: "auto" }} />
           </div>
         </div>
       )}

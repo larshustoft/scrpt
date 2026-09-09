@@ -242,7 +242,7 @@ def build_workbook_interior(catalog: str) -> dict:
     c.setFont(F_BOLD, 22); c.drawCentredString(W / 2, H * 0.7, "This book belongs to")
     c.setLineWidth(1.2); c.line(W * 0.2, H * 0.62, W * 0.8, H * 0.62)
     c.setFont(F_REG, 9)
-    c.drawCentredString(W / 2, H * 0.1, f"© {datetime.now().year} {d.get('author_name') or ''} · TigerWorks · All rights reserved.")
+    c.drawCentredString(W / 2, H * 0.1, f"© {datetime.now().year} TigerWorks · All rights reserved.")
     c.drawCentredString(W / 2, H * 0.085, "For personal and classroom use. Adult supervision recommended for scissors.")
     c.showPage()
     # 3. the pages, mirrored margins

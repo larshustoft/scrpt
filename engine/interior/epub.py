@@ -131,7 +131,7 @@ def build_epub(catalog: str) -> dict:
 
     # copyright
     year = datetime.now().year
-    cp = [f"<p>Copyright \u00a9 {year} {html.escape(author)}</p>",
+    cp = [f"<p>Copyright \u00a9 {year} {html.escape(publisher or 'TigerWorks')}</p>",   # the house holds the copyright (Lars, 2026-09-09)
           "<p>All rights reserved.</p>"]
     if ms.kind.value == "fiction":
         cp.append("<p>This is a work of fiction. Names, characters, businesses, "
