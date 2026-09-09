@@ -34,6 +34,8 @@ def candidates() -> list[dict]:
             continue
         if (d.get("kind") or "fiction") not in ("fiction", "nonfiction", "childrens") or (d.get("book_type") or "") in ("film", "episode", "trailer"):
             continue                              # films and formats are not books
+        if d.get("film") or d.get("short") or d.get("never_publish") or (d.get("movie") or {}).get("kind") in ("short", "episode"):
+            continue                              # a film record, the release desk's test
         if (b.get("created_at") or "") < "2026-08-20":
             continue                              # old shelf leftovers are not re-covered on their own
         if (d.get("book_type") or "") == "workbook":
