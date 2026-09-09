@@ -201,6 +201,13 @@ async def scheduler():
         except Exception:
             print("  release desk failed:\n" + traceback.format_exc()[-600:])
         try:
+            from .cover_line import run as _cover_line
+            _cl = await _cover_line()
+            for _st in _cl.get("started", []):
+                print(f"  ⚙ cover line: drawing variants for {_st['title']}")
+        except Exception:
+            print("  cover line failed:\n" + traceback.format_exc()[-600:])
+        try:
             from .reader_line import run as _reader_line
             _rl = await _reader_line()
             for _t in _rl.get("built", []):
