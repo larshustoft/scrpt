@@ -427,6 +427,16 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
     # a rerun draws only what is missing: two Star Map reruns redrew the whole
     # book (2026-09-08). One named spread is always redrawn — that is a request.
     if only is None:
+        # a spread counts as drawn only when the RECORD says so AND the file
+        # exists — files left behind by a cleared book (a rewrite, a new cover)
+        # are stale and get moved aside, never reused (Star Map, 2026-09-09)
+        art_map = ((get_book_by_catalog(catalog)["data"].get("childrens") or {}).get("art") or {})
+        stale = [s for s in targets if (art_dir / f"spread-{s['n']:02d}.png").exists() and str(s["n"]) not in {str(k) for k in art_map}]
+        if stale and not art_map:
+            old_dir = art_dir.parent / "spreads-stale"; old_dir.mkdir(exist_ok=True)
+            for s in stale:
+                (art_dir / f"spread-{s['n']:02d}.png").rename(old_dir / f"spread-{s['n']:02d}.png")
+            print(f"  illustrate: {len(stale)} stale spread files moved aside", flush=True)
         targets = [s for s in targets if not (art_dir / f"spread-{s['n']:02d}.png").exists()]
         if not targets:
             print("  illustrate: every spread already drawn — nothing to do", flush=True)
