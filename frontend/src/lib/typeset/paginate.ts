@@ -312,18 +312,18 @@ function buildPagination(
 
   // front matter (roman numbering implicit by position; folios suppressed
   // on display pages, shown on ToC)
-  if (fm.half_title) {
-    pages.push({ kind: "half_title", side: "recto", folio: null, header: null });
-    if (fm.also_by && fm.also_by.length > 0) {
-      pages.push({ kind: "also_by", side: "verso", folio: null, header: null });
-    } else {
-      pushBlank();
-    }
-  }
+  // No half-title page in any book (Lars, 2026-09-09: "This page is not
+  // necessary"): the book opens on the title page. An "also by" list, when
+  // there is one, takes the verso after the copyright page instead.
+  void fm.half_title;
   ensureRecto();
   pages.push({ kind: "title", side: side(), folio: null, header: null });
   if (fm.copyright_page !== false) {
     pages.push({ kind: "copyright", side: side(), folio: null, header: null });
+  }
+  if (fm.also_by && fm.also_by.length > 0) {
+    ensureRecto();
+    pages.push({ kind: "also_by", side: side(), folio: null, header: null });
   }
   if (fm.dedication) {
     ensureRecto();
