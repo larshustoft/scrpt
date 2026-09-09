@@ -27,7 +27,7 @@ from typing import Optional
 
 from ..database import get_book_by_catalog, update_book
 from ..prose.models import GENRE_PRESETS
-from ..writing.client import complete, extract_json, mechanical_model, set_model_override
+from ..writing.client import complete, extract_json, mechanical_model, set_model_override, utility_model
 from .keywords import research, kdp_slots, BOOKS_ALIAS, KINDLE_ALIAS
 from .launch_gate import BANNED_KEYWORD_TERMS
 

@@ -124,6 +124,7 @@ async def research(n: int = 8, notes: str = "", handle=None) -> dict:
     # Amazon search phrases; each is MEASURED on the live store (first-page
     # titles, BSR per book, sales curve); only measured niches can be proposed.
     from .niche import measure_many, brief as niche_brief
+    from ..writing.client import utility_model
     cand_raw = await complete(
         "You are a data-driven acquisitions editor. JSON only.",
         f"{MARKET_MEMO}\n\nTHE HOUSE'S SHELF TODAY:\n{_shelf_brief()}\n\n"
@@ -132,7 +133,7 @@ async def research(n: int = 8, notes: str = "", handle=None) -> dict:
         "children's picture/activity books — each as the exact phrase a buyer types into the Amazon Books search box "
         "(e.g. 'cozy mystery series', 'hockey romance', 'unicorn activity book for kids', 'dinosaur coloring book ages 4-8'). "
         "Mix genres; include at least two children's niches and at least two series-fiction niches. "
-        "Return JSON only: {\"niches\": [\"phrase\", ...]}", max_tokens=600, mechanical=True)
+        "Return JSON only: {\"niches\": [\"phrase\", ...]}", max_tokens=600, mechanical=True, model=utility_model())
     cand = (extract_json(cand_raw) or {}).get("niches") or []
     cand = [str(c).strip() for c in cand if str(c).strip()][:8]
     if handle:

@@ -70,7 +70,18 @@ def mechanical_model() -> str:
 # Reader of last resort: when the writing model declines to READ a manuscript
 # (large mixed-content prompts can trip its safeguards), judging stages escalate
 # here rather than leaving a finished book with no verdict.
-FALLBACK_MODEL_DEFAULT = "claude-opus-5"
+FALLBACK_MODEL_DEFAULT = "claude-sonnet-5"
+
+
+# Utility passes — naming candidate niches, filtering keyword phrases, listing
+# copy, small JSON plans: the cheapest capable model (Lars, 2026-09-09: "choose
+# the cheapest model possible, while still holding the highest quality for the
+# task"). Configurable via settings key utility_model.
+UTILITY_MODEL_DEFAULT = "claude-haiku-4-5"
+
+
+def utility_model() -> str:
+    return get_setting("utility_model", UTILITY_MODEL_DEFAULT) or UTILITY_MODEL_DEFAULT
 
 
 def fallback_model() -> str:
@@ -116,7 +127,10 @@ async def complete(
                 sys_payload = [
                     {"type": "text", "text": system},
                     {"type": "text", "text": cached_context,
-                     "cache_control": {"type": "ephemeral"}},
+                     # one hour, not five minutes: a chapter cycle (draft →
+                     # editor → revise) outlives the short cache, so every
+                     # chapter re-paid for the bible and outline (2026-09-09)
+                     "cache_control": {"type": "ephemeral", "ttl": "1h"}},
                 ]
             else:
                 sys_payload = system

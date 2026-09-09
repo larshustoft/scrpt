@@ -317,7 +317,7 @@ async def _cover_summary(book: dict, ms: Manuscript) -> str:
         "sentences - the shape of \"It's an action filled thriller based in "
         "the political rings of Washington.\" Setting and stakes, nothing "
         'more. Return JSON only: {"summary": "..."}',
-        max_tokens=800, mechanical=True)
+        max_tokens=800, mechanical=True, model=__import__('engine.writing.client', fromlist=['utility_model']).utility_model())
     summary = str(extract_json(raw)["summary"]).strip()
     fresh = get_book_by_catalog(book["catalog_number"])
     data = dict(fresh["data"])
