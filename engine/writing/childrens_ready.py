@@ -49,13 +49,16 @@ async def pick_cover(catalog: str) -> dict:
     buf = io.BytesIO(); sheet.save(buf, format="PNG")
     uni = d.get("universe") or ""
     brief = (d.get("cover_direction") or "") + " " + (d.get("description") or (d.get("manuscript") or {}).get("idea") or "")
-    prompt = (f"Book: {book['title']} by {d.get('author_name') or ''}. A children's picture book" + (f" in the {uni} universe" if uni else "") + ".\n"
+    kind_label = {"childrens": "A children's picture book", "nonfiction": "A non-fiction paperback", "fiction": "A novel"}.get(d.get("kind") or "fiction", "A book")
+    if (d.get("book_type") or "") == "workbook":
+        kind_label = "A children's activity book"
+    prompt = (f"Book: {book['title']} by {d.get('author_name') or ''}. {kind_label}" + (f" in the {uni} universe" if uni else "") + ".\n"
               f"Brief: {brief[:800]}\n\nThe image shows {len(thumbs)} candidate front covers, numbered #1 to #{len(thumbs)} left to right. "
-              "Pick the ONE that would sell best on Amazon to a parent scrolling thumbnails: the title must be correctly spelled and readable "
+              "Pick the ONE that would sell best on Amazon to a buyer scrolling thumbnails: the title must be correctly spelled and readable "
               "at a small size, the character must be appealing and consistent with the brief, the composition clean, no garbled text, no "
               "extra words. Reject any cover with misspelled or invented words. Return JSON only: "
               '{"index": N, "why": "one sentence", "rejects": {"N": "reason"}}')
-    raw = await complete_vision("You are an art director choosing a children's book cover. JSON only.", prompt, buf.getvalue(), max_tokens=600)
+    raw = await complete_vision("You are an art director choosing a book cover. JSON only.", prompt, buf.getvalue(), max_tokens=600)
     j = extract_json(raw) or {}
     idx = int(j.get("index") or 1)
     idx = idx if 1 <= idx <= len(paths) else 1
