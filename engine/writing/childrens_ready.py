@@ -57,8 +57,8 @@ async def pick_cover(catalog: str) -> dict:
               "Pick the ONE that would sell best on Amazon to a buyer scrolling thumbnails: the title must be correctly spelled and readable "
               "at a small size, the character must be appealing and consistent with the brief, the composition clean, no garbled text, no "
               "extra words. Reject any cover with misspelled or invented words. Return JSON only: "
-              '{"index": N, "why": "one sentence", "rejects": {"N": "reason"}}')
-    raw = await complete_vision("You are an art director choosing a book cover. JSON only.", prompt, buf.getvalue(), max_tokens=600)
+              '{"index": N, "why": "one short sentence", "rejects": {"N": "three words"}} — keep it under 80 words in total')
+    raw = await complete_vision("You are an art director choosing a book cover. JSON only.", prompt, buf.getvalue(), max_tokens=1500)
     j = extract_json(raw) or {}
     idx = int(j.get("index") or 1)
     idx = idx if 1 <= idx <= len(paths) else 1
