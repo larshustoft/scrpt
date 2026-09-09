@@ -556,8 +556,26 @@ async def generate_cover_variants(catalog: str, count: int = 4,
     if on_progress:
         on_progress(0.1, "Preparing the fact sheet")
     summary = await _cover_summary(book, ms)
+    # THE SERIES COVER RULE (Lars, 2026-09-09: "The books can't look as similar
+    # as you have created them"): a series shares its look — the type treatment,
+    # the author band, the shelf identity — but every book is ITS OWN PICTURE:
+    # a different scene, season, time of day, moment and colour world from every
+    # sibling. The siblings' covers are named so the designer can avoid them.
+    series_note = ""
+    sid = (book["data"].get("series") or {}).get("series_id")
+    if sid:
+        from ..database import list_books as _lb
+        sibs = [b for b in _lb(per_page=1000).get("books", [])
+                if (b.get("data") or {}).get("series", {}).get("series_id") == sid and b["catalog_number"] != catalog
+                and b.get("status") not in ("cancelled", "deleted")]
+        described = [f"{b['title']}: {((b.get('data') or {}).get('cover_direction') or '')[:160]}" for b in sibs if (b.get("data") or {}).get("cover_direction")]
+        if sibs:
+            series_note = ("SERIES COVER RULE: this book belongs to a series. Keep the series LOOK — the same title type treatment, "
+                           "the author name in the same band, the same overall quality — but make this cover ITS OWN PICTURE: a different "
+                           "scene, season, time of day, key object and colour world from every other book in the series. Never repeat a "
+                           "sibling's composition. The other books' covers are:\n- " + "\n- ".join(described or [b["title"] for b in sibs]) + "\n")
     brief = _fact_brief(book, ms, summary,
-                        notes=_merged_direction(book, extra_direction))
+                        notes=(series_note + _merged_direction(book, extra_direction)))
     reference_png = _publisher_cover_png(book)
     if reference_png:
         # the publisher's own cover sets the bar: same standard, same visual
