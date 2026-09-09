@@ -102,14 +102,22 @@ def _plate_png(slug: str, rel: str) -> bytes | None:
 async def plan_workbook(catalog: str) -> list[dict]:
     from .client import complete, extract_json
     book = get_book_by_catalog(catalog); d = book["data"]; wb = dict(d.get("workbook") or {})
-    if wb.get("pages"):
-        return wb["pages"]
     n = int(wb.get("pages_target") or PAGES_DEFAULT)
+    have = list(wb.get("pages") or [])
+    if len(have) >= n:
+        return have
     uni = _universe(d)
-    prompt = (
+    # A plan that came back short (the model stops, or its JSON is cut off) is
+    # EXTENDED, never replaced: the pages already drawn keep their briefs and
+    # the planner is asked for the rest (Freddie's Barnyard book came back
+    # with 17 of 48, 2026-09-09).
+    existing = ("PAGES ALREADY PLANNED (keep them, do not repeat their exercises):\n"
+                + "\n".join(f"{q['n']}. [{q.get('type')}] {q.get('title')}" for q in have) + "\n\n") if have else ""
+    prompt = (existing + 
         f"BOOK: {book['title']}\nAGES: {wb.get('ages') or '3-5'}\nWHAT IT IS: {wb.get('pitch') or d.get('description') or ''}\n"
         + (f"CHARACTERS: {uni.get('look')} {uni.get('cast', '')}\n" if uni else "")
-        + f"\nPlan exactly {n} interior exercise pages for this printable activity book (US Letter, black-and-white line art, "
+        + (f"\nPlan pages {len(have) + 1} to {n} — exactly {n - len(have)} MORE interior exercise pages, numbered from {len(have) + 1} — " if have else f"\nPlan exactly {n} interior exercise pages ")
+        + "for this printable activity book (US Letter, black-and-white line art, "
         "one exercise per page, ages as stated). Order them as a child would progress: easy to harder, with variety every few "
         "pages, and the character appearing on most pages in a small supporting role (cheering, holding a sign, being coloured). "
         "Allowed page types: tracing (lines, shapes, letters, numbers, words), cutting (dashed cut lines, cut-and-paste), "
@@ -128,11 +136,20 @@ async def plan_workbook(catalog: str) -> list[dict]:
     raw = await complete("You plan children's activity books that teach one thing per page. JSON only.", prompt, max_tokens=12000, mechanical=True)
     out = extract_json(raw) or {}
     pages = out.get("pages") if isinstance(out, dict) else out
-    pages = [p for p in (pages or []) if isinstance(p, dict) and p.get("brief")][:n]
+    pages = have + [p for p in (pages or []) if isinstance(p, dict) and p.get("brief")]
+    pages = pages[:n]
     if len(pages) < 12:
         raise RuntimeError(f"the plan came back with {len(pages)} pages")
     for i, p in enumerate(pages, 1):
         p["n"] = i
+    if len(pages) < n:
+        # save what we have and ask again for the rest, up to three rounds
+        b = get_book_by_catalog(catalog); data = dict(b["data"]); wb2 = dict(data.get("workbook") or {})
+        wb2["pages"] = pages; data["workbook"] = wb2; update_book(b["id"], data)
+        rounds = int(wb2.get("plan_rounds") or 0) + 1
+        if rounds <= 3:
+            b = get_book_by_catalog(catalog); data = dict(b["data"]); data["workbook"]["plan_rounds"] = rounds; update_book(b["id"], data)
+            return await plan_workbook(catalog)
     b = get_book_by_catalog(catalog); data = dict(b["data"]); wb = dict(data.get("workbook") or {})
     wb["pages"] = pages; wb["planned_at"] = datetime.now().isoformat(timespec="minutes"); data["workbook"] = wb
     update_book(b["id"], data)
