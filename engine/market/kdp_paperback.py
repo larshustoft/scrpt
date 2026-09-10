@@ -422,6 +422,32 @@ class Stager:
             return null;
         }""", body)
         if not set_desc:
+            # the newer details page hosts the editor's body inside an iframe
+            # (Star Map, 2026-09-10: three runs "kept" an empty description)
+            for fr in p.frames:
+                if fr == p.main_frame:
+                    continue
+                try:
+                    r = await fr.evaluate("""(h) => {
+                        const b = document.body;
+                        if (!b || !b.isContentEditable) return null;
+                        b.focus(); b.innerHTML = h; b.dispatchEvent(new Event('input', {bubbles: true}));
+                        b.dispatchEvent(new Event('keyup', {bubbles: true})); return 'iframe'; }""", body)
+                except Exception:
+                    r = None
+                if r:
+                    set_desc = r; break
+        if not set_desc:
+            # last resort: click into the editor and type the plain text
+            try:
+                ed = p.locator("iframe.cke_wysiwyg_frame, [class*='description' i] iframe, [id*='description' i] iframe").first
+                if await ed.count():
+                    await ed.click(timeout=4000)
+                    await p.keyboard.type("\n\n".join(paras), delay=2)
+                    set_desc = "typed"
+            except Exception as e:
+                self.note(f"description typing failed ({str(e)[:60]})")
+        if not set_desc:
             if m["paperback_id"]:
                 self.note("description editor not found — existing draft keeps its description")
             else:
