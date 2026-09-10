@@ -126,7 +126,8 @@ def launch_gate(catalog: str) -> dict:
     else:
         item("Release date set ≥ 10 days out", False, "no date — run the planner")
     series = d.get("series") or {}
-    if series.get("series_title") and int(series.get("book_number") or 1) > 1:
+    _wb = (d.get("book_type") or "") == "workbook" or bool((d.get("workbook") or {}).get("done"))
+    if series.get("series_title") and int(series.get("book_number") or 1) > 1 and not _wb:
         prev_ok = False
         prev_detail = "previous book not found"
         for b in list_books(per_page=500).get("books", []):

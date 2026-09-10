@@ -242,6 +242,11 @@ async def check_cover_fit(png: bytes, book: dict) -> dict:
     trim = trim_of(book)
     floor_tb, floor_lr = safe_pct(trim)
     views = {"trim": trim_view(png, trim), "ebook": ebook_view(png)}
+    # a print-only book (workbooks, picture books first printed) has no
+    # ebook crop to judge — a 2:3 view of an 8.5x11 cover clips by design
+    _bd = book.get("data") or {}
+    if _bd.get("print_only") or (_bd.get("book_type") or "") == "workbook" or (_bd.get("workbook") or {}).get("done"):
+        views = {"trim": views["trim"]}
     result = {"ok": True, "issues": [], "views": {}, "measured": {}, "trim": trim,
               "floor_pct": {"top_bottom": round(floor_tb * 100, 1),
                             "sides": round(floor_lr * 100, 1)},

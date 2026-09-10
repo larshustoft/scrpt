@@ -74,6 +74,10 @@ def _blocked(d: dict) -> str:
     return ""
 
 
+def _is_workbook(d: dict) -> bool:
+    return (d.get("book_type") or "") == "workbook" or bool((d.get("workbook") or {}).get("done"))
+
+
 def _series_blocker(d: dict, books: list) -> str:
     """Why this book may not be dated yet because of its series: the name of
     an earlier book that is neither released nor dated. SERIES ORDER
@@ -85,6 +89,8 @@ def _series_blocker(d: dict, books: list) -> str:
     title, no = s.get("series_title"), s.get("book_number")
     if not title or not no:
         return ""
+    if _is_workbook(d):
+        return ""          # activity books stand alone — they never wait for a story (Lars, 2026-09-10)
     for b in books:
         bd = b.get("data") or {}; bs = bd.get("series") or {}
         if bs.get("series_title") != title or not bs.get("book_number") or int(bs["book_number"]) >= int(no):
@@ -173,6 +179,13 @@ def due(today: date | None = None) -> list[dict]:
             rd = date.fromisoformat(str(rel["date"])[:10])
         except ValueError:
             continue
+        # WORKBOOKS LEAVE AT ONCE (Lars, 2026-09-10: "make sure all the
+        # workbooks get uploaded to KDP as soon as they are done"): a finished
+        # activity book with a lawful date is due now, not when its window opens.
+        if _is_workbook(d) and rd - today >= timedelta(days=LEAD_DAYS):
+            out.append({"catalog": b["catalog_number"], "title": b.get("title"), "release_date": rd.isoformat(),
+                        "days_to_release": (rd - today).days, "workbook": True})
+            continue
         if timedelta(days=LEAD_DAYS) <= rd - today <= timedelta(days=UPLOAD_WINDOW_DAYS):
             out.append({"catalog": b["catalog_number"], "title": b.get("title"), "release_date": rd.isoformat(),
                         "days_to_release": (rd - today).days})
@@ -180,7 +193,7 @@ def due(today: date | None = None) -> list[dict]:
     return out
 
 
-async def run_due(handle=None, max_per_day: int = MAX_PER_DAY, publish: bool = True) -> dict:
+async def run_due(handle=None, max_per_day: int = MAX_PER_DAY, publish: bool = True, only_workbooks: bool = False) -> dict:
     """Push the due books through the line, serially, at most max_per_day.
     ONE DESK AT A TIME (2026-09-04): the daily duty and a manual run fired in
     the same minute and both started the line on the same book. A lock in
@@ -197,15 +210,37 @@ async def run_due(handle=None, max_per_day: int = MAX_PER_DAY, publish: bool = T
             return {"due": [], "ran": [], "stopped": f"the desk is already running (since {lock[:16]})"}
     set_setting("release_desk_running", datetime.now().isoformat(timespec="minutes"))
     try:
-        return await _run_due_locked(handle, max_per_day, publish)
+        return await _run_due_locked(handle, max_per_day, publish, only_workbooks)
     finally:
         set_setting("release_desk_running", "")
 
 
-async def _run_due_locked(handle, max_per_day, publish) -> dict:
+def started_today() -> int:
+    """KDP titles the desk started today, from its own ledger."""
+    raw = get_setting("release_desk_log", "") or "[]"
+    try:
+        log = json.loads(raw) if isinstance(raw, str) else (raw or [])
+    except Exception:
+        return 0
+    today = date.today().isoformat()
+    return sum(1 for e in log if e.get("duty") == "run" and e.get("ok") and str(e.get("at", ""))[:10] == today)
+
+
+async def workbook_pass(handle=None) -> dict:
+    """Every autopilot pass: date any finished workbook, then push the due
+    ones out at once — within the day's KDP allowance."""
+    p = plan()
+    room = MAX_PER_DAY - started_today()
+    if room <= 0:
+        return {"plan": p, "run": {"due": [], "ran": [], "stopped": "today's KDP allowance is used"}}
+    r = await run_due(handle=handle, max_per_day=room, only_workbooks=True)
+    return {"plan": p, "run": r}
+
+
+async def _run_due_locked(handle, max_per_day, publish, only_workbooks=False) -> dict:
     from .line import run_line
     from . import kdp as kdp_mod
-    todo = due()
+    todo = [t for t in due() if not only_workbooks or t.get("workbook")]
     report = {"due": [t["catalog"] for t in todo], "ran": [], "stopped": ""}
     if not todo:
         _log({"duty": "run", "note": "nothing due"})

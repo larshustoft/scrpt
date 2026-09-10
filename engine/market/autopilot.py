@@ -201,6 +201,15 @@ async def scheduler():
         except Exception:
             print("  release desk failed:\n" + traceback.format_exc()[-600:])
         try:
+            # WORKBOOKS LEAVE AT ONCE (Lars, 2026-09-10): every pass, not once a day
+            if settings()["enabled"]:
+                from .release_desk import workbook_pass as _wb_pass
+                _wr = await _wb_pass()
+                for _e in (_wr.get("run") or {}).get("ran", []):
+                    print(f"  ⚙ workbook desk: {_e.get('title') or _e.get('catalog')} → {'KDP' if _e.get('ok') else 'stopped at ' + str(_e.get('stopped_at') or _e.get('error'))}")
+        except Exception:
+            print("  workbook desk failed:\n" + traceback.format_exc()[-600:])
+        try:
             from .cover_line import run as _cover_line
             _cl = await _cover_line()
             for _st in _cl.get("started", []):
