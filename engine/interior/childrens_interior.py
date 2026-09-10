@@ -261,14 +261,54 @@ def _quiet_zone(img, safe_px: int, n_lines: int, line_px: int,
             pick["score"])
 
 
-async def build_interior(catalog: str, handle=None) -> dict:
-    """Write interior.pdf for a children's book (off the event loop)."""
+async def build_interior(catalog: str, handle=None, repair: bool = True) -> dict:
+    """Write interior.pdf for a children's book (off the event loop).
+
+    THE FIELD FILTER (Lars, 2026-09-10, Star Map: the words' paper field
+    sat over Glitter's face): a spread whose text field lands on a
+    character is not a page. The build measures every field against the
+    character mask; a hit is redrawn ONCE with the reserved region forced
+    empty, then the interior rebuilds on the new art. A spread that fails
+    twice is left in place and reported under "still_crowded" — nobody
+    burns credits in a loop, and the book page shows the honest state."""
     import asyncio
-    return await asyncio.to_thread(_build_interior, catalog, handle)
+    res = await asyncio.to_thread(_build_interior, catalog, handle)
+    crowded = list(res.get("crowded") or [])
+    if not (repair and crowded):
+        return res
+    from ..database import get_book_by_catalog, update_book
+    book = get_book_by_catalog(catalog)
+    d = dict(book["data"]); rec = dict(d.get("childrens") or {})
+    if (d.get("release") or {}).get("status") in ("submitted", "live", "published"):
+        return {**res, "still_crowded": crowded, "repaired": [],
+                "note": "uploaded book — art left as printed"}
+    tries = dict(rec.get("air_redraws") or {})
+    todo = [n for n in crowded if int(tries.get(str(n), 0)) < 1]
+    if not todo:
+        return {**res, "still_crowded": crowded, "repaired": []}
+    from ..writing.childrens import illustrate
+    repaired = []
+    for i, n in enumerate(todo):
+        if handle:
+            handle.progress(0.9, "interior", f"text field over a character on spread {n} — redrawing ({i + 1} of {len(todo)})")
+        print(f"  interior: spread {n} — text field over a character — redrawing with the region forced empty", flush=True)
+        tries[str(n)] = int(tries.get(str(n), 0)) + 1
+        b2 = get_book_by_catalog(catalog); d2 = dict(b2["data"]); r2 = dict(d2.get("childrens") or {})
+        r2["air_redraws"] = tries; d2["childrens"] = r2
+        update_book(b2["id"], d2, sections=["childrens"])
+        try:
+            await illustrate(catalog, only=n, handle=None, hard_air=True)
+            repaired.append(n)
+        except Exception as e:
+            print(f"  interior: spread {n} redraw failed — {str(e)[:120]}", flush=True)
+    res2 = await asyncio.to_thread(_build_interior, catalog, handle)
+    return {**res2, "repaired": repaired,
+            "still_crowded": list(res2.get("crowded") or [])}
 
 
-def _build_interior(catalog: str, handle=None) -> dict:
-    """The actual page-by-page build."""
+def _build_interior(catalog: str, handle=None, dry_run: bool = False) -> dict:
+    """The actual page-by-page build. dry_run: measure only — PDF to a
+    scratch file, nothing written to the record."""
     from PIL import Image
     from reportlab.lib.utils import ImageReader
     from reportlab.pdfbase import pdfmetrics
@@ -293,6 +333,9 @@ def _build_interior(catalog: str, handle=None) -> dict:
     out_dir = Path(OUTPUT_DIR) / catalog
     out_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = out_dir / "interior.pdf"
+    if dry_run:
+        import tempfile as _tf
+        pdf_path = Path(_tf.gettempdir()) / f"{catalog}-dry-interior.pdf"
 
     # KDP full bleed adds 0.125in to the top, bottom and OUTSIDE edge only —
     # never the gutter. Bleeding into the fold as well meant both pages
@@ -622,8 +665,6 @@ def _build_interior(catalog: str, handle=None) -> dict:
         # with a real built-in white field (illustrate(only=n,
         # hard_air=True)), then the interior rebuilds on honest air.
         album = False
-        if bool(text_all) and min(occ_l, occ_r) > 0.10:
-            crowded.append(n)
         wash_left[str(n)] = _plan_left
         wash_aw[str(n)] = aw
         chosen[str(n)]["page"] = "left" if _plan_left else "right"
@@ -668,6 +709,31 @@ def _build_interior(catalog: str, handle=None) -> dict:
                     # column the full text fits, feather where it must
                     aw = max(aw_floor, min(aw, _max_aw if _max_aw >= aw_floor else aw))
                     col_px = aw - text_safe - 2 * pad_px
+
+        # THE MEASUREMENT THAT MATTERS: is anybody standing under the field
+        # as it will actually be painted (core + the half of the feather
+        # that still reads as paper)? Body density in a column, not stray
+        # flowers. A hit goes on the redraw queue — build_interior acts on
+        # it (Lars, 2026-09-10: "filtered out when it happens, and replaced").
+        if text_all and not album:
+            _fw = max(int(0.5 * dpi), int(0.42 * aw))
+            _cover_px = aw + int(0.5 * _fw)
+            _c8 = max(1, int(_cover_px / (im.width / _cw)))
+            _a8 = max(1, int(aw / (im.width / _cw)))
+            _core = _col_d[:_a8] if _plan_left else _col_d[_cw - _a8:]
+            _edge = _col_d[_a8:_c8] if _plan_left else _col_d[_cw - _c8:_cw - _a8]
+            # a body under the solid paper (column at body density), or a
+            # face sitting in the half-paper feather. A mane's edge or a
+            # sprig of flowers in the feather is not a hit (calibrated on
+            # Star Map: mean-based rules flagged clean spreads 1, 13, 14).
+            _hit = (len(_core) and (float(_core.max()) > 0.25 or float(_core.mean()) > 0.10)) or \
+                   (len(_edge) and float(_edge.max()) > 0.45)
+            import os as _os
+            if _os.environ.get("SCRPT_FIELD_DEBUG"):
+                print(f"  field-check spread {n}: side={'L' if _plan_left else 'R'} core max={float(_core.max()) if len(_core) else 0:.2f} mean={float(_core.mean()) if len(_core) else 0:.3f} edge max={float(_edge.max()) if len(_edge) else 0:.2f} -> {'HIT' if _hit else 'ok'}", flush=True)
+            if _hit:
+                crowded.append(n)
+                chosen[str(n)]["over_character"] = True
 
         if album:
             from PIL import ImageDraw as _ID, ImageFilter as _IF
@@ -814,9 +880,11 @@ def _build_interior(catalog: str, handle=None) -> dict:
     fresh = get_book_by_catalog(catalog)
     fd = dict(fresh["data"]); frec = dict(fd.get("childrens") or {})
     frec["layout_used"] = chosen
+    frec["field_over_character"] = crowded
     fd["childrens"] = frec
     from ..database import update_book as _ub
-    _ub(fresh["id"], fd, sections=["childrens"])
+    if not dry_run:
+        _ub(fresh["id"], fd, sections=["childrens"])
 
     return {
         "pdf": str(pdf_path),

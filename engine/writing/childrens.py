@@ -334,27 +334,27 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
     from ..cover.front_cover import _best_image_model
 
     def air_ok(png: bytes, n: int, words: int) -> bool:
-        """The AIR QC GATE: the region reserved for text must actually BE
-        light empty paper in the finished art — measured, not assumed. A
-        spread that ignored the reservation gets redrawn (Lars, 2026-08-29:
-        a full-bleed spread left the words with nowhere readable to go)."""
+        """The AIR QC GATE: the region reserved for text must be free of
+        CHARACTERS in the finished art — the same body-density clean-run
+        the interior measures before it paints the field, so what passes
+        here is what the interior can use. (Brightness was the old test;
+        a night sky failed it and a character in bright mist passed it —
+        Star Map, 2026-09-10. The paper wash makes darkness irrelevant;
+        only who is standing there matters.)"""
         from PIL import Image
         import io as _io
-        im = Image.open(_io.BytesIO(png)).convert("L")
-        W, H = im.size
+        from ..interior.childrens_interior import _subject_mask
+        im = Image.open(_io.BytesIO(png)).convert("RGB")
+        _, ch = _subject_mask(im)
+        cd = ch.mean(axis=0); cw = len(cd)
         left = (n % 2 == 1)
-        frac_w = 0.47 if words >= 45 else 0.34
-        x0, x1 = (int(W*0.03), int(W*frac_w)) if left else (int(W*(1-frac_w)), int(W*0.97))
-        region = im.crop((x0, int(H*0.04), x1, int(H*0.60))).resize((60, 40))
-        px = list(region.getdata())
-        mean = sum(px)/len(px)
-        var = sum((v-mean)**2 for v in px)/len(px)
-        # (a strip-mask fold gate was tried 2026-08-30 and retired the
-        # same hour: the subject mask reads flowers as people, so every
-        # spread failed and the gate would re-roll forever. The fold is
-        # handled by the composition prompt and the interior's clean-run
-        # measurement instead.)
-        return mean > 222 and var ** 0.5 < 26
+        need = 0.47 if words >= 45 else 0.34
+        run = 0
+        for j in (range(cw) if left else range(cw - 1, -1, -1)):
+            if cd[j] > 0.25:
+                break
+            run += 1
+        return run / max(1, cw) >= need - 0.03
 
     async def draw(prompt: str, reference: Optional[bytes]) -> bytes:
         async with httpx.AsyncClient(timeout=300) as c:
@@ -557,11 +557,15 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                 try:
                     pr, ref = prompt_for(s)
                     png = await draw_checked(s, pr, ref)
-                    for _retry in range(2):
-                        if air_ok(png, s["n"], len((s.get("text") or "").split())):
+                    _ok = False
+                    for _retry in range(3):
+                        _ok = air_ok(png, s["n"], len((s.get("text") or "").split()))
+                        if _ok or _retry == 2:
                             break
                         pr, ref = prompt_for(s, force_air=True)
                         png = await draw(pr, ref)
+                    if not _ok:
+                        print(f"  spread {s['n']}: a character still stands in the text region after 3 draws — kept; the interior will flag it", flush=True)
                 except Exception:
                     return None          # a refused spread must not kill the book
                 (art_dir / f"spread-{s['n']:02d}.png").write_bytes(png)
