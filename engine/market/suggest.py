@@ -15,6 +15,7 @@ approve()    turns a suggestion into a work order with auto_draft on: the
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 import uuid
 from datetime import datetime
@@ -163,7 +164,7 @@ async def research(n: int = 8, notes: str = "", handle=None) -> dict:
         f"Fiction/non-fiction genre presets (use exactly one key): {json.dumps(presets)}\n"
         f"Children's presets: {json.dumps(kids)}\n\n"
         "Return JSON only: {\"suggestions\": [{"
-        "\"title\": \"...\", \"niche\": \"the measured niche phrase\", \"kind\": \"fiction|nonfiction|childrens\", \"genre_preset\": \"key\", "
+        "\"title\": \"...\", \"niche\": \"the measured niche phrase\", \"kind\": \"fiction|nonfiction|childrens\", \"line\": \"story|workbook (workbook = any activity, colouring, tracing, maze, counting or drawing book: 8.5x11 pages drawn one by one)\", \"genre_preset\": \"key\", "
         "\"series_title\": \"... or empty\", \"series_books\": N, \"pen_name\": \"...\", "
         "\"pitch\": \"2-3 sentences: the book, the hook, the reader\", "
         "\"why\": \"the market evidence in numbers (ranks, units/day, growth, prices)\", "
@@ -247,6 +248,53 @@ async def research(n: int = 8, notes: str = "", handle=None) -> dict:
     return {"added": added, "count": len(cv.get("done", [])), "without_cover": cv.get("failed", [])}
 
 
+
+WORKBOOK_WORDS = re.compile(r"activity|workbook|colou?ring|maze|dot[ -]to[ -]dot|trac(e|ing)|cut (and|&) paste|draw with|how to draw|"
+                            r"sticker|puzzle|count(ing)?\b|count to|letters|numbers|alphabet|\babc\b|shapes|handwriting|learn to|"
+                            r"practi[cs]e|(&|and) play\b|tell the time|opposites|first words", re.I)
+
+
+def _is_workbook_suggestion(r: dict) -> bool:
+    """Activity books are the workbook line — 8.5x11, drawn page by page —
+    never the square picture-book path (Lars, 2026-09-10: "the workbooks/
+    activity books come up in square format… this has happened a couple of
+    times"). The line is declared by research when it can be, and read off
+    the title and pitch otherwise."""
+    if (r.get("line") or "") == "workbook" or (r.get("book_type") or "") == "workbook":
+        return True
+    if (r.get("line") or "") == "story":
+        return False
+    if (r.get("kind") or "") != "childrens":
+        return False
+    return bool(WORKBOOK_WORDS.search((r.get("title") or "") + " " + (r.get("pitch") or "")[:200]))
+
+
+def _series_titles(series_title: str) -> str:
+    from ..database import list_books
+    out = []
+    for b in list_books(per_page=1000).get("books", []):
+        sr = (b.get("data") or {}).get("series") or {}
+        if b.get("status") not in ("cancelled", "deleted", "archived") and (sr.get("series_title") or "").strip().lower() == series_title.strip().lower():
+            out.append(f"#{sr.get('book_number')} {b.get('title')}")
+    return "; ".join(sorted(out)) or "none"
+
+
+def _series_offset(series_title: str) -> tuple[int, str]:
+    """Books already in a series of that name: (highest number, series_id) —
+    a new batch continues the numbering instead of starting a second book 1
+    (Princess the Unicorn Activity Books had 1-6 when 7 more were approved)."""
+    from ..database import list_books
+    hi, sid = 0, ""
+    for b in list_books(per_page=1000).get("books", []):
+        if b.get("status") in ("cancelled", "deleted", "archived"):
+            continue
+        sr = (b.get("data") or {}).get("series") or {}
+        if (sr.get("series_title") or "").strip().lower() == series_title.strip().lower() and sr.get("book_number"):
+            if int(sr["book_number"]) > hi:
+                hi, sid = int(sr["book_number"]), sr.get("series_id") or sid
+    return hi, sid
+
+
 async def approve(ids: list[str], commission_all: bool = False) -> dict:
     """Approved suggestions become work orders with auto_draft on."""
     from ..routers.scrpt import create_workorder
@@ -260,7 +308,7 @@ async def approve(ids: list[str], commission_all: bool = False) -> dict:
             r = rows.get(sid)
             if not r or r["status"] != "new":
                 results.append({"id": sid, "ok": False, "reason": "not an open suggestion"}); continue
-            if (r.get("line") == "workbook") or (r.get("kind") == "childrens" and any(w in (r.get("title") or "").lower() for w in ("workbook", "cut and paste", "draw with", "trace", "activity"))):
+            if _is_workbook_suggestion(r):
                 try:
                     n_wb = int(r.get("series_books") or 1) if (r.get("series_title") or "").strip() else 1
                     if commission_all and n_wb > 1:
@@ -431,12 +479,19 @@ def _commission_workbook(r: dict, draw_now: bool = True, series_id: str = "", bo
     from ..database import create_book
     from ..jobs import start_job
     from ..writing.workbook import write_workbook, UNIVERSE_CAST, UNIVERSE_DISPLAY
-    slug = r.get("universe") or ""
+    from ..writing.workbook import detect_universe
+    slug = r.get("universe") or detect_universe(r.get("title") or "", r.get("pitch") or "", r.get("series_title") or "")
     uni = UNIVERSE_CAST.get(slug, {})
     series_title = (r.get("series_title") or "").strip()
+    # a universe book carries the universe's pen name, whatever the suggestion said
+    pen = HOUSE_PEN_NAMES.get(slug) or uni.get("author") or r.get("pen_name") or ""
+    if series_title and not series_id:
+        hi, sid = _series_offset(series_title)
+        if hi:
+            book_number, series_id, total = hi + book_number, sid or series_id, max(total, hi + max(total, 1))
     data = {
         "kind": "childrens", "book_type": "workbook", "authorship": "house", "genre_preset": "picture_book",
-        "author_name": r.get("pen_name") or uni.get("author") or "", "universe": slug or None, "print_only": True,
+        "author_name": pen, "universe": slug or None, "print_only": True,
         "trim_size": "8.5x11", "paper_type": "white_bw", "page_count": 0,
         "list_price": max(9.99, float(r.get("price_paperback") or 9.99)),   # KDP pays 60% from $9.99, 50% below
         "description": (r.get("pitch") or ""), "cover_direction": r.get("cover_direction") or "",
@@ -484,7 +539,10 @@ async def _commission_workbook_series(r: dict, n: int) -> tuple[str, str]:
     from ..database import create_book, get_book_by_catalog, update_book
     from ..writing.client import complete, extract_json
     from ..writing.workbook import UNIVERSE_CAST, UNIVERSE_DISPLAY
-    slug = r.get("universe") or ""; uni = UNIVERSE_CAST.get(slug, {})
+    from ..writing.workbook import detect_universe
+    slug = r.get("universe") or detect_universe(r.get("title") or "", r.get("pitch") or "", r.get("series_title") or "")
+    r = {**r, "universe": slug}
+    uni = UNIVERSE_CAST.get(slug, {})
     pillars = ""
     try:
         pj = json.loads((PROJECT_ROOT_UNIVERSE / slug / "profile.json").read_text()) if slug else {}
@@ -493,7 +551,7 @@ async def _commission_workbook_series(r: dict, n: int) -> tuple[str, str]:
         world = ""
     raw = await complete("You plan children's activity-book series. JSON only.",
         f"UNIVERSE: {UNIVERSE_DISPLAY.get(slug, slug) or 'none'}. WORLD: {world}\nLEARNING PILLARS: {pillars or 'counting, letters, shapes, nature, feelings'}\n"
-        f"CAST: {uni.get('cast', '')}\nSERIES: {r.get('series_title')}\nFIRST BOOK (already decided): {r.get('title')} — {r.get('pitch')}\n"
+        f"CAST: {uni.get('cast', '')}\nSERIES: {r.get('series_title')}\nBOOKS ALREADY IN THIS SERIES (never repeat their topics): {_series_titles(r.get('series_title') or '')}\nFIRST BOOK (already decided): {r.get('title')} — {r.get('pitch')}\n"
         f"AGES: 4-8. FORMAT: 8.5 x 11 black-and-white activity pages, ~48 pages each.\n\n"
         f"Plan exactly {n} books for this series, book 1 being the first book above. Each book teaches ONE thing a parent "
         "would buy it for (counting to 20, letters and sounds, shapes and patterns, colours, mazes and pencil control, "
@@ -506,11 +564,12 @@ async def _commission_workbook_series(r: dict, n: int) -> tuple[str, str]:
     if not plan:
         plan = [{"n": 1, "title": r.get("title"), "pitch": r.get("pitch"), "ages": "4-8"}]
     plan[0]["title"] = r.get("title") or plan[0]["title"]; plan[0]["pitch"] = r.get("pitch") or plan[0]["pitch"]
-    series_id = uuid.uuid4().hex[:8]
+    hi, sid = _series_offset(r.get("series_title") or "")
+    series_id = sid or uuid.uuid4().hex[:8]
     first_cat, first_job = None, None
     for i, b in enumerate(plan, start=1):
-        rr = {**r, "title": b["title"], "pitch": b.get("pitch") or r.get("pitch"), "series_books": len(plan)}
-        cat, job_id = _commission_workbook(rr, draw_now=(i == 1), series_id=series_id, book_number=i, total=len(plan), ages=b.get("ages"))
+        rr = {**r, "title": b["title"], "pitch": b.get("pitch") or r.get("pitch"), "series_books": hi + len(plan)}
+        cat, job_id = _commission_workbook(rr, draw_now=(i == 1), series_id=series_id, book_number=hi + i, total=hi + len(plan), ages=b.get("ages"))
         if i == 1:
             first_cat, first_job = cat, job_id
     return first_cat, first_job

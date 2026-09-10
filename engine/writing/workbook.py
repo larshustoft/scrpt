@@ -82,10 +82,13 @@ def detect_universe(*texts: str) -> str:
     """The universe a title or pitch belongs to, by its established character's
     name — a suggestion that says "Freddie the Farmer" is Freddie's, and its
     cover must lead with Freddie (Lars, 2026-09-09)."""
+    import re as _re
     blob = " ".join(t or "" for t in texts).lower()
     for slug, name in UNIVERSE_DISPLAY.items():
         first = name.split()[0].lower()
-        if name.lower() in blob or (first in blob and len(first) > 4):
+        # the whole name, or the character's first name as a word ("Rex the
+        # Dino Explorer" is Rex's — 2026-09-10, it went out under Poppy Marsh)
+        if name.lower() in blob or _re.search(r"\b" + _re.escape(first) + r"\b", blob):
             return slug
     return ""
 
