@@ -438,6 +438,27 @@ class Stager:
                 if r:
                     set_desc = r; break
         if not set_desc:
+            # the editor may sit inside a shadow DOM (querySelector is blind to
+            # it; Playwright locators pierce it) — find it that way and type
+            try:
+                loc = p.locator('[contenteditable="true"], textarea[name*="description" i], #data-print-book-description')
+                n = await loc.count()
+                self.note(f"description: {n} editable element(s) via shadow-piercing locator")
+                for i in range(n):
+                    el = loc.nth(i)
+                    if not await el.is_visible():
+                        continue
+                    bb = await el.bounding_box()
+                    if not bb or bb["height"] < 40:
+                        continue
+                    await el.click(timeout=4000)
+                    await p.keyboard.press("Control+A")
+                    await p.keyboard.type("\n\n".join(paras), delay=1)
+                    await p.wait_for_timeout(500)
+                    set_desc = "shadow-typed"; break
+            except Exception as e:
+                self.note(f"description shadow search failed ({str(e)[:60]})")
+        if not set_desc:
             # last resort: click into the editor and type the plain text
             try:
                 ed = p.locator("iframe.cke_wysiwyg_frame, [class*='description' i] iframe, [id*='description' i] iframe").first
