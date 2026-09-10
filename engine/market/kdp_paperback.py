@@ -809,7 +809,23 @@ class Stager:
         if isbn:
             self._remember({"isbn": isbn.group(1)})
         await self.radio_by_label("^" + re.escape(PAPER_LABEL[m["paper"]]) + "$")
-        await self.radio_by_label("^No Bleed$")
+        # BLEED follows the interior (Star Map, 2026-09-10: KDP's previewer
+        # flagged every art page "outside the margins" because the draft said
+        # No Bleed while the picture book is built to trim + 0.125in). Picture
+        # books and any book whose print record says so get Bleed; workbooks
+        # and novels stay No Bleed.
+        _d0 = self.d
+        _bleed = bool((_d0.get("format") or {}).get("bleed")) or (
+            (_d0.get("kind") or "") == "childrens" and (_d0.get("book_type") or "") != "workbook"
+            and not bool((_d0.get("workbook") or {}).get("done")))
+        if _bleed:
+            try:
+                await self.radio_by_label("^Bleed")
+                self.note("bleed: chose Bleed (PDF only) — the interior is built to trim + bleed")
+            except Exception as e:
+                self.note(f"bleed: could not choose Bleed ({str(e)[:60]})")
+        else:
+            await self.radio_by_label("^No Bleed$")
         await self.radio_by_label("^Matte$")
         # trim (custom dropdown)
         cur = await p.evaluate("""() => { const el=[...document.querySelectorAll('*')].find(e=>e.children.length===0 && / x [\\d.]+ in \\(/.test((e.innerText||'').trim()) && e.offsetParent!==null && (e.innerText||'').length<40); return el ? el.innerText.trim() : ''; }""")
