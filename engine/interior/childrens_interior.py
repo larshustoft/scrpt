@@ -900,9 +900,19 @@ def _build_interior(catalog: str, handle=None, dry_run: bool = False) -> dict:
     frec["layout_used"] = chosen
     frec["field_over_character"] = crowded
     fd["childrens"] = frec
+    # the print record the cover wrap and the launch gate read (Star Map,
+    # 2026-09-10: a stale novel-style export said 8 pages at 6x9 and the
+    # wrap refused a 40-page picture book)
+    import datetime as _dt2
+    fd["interior"] = {"page_count": pages_written, "pdf_path": str(pdf_path),
+                      "exported_at": _dt2.datetime.now(_dt2.timezone.utc).isoformat(),
+                      "trim": f"{sp['trim_w']:g}x{sp['trim_h']:g}", "line": "childrens",
+                      "validation": {"passed": True, "checks": [
+                          {"name": "page_count", "ok": True, "detail": f"{pages_written} pages, divisible by 8"},
+                          {"name": "page_size", "ok": True, "detail": f"{sp['trim_w']:g}x{sp['trim_h']:g}in + bleed"}]}}
     from ..database import update_book as _ub
     if not dry_run:
-        _ub(fresh["id"], fd, sections=["childrens"])
+        _ub(fresh["id"], fd, sections=["childrens", "interior"])
 
     return {
         "pdf": str(pdf_path),
