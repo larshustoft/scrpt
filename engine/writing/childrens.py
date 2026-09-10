@@ -500,8 +500,9 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                f"that fills the square with story and detail. Place every "
                f"character in the {far} two thirds of the image; the {side} "
                f"third holds scenery only (sky, trees, water, flowers) — no "
-               f"character, no face, no animal there. In the spirit of classic "
-               f"Scandinavian picture books.")
+               f"character, no face, no animal there. Keep every character whole "
+               f"and clear of all four image edges — nothing cut off. In the "
+               f"spirit of classic Scandinavian picture books.")
         head = "\n\n".join(x for x in (art_direction, air, canon) if x)
         if n == 1:
             prompt = (f"A children's picture-book illustration, landscape, for a book for ages "
