@@ -353,6 +353,26 @@ class Stager:
         return None
 
     # ── pages ────────────────────────────────────────────────────
+    async def _page_errors(self) -> list:
+        """KDP's inline validation messages on the current page — the text a
+        person would read, so a stopped run says WHY (Star Map, 2026-09-10:
+        the content page said 'an issue on an earlier page' and the desk
+        reported 'still converting' three times)."""
+        try:
+            return await self.page.evaluate("""() => {
+                const out = [];
+                for (const el of document.querySelectorAll('.a-alert-error, .a-alert-warning, [class*="error"], [role="alert"]')) {
+                    if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+                    const r = el.getBoundingClientRect();
+                    if (!r.width || !r.height) continue;
+                    const t = (el.innerText || '').trim().replace(/\s+/g, ' ');
+                    if (t && t.length < 300 && !out.includes(t)) out.push(t);
+                }
+                return out.slice(0, 12);
+            }""")
+        except Exception:
+            return []
+
     async def details(self, m: dict):
         p = self.page
         if not m["paperback_id"]:
@@ -501,6 +521,12 @@ class Stager:
         await self.click_text("Save and Continue", 6000)
         if not await self.signed_in():
             return "needs_signin"
+        await p.wait_for_timeout(1500)
+        if "/details" in p.url or "/paperback/new" in p.url:
+            errs = await self._page_errors()
+            if errs:
+                await self.shot("details-errors", full=True)
+                raise RuntimeError("KDP refused the details page: " + " | ".join(errs)[:400])
         pid = p.url.split("/paperback/")[-1].split("/")[0]
         if pid and pid != "new":
             self._remember({"paperback_id": pid})
@@ -843,6 +869,22 @@ class Stager:
             return False
         await _wait_processing()
         await p.wait_for_timeout(2000)
+        # KDP's "issue on an earlier page" modal is not a conversion wait:
+        # go back, read the details page's own error text, and stop with it
+        try:
+            _body = await p.inner_text("body")
+        except Exception:
+            _body = ""
+        if "found an issue on an earlier page" in _body:
+            await self.shot("earlier-page-issue")
+            try:
+                await self.click_text("Go Back", 5000)
+                await p.wait_for_timeout(3000)
+            except Exception:
+                pass
+            errs = await self._page_errors()
+            await self.shot("details-errors", full=True)
+            raise RuntimeError("KDP found an issue on the details page: " + (" | ".join(errs)[:400] or "no inline message read — see details-errors.png"))
         await _confirm_box()
         # previewer (required) — the button stays disabled while KDP is still
         # converting even after its dialog is gone (Letters, Numbers & Colours,
