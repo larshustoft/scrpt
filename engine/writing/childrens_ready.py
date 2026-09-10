@@ -108,6 +108,72 @@ async def design_universe_cover(catalog: str) -> dict:
     return {"variants": n, "pick": pick}
 
 
+
+PICTURE_BOOK_CATEGORIES = [
+    ["Children's Books", "Fairy Tales, Folk Tales & Myths", "Unicorns"],
+    ["Children's Books", "Animals", "General"],
+    ["Children's Books", "Growing Up & Facts of Life", "Friendship, Social Skills & School Life", "Friendship"],
+]
+
+
+def default_print_categories(d: dict) -> list:
+    """A KDP print-category plan for a picture book: the picker matches each
+    level by containment and falls back to General under the first path it
+    can resolve, so these only need to be plausible, not exact."""
+    theme = " ".join(str(x) for x in ((d.get("childrens") or {}).get("premise"), d.get("description"), d.get("title"))).lower()
+    plan = []
+    if "unicorn" in theme or "princess" in theme:
+        plan.append(["Children's Books", "Fairy Tales, Folk Tales & Myths", "Unicorns"])
+    if any(w in theme for w in ("star", "moon", "sky", "space")):
+        plan.append(["Children's Books", "Science, Nature & How It Works", "Astronomy & Space"])
+    if any(w in theme for w in ("farm", "barn", "tractor")):
+        plan.append(["Children's Books", "Animals", "Farm Animals"])
+    if any(w in theme for w in ("cat", "dog", "bird", "dinosaur")):
+        plan.append(["Children's Books", "Animals", "General"])
+    for c in PICTURE_BOOK_CATEGORIES:
+        if c not in plan:
+            plan.append(c)
+    return plan[:3]
+
+
+async def write_picture_blurb(catalog: str) -> str:
+    """The KDP description / back-cover text for a picture book, written for
+    the parent (Star Map, 2026-09-10: KDP refused the draft — no description,
+    no category — because in-house picture books never got either)."""
+    from .client import complete
+    book = get_book_by_catalog(catalog); d = book["data"]; rec = d.get("childrens") or {}
+    spreads = rec.get("spreads") or []
+    text_in = "\n".join((s.get("text") or "").strip() for s in spreads)[:3500]
+    prompt = (f"BOOK: {book['title']}\nAGES: {rec.get('age') or '3-6'}\nAUTHOR: {d.get('author_name') or ''}\n"
+              f"THE STORY, page by page:\n{text_in}\n\n"
+              "Write the back-cover text a parent reads in the shop: 3 short paragraphs, 70-110 words in total. "
+              "Paragraph 1: who the hero is and what happens, warm and concrete, without giving away the ending. "
+              "Paragraph 2: what a child takes from it (one feeling or one small lesson) and the friends along the way. "
+              "Paragraph 3: one line on the format (full-colour picture book, read-aloud, ages) and an invitation. "
+              "Speak to the parent. No hype words (ultimate, amazing, perfect, magical journey). No bullet points, no headings, no quotes. "
+              "Plain text, paragraphs separated by a blank line.")
+    text = (await complete("You write the back covers of children's picture books for a small publishing house. Warm, exact, never salesy.",
+                           prompt, max_tokens=600, mechanical=True)).strip()
+    b = get_book_by_catalog(catalog); data = dict(b["data"])
+    data["description"] = text; data["back_cover_blurb"] = text
+    update_book(b["id"], data, sections=["description", "back_cover_blurb"])
+    return text
+
+
+async def shop_ready(catalog: str) -> dict:
+    """Description and print categories every picture book needs on KDP —
+    written once, kept if present."""
+    b = get_book_by_catalog(catalog); d = dict(b["data"]); done = {}
+    if not (d.get("description") or "").strip():
+        await write_picture_blurb(catalog); done["description"] = True
+        b = get_book_by_catalog(catalog); d = dict(b["data"])
+    kdp = dict(d.get("kdp") or {})
+    if not kdp.get("print_categories_plan"):
+        kdp["print_categories_plan"] = default_print_categories(d); d["kdp"] = kdp
+        update_book(b["id"], d, sections=["kdp"]); done["categories"] = kdp["print_categories_plan"]
+    return done
+
+
 async def ready_childrens(catalog: str, handle=None) -> dict:
     """Words written → cover chosen → bible → illustrations → interior → accepted."""
     from .childrens_bible import build_bible
@@ -149,6 +215,12 @@ async def ready_childrens(catalog: str, handle=None) -> dict:
         steps.append(("art", True, f"{len((d.get('childrens') or {}).get('spreads') or [])} spreads drawn"))
     else:
         steps.append(("art", True, "complete"))
+    try:
+        sr = await shop_ready(catalog)
+        if sr:
+            steps.append(("shop", True, ", ".join(sr.keys())))
+    except Exception as e:
+        steps.append(("shop", False, str(e)[:100]))
     if handle:
         handle.progress(0.85, "interior", "building the interior")
     res = await build_interior(catalog, handle)
