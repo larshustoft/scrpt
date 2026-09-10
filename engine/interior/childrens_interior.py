@@ -542,12 +542,8 @@ def _build_interior(catalog: str, handle=None, dry_run: bool = False) -> dict:
     if publisher:
         c.setFillColorRGB(0.30, 0.28, 0.26)
         c.setFont(serif, 9.5)
+        # logo and the name only — no country, no year (Lars, 2026-09-10)
         c.drawCentredString(page_w / 2, safe + 16, publisher.upper())
-        c.setFont(serif, 8)
-        c.drawCentredString(page_w / 2, safe + 5, "FRANCE")
-        c.setFillColorRGB(0.45, 0.43, 0.41)
-        c.setFont(serif, 6.5)
-        c.drawCentredString(page_w / 2, safe - 5, str(year))
     c.showPage(); pages_written += 1
 
     # copyright page — the KDP essentials, including the AI disclosure
