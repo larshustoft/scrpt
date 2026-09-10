@@ -114,10 +114,31 @@ def _subject_mask(img):
     border = _np.concatenate([arr[:bpx].reshape(-1, 3), arr[-bpx:].reshape(-1, 3),
                               arr[:, :bpx].reshape(-1, 3), arr[:, -bpx:].reshape(-1, 3)])
     rs = _np.random.RandomState(7)
+    # STRUCTURAL PAPER (2026-09-10): spreads now carry a third of true
+    # paper beside the art. Paper must be neither in the palette (or every
+    # painted pixel reads as "unlike the border" and the whole picture
+    # becomes one character) nor in the mask (or the paper itself becomes
+    # the largest blob). Paper is near-white and unsaturated.
+    def _is_paper(px):
+        return (px.min(axis=-1) >= 236) & ((px.max(axis=-1) - px.min(axis=-1)) <= 12)
+    _pp = _is_paper(arr)
+    _paper_cols = _pp.mean(axis=0) >= 0.97          # a full-height paper column
+    structural = float(_paper_cols.mean()) >= 0.15   # a real paper third, not mist
+    paper = _np.zeros(_pp.shape, dtype=bool)
+    if structural:
+        # the feather between paper and art is mostly paper too — a column
+        # more than half paper is never "someone standing there"
+        paper[:, _pp.mean(axis=0) >= 0.5] = True
+        paper |= _pp
+        bpal = border[~_is_paper(border)]
+        if len(bpal) >= 8:
+            border = bpal
     pal = border[rs.choice(len(border), min(48, len(border)), replace=False)]
     dist = _np.sqrt(_np.min(((arr[:, :, None, :] - pal[None, None, :, :]) ** 2)
                             .sum(-1), axis=2))
-    hot = dist >= max(float(_np.percentile(dist, 65)), 25.0)
+    dist[paper] = 0.0
+    _live = dist[~paper] if (~paper).any() else dist.ravel()
+    hot = (dist >= max(float(_np.percentile(_live, 65)), 25.0)) & ~paper
     lab = _np.zeros(hot.shape, dtype=_np.int32)
     cur = 0
     Hs, Ws = hot.shape
@@ -150,6 +171,7 @@ def _subject_mask(img):
         centres = blob_px[rs.choice(len(blob_px), min(24, len(blob_px)), replace=False)]
         near = _np.sqrt(_np.min(((arr[:, :, None, :] - centres[None, None, :, :]) ** 2)
                                 .sum(-1), axis=2)) < 30.0
+        near &= ~paper          # white fur must never flood into the paper
         q = deque(map(tuple, _np.argwhere(char_mask)))
         while q:
             cy, cx = q.popleft()
@@ -163,7 +185,7 @@ def _subject_mask(img):
             g[1:, :] |= grown[:-1, :]; g[:-1, :] |= grown[1:, :]
             g[:, 1:] |= grown[:, :-1]; g[:, :-1] |= grown[:, 1:]
             grown = g
-        char_mask = grown
+        char_mask = grown & ~paper
     return dist, char_mask
 
 
