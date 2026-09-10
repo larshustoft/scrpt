@@ -283,6 +283,43 @@ async def write_childrens_book(catalog: str, handle=None) -> dict:
 # first and becomes the REFERENCE: every later spread is generated as an EDIT
 # against it, which carries the character design and the palette forward.
 
+
+def compose_spread(art_png: bytes, n: int) -> bytes:
+    """STRUCTURAL AIR (Lars, 2026-09-10: "do not make this an expensive
+    process"): instead of asking the model to leave a region empty and
+    redrawing until it obeys (it obeyed once in four tries on Star Map),
+    the picture is drawn square and set on a paper spread with a third of
+    the width left as honest paper — LEFT on odd spreads, RIGHT on even,
+    the same side the interior places the words. One draw per spread, no
+    gate, no retries; the field can never land on a character because the
+    art is simply not there. The art's inner edge dissolves into the paper
+    with a cosine feather so it reads as a vignette, not a pasted panel."""
+    from PIL import Image
+    import io as _io
+    import numpy as _np
+    art = Image.open(_io.BytesIO(art_png)).convert("RGB")
+    H = art.height
+    W = int(H * 1.5)
+    aw = H                                     # square art, full height
+    paper = _np.array([253, 252, 250], dtype=_np.float32)
+    a = _np.asarray(art, dtype=_np.float32)
+    feather = int(0.16 * aw)
+    x = _np.arange(aw, dtype=_np.float32)
+    left_air = (n % 2 == 1)
+    # alpha of the ART: 0 at its inner edge, 1 past the feather
+    if left_air:
+        tt = _np.clip(x / feather, 0, 1)
+    else:
+        tt = _np.clip((aw - 1 - x) / feather, 0, 1)
+    alpha = (0.5 - 0.5 * _np.cos(_np.pi * tt))[None, :, None]
+    a = a * alpha + paper * (1 - alpha)
+    out = _np.empty((H, W, 3), dtype=_np.float32); out[:] = paper
+    x0 = W - aw if left_air else 0
+    out[:, x0:x0 + aw] = a
+    buf = _io.BytesIO()
+    Image.fromarray(out.astype("uint8")).save(buf, format="PNG")
+    return buf.getvalue()
+
 async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                     hard_air: bool = False) -> dict:
     """Draw the spreads. Spread 1 sets the look; the rest follow it."""
@@ -321,7 +358,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
 
     art_dir = Path(OUTPUT_DIR) / catalog / "spreads"
     art_dir.mkdir(parents=True, exist_ok=True)
-    ref_path = art_dir / "spread-01.png"
+    ref_path = art_dir / "spread-01-art.png"
 
     # The bibles are the canon. Every prompt carries the art direction, and
     # each spread additionally carries the full entry for the characters and
@@ -368,14 +405,14 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                             files={"image[]": ("ref.png", reference, "image/png")},
                             data={"model": model, "prompt": prompt[:3800],
-                                  "size": "1536x1024", "quality": "high", "n": "1"}),
+                                  "size": "1024x1024", "quality": "high", "n": "1"}),
                             timeout=240)
                     else:
                         r = await asyncio.wait_for(c.post(
                             "https://api.openai.com/v1/images/generations",
                             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                             json={"model": model, "prompt": prompt[:3800],
-                                  "size": "1536x1024", "quality": "high", "n": 1}),
+                                  "size": "1024x1024", "quality": "high", "n": 1}),
                             timeout=240)
                 except (httpx.HTTPError, asyncio.TimeoutError) as e:
                     last = f"{type(e).__name__}: {str(e)[:120]}"
@@ -401,7 +438,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
             content.append({"type": "input_image", "image_url": "data:image/png;base64," + base64.b64encode(reference).decode()})
         content.append({"type": "input_text", "text": prompt[:3800]})
         body = {"input": [{"role": "user", "content": content}],
-                "tools": [{"type": "image_generation", "size": "1536x1024", "quality": "high"}], "tool_choice": "required"}
+                "tools": [{"type": "image_generation", "size": "1024x1024", "quality": "high"}], "tool_choice": "required"}
         last = None
         async with httpx.AsyncClient(timeout=460) as c:
             for model in await _best_text_models(c):
@@ -442,7 +479,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
         if not targets:
             print("  illustrate: every spread already drawn — nothing to do", flush=True)
     # spread 1 must exist before any other can reference it
-    if only is not None and only != 1 and not ref_path.exists():
+    if only is not None and only != 1 and not (ref_path.exists() or (art_dir / "spread-01.png").exists()):
         targets = [spreads[0]] + targets
 
     def prompt_for(s, force_air: bool = False):
@@ -452,33 +489,19 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
         # vignette that leaves the paper itself as the text's home. One region
         # per spread stays pure white; the side alternates so the book
         # breathes left-right as it turns.
+        # The words get their own paper beside the picture (compose_spread),
+        # so the picture may fill its square with life — no empty region is
+        # requested, none needs checking. The spread folds through the
+        # picture at a quarter of its width on the paper side, so the
+        # characters keep to the outer two thirds.
         side = "LEFT" if n % 2 else "RIGHT"
-        w = len((s.get("text") or "").split())
-        area = ("half" if w >= 85 else "third" if w >= 45 else "quarter")
-        air = (f"COMPOSITION: a generous picture-book illustration that FILLS "
-               f"most of the image with life, story and detail — the scene is "
-               f"large and immersive, never a small drawing lost on a white "
-               f"page. It is still a vignette: its outer edges dissolve "
-               f"softly into the paper instead of ending in a hard rectangle. "
-               f"The {side} {area} of the image — the upper {side} region — "
-               f"stays as light open air: white paper with at most the "
-               f"faintest wash, reserved for the story text. One or two tiny "
-               f"story details (a butterfly, a flower sprig, a small side "
-               f"character) may sit near the margins so no corner feels "
-               f"empty. In the spirit of classic Scandinavian picture books.")
-        # NOBODY STANDS ON THE FOLD (Lars, 2026-08-30): the spread is cut
-        # down the middle into two pages — a character on the centre line
-        # is sliced by the binding. Keep every character clearly inside
-        # one half, never straddling the middle.
-        air += (" IMPORTANT: the image will be folded down its exact "
-                "vertical centre — never place a character on or near the "
-                "centre line; every character stays well inside one half.")
-        if hard_air or force_air:
-            air += (f" CRITICAL, NON-NEGOTIABLE: the {side} half of the image "
-                    f"is completely EMPTY pale watercolor paper — no "
-                    f"characters, no animals, no objects, no flowers there at "
-                    f"all. Every character stands in the "
-                    f"{'RIGHT' if side == 'LEFT' else 'LEFT'} half only.")
+        far = "RIGHT" if side == "LEFT" else "LEFT"
+        air = (f"COMPOSITION: a generous, immersive picture-book illustration "
+               f"that fills the square with story and detail. Place every "
+               f"character in the {far} two thirds of the image; the {side} "
+               f"third holds scenery only (sky, trees, water, flowers) — no "
+               f"character, no face, no animal there. In the spirit of classic "
+               f"Scandinavian picture books.")
         head = "\n\n".join(x for x in (art_direction, air, canon) if x)
         if n == 1:
             prompt = (f"A children's picture-book illustration, landscape, for a book for ages "
@@ -495,7 +518,8 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
             prompt = ("Draw the NEXT illustration in this same picture book. Keep the EXACT same "
                       "art style, palette, line quality and character designs as the reference "
                       f"image — the same characters must look identical. New scene: {s['art_prompt']}")
-            ref = ref_path.read_bytes() if ref_path.exists() else None
+            _rp = ref_path if ref_path.exists() else art_dir / "spread-01.png"
+            ref = _rp.read_bytes() if _rp.exists() else None
         return (f"{prompt}\n\n{head}" if head else prompt), ref
 
 
@@ -540,12 +564,8 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
         pr, ref = prompt_for(s)
         w1 = len((s.get("text") or "").split())
         png = await draw_checked(s, pr, ref)
-        for _retry in range(2):
-            if air_ok(png, 1, w1):
-                break
-            pr, ref = prompt_for(s, force_air=True)
-            png = await draw(pr, ref)
-        (art_dir / "spread-01.png").write_bytes(png)
+        (art_dir / "spread-01-art.png").write_bytes(png)
+        (art_dir / "spread-01.png").write_bytes(compose_spread(png, 1))
         done.append(1)
 
     if rest:
@@ -557,18 +577,10 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                 try:
                     pr, ref = prompt_for(s)
                     png = await draw_checked(s, pr, ref)
-                    _ok = False
-                    for _retry in range(3):
-                        _ok = air_ok(png, s["n"], len((s.get("text") or "").split()))
-                        if _ok or _retry == 2:
-                            break
-                        pr, ref = prompt_for(s, force_air=True)
-                        png = await draw(pr, ref)
-                    if not _ok:
-                        print(f"  spread {s['n']}: a character still stands in the text region after 3 draws — kept; the interior will flag it", flush=True)
                 except Exception:
                     return None          # a refused spread must not kill the book
-                (art_dir / f"spread-{s['n']:02d}.png").write_bytes(png)
+                (art_dir / f"spread-{s['n']:02d}-art.png").write_bytes(png)
+                (art_dir / f"spread-{s['n']:02d}.png").write_bytes(compose_spread(png, s["n"]))
                 finished[0] += 1
                 if handle:
                     handle.progress(0.1 + 0.85 * finished[0] / len(rest), "illustrating",
