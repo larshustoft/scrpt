@@ -77,6 +77,14 @@ def launch_gate(catalog: str) -> dict:
     item("Cover wrap validated (KDP spec)", bool(wv.get("passed")) and (out / "cover-wrap.pdf").exists(),
          "; ".join(c.get("detail", "") for c in wv.get("checks", [])[:2]) if wv else "no wrap")
     item("Front cover present", (out / "cover-front.png").exists(), "", True)
+    # THE COVER FIT CONTROL (Lars, 2026-09-10): a cover whose title ran off
+    # the page reached print. Every installed cover now carries the verdict
+    # of a vision read-back of the trimmed picture; no verdict, or a failed
+    # one, stops the launch.
+    from ..cover.cover_fit import summary_line as _fit_line
+    fit = (d.get("cover") or {}).get("fit") or {}
+    item("Cover fits the format (title fully inside, nothing clipped)",
+         bool(fit.get("ok")), _fit_line(fit))
     item("Ebook (EPUB) built", (out / "ebook.epub").exists(), "", False)
 
     # ── 4. house rules ──

@@ -1253,11 +1253,11 @@ def cover_wrap_image(catalog: str, dpi: int = 220):
 async def cover_fact_sheet(catalog: str):
     """The exact cover prompt — the six facts, nothing else — ready to paste
     into the publisher's own ChatGPT conversation."""
-    from ..cover.front_cover import _cover_summary, _fact_brief
+    from ..cover.front_cover import _cover_summary, _fact_brief, _manuscript_of
     book = db.get_book_by_catalog(catalog)
     if not book:
         raise HTTPException(404, "Book not found")
-    ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
+    ms = _manuscript_of(book)
     summary = await _cover_summary(book, ms)
     return {"prompt": _fact_brief(book, ms, summary)}
 
@@ -1273,12 +1273,20 @@ async def install_cover_art(catalog: str, file: UploadFile = File(...)):
     content = await file.read()
     if not content or len(content) < 10_000:
         raise HTTPException(400, "That file does not look like a cover image")
+    # THE COVER FIT CONTROL (2026-09-10) applies to uploads too: the picture
+    # is read back at the trim before it becomes the cover. A clipped title
+    # is refused with the reason, not installed.
+    from ..cover.cover_fit import check_cover_fit
+    fit = await check_cover_fit(content, book)
+    if not fit.get("ok"):
+        raise HTTPException(422, "Cover refused — it does not fit the format: "
+                            + "; ".join(fit.get("issues") or []))
     prev = Path(OUTPUT_DIR) / catalog / "cover-art.png"
     if prev.exists():
         (Path(OUTPUT_DIR) / catalog / "cover-art-previous.png").write_bytes(prev.read_bytes())
     result = _install_cover(catalog, content,
-                            brief="Publisher-supplied artwork", mode="upload")
-    return {"installed": True, "preview": result["preview"]}
+                            brief="Publisher-supplied artwork", mode="upload", fit=fit)
+    return {"installed": True, "preview": result["preview"], "fit": fit}
 
 
 @router.post("/cover/install-full/{catalog}")
@@ -1427,10 +1435,27 @@ class SelectVariantRequest(BaseModel):
 
 
 @router.post("/cover/select-variant/{catalog}")
-def select_variant(catalog: str, req: SelectVariantRequest):
+async def select_variant(catalog: str, req: SelectVariantRequest):
     from ..cover.front_cover import select_cover_variant
+    from ..cover.cover_fit import check_cover_fit
+    book0 = db.get_book_by_catalog(catalog)
+    if not book0:
+        raise HTTPException(404, "Book not found")
+    # THE COVER FIT CONTROL: a variant drawn before the control, or the
+    # original (index 0), carries no verdict — measure it now, and refuse a
+    # cover that does not fit rather than install it.
+    stored = (book0["data"].get("cover") or {}).get("variants") or []
+    fit = next((v.get("fit") for v in stored if v.get("index") == req.index), None)
+    if not fit:
+        vpath = Path(OUTPUT_DIR) / catalog / f"cover-variant-{req.index}.png"
+        if not vpath.exists():
+            raise HTTPException(404, f"Variant {req.index} not found")
+        fit = await check_cover_fit(vpath.read_bytes(), book0)
+    if not fit.get("ok"):
+        raise HTTPException(422, "That cover does not fit the format: "
+                            + "; ".join(fit.get("issues") or []))
     try:
-        result = select_cover_variant(catalog, req.index)
+        result = select_cover_variant(catalog, req.index, fit=fit)
     except ValueError as e:
         raise HTTPException(404, str(e))
     # a children's book with unillustrated spreads starts drawing the moment

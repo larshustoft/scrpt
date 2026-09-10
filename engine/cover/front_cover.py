@@ -38,13 +38,41 @@ IMAGE_SIZE = "1024x1536"
 GEN_SIZES = {"1024x1024": 1.0, "1536x1024": 1.5, "1024x1536": 1024 / 1536}
 
 
-def size_for_trim(trim: str) -> str:
+def standard_size_for_trim(trim: str) -> str:
+    """The nearest of the engine's three fixed canvases (the fallback for an
+    engine that refuses a custom size)."""
     try:
         tw, th = (float(x) for x in str(trim).lower().split("x"))
         want = tw / th
     except Exception:
         return IMAGE_SIZE
     return min(GEN_SIZES, key=lambda k: abs(GEN_SIZES[k] - want))
+
+
+def size_for_trim(trim: str) -> str:
+    """A canvas in the book's OWN proportions, so nothing is cropped on
+    install. THE COVER FIT CONTROL (2026-09-10): every Maze Meadow redraw
+    put the author name in the 14% the trim crop cuts off a 2:3 canvas —
+    the model cannot see a crop it is only told about. gpt-image-2 accepts
+    any size whose sides divide by 16 (tested 2026-09-10: 1040x1344 OK,
+    1024x1325 refused), so the canvas is made to match the trim at about
+    1.4 megapixels. The generators fall back to standard_size_for_trim when
+    an engine refuses the size."""
+    try:
+        tw, th = (float(x) for x in str(trim).lower().split("x"))
+        ratio = tw / th
+    except Exception:
+        return IMAGE_SIZE
+    import math
+    target_px = 1400_000
+    w = int(round(math.sqrt(target_px * ratio) / 16)) * 16
+    h = int(round((w / ratio) / 16)) * 16
+    w, h = max(512, min(2048, w)), max(512, min(2048, h))
+    return f"{w}x{h}"
+
+
+def _is_size_rejection(status: int, text: str) -> bool:
+    return status == 400 and "size" in (text or "").lower()
 
 
 def trim_of(book: dict) -> str:
@@ -93,6 +121,24 @@ def pick_image_model(ids: list) -> str:
         if best_key is None or key > best_key:
             best_id, best_key = i, key
     return best_id
+
+
+def _manuscript_of(book: dict) -> Manuscript:
+    """The cover code only needs the genre preset and the tagline. A finished
+    workbook writes manuscript status "complete", which the Manuscript enum
+    does not know — that must not stop a cover redraw (found 2026-09-10 when
+    Maze Meadow's cover was refused by the fit control and could not be
+    redrawn). Validate strictly first; fall back to the fields we use."""
+    raw = dict((book.get("data") or {}).get("manuscript") or {})
+    try:
+        return Manuscript.model_validate(raw)
+    except Exception:
+        raw.pop("status", None)
+        try:
+            return Manuscript.model_validate(raw)
+        except Exception:
+            return Manuscript.model_validate({k: raw[k] for k in ("genre_preset", "tagline", "kind") if k in raw})
+
 
 def _merged_direction(book: dict, extra_direction: str) -> str:
     """Only direction the publisher types for THIS run reaches the engine.
@@ -218,6 +264,12 @@ async def _thread_generate(client: httpx.AsyncClient, prompt: str,
                     continue
                 return png, data.get("id")
             last_err = RuntimeError(f"thread turn failed ({r.status_code}): {r.text[:200]}")
+            if (body.get("tools") and _is_size_rejection(r.status_code, r.text)
+                    and body["tools"][0].get("size") not in GEN_SIZES):
+                # the image tool only knows the three fixed canvases
+                body["tools"][0]["size"] = min(
+                    GEN_SIZES, key=lambda k: abs(GEN_SIZES[k] - _ratio_of(body["tools"][0]["size"])))
+                continue
             if (r.status_code == 400 and body.get("tools")
                     and "model" in r.text.lower() and "model" in body["tools"][0]):
                 body["tools"][0].pop("model", None)  # tool rejected the pin
@@ -363,6 +415,10 @@ def _fact_brief(book: dict, ms: Manuscript, summary: str, notes: str = "") -> st
     if author:
         lines.append(f"Author: {author}")
     lines.append("Book size: " + trim.replace("x", "″ × ") + "″")
+    # THE COVER FIT CONTROL (2026-09-10): the canvas is trimmed on install;
+    # the engine is told so, and told to keep every word well inside.
+    from .cover_fit import safe_zone_line
+    lines.append(safe_zone_line(trim))
     if ms.tagline:
         lines.append(f'Subtitle: "{ms.tagline}"')
     if series.get("series_id") and series.get("series_title"):
@@ -376,7 +432,7 @@ async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
     book = get_book_by_catalog(catalog)
     if not book:
         raise ValueError(f"Book {catalog} not found")
-    ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
+    ms = _manuscript_of(book)
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY is not configured in the engine .env")
 
@@ -386,25 +442,62 @@ async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
                         notes=_merged_direction(book, extra_direction))
 
     gen_size = size_for_trim(trim_of(book))
-    async with httpx.AsyncClient() as client:
+    from .cover_fit import MAX_ATTEMPTS, check_cover_fit, retry_note
+
+    async def _draw(client, prompt):
         thread_id = await _ensure_series_thread(client, book)
         if thread_id:
             try:
                 png, rid = await _thread_generate(
-                    client, "Same series look as the covers above.\n" + brief,
+                    client, "Same series look as the covers above.\n" + prompt,
                     gen_size=gen_size,
                     previous_response_id=thread_id)
-                _store_series_thread(book, rid)
-                return _install_cover(catalog, png, brief)
+                return png, rid
             except Exception:
                 pass  # fall back to a plain generation
-        raw_png = await _generate_one(client, brief, gen_size=gen_size)
+        return await _generate_one(client, prompt, gen_size=gen_size), None
 
-    return _install_cover(catalog, raw_png, brief)
+    # THE COVER FIT CONTROL: draw, measure and read the trimmed picture
+    # back, and only install a cover whose title sits fully inside the page
+    # and is spelled right. A failed draw is redrawn with the reason; after
+    # MAX_ATTEMPTS the line stops here rather than shipping a bad cover.
+    prompt = brief
+    fit = None
+    async with httpx.AsyncClient() as client:
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            raw_png, rid = await _draw(client, prompt)
+            fit = await check_cover_fit(raw_png, book)
+            fit["attempt"] = attempt
+            if fit["ok"]:
+                if rid:
+                    _store_series_thread(book, rid)
+                return _install_cover(catalog, raw_png, brief, fit=fit)
+            # keep the rejected draw for the record, never as the cover
+            out_dir = Path(OUTPUT_DIR) / catalog
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / f"cover-rejected-{attempt}.png").write_bytes(raw_png)
+            prompt = brief + "\n" + retry_note(fit)
+    _record_fit_failure(catalog, fit)
+    raise RuntimeError("Cover failed the fit check " + str(MAX_ATTEMPTS) +
+                       " times (title clipped, on the edge or misspelled): " +
+                       "; ".join(fit.get("issues") or []))
+
+
+def _record_fit_failure(catalog: str, fit: dict) -> None:
+    """A failed gate leaves its verdict on the record so the launch gate
+    and the shelf can show why the book has no cover."""
+    fresh = get_book_by_catalog(catalog)
+    if not fresh:
+        return
+    data = dict(fresh["data"])
+    cover = dict(data.get("cover") or {})
+    cover["fit"] = fit
+    data["cover"] = cover
+    update_book(fresh["id"], data, sections=["cover"])
 
 
 def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
-                   mode: str = "ai") -> dict:
+                   mode: str = "ai", fit: dict = None) -> dict:
     """Write cover-art/ebook/preview files and update the book record."""
     book = get_book_by_catalog(catalog)
     out_dir = Path(OUTPUT_DIR) / catalog
@@ -486,10 +579,13 @@ def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
     })
     if brief:
         cover["art_brief"] = brief
+    # the fit verdict travels with the cover; an install without one is
+    # visibly unchecked at the launch gate
+    cover["fit"] = fit if fit else {"ok": False, "issues": ["installed without a fit check"]}
     data["cover"] = cover
     update_book(fresh["id"], data, sections=["cover"])
     return {"artwork": str(art_path), "ebook_cover": str(ebook_path),
-            "preview": str(preview_path), "brief": brief}
+            "preview": str(preview_path), "brief": brief, "fit": cover["fit"]}
 
 
 async def _generate_one(client: httpx.AsyncClient, brief: str,
@@ -532,10 +628,22 @@ async def _generate_one(client: httpx.AsyncClient, brief: str,
             last_err = RuntimeError(f"Image generation failed ({r.status_code}): {r.text[:200]}")
             await asyncio.sleep(3 * (attempt + 1))
             continue
+        if _is_size_rejection(r.status_code, r.text) and gen_size not in GEN_SIZES:
+            # this engine only knows the three fixed canvases
+            std = min(GEN_SIZES, key=lambda k: abs(GEN_SIZES[k] - _ratio_of(gen_size)))
+            return await _generate_one(client, brief, reference_png=reference_png, gen_size=std)
         if r.status_code != 200:
             raise RuntimeError(f"Image generation failed ({r.status_code}): {r.text[:200]}")
         return base64.b64decode(r.json()["data"][0]["b64_json"])
     raise RuntimeError(f"Image generation failed after 3 attempts: {last_err}")
+
+
+def _ratio_of(size: str) -> float:
+    try:
+        w, h = (int(x) for x in size.lower().split("x"))
+        return w / h
+    except Exception:
+        return 1024 / 1536
 
 
 async def generate_cover_variants(catalog: str, count: int = 4,
@@ -547,7 +655,7 @@ async def generate_cover_variants(catalog: str, count: int = 4,
     book = get_book_by_catalog(catalog)
     if not book:
         raise ValueError(f"Book {catalog} not found")
-    ms = Manuscript.model_validate(book["data"].get("manuscript", {}))
+    ms = _manuscript_of(book)
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY is not configured in the engine .env")
     _ensure_real_title(book)
@@ -646,31 +754,51 @@ async def generate_cover_variants(catalog: str, count: int = 4,
     out_dir.mkdir(parents=True, exist_ok=True)
     from PIL import Image
     import io
+    from .cover_fit import check_cover_fit, crop_to_ratio
     variants = []
+    rejected = []
+    try:
+        _tw, _th = (float(x) for x in trim_of(book).split("x"))
+    except Exception:
+        _tw, _th = 5.5, 8.5
+    if on_progress:
+        on_progress(0.95, "Checking every cover fits the page")
+    fits = await asyncio.gather(
+        *[check_cover_fit(res, book) if not isinstance(res, Exception) else asyncio.sleep(0)
+          for res in results], return_exceptions=True)
     for i, res in enumerate(results):
         if isinstance(res, Exception):
             continue
+        fit = fits[i]
+        if isinstance(fit, Exception) or not isinstance(fit, dict):
+            fit = {"ok": False, "issues": [f"fit check failed: {str(fit)[:120]}"]}
         vpath = out_dir / f"cover-variant-{i + 1}.png"
         vpath.write_bytes(res)
         img = Image.open(io.BytesIO(res)).convert("RGB")
-        # The preview is what the picker actually shows. Hard-coding it to
-        # 400x640 squashed a square picture-book cover into a portrait, so the
-        # thumbnails misrepresented the very thing being chosen. Preview at the
-        # book's own trim.
-        try:
-            _tw, _th = (float(x) for x in trim_of(book).split("x"))
-        except Exception:
-            _tw, _th = 5.5, 8.5
+        # The preview is what the picker actually shows. It used to SQUASH
+        # the whole canvas into the trim shape while the install CROPPED it,
+        # so a title the crop would cut looked fine at the moment of
+        # choosing. Preview exactly what the install keeps: crop, then scale.
         _pw = 400
-        img.resize((_pw, max(1, int(round(_pw * _th / _tw)))), Image.LANCZOS).save(
+        crop_to_ratio(img, _tw / _th).resize(
+            (_pw, max(1, int(round(_pw * _th / _tw)))), Image.LANCZOS).save(
             out_dir / f"cover-variant-{i + 1}-preview.png", optimize=True)
-        variants.append({"index": i + 1,
-                         "preview": f"cover-variant-{i + 1}-preview.png",
-                         "concept": briefs[i].get("concept", ""),
-                         "brief": briefs[i]["prompt"],
-                         "response_id": response_ids[i]})
+        entry = {"index": i + 1,
+                 "preview": f"cover-variant-{i + 1}-preview.png",
+                 "concept": briefs[i].get("concept", ""),
+                 "brief": briefs[i]["prompt"],
+                 "response_id": response_ids[i],
+                 "fit": fit}
+        # THE COVER FIT CONTROL: a variant whose title is clipped, on the
+        # edge or misspelled is never offered for choosing. It stays on
+        # disk, marked, for the record.
+        (variants if fit.get("ok") else rejected).append(entry)
     if not variants:
         first_err = next((r for r in results if isinstance(r, Exception)), None)
+        if rejected:
+            raise RuntimeError("Every cover option failed the fit check: " +
+                               " | ".join("; ".join(r["fit"].get("issues") or [])
+                                          for r in rejected)[:600])
         raise RuntimeError(f"All variants failed: {first_err}")
 
     data = dict(get_book_by_catalog(catalog)["data"])
@@ -678,9 +806,10 @@ async def generate_cover_variants(catalog: str, count: int = 4,
     # a fresh set of variants never throws the original away (Lars, 2026-09-08)
     keep = [v for v in (cover.get("variants") or []) if v.get("index") == 0]
     cover["variants"] = keep + variants
+    cover["variants_rejected"] = [{k: v for k, v in r.items() if k != "brief"} for r in rejected]
     data["cover"] = cover
     update_book(book["id"], data, sections=["cover"])
-    return {"variants": cover["variants"]}
+    return {"variants": cover["variants"], "rejected": len(rejected)}
 
 
 async def generate_series_suite(catalog: str, on_progress=None) -> dict:
@@ -754,7 +883,7 @@ async def generate_series_suite(catalog: str, on_progress=None) -> dict:
     return {"covers": done, "thread": thread_id}
 
 
-def select_cover_variant(catalog: str, index: int) -> dict:
+def select_cover_variant(catalog: str, index: int, fit: dict = None) -> dict:
     """Promote a generated variant to the book's official front cover."""
     vpath = Path(OUTPUT_DIR) / catalog / f"cover-variant-{index}.png"
     if not vpath.exists():
@@ -778,7 +907,11 @@ def select_cover_variant(catalog: str, index: int) -> dict:
                           "brief": cov.get("art_brief") or ""})
     brief = next((v.get("brief", "") for v in stored if v.get("index") == index),
                  (cov.get("art_brief")) or "")
-    result = _install_cover(catalog, vpath.read_bytes(), brief)
+    # the variant carries the fit verdict it earned when it was drawn; a
+    # variant from before the control (or the original, index 0) arrives
+    # with the verdict the route just measured
+    fit = fit or next((v.get("fit") for v in stored if v.get("index") == index), None)
+    result = _install_cover(catalog, vpath.read_bytes(), brief, fit=fit)
     data = dict(get_book_by_catalog(catalog)["data"])
     data["cover"] = dict(data.get("cover") or {})
     data["cover"]["variants"] = stored

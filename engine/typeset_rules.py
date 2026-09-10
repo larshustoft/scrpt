@@ -62,4 +62,9 @@ def fit_title(title: str, width_at: Callable[[str, float], float], max_w: float,
 
 # THE HOUSE MARK (Lars, 2026-09-09: "The TigerWorks logo is a little too large.
 # Make it 20% smaller. And make that a rule."): the lockup's side, in inches.
-HOUSE_MARK_IN = {"title_page": 0.8, "back_cover": 0.51, "workbook_title": 0.8, "picture_title": 0.47}
+# Lars, 2026-09-10, looking at the Maze Meadow title page: "the TigerWorks
+# logo is too large on this page — smaller in every book moving forward."
+# The title-page mark is a quiet imprint at the foot of the page, not a
+# second title: 0.45" on every title page (was 0.8" / 0.8" / 0.47"). The
+# back-cover size is a print legibility floor and stays.
+HOUSE_MARK_IN = {"title_page": 0.45, "back_cover": 0.51, "workbook_title": 0.45, "picture_title": 0.45}

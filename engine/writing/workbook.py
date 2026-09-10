@@ -575,8 +575,10 @@ def reframe_cover(catalog: str) -> dict:
 async def design_cover(catalog: str) -> dict:
     """The front cover, with the universe's character plate as the identity
     reference, installed the house way (cover-art, ebook, preview files)."""
-    from ..cover.front_cover import _generate_one, _install_cover
+    from ..cover.front_cover import _generate_one, _install_cover, _record_fit_failure, size_for_trim
+    from ..cover.cover_fit import MAX_ATTEMPTS, check_cover_fit, retry_note, safe_zone_line
     book = get_book_by_catalog(catalog); d = book["data"]; wb = d.get("workbook") or {}
+    trim = (d.get("format") or {}).get("trim_size") or d.get("trim_size") or "8.5x11"
     slug = wb.get("universe") or ""; uni = UNIVERSE_CAST.get(slug, {})
     plates = [png for png in (_plate_png(slug, rel) for rel in (uni.get("plates") or {}).values()) if png] if uni else []
     author = d.get("author_name") or ""
@@ -587,16 +589,29 @@ async def design_cover(catalog: str) -> dict:
              + f'The ONLY text anywhere on the cover is the title "{book["title"]}"' + (f' and the author name "{author}" — the author name MUST appear, in small clean type near the bottom of the safe zone' if author else "") + ".\n"
              "Output the FLAT COVER ARTWORK ITSELF, one flat rectangle filled edge to edge; not a mockup, no spine, no shadow.\n"
              "Bright, clean, child-safe; big readable title; it must look like a bestselling activity book on Amazon.\n"
-             "IMPORTANT FRAMING: the image is 2:3 but the printed cover is 8.5 x 11, so the top 10% and the bottom 10% of the "
-             "image WILL BE CUT OFF. Put nothing important there: the title starts at least 12% below the top edge, the author "
-             "name sits at least 15% above the bottom edge, every character's face and hands are inside the middle 80% of the "
-             "height. The top and bottom bands are plain sky and plain grass only.\n"
-             + (f"Author: {author}\n" if author else "") + "Book size: 8.5″ × 11″")
-    async with httpx.AsyncClient() as client:
-        png = await _generate_one(client, brief, reference_png=plates or None, gen_size="1024x1536")
+             # THE COVER FIT CONTROL (2026-09-10): the canvas is now drawn in the
+             # trim's own proportions (size_for_trim), so nothing is cut; the
+             # safe-zone rule replaces the old "2:3 will be cut" paragraph.
+             + safe_zone_line(trim) + "\n"
+             + (f"Author: {author}\n" if author else "") + "Book size: " + trim.replace("x", "″ × ") + "″")
     out_dir = Path(OUTPUT_DIR) / catalog; out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "cover-art-raw.png").write_bytes(png)          # the model's image, uncropped
-    trim = (d.get("format") or {}).get("trim_size") or d.get("trim_size") or "8.5x11"
-    framed, rep = frame_cover_for_trim(png, trim, author, out_dir)
-    res = _install_cover(catalog, framed, brief)
-    return {**res, "framing": rep}
+    prompt = brief
+    fit = None
+    async with httpx.AsyncClient() as client:
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            png = await _generate_one(client, prompt, reference_png=plates or None, gen_size=size_for_trim(trim))
+            (out_dir / "cover-art-raw.png").write_bytes(png)          # the model's image, uncropped
+            # framing is a no-op on a trim-exact canvas; it still guards a
+            # fallback engine that could only draw 2:3
+            framed, rep = frame_cover_for_trim(png, trim, author, out_dir)
+            fit = await check_cover_fit(framed, book)
+            fit["attempt"] = attempt
+            if fit["ok"]:
+                res = _install_cover(catalog, framed, brief, fit=fit)
+                return {**res, "framing": rep}
+            (out_dir / f"cover-rejected-{attempt}.png").write_bytes(framed)
+            print(f"  workbook cover attempt {attempt} refused: " + "; ".join(fit.get("issues") or [])[:200])
+            prompt = brief + "\n" + retry_note(fit)
+    _record_fit_failure(catalog, fit)
+    raise RuntimeError("Workbook cover failed the fit check " + str(MAX_ATTEMPTS) + " times: "
+                       + "; ".join((fit or {}).get("issues") or []))
