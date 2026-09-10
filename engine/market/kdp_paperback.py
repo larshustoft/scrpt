@@ -410,6 +410,40 @@ class Stager:
         await self.fill("#data-print-book-primary-author-last-name", " ".join(parts[1:]))
         paras = [x.strip() for x in m["description"].split("\n\n") if x.strip()]
         body = "".join(f"<p>{'<b>' if i == 0 else ''}{_html.escape(x)}{'</b>' if i == 0 else ''}</p>" for i, x in enumerate(paras))
+        # the editor loads late: wait for it, and keep a DOM dump of the
+        # Description section so a miss can be fixed from evidence
+        try:
+            await p.wait_for_selector('[contenteditable="true"], iframe, textarea', timeout=15000)
+        except Exception:
+            pass
+        try:
+            dump = await p.evaluate("""() => {
+                const h = [...document.querySelectorAll('h2, h3, label, div')].find(e => /^Description$/.test((e.innerText || '').trim()));
+                const sec = h ? (h.closest('section, .a-box, [class*="section"]') || h.parentElement.parentElement) : null;
+                const html = sec ? sec.outerHTML : '';
+                return {html: html.slice(0, 6000), iframes: [...document.querySelectorAll('iframe')].map(f => (f.src || '') + ' ' + (f.className || '')).slice(0, 8),
+                        ce: document.querySelectorAll('[contenteditable]').length, ta: document.querySelectorAll('textarea').length}; }""")
+            (self.shots / "description-dom.html").write_text(dump.get("html") or "")
+            self.note(f"description DOM: {dump.get('ce')} contenteditable, {dump.get('ta')} textarea, iframes {dump.get('iframes')}")
+        except Exception as e:
+            self.note(f"description DOM dump failed ({str(e)[:60]})")
+        # "Source" mode turns the rich editor into a plain textarea
+        try:
+            src = p.get_by_role("button", name="Source")
+            if await src.count():
+                await src.first.click(timeout=3000)
+                await p.wait_for_timeout(800)
+                ta = p.locator("textarea").filter(has_not_text="zzz")
+                for i in range(await ta.count()):
+                    el = ta.nth(i)
+                    if await el.is_visible():
+                        bb = await el.bounding_box()
+                        if bb and bb["height"] > 60:
+                            await el.fill(body); self.note("description set via Source textarea")
+                            await src.first.click(timeout=3000)
+                            break
+        except Exception as e:
+            self.note(f"description Source mode: {str(e)[:60]}")
         # the description editor: CKEditor on the classic page, a contenteditable
         # or textarea on the newer one — and an existing draft may already carry it
         set_desc = await p.evaluate("""(h) => {
