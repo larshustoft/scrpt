@@ -32,11 +32,13 @@ HOUSE_LOGO_BLACK = Path.home() / ".scrpt" / "house" / "brand" / "tigerworks-blac
 PAGE_SIZE = "1024x1536"
 PAGES_DEFAULT = 48
 PARALLEL = 3
-# PAGE QUALITY (Lars, 2026-09-11: "why does it cost that much?"): a side-by-
-# side of the same page at high / medium / low showed medium indistinguishable
-# from high for black-and-white line art, at a quarter of the price. Covers
-# stay high. Low was close but got stroke-order marks wrong.
-PAGE_QUALITY = "medium"
+# PAGE QUALITY (Lars, 2026-09-11: "why does it cost that much?" / "is there a
+# cheaper mode?"): side-by-sides of the same pages at high / medium / low
+# through the images/edits path with 512px plates — LOW is clean and on-model
+# on tracing, counting, maze, find-the-difference, how-to-draw and cutting
+# pages, at $0.044 a page (high was ~$0.47). gpt-image-1-mini draws the cast
+# but drops the exercise structure. Covers stay high.
+PAGE_QUALITY = "low"
 PAGE_COST_USD = {"low": 0.016, "medium": 0.063, "high": 0.25}[PAGE_QUALITY]   # gpt-image, 1024x1536 — for the ledger
 
 # the cast as the page designer must draw them (from the universe plates)
