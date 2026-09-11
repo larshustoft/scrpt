@@ -32,7 +32,12 @@ HOUSE_LOGO_BLACK = Path.home() / ".scrpt" / "house" / "brand" / "tigerworks-blac
 PAGE_SIZE = "1024x1536"
 PAGES_DEFAULT = 48
 PARALLEL = 3
-PAGE_COST_USD = 0.25          # gpt-image-2 high, 1024x1536 — for the ledger
+# PAGE QUALITY (Lars, 2026-09-11: "why does it cost that much?"): a side-by-
+# side of the same page at high / medium / low showed medium indistinguishable
+# from high for black-and-white line art, at a quarter of the price. Covers
+# stay high. Low was close but got stroke-order marks wrong.
+PAGE_QUALITY = "medium"
+PAGE_COST_USD = {"low": 0.016, "medium": 0.063, "high": 0.25}[PAGE_QUALITY]   # gpt-image, 1024x1536 — for the ledger
 
 # the cast as the page designer must draw them (from the universe plates)
 UNIVERSE_CAST = {
@@ -184,7 +189,7 @@ async def _draw_page(client: httpx.AsyncClient, book: dict, page: dict, uni: dic
             content.append({"type": "input_image", "image_url": "data:image/png;base64," + base64.b64encode(png).decode()})
     content.append({"type": "input_text", "text": _page_prompt(book, page, uni)})
     body = {"input": [{"role": "user", "content": content}],
-            "tools": [{"type": "image_generation", "size": PAGE_SIZE, "quality": "high"}], "tool_choice": "required"}
+            "tools": [{"type": "image_generation", "size": PAGE_SIZE, "quality": PAGE_QUALITY}], "tool_choice": "required"}
     last = None
     for model in await _best_text_models(client):
         body["model"] = model
