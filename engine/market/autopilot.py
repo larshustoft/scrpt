@@ -192,7 +192,9 @@ async def scheduler():
             # finished book and push the due ones through the line to KDP.
             from ..database import get_setting as _gs2, set_setting as _ss2
             _today = datetime.now().date().isoformat()
-            if settings()["enabled"] and datetime.now().hour >= settings()["hour"] and (_gs2("release_desk_last_day", "") or "") != _today:
+            from .release_desk import upload_window as _upw, in_upload_window as _inw
+            _desk_time = _inw() if _upw() else datetime.now().hour >= settings()["hour"]
+            if settings()["enabled"] and _desk_time and (_gs2("release_desk_last_day", "") or "") != _today:
                 _ss2("release_desk_last_day", _today)
                 from .release_desk import daily as _desk_daily
                 print(f"  ⚙ release desk: daily duty at {datetime.now():%H:%M}")

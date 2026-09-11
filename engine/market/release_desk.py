@@ -211,6 +211,9 @@ async def run_due(handle=None, max_per_day: int = 0, publish: bool = True, only_
     from .line import run_line
     from . import kdp as kdp_mod
     max_per_day = max_per_day or _max_per_day()
+    if not in_upload_window():
+        _log({"duty": "run", "note": "outside the upload window"})
+        return {"due": [t["catalog"] for t in due()], "ran": [], "stopped": "outside the upload window"}
     lock = get_setting("release_desk_running", "") or ""
     if lock:
         try:
@@ -224,6 +227,54 @@ async def run_due(handle=None, max_per_day: int = 0, publish: bool = True, only_
         return await _run_due_locked(handle, max_per_day, publish, only_workbooks)
     finally:
         set_setting("release_desk_running", "")
+
+
+def upload_window() -> tuple[int, int] | None:
+    """The hours KDP work may happen, from the setting release_desk_window
+    ("00:00-06:00"); empty = any time. Lars, 2026-09-11: "do all the uploads
+    between midnight and 06.00"."""
+    raw = (get_setting("release_desk_window", "") or "").strip()
+    if not raw:
+        return None
+    try:
+        a, b = raw.split("-"); return int(a.split(":")[0]), int(b.split(":")[0])
+    except Exception:
+        return None
+
+
+def in_upload_window(now: datetime | None = None) -> bool:
+    w = upload_window()
+    if not w:
+        return True
+    h = (now or datetime.now()).hour
+    a, b = w
+    return a <= h < b if a < b else (h >= a or h < b)
+
+
+async def reupload_pass(room: int, handle=None) -> list:
+    """Books whose files changed after submission (a cover pulled inside
+    KDP's safe zone) are re-sent through the line, inside the window, from
+    the setting release_desk_reupload."""
+    raw = get_setting("release_desk_reupload", "") or "[]"
+    try:
+        todo = json.loads(raw) if isinstance(raw, str) else (raw or [])
+    except Exception:
+        todo = []
+    if not todo or room <= 0:
+        return []
+    from .line import run_line
+    ran = []
+    for cat in list(todo)[:room]:
+        try:
+            r = await run_line(cat, handle=handle, publish=True)
+            ok = not r.get("stopped_at")
+            _log({"duty": "reupload", "catalog": cat, "ok": ok, "stopped_at": r.get("stopped_at")})
+            ran.append({"catalog": cat, "ok": ok, "stopped_at": r.get("stopped_at")})
+            if ok:
+                todo.remove(cat); set_setting("release_desk_reupload", json.dumps(todo))
+        except Exception as e:
+            _log({"duty": "reupload", "catalog": cat, "ok": False, "error": str(e)[:160]}); ran.append({"catalog": cat, "ok": False, "error": str(e)[:100]})
+    return ran
 
 
 def started_today() -> int:
@@ -241,10 +292,14 @@ async def workbook_pass(handle=None) -> dict:
     """Every autopilot pass: date any finished workbook, then push the due
     ones out at once — within the day's KDP allowance."""
     p = plan()
+    if not in_upload_window():
+        return {"plan": p, "run": {"due": [], "ran": [], "stopped": "outside the upload window"}}
     room = _max_per_day() - started_today()
     if room <= 0:
         return {"plan": p, "run": {"due": [], "ran": [], "stopped": "today's KDP allowance is used"}}
+    re = await reupload_pass(room, handle)
     r = await run_due(handle=handle, max_per_day=room, only_workbooks=True)
+    r["reuploaded"] = re
     return {"plan": p, "run": r}
 
 
