@@ -29,7 +29,17 @@ from datetime import date, datetime, timedelta
 
 from ..database import get_book_by_catalog, get_setting, list_books, set_setting, update_book
 
-MAX_PER_DAY = 2            # KDP titles started per day
+def _max_per_day() -> int:
+    """KDP titles started per day — a setting (Lars, 2026-09-11: "upload all
+    the books to Amazon KDP over the coming days"); KDP's own ten-per-format-
+    per-week quota (kdp_quota.can_create) still gates every start."""
+    try:
+        return max(1, int(get_setting("release_desk_max_per_day", "2") or 2))
+    except ValueError:
+        return 2
+
+
+MAX_PER_DAY = 2            # default; the setting above overrides at run time
 UPLOAD_WINDOW_DAYS = 14    # upload when the release date is this close
 LEAD_DAYS = 10             # ...and no closer: the launch gate refuses fewer days of lead (launch_gate.LEAD_DAYS)
 
@@ -193,13 +203,14 @@ def due(today: date | None = None) -> list[dict]:
     return out
 
 
-async def run_due(handle=None, max_per_day: int = MAX_PER_DAY, publish: bool = True, only_workbooks: bool = False) -> dict:
+async def run_due(handle=None, max_per_day: int = 0, publish: bool = True, only_workbooks: bool = False) -> dict:
     """Push the due books through the line, serially, at most max_per_day.
     ONE DESK AT A TIME (2026-09-04): the daily duty and a manual run fired in
     the same minute and both started the line on the same book. A lock in
     the settings (with its time) keeps a second run out for three hours."""
     from .line import run_line
     from . import kdp as kdp_mod
+    max_per_day = max_per_day or _max_per_day()
     lock = get_setting("release_desk_running", "") or ""
     if lock:
         try:
@@ -230,7 +241,7 @@ async def workbook_pass(handle=None) -> dict:
     """Every autopilot pass: date any finished workbook, then push the due
     ones out at once — within the day's KDP allowance."""
     p = plan()
-    room = MAX_PER_DAY - started_today()
+    room = _max_per_day() - started_today()
     if room <= 0:
         return {"plan": p, "run": {"due": [], "ran": [], "stopped": "today's KDP allowance is used"}}
     r = await run_due(handle=handle, max_per_day=room, only_workbooks=True)
