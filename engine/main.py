@@ -617,11 +617,16 @@ async def serve_file(identifier: str, filename: str, download: int = 0, name: st
     safe_name = "".join(ch for ch in (name or "") if ch.isalnum() or ch in "-_. ").strip() or filename
     if not safe_name.lower().endswith(suffix):
         safe_name += suffix
+    # images are re-fetched, never trusted from the browser's cache: a cover
+    # installed after the shelf was first opened kept showing as "no cover"
+    # at the same URL (Lars, 2026-09-11: "I don't see any new book covers")
+    headers = {"Cache-Control": "no-cache, must-revalidate"} if inline else None
     return FileResponse(
         path=str(file_path),
         media_type=content_type,
         filename=safe_name,
         content_disposition_type="inline" if inline else "attachment",
+        headers=headers,
     )
 
 
