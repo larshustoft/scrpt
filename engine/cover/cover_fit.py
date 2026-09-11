@@ -377,7 +377,10 @@ def inset_cover(png: bytes, pct: float) -> bytes:
     big.paste(ImageOps.flip(im.crop((0, H - pad, W, H))), (padw, H + pad))
     big.paste(ImageOps.mirror(big.crop((padw, 0, 2 * padw, H + 2 * pad))), (0, 0))
     big.paste(ImageOps.mirror(big.crop((W, 0, W + padw, H + 2 * pad))), (W + padw, 0))
-    blur = big.filter(ImageFilter.GaussianBlur(6)); mask = Image.new("L", big.size, 255)
+    # the band must carry no legible text: a mirrored title at the edge
+    # reads as text at the edge (The Ex Upstairs, 2026-09-11) — blur by the
+    # band's own width
+    blur = big.filter(ImageFilter.GaussianBlur(max(6, int(pad / 1.5)))); mask = Image.new("L", big.size, 255)
     mask.paste(0, (padw, pad, W + padw, H + pad)); big = Image.composite(blur, big, mask)
     out = io.BytesIO(); big.resize((W, H), Image.LANCZOS).save(out, format="PNG"); return out.getvalue()
 
