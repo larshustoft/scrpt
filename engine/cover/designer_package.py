@@ -76,7 +76,7 @@ def cover_spec_dict(page_count: int, trim_size: str, paper_type: str) -> dict:
         "total_width_px": d.total_width_px,
         "total_height_px": d.total_height_px,
         "bleed_in": 0.125,
-        "safe_zone_in": 0.25,
+        "safe_zone_in": 0.45,
         "dpi": DPI,
     }
 
@@ -100,7 +100,7 @@ RULES
     The spine width above is computed from this page count. If the page
     count changes, request an updated spec.
   - Spine text: {"allowed (keep 0.0625in clearance from both spine folds)" if d.spine_has_text else "NOT allowed (book is under 79 pages)"}
-  - Keep all text and logos at least 0.25" inside the trim edges.
+  - Keep all text and logos at least 0.45" inside the trim edges (KDP refuses anything within 0.375").
   - Leave the barcode zone empty: 2.0 x 1.2 inches, positioned
     {d.barcode_x_px}px, {d.barcode_y_px}px (top-left, from file top-left).
     Amazon prints its barcode there.
@@ -139,7 +139,7 @@ def generate_template_pdf(page_count: int, trim_size: str, paper_type: str,
         c.restoreState()
 
     bleed_pt = 0.125 * 72
-    safe_pt = 0.25 * 72
+    safe_pt = 0.45 * 72   # KDP: text ≥ 0.375in from every trim edge
 
     # bleed frame (red) — final trim happens here
     c.setStrokeColor(Color(0.85, 0.1, 0.1))

@@ -40,7 +40,7 @@ from typing import Optional
 # The floor every piece of text must clear on every edge, in inches of the
 # finished trim: 0.125" bleed cut + 0.175" real margin. On an 8.5x11 page
 # that is 2.7% of the height and 3.5% of the width.
-SAFE_INCHES = 0.30
+SAFE_INCHES = 0.45   # KDP refuses text within 0.375in of a trim edge (Star Map, 2026-09-11) — 0.45 leaves room
 # the brief asks for more than the floor so a slightly generous draw still
 # clears it comfortably
 BRIEF_TOP_BOTTOM = 0.10
