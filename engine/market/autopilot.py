@@ -210,6 +210,18 @@ async def scheduler():
         except Exception:
             print("  workbook desk failed:\n" + traceback.format_exc()[-600:])
         try:
+            # REVIEW REDIRECTS (Lars, 2026-09-11, "getting sales"): the QR on every
+            # workbook's back page points at the character site; once a book is
+            # live its ASIN goes into the site's _redirects and the site redeploys
+            if (_gs2("site_redirects_last_day", "") or "") != _today:
+                _ss2("site_redirects_last_day", _today)
+                from .site_redirects import sync_and_deploy as _sync_sites
+                _sr = _sync_sites()
+                if _sr.get("changed"):
+                    print(f"  ⚙ review redirects: {_sr['changed']} — deployed {list(_sr.get('deployed', {}).keys())}")
+        except Exception:
+            print("  review redirects failed:\n" + traceback.format_exc()[-400:])
+        try:
             from .cover_line import run as _cover_line
             _cl = await _cover_line()
             for _st in _cl.get("started", []):
