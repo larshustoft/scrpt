@@ -284,6 +284,11 @@ async def write_childrens_book(catalog: str, handle=None) -> dict:
 # against it, which carries the character design and the palette forward.
 
 
+# SPREAD QUALITY (Lars, 2026-09-11): a Freddie spread drawn at low ($0.022),
+# medium ($0.085) and high ($0.35) side by side — all three equally rich at
+# 1024px. Medium is the house setting for colour spreads; covers stay high.
+SPREAD_QUALITY = "medium"
+
 def compose_spread(art_png: bytes, n: int) -> bytes:
     """STRUCTURAL AIR (Lars, 2026-09-10: "do not make this an expensive
     process"): instead of asking the model to leave a region empty and
@@ -405,14 +410,14 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
                             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                             files={"image[]": ("ref.png", reference, "image/png")},
                             data={"model": model, "prompt": prompt[:3800],
-                                  "size": "1024x1024", "quality": "high", "n": "1"}),
+                                  "size": "1024x1024", "quality": SPREAD_QUALITY, "n": "1"}),
                             timeout=240)
                     else:
                         r = await asyncio.wait_for(c.post(
                             "https://api.openai.com/v1/images/generations",
                             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                             json={"model": model, "prompt": prompt[:3800],
-                                  "size": "1024x1024", "quality": "high", "n": 1}),
+                                  "size": "1024x1024", "quality": SPREAD_QUALITY, "n": 1}),
                             timeout=240)
                 except (httpx.HTTPError, asyncio.TimeoutError) as e:
                     last = f"{type(e).__name__}: {str(e)[:120]}"
@@ -438,7 +443,7 @@ async def illustrate(catalog: str, only: Optional[int] = None, handle=None,
             content.append({"type": "input_image", "image_url": "data:image/png;base64," + base64.b64encode(reference).decode()})
         content.append({"type": "input_text", "text": prompt[:3800]})
         body = {"input": [{"role": "user", "content": content}],
-                "tools": [{"type": "image_generation", "size": "1024x1024", "quality": "high"}], "tool_choice": "required"}
+                "tools": [{"type": "image_generation", "size": "1024x1024", "quality": SPREAD_QUALITY}], "tool_choice": "required"}
         last = None
         async with httpx.AsyncClient(timeout=460) as c:
             for model in await _best_text_models(c):
