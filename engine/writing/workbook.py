@@ -278,6 +278,55 @@ async def draw_workbook(catalog: str, handle=None) -> dict:
     return {"drawn": sorted(done), "failed": failed, "already": len(pages) - len(todo)}
 
 
+
+UNIVERSE_SITE = {"princess-the-unicorn": "princesstheunicorn.com", "freddie-the-farmer": "freddiethefarmer.com",
+                 "rex-the-dinosaur": "rexthedinosaur.com"}
+
+
+def review_url(catalog: str, d: dict) -> str:
+    """Where the back-page QR sends a parent: the character's site, which
+    forwards to the book's Amazon review page (the ASIN is only known once
+    the book is live, so the site keeps the map, not the printed page)."""
+    slug = (d.get("workbook") or {}).get("universe") or d.get("universe") or ""
+    host = UNIVERSE_SITE.get(slug, "tigerworks.fr")
+    return f"https://{host}/r/{catalog.lower()}"
+
+
+def _review_page(c, W, H, M_BOT, catalog: str, d: dict, F_BOLD, F_REG, logo, ImageReader):
+    from reportlab.lib.units import inch as _in
+    slug = (d.get("workbook") or {}).get("universe") or d.get("universe") or ""
+    who = UNIVERSE_DISPLAY.get(slug, "us")
+    first = who.split()[0]
+    c.setFont(F_BOLD, 24); c.drawCentredString(W / 2, H * 0.78, "Well done!")
+    c.setFont(F_REG, 13)
+    for i, line in enumerate((f"You finished this book with {first}.", "",
+                              "Did your child enjoy it? A short review on Amazon",
+                              "helps other parents find it. Thank you.")):
+        c.drawCentredString(W / 2, H * 0.72 - i * 0.032 * H, line)
+    url = review_url(catalog, d)
+    # the QR as plain rectangles: a reportlab Drawing drags an unembedded
+    # Times-Roman into the PDF and KDP's validation refuses it
+    from reportlab.graphics.barcode import qrencoder
+    q = qrencoder.QRCode(None, qrencoder.QRErrorCorrectLevel.M); q.addData(url); q.make()
+    mods = q.modules; n = len(mods); size = 1.6 * _in; cell = size / n
+    x0, y0 = W / 2 - size / 2, H * 0.40
+    c.setFillColorRGB(0, 0, 0)
+    for r_, row in enumerate(mods):
+        for c_, on in enumerate(row):
+            if on:
+                c.rect(x0 + c_ * cell, y0 + size - (r_ + 1) * cell, cell, cell, stroke=0, fill=1)
+    c.setFont(F_REG, 10); c.drawCentredString(W / 2, H * 0.37, url.replace("https://", ""))
+    c.setFont(F_REG, 11)
+    c.drawCentredString(W / 2, H * 0.30, f"More books with {who} at {UNIVERSE_SITE.get(slug, 'tigerworks.fr')}")
+    if logo.exists():
+        lsz = 0.45 * _in
+        c.drawImage(ImageReader(str(logo)), W / 2 - lsz / 2, M_BOT + 0.55 * _in, lsz, lsz, mask="auto")
+    c.setFont(F_REG, 9)
+    c.drawCentredString(W / 2, M_BOT + 0.30 * _in, f"© {datetime.now().year} TigerWorks · All rights reserved.")
+    c.drawCentredString(W / 2, M_BOT + 0.15 * _in, "For personal and classroom use. Adult supervision recommended for scissors.")
+    c.showPage()
+
+
 def build_workbook_interior(catalog: str) -> dict:
     """The 8.5 x 11 PDF: title page, 'this book belongs to', the pages, even count."""
     from PIL import Image
@@ -335,9 +384,6 @@ def build_workbook_interior(catalog: str) -> dict:
     # 2. belongs-to + copyright
     c.setFont(F_BOLD, 22); c.drawCentredString(W / 2, H * 0.7, "This book belongs to")
     c.setLineWidth(1.2); c.line(W * 0.2, H * 0.62, W * 0.8, H * 0.62)
-    c.setFont(F_REG, 9)
-    c.drawCentredString(W / 2, H * 0.1, f"© {datetime.now().year} TigerWorks · All rights reserved.")
-    c.drawCentredString(W / 2, H * 0.085, "For personal and classroom use. Adult supervision recommended for scissors.")
     c.showPage()
     # 3. the pages, mirrored margins
     box_w, box_h = W - M_IN - M_OUT, H - M_TOP - M_BOT
@@ -352,6 +398,13 @@ def build_workbook_interior(catalog: str) -> dict:
         c.drawImage(ImageReader(im), left, M_BOT + (box_h - dh) / 2, dw, dh)
         c.showPage(); page_no += 1
     n_pages = 2 + len(pngs)
+    # THE LAST PAGE (Lars, 2026-09-11, "in terms of getting sales"): the review
+    # ask a parent sees when the book is finished, with a QR code to the
+    # character's site, which forwards to the book's Amazon review page once
+    # the book is live — plus the copyright line, moved here from page 2 so
+    # KDP's preview opens on the exercises, not the small print.
+    _review_page(c, W, H, M_BOT, catalog, d, F_BOLD, F_REG, logo, ImageReader)
+    n_pages += 1
     # a print binder wants a page count divisible by 8 — always (Lars, 2026-09-09)
     while n_pages % 8:
         c.showPage(); n_pages += 1
