@@ -180,47 +180,74 @@ def _page_prompt(book: dict, page: dict, uni: dict) -> str:
     )
 
 
+def _small_plate(png: bytes, side: int = 512) -> bytes:
+    """A reference plate at 512px: the model keeps the character just as
+    faithfully, and the input image tokens fall by more than half
+    (measured 2026-09-11: $0.134 → $0.092 a page)."""
+    import io
+    from PIL import Image
+    im = Image.open(io.BytesIO(png)).convert("RGB"); im.thumbnail((side, side))
+    b = io.BytesIO(); im.save(b, format="PNG", optimize=True); return b.getvalue()
+
+
+# token prices for the image endpoint (USD per 1M): text in, image in, image out
+IMAGE_TOKEN_USD = (5.0, 10.0, 40.0)
+
+
+def _usage_usd(usage: dict) -> float:
+    ti = (usage or {}).get("input_tokens_details") or {}
+    return round(ti.get("text_tokens", 0) * IMAGE_TOKEN_USD[0] / 1e6 + ti.get("image_tokens", 0) * IMAGE_TOKEN_USD[1] / 1e6
+                 + (usage or {}).get("output_tokens", 0) * IMAGE_TOKEN_USD[2] / 1e6, 4)
+
+
 async def _draw_page(client: httpx.AsyncClient, book: dict, page: dict, uni: dict, slug: str, out: Path) -> str:
-    from ..cover.front_cover import _best_text_models
-    content = []
+    """One page through the images/edits endpoint: the newest live image
+    model, PAGE_QUALITY, the universe plates at 512px as references — and
+    the API's own usage numbers booked to the ledger as the page's cost
+    (Lars, 2026-09-11: "$240 in less than an hour" — the old path via the
+    Responses tool reported no usage, so the ledger guessed)."""
+    from ..cover.front_cover import pick_image_model
+    files = []
     for name, rel in ((uni.get("plates") or {}).items() if uni else []):
         png = _plate_png(slug, rel)
         if png:
-            content.append({"type": "input_image", "image_url": "data:image/png;base64," + base64.b64encode(png).decode()})
-    content.append({"type": "input_text", "text": _page_prompt(book, page, uni)})
-    body = {"input": [{"role": "user", "content": content}],
-            "tools": [{"type": "image_generation", "size": PAGE_SIZE, "quality": PAGE_QUALITY}], "tool_choice": "required"}
+            files.append(("image[]", (f"{name}.png", _small_plate(png), "image/png")))
+    prompt = _page_prompt(book, page, uni)[:3800]
+    try:
+        ids = [m["id"] for m in (await client.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {OPENAI_API_KEY}"}, timeout=30)).json().get("data", [])]
+        model = pick_image_model(ids)
+    except Exception:
+        model = "gpt-image-2"
     last = None
-    for model in await _best_text_models(client):
-        body["model"] = model
-        for attempt in range(2):
-            try:
-                r = await client.post("https://api.openai.com/v1/responses", headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                                      json=body, timeout=420)
-            except httpx.HTTPError as e:
-                last = e; await asyncio.sleep(3); continue
-            if r.status_code == 200:
-                for item in r.json().get("output", []):
-                    if item.get("type") == "image_generation_call" and item.get("result"):
-                        out.write_bytes(base64.b64decode(item["result"]))
-                        return model
-                last = RuntimeError("no image in the response"); continue
-            last = RuntimeError(f"{r.status_code}: {r.text[:160]}")
-            if r.status_code in (400, 404) and "model" in r.text.lower():
-                break
-            if r.status_code < 500:
-                break
-            await asyncio.sleep(3)
+    for attempt in range(2):
+        try:
+            if files:
+                r = await client.post("https://api.openai.com/v1/images/edits", headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                                      files=files, data={"model": model, "prompt": prompt, "size": PAGE_SIZE, "quality": PAGE_QUALITY, "n": "1"}, timeout=420)
+            else:
+                r = await client.post("https://api.openai.com/v1/images/generations", headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                                      json={"model": model, "prompt": prompt, "size": PAGE_SIZE, "quality": PAGE_QUALITY, "n": 1}, timeout=420)
+        except httpx.HTTPError as e:
+            last = e; await asyncio.sleep(3); continue
+        if r.status_code == 200:
+            j = r.json()
+            out.write_bytes(base64.b64decode(j["data"][0]["b64_json"]))
+            page["_usd"] = _usage_usd(j.get("usage") or {})
+            return model
+        last = RuntimeError(f"{r.status_code}: {r.text[:160]}")
+        if r.status_code < 500:
+            break
+        await asyncio.sleep(3)
     raise RuntimeError(f"page {page['n']} failed: {last}")
 
 
-def _ledger(catalog: str, n: int, model: str):
+def _ledger(catalog: str, n: int, model: str, usd: float | None = None):
     try:
         import sqlite3
         from ..config import DATABASE_PATH
         c = sqlite3.connect(str(DATABASE_PATH))
         c.execute("INSERT INTO token_usage (at, catalog, job_id, kind, model, input_tokens, output_tokens, cache_read, cache_write, usd) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                  (datetime.now().isoformat(timespec="seconds"), catalog, "workbook", f"workbook page {n}", model, 0, 0, 0, 0, PAGE_COST_USD))
+                  (datetime.now().isoformat(timespec="seconds"), catalog, "workbook", f"workbook page {n}", model, 0, 0, 0, 0, usd if usd is not None else PAGE_COST_USD))
         c.commit(); c.close()
     except Exception:
         pass
@@ -242,7 +269,7 @@ async def draw_workbook(catalog: str, handle=None) -> dict:
                     handle.progress(0.1 + 0.7 * (len(done) + len(failed)) / max(1, len(pages)), "drawing", f"page {p['n']} of {len(pages)}: {p.get('title', '')[:40]}")
                 try:
                     model = await _draw_page(client, book, p, uni, slug, out_dir / f"page-{p['n']:02d}.png")
-                    _ledger(catalog, p["n"], model); done.append(p["n"])
+                    _ledger(catalog, p["n"], model, p.get("_usd")); done.append(p["n"])
                 except Exception as e:
                     failed.append((p["n"], str(e)[:120]))
         await asyncio.gather(*[one(p) for p in todo])
