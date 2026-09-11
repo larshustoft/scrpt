@@ -396,6 +396,18 @@ class Stager:
         if m["paperback_id"]:
             await p.goto(f"https://kdp.amazon.com/en_US/title-setup/paperback/{m['paperback_id']}/details",
                          timeout=60000, wait_until="domcontentloaded")
+            # a title KDP holds "In review" cannot be edited: the details URL
+            # bounces to the Bookshelf and the title field never appears (Draw
+            # with Princess, 2026-09-12). Say so, instead of a timeout.
+            try:
+                await p.locator("#data-print-book-title").first.wait_for(timeout=12000)
+            except Exception:
+                try:
+                    cards = await _bookshelf_cards(p, m["title"]) if "bookshelf" in p.url else []
+                except Exception:
+                    cards = []
+                st = next((c.get("status") for c in cards if c.get("id") == m["paperback_id"]), None) or (cards[0].get("status") if cards else "unknown")
+                raise RuntimeError(f"KDP has this title locked ({st}) — it cannot be edited until KDP's review ends; the re-upload waits")
         else:
             await p.goto(CREATE, timeout=60000, wait_until="domcontentloaded")
             await self.click_text("Create paperback", 4000)

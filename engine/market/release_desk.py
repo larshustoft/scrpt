@@ -264,14 +264,24 @@ async def reupload_pass(room: int, handle=None) -> list:
         return []
     from .line import run_line
     ran = []
-    for cat in list(todo)[:room]:
+    # a title KDP holds in review is tried again after six hours, not every pass
+    try:
+        defer = json.loads(get_setting("release_desk_reupload_defer", "") or "{}")
+    except Exception:
+        defer = {}
+    now_iso = datetime.now().isoformat(timespec="minutes")
+    for cat in [c for c in todo if (defer.get(c) or "") <= now_iso][:room]:
         try:
             r = await run_line(cat, handle=handle, publish=True)
             ok = not r.get("stopped_at")
-            _log({"duty": "reupload", "catalog": cat, "ok": ok, "stopped_at": r.get("stopped_at")})
-            ran.append({"catalog": cat, "ok": ok, "stopped_at": r.get("stopped_at")})
+            detail = str((r.get("kdp") or {}).get("error") or "")
+            _log({"duty": "reupload", "catalog": cat, "ok": ok, "stopped_at": r.get("stopped_at"), "error": detail[:160]})
+            ran.append({"catalog": cat, "ok": ok, "stopped_at": r.get("stopped_at"), "error": detail[:100]})
             if ok:
                 todo.remove(cat); set_setting("release_desk_reupload", json.dumps(todo))
+            elif "locked" in detail or "review" in detail.lower():
+                defer[cat] = (datetime.now() + timedelta(hours=6)).isoformat(timespec="minutes")
+                set_setting("release_desk_reupload_defer", json.dumps(defer))
         except Exception as e:
             _log({"duty": "reupload", "catalog": cat, "ok": False, "error": str(e)[:160]}); ran.append({"catalog": cat, "ok": False, "error": str(e)[:100]})
     return ran
