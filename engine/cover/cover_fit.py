@@ -350,13 +350,16 @@ def edge_gap_shortfall(fit: dict) -> float:
     nearest edge to satisfy the floor, 0.0 when the only issues are not
     edge gaps. Read off the issue lines the checker writes."""
     import re as _re
-    worst = 0.0
+    worst = 0.0; hit = False
     for iss in fit.get("issues") or []:
         m = _re.search(r"only ([\d.]+)% from the \w+ edge \(floor ([\d.]+)%\)", str(iss))
         if not m:
             return 0.0                    # some other fault — a redraw is needed
+        hit = True
         worst = max(worst, float(m.group(2)) - float(m.group(1)))
-    return worst
+    # a gap sitting exactly on the floor is still a refusal (2026-09-11: nine
+    # covers were redrawn for "2.7% (floor 2.7%)" because the shortfall was 0)
+    return max(worst, 0.6) if hit else 0.0
 
 
 def inset_cover(png: bytes, pct: float) -> bytes:

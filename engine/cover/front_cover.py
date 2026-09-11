@@ -234,7 +234,7 @@ async def _thread_generate(client: httpx.AsyncClient, prompt: str,
     if previous_response_id:
         body["previous_response_id"] = previous_response_id
     if want_image:
-        tool = {"type": "image_generation", "size": gen_size, "quality": "high"}
+        tool = {"type": "image_generation", "size": gen_size, "quality": COVER_QUALITY}
         best = await _best_image_model(client)
         if best != IMAGE_MODEL_FALLBACK:
             tool["model"] = best  # newer engine available: request it
@@ -591,6 +591,25 @@ def _install_cover(catalog: str, raw_png: bytes, brief: str = "",
             "preview": str(preview_path), "brief": brief, "fit": cover["fit"]}
 
 
+
+# COVER QUALITY (Lars, 2026-09-11: "$240 in less than an hour"): the same
+# picture at low / medium / high was equally rich at 1024px; covers draw at
+# medium — a quarter of the price of high — with references at 768px.
+COVER_QUALITY = "medium"
+
+
+def _shrink_ref(png: bytes, side: int = 768) -> bytes:
+    import io
+    from PIL import Image
+    try:
+        im = Image.open(io.BytesIO(png)).convert("RGB")
+        if max(im.size) <= side:
+            return png
+        im.thumbnail((side, side)); b = io.BytesIO(); im.save(b, format="PNG", optimize=True); return b.getvalue()
+    except Exception:
+        return png
+
+
 async def _generate_one(client: httpx.AsyncClient, brief: str,
                         reference_png: bytes = None,
                         gen_size: str = IMAGE_SIZE) -> bytes:
@@ -604,14 +623,16 @@ async def _generate_one(client: httpx.AsyncClient, brief: str,
                 # references (2026-09-08: a universe's whole cast) goes as
                 # several image[] parts.
                 refs = reference_png if isinstance(reference_png, (list, tuple)) else [reference_png]
-                files = [("image[]", (f"reference-{i + 1}.png", png, "image/png")) for i, png in enumerate(refs)]
+                # references at 768px: the model keeps the design, the input
+                # image tokens fall by more than half (2026-09-11)
+                files = [("image[]", (f"reference-{i + 1}.png", _shrink_ref(png), "image/png")) for i, png in enumerate(refs)]
                 r = await client.post(
                     "https://api.openai.com/v1/images/edits",
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                     files=files,
                     data={"model": await _best_image_model(client),
                           "prompt": brief, "size": gen_size,
-                          "quality": "high", "n": "1"},
+                          "quality": COVER_QUALITY, "n": "1"},
                     timeout=300,
                 )
             else:
@@ -620,7 +641,7 @@ async def _generate_one(client: httpx.AsyncClient, brief: str,
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                     json={"model": await _best_image_model(client),
                           "prompt": brief, "size": gen_size,
-                          "quality": "high", "n": 1},
+                          "quality": COVER_QUALITY, "n": 1},
                     timeout=300,
                 )
         except httpx.HTTPError as e:
