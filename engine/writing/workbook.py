@@ -608,6 +608,9 @@ async def design_cover(catalog: str) -> dict:
             # fallback engine that could only draw 2:3
             framed, rep = frame_cover_for_trim(png, trim, author, out_dir)
             fit = await check_cover_fit(framed, book)
+            if not fit["ok"]:
+                from ..cover.cover_fit import fit_or_inset
+                framed, fit = await fit_or_inset(framed, book, fit)     # an edge gap is fixed for free, never by a draw
             fit["attempt"] = attempt
             if fit["ok"]:
                 res = _install_cover(catalog, framed, brief, fit=fit)

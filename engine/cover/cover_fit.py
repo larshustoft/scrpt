@@ -343,3 +343,49 @@ def summary_line(fit: Optional[dict]) -> str:
     if fit.get("ok"):
         return f"passed {fit.get('checked_at', '')[:16]}"
     return "; ".join(fit.get("issues") or ["failed"])[:160]
+
+
+def edge_gap_shortfall(fit: dict) -> float:
+    """How far (in % of the short side) the text must move in from the
+    nearest edge to satisfy the floor, 0.0 when the only issues are not
+    edge gaps. Read off the issue lines the checker writes."""
+    import re as _re
+    worst = 0.0
+    for iss in fit.get("issues") or []:
+        m = _re.search(r"only ([\d.]+)% from the \w+ edge \(floor ([\d.]+)%\)", str(iss))
+        if not m:
+            return 0.0                    # some other fault — a redraw is needed
+        worst = max(worst, float(m.group(2)) - float(m.group(1)))
+    return worst
+
+
+def inset_cover(png: bytes, pct: float) -> bytes:
+    """Shrink the whole cover picture by `pct` percent inside a border made
+    of its own reflected, softened edges — the text moves in from the edge,
+    nothing is redrawn, and the band (mostly inside the bleed) is invisible
+    in print. Star Map and Rex Count, Colour & Play, 2026-09-11: three draws
+    each were spent on a 1-2% shortfall this fixes for free."""
+    import io
+    from PIL import Image, ImageFilter, ImageOps
+    im = Image.open(io.BytesIO(png)).convert("RGB"); W, H = im.size
+    pad = max(2, int(round(pct / 100.0 * H))); padw = max(2, int(round(pct / 100.0 * W)))
+    big = Image.new("RGB", (W + 2 * padw, H + 2 * pad)); big.paste(im, (padw, pad))
+    big.paste(ImageOps.flip(im.crop((0, 0, W, pad))), (padw, 0))
+    big.paste(ImageOps.flip(im.crop((0, H - pad, W, H))), (padw, H + pad))
+    big.paste(ImageOps.mirror(big.crop((padw, 0, 2 * padw, H + 2 * pad))), (0, 0))
+    big.paste(ImageOps.mirror(big.crop((W, 0, W + padw, H + 2 * pad))), (W + padw, 0))
+    blur = big.filter(ImageFilter.GaussianBlur(6)); mask = Image.new("L", big.size, 255)
+    mask.paste(0, (padw, pad, W + padw, H + pad)); big = Image.composite(blur, big, mask)
+    out = io.BytesIO(); big.resize((W, H), Image.LANCZOS).save(out, format="PNG"); return out.getvalue()
+
+
+async def fit_or_inset(png: bytes, book: dict, fit: dict):
+    """After a failed check: if the only faults are edge gaps, inset the
+    picture and check again. Returns (png, fit) — fit ok when it worked."""
+    short = edge_gap_shortfall(fit)
+    if not short:
+        return png, fit
+    fixed = inset_cover(png, short + 1.0)
+    fit2 = await check_cover_fit(fixed, book)
+    fit2["inset_pct"] = round(short + 1.0, 2)
+    return (fixed, fit2) if fit2.get("ok") else (png, fit)
