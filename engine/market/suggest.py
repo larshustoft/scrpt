@@ -84,6 +84,41 @@ def list_suggestions() -> dict:
             "last_research": get_setting("suggest_last_research", "") or ""}
 
 
+
+LENSES = [
+    "what parents buy in the run-up to Christmas", "gift books and boxed-set bait", "what is rising this month, not what is established",
+    "under-served readers: boys 6-9, grandparents, ESL adults, teens who hate reading", "non-fiction a person buys to solve one problem this week",
+    "formats: journals, planners, puzzle books, workbooks, large print", "sub-genres with fewer than 2,000 competing titles",
+    "seasonal: autumn, Halloween, back-to-school, winter holidays", "series fiction in genres the house has never touched",
+    "learning books by subject and age: reading, maths, science, geography, history",
+]
+
+
+def _explored_niches() -> list:
+    """Every niche phrase the house has measured or built a suggestion on."""
+    out = []
+    try:
+        conn = get_connection()
+        for (seed,) in conn.execute("SELECT seed FROM niche_data ORDER BY measured_at DESC LIMIT 60").fetchall():
+            out.append(seed)
+    except Exception:
+        pass
+    for r in _rows()[:120]:
+        n = (r.get("niche") or "").strip().lower()
+        if n and n not in out:
+            out.append(n)
+    return out[:80]
+
+
+def _used_cover_concepts() -> str:
+    seen = []
+    for r in _rows()[:40]:
+        cd = " ".join(str(r.get("cover_direction") or "").split())[:110]
+        if cd:
+            seen.append(f"- {cd}")
+    return "\n".join(seen[:30]) or "none"
+
+
 def _shelf_brief() -> str:
     books = list_books(per_page=500).get("books", [])
     lines = []
@@ -126,14 +161,25 @@ async def research(n: int = 8, notes: str = "", handle=None) -> dict:
     # titles, BSR per book, sales curve); only measured niches can be proposed.
     from .niche import measure_many, brief as niche_brief
     from ..writing.client import utility_model
+    # EVERY ROUND LOOKED THE SAME (Lars, 2026-09-11): the editor named the
+    # same eight phrases from the same memo each time and the measurement
+    # step silently failed, so the memo alone drove every round. Now the
+    # explored niches and earlier premises are on the table as "not these",
+    # a rotating lens changes the angle of attack, and the measurement runs.
+    explored = _explored_niches()
+    import random as _rnd
+    lens = _rnd.choice(LENSES)
     cand_raw = await complete(
         "You are a data-driven acquisitions editor. JSON only.",
         f"{MARKET_MEMO}\n\nTHE HOUSE'S SHELF TODAY:\n{_shelf_brief()}\n\n"
+        f"NICHES ALREADY EXPLORED (name DIFFERENT ones — at most two of your eight may be from this list):\n{', '.join(explored) or 'none'}\n\n"
+        f"THIS ROUND'S LENS: {lens}\n\n"
         + (f"PUBLISHER'S NOTES: {notes}\n\n" if notes else "")
         + "Name 8 niches worth measuring on Amazon right now for a house that can produce fiction series, non-fiction and "
         "children's picture/activity books — each as the exact phrase a buyer types into the Amazon Books search box "
         "(e.g. 'cozy mystery series', 'hockey romance', 'unicorn activity book for kids', 'dinosaur coloring book ages 4-8'). "
-        "Mix genres; include at least two children's niches and at least two series-fiction niches. "
+        "Eight DIFFERENT genres or audiences — never two phrases in the same genre. Include at least two children's niches "
+        "and at least two series-fiction niches, and at least three niches the house has never touched. "
         "Return JSON only: {\"niches\": [\"phrase\", ...]}", max_tokens=600, mechanical=True, model=utility_model())
     cand = (extract_json(cand_raw) or {}).get("niches") or []
     cand = [str(c).strip() for c in cand if str(c).strip()][:8]
@@ -142,16 +188,20 @@ async def research(n: int = 8, notes: str = "", handle=None) -> dict:
     measured = {}
     for i, seed in enumerate(cand):
         try:
-            measured[seed] = await measure_many([seed])[seed]
+            measured[seed] = (await measure_many([seed]))[seed]
         except Exception as e:
             measured[seed] = {"seed": seed, "error": str(e)[:100]}
         if handle:
             handle.progress(0.08 + 0.17 * (i + 1) / max(1, len(cand)), "measuring", f"Measured: {seed}")
     prompt = (
         f"{MARKET_MEMO}\n\n{niche_brief(measured)}\n\nTHE HOUSE'S SHELF TODAY:\n{_shelf_brief()}\n\n"
-        f"ALREADY SUGGESTED (do not repeat):\n" + ("\n".join(taken) or "none") + "\n\n"
+        f"ALREADY SUGGESTED (do not repeat these titles, premises, settings or hooks):\n" + ("\n".join(taken) or "none") + "\n\n"
+        f"COVER CONCEPTS ALREADY USED (every new cover_direction must differ in subject, composition AND palette):\n{_used_cover_concepts()}\n\n"
+        f"THIS ROUND'S LENS: {lens}\n\n"
         + (f"PUBLISHER'S NOTES: {notes}\n\n" if notes else "")
-        + "You are the acquisitions editor of an automated publishing house that writes, edits, designs and uploads books "
+        + "RULES OF THE ROUND: no two proposals share a genre preset; at least half the proposals sit in genres the house "
+        "has not suggested before; a series continuation for an existing universe or series is allowed only once per round. "
+        "You are the acquisitions editor of an automated publishing house that writes, edits, designs and uploads books "
         "to Amazon KDP by itself (fiction to ~100k words, non-fiction, and illustrated children's books incl. activity "
         "books). Web-search the live Amazon market now to confirm or update the memo (bestseller lists, what indie "
         "titles at #20–#100 in a category look like, prices, page counts, what is trending this month), then propose "
@@ -277,6 +327,18 @@ def _series_titles(series_title: str) -> str:
         if b.get("status") not in ("cancelled", "deleted", "archived") and (sr.get("series_title") or "").strip().lower() == series_title.strip().lower():
             out.append(f"#{sr.get('book_number')} {b.get('title')}")
     return "; ".join(sorted(out)) or "none"
+
+
+def _universe_workbook_titles(slug: str) -> str:
+    from ..database import list_books
+    out = []
+    for b in list_books(per_page=1000).get("books", []):
+        d = b.get("data") or {}
+        if b.get("status") in ("cancelled", "deleted", "archived"):
+            continue
+        if ((d.get("workbook") or {}).get("universe") or d.get("universe")) == slug and ((d.get("book_type") or "") == "workbook" or (d.get("workbook") or {})):
+            out.append(str(b.get("title")))
+    return "; ".join(sorted(set(out))) or "none"
 
 
 def _series_offset(series_title: str) -> tuple[int, str]:
@@ -419,6 +481,8 @@ def _cover_brief(r: dict) -> str:
         "the title readable at thumbnail size." + (" Bright, friendly, child-safe illustration." if kids else ""),
         f"Author: {author}" if author else "",
         "Book size: " + ("8.5″ × 11″" if kids else "5.5″ × 8.5″"),
+        "NOT like these, which are already on the shelf — a different subject, composition and palette from every one of them: "
+        + "; ".join(x.lstrip("- ") for x in _used_cover_concepts().split("\n")[:12] if x and x != "none"),
     ]
     return "\n".join(l for l in lines if l)
 
@@ -551,7 +615,7 @@ async def _commission_workbook_series(r: dict, n: int) -> tuple[str, str]:
         world = ""
     raw = await complete("You plan children's activity-book series. JSON only.",
         f"UNIVERSE: {UNIVERSE_DISPLAY.get(slug, slug) or 'none'}. WORLD: {world}\nLEARNING PILLARS: {pillars or 'counting, letters, shapes, nature, feelings'}\n"
-        f"CAST: {uni.get('cast', '')}\nSERIES: {r.get('series_title')}\nBOOKS ALREADY IN THIS SERIES (never repeat their topics): {_series_titles(r.get('series_title') or '')}\nFIRST BOOK (already decided): {r.get('title')} — {r.get('pitch')}\n"
+        f"CAST: {uni.get('cast', '')}\nSERIES: {r.get('series_title')}\nBOOKS ALREADY IN THIS SERIES (never repeat their topics): {_series_titles(r.get('series_title') or '')}\nOTHER WORKBOOKS ALREADY IN THIS UNIVERSE (never repeat their topics either): {_universe_workbook_titles(slug)}\nFIRST BOOK (already decided): {r.get('title')} — {r.get('pitch')}\n"
         f"AGES: 4-8. FORMAT: 8.5 x 11 black-and-white activity pages, ~48 pages each.\n\n"
         f"Plan exactly {n} books for this series, book 1 being the first book above. Each book teaches ONE thing a parent "
         "would buy it for (counting to 20, letters and sounds, shapes and patterns, colours, mazes and pencil control, "
