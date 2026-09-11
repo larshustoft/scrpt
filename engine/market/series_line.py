@@ -52,7 +52,11 @@ def advance(max_starts: int = 2) -> dict:
         def _started(m):
             d = m["data"]
             if (d.get("book_type") or "") == "workbook":
-                return bool((d.get("workbook") or {}).get("pages")) or bool((d.get("workbook") or {}).get("done")) or m["catalog_number"] in active
+                # a page PLAN is not progress: an interrupted workbook (plan on
+                # the record, no job) must be restarted by the line — write_workbook
+                # resumes from the pages on disk (2026-09-11: nine series stalled
+                # "waiting for" books nobody was drawing)
+                return bool((d.get("workbook") or {}).get("done")) or m["catalog_number"] in active
             if d.get("kind") == "childrens":
                 return bool((d.get("childrens") or {}).get("spreads")) or m["catalog_number"] in active
             return ((d.get("manuscript") or {}).get("status") or "idea") in STARTED or m.get("status") == "generating"
