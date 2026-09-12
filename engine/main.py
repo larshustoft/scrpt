@@ -103,6 +103,7 @@ async def lifespan(app: FastAPI):
 
     async def _nightly_backup():
         import datetime as _dt, subprocess as _sp
+        from pathlib import Path
         while True:
             now = _dt.datetime.now()
             target = now.replace(hour=3, minute=0, second=0, microsecond=0)

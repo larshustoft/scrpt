@@ -134,6 +134,13 @@ class Stager:
     async def fill(self, selector: str, value: str):
         loc = self.page.locator(selector).first
         await loc.wait_for(timeout=10000)
+        # a published or scheduled title has its title/author fields DISABLED
+        # (2026-09-12: re-sends timed out on the title box) — skip, don't wait
+        try:
+            if await loc.is_disabled() or await loc.get_attribute("readonly") is not None:
+                self.note(f"{selector}: locked by KDP — kept as is"); return
+        except Exception:
+            pass
         await loc.fill(str(value))
 
     async def click_text(self, text: str, wait_ms: int = 1500):
