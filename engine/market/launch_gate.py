@@ -115,12 +115,17 @@ def launch_gate(catalog: str) -> dict:
 
     # ── 5. launch plan ──
     rel = d.get("release") or {}
+    pub = d.get("publishing") or {}
+    # a title KDP already holds (a draft id) is being RE-sent, not launched:
+    # the calendar and series-order rules were met when it was accepted, and
+    # must not block a corrected cover going up (Vector: Terminal Sky, 2026-09-12)
+    on_kdp = bool((d.get("kdp") or {}).get("paperback_id")) or bool(pub.get("asin"))
     today = dt.date.today()
     if rel.get("date"):
         try:
             rd_ = dt.date.fromisoformat(rel["date"])
-            item("Release date set ≥ 10 days out", (rd_ - today).days >= LEAD_DAYS or rel.get("status") == "released" or bool(pub.get("asin")),
-                 rel["date"])
+            item("Release date set ≥ 10 days out", (rd_ - today).days >= LEAD_DAYS or rel.get("status") == "released" or on_kdp,
+                 rel["date"] + (" (already on KDP)" if on_kdp else ""))
         except ValueError:
             item("Release date set ≥ 10 days out", False, "invalid date")
     else:
@@ -138,7 +143,7 @@ def launch_gate(catalog: str) -> dict:
                 prev_ok = bool(pub.get("asin") or pr.get("date") and rel.get("date") and pr["date"] <= rel["date"])
                 prev_detail = f"#{int(series['book_number'])-1} {'released' if pub.get('asin') else 'planned ' + str(pr.get('date'))}"
                 break
-        item("Series order respected", prev_ok, prev_detail)
+        item("Series order respected", prev_ok or on_kdp, prev_detail + (" (already on KDP)" if on_kdp and not prev_ok else ""))
     # THE PUBLISHER'S READ (Lars, 2026-09-07): the first book of a series
     # ships only after he has read chapter one and said yes. Later books in
     # a series he has approved do not wait.
