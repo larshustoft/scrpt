@@ -696,8 +696,7 @@ async def design_cover(catalog: str) -> dict:
             framed, rep = frame_cover_for_trim(png, trim, author, out_dir)
             fit = await check_cover_fit(framed, book)
             if not fit["ok"]:
-                from ..cover.cover_fit import fit_or_inset
-                framed, fit = await fit_or_inset(framed, book, fit)     # an edge gap is fixed for free, never by a draw
+                pass  # no inset/frame ever (Lars 2026-09-12): a short edge gap is redrawn
             fit["attempt"] = attempt
             if fit["ok"]:
                 res = _install_cover(catalog, framed, brief, fit=fit)

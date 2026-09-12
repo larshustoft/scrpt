@@ -40,7 +40,7 @@ from typing import Optional
 # The floor every piece of text must clear on every edge, in inches of the
 # finished trim: 0.125" bleed cut + 0.175" real margin. On an 8.5x11 page
 # that is 2.7% of the height and 3.5% of the width.
-SAFE_INCHES = 0.45   # KDP refuses text within 0.375in of a trim edge (Star Map, 2026-09-11) — 0.45 leaves room
+SAFE_INCHES = 0.40   # KDP refuses text within 0.375in of a trim edge; a little room, no more (Lars 2026-09-12: never a frame to buy it)
 # the brief asks for more than the floor so a slightly generous draw still
 # clears it comfortably
 BRIEF_TOP_BOTTOM = 0.10
@@ -363,35 +363,14 @@ def edge_gap_shortfall(fit: dict) -> float:
 
 
 def inset_cover(png: bytes, pct: float) -> bytes:
-    """Shrink the whole cover picture by `pct` percent inside a border made
-    of its own reflected, softened edges — the text moves in from the edge,
-    nothing is redrawn, and the band (mostly inside the bleed) is invisible
-    in print. Star Map and Rex Count, Colour & Play, 2026-09-11: three draws
-    each were spent on a 1-2% shortfall this fixes for free."""
-    import io
-    from PIL import Image, ImageFilter, ImageOps
-    im = Image.open(io.BytesIO(png)).convert("RGB"); W, H = im.size
-    pad = max(2, int(round(pct / 100.0 * H))); padw = max(2, int(round(pct / 100.0 * W)))
-    big = Image.new("RGB", (W + 2 * padw, H + 2 * pad)); big.paste(im, (padw, pad))
-    big.paste(ImageOps.flip(im.crop((0, 0, W, pad))), (padw, 0))
-    big.paste(ImageOps.flip(im.crop((0, H - pad, W, H))), (padw, H + pad))
-    big.paste(ImageOps.mirror(big.crop((padw, 0, 2 * padw, H + 2 * pad))), (0, 0))
-    big.paste(ImageOps.mirror(big.crop((W, 0, W + padw, H + 2 * pad))), (W + padw, 0))
-    # the band must carry no legible text: a mirrored title at the edge
-    # reads as text at the edge (The Ex Upstairs, 2026-09-11) — blur by the
-    # band's own width
-    blur = big.filter(ImageFilter.GaussianBlur(max(6, int(pad / 1.5)))); mask = Image.new("L", big.size, 255)
-    mask.paste(0, (padw, pad, W + padw, H + pad)); big = Image.composite(blur, big, mask)
-    out = io.BytesIO(); big.resize((W, H), Image.LANCZOS).save(out, format="PNG"); return out.getvalue()
+    """RETIRED 2026-09-12. Shrinking the picture inside a reflected band put a
+    visible frame on 78 covers (Fracture Point, Rex, Freddie, Princess) — Lars:
+    "I don't want any frames around the book covers. That should never happen
+    again." An edge-gap failure is fixed by a redraw, never by a border."""
+    raise RuntimeError("inset_cover is retired: covers are never framed")
 
 
 async def fit_or_inset(png: bytes, book: dict, fit: dict):
-    """After a failed check: if the only faults are edge gaps, inset the
-    picture and check again. Returns (png, fit) — fit ok when it worked."""
-    short = edge_gap_shortfall(fit)
-    if not short:
-        return png, fit
-    fixed = inset_cover(png, short + 1.0)
-    fit2 = await check_cover_fit(fixed, book)
-    fit2["inset_pct"] = round(short + 1.0, 2)
-    return (fixed, fit2) if fit2.get("ok") else (png, fit)
+    """RETIRED 2026-09-12 (see inset_cover): returns the draw and its verdict
+    untouched, so a short edge gap goes back to the model as a redraw note."""
+    return png, fit

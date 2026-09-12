@@ -468,8 +468,7 @@ async def generate_front_cover(catalog: str, extra_direction: str = "") -> dict:
             raw_png, rid = await _draw(client, prompt)
             fit = await check_cover_fit(raw_png, book)
             if not fit["ok"]:
-                from .cover_fit import fit_or_inset
-                raw_png, fit = await fit_or_inset(raw_png, book, fit)   # an edge gap is fixed for free, never by a draw
+                pass  # no inset/frame ever (Lars 2026-09-12): a short edge gap is redrawn
             fit["attempt"] = attempt
             if fit["ok"]:
                 if rid:
