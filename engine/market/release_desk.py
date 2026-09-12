@@ -271,6 +271,8 @@ async def reupload_pass(room: int, handle=None) -> list:
         defer = {}
     now_iso = datetime.now().isoformat(timespec="minutes")
     for cat in [c for c in todo if (defer.get(c) or "") <= now_iso][:room]:
+        if not in_upload_window():        # a pass that began inside the window stops at its edge (Fracture Point ran 06:02-09:01, 2026-09-12)
+            _log({"duty": "reupload", "note": "window closed; the rest wait for tonight"}); break
         try:
             r = await run_line(cat, handle=handle, publish=True)
             ok = not r.get("stopped_at")
@@ -334,6 +336,9 @@ async def _run_due_locked(handle, max_per_day, publish, only_workbooks=False) ->
         return report
     for t in todo[:max_per_day]:
         cat = t["catalog"]
+        if not in_upload_window():
+            report["stopped"] = "the upload window closed — the rest wait for tonight"
+            _log({"duty": "run", "note": report["stopped"]}); break
         try:
             from .kdp_quota import can_create
             ok_pb, why_pb = can_create("paperback"); ok_kd, why_kd = can_create("kindle")
