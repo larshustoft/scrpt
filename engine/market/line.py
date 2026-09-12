@@ -319,6 +319,13 @@ async def _finish_print_book(catalog, report, step, handle, publish, title, ms_s
     _patch(catalog, paper_type="cream_bw" if kind == "fiction" else "white_bw",
            list_price=float(d.get("list_price") or 12.99))
     rel = dict((_d(catalog).get("release") or {}))
+    # a title KDP already holds keeps its date and its status: re-sending a
+    # corrected file must not re-plan it (2026-09-12: two scheduled workbooks
+    # were pushed a month out by a failed re-upload)
+    _on_kdp = bool((_d(catalog).get("kdp") or {}).get("paperback_id"))
+    if _on_kdp and rel.get("date") and rel.get("status") in ("submitted", "released"):
+        step("release", True, rel["date"] + " (kept — already on KDP)")
+        return await _finish_after_release(catalog, report, step, handle, publish, title, rel, print_only, out_dir)
     if not rel.get("date") or rel["date"] < dt.date.today().isoformat():
         plan = suggest_schedule()
         prop = next((p_ for p_ in plan.get("proposals", []) if p_.get("catalog") == catalog), None)
@@ -332,6 +339,14 @@ async def _finish_print_book(catalog, report, step, handle, publish, title, ms_s
     rel.update(mode="scheduled", status="planned", planned_by=rel.get("planned_by") or "factory-line")
     _patch(catalog, release=rel)
     step("release", True, rel["date"])
+    return await _finish_after_release(catalog, report, step, handle, publish, title, rel, print_only, out_dir)
+
+
+async def _finish_after_release(catalog, report, step, handle, publish, title, rel, print_only, out_dir):
+    """gate → paperback (→ Kindle) — the part of the line after the release date."""
+    from .launch_gate import launch_gate
+    from .kdp_paperback import stage_paperback
+    from .kdp_ebook import stage_kindle
 
     # 6. the gate
     gate = launch_gate(catalog)
