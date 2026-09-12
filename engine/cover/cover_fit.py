@@ -256,6 +256,12 @@ async def check_cover_fit(png: bytes, book: dict) -> dict:
         result["ok"] = False
         result["issues"].append(msg)
 
+    def warn(msg):
+        # Lars, 2026-09-12: "Most of the covers is not a problem... upload as
+        # is, unless there is an obvious problem." A tight margin is noted,
+        # never a refusal; text crossing or clipped by an edge still is.
+        result.setdefault("warnings", []).append(msg)
+
     for name, img in views.items():
         # ── measured boxes (primary) ──
         boxes = text_boxes(img)
@@ -272,9 +278,10 @@ async def check_cover_fit(png: bytes, book: dict) -> dict:
                     floor = floor_tb if edge in ("top", "bottom") else floor_lr
                 else:
                     floor = 0.01        # a screen image only has to stay inside
-                if gap < floor:
-                    where = "crosses" if gap < 0 else "sits only " + f"{gap * 100:.1f}% from"
-                    fail(f"{name}: text {where} the {edge} edge "
+                if gap < 0:
+                    fail(f"{name}: text crosses the {edge} edge")
+                elif gap < floor:
+                    warn(f"{name}: text sits only {gap * 100:.1f}% from the {edge} edge "
                          f"(floor {floor * 100:.1f}%)")
         # ── the model's read (title complete, spelled right) ──
         try:
@@ -319,8 +326,10 @@ async def check_cover_fit(png: bytes, book: dict) -> dict:
                 floor = (floor_tb if edge in ("top", "bottom") else floor_lr) if name == "trim" else 0.01
                 if gap is None:
                     fail(f"{name}: no {edge} margin estimate")
+                elif gap < 0:
+                    fail(f"{name}: text crosses the {edge} edge (estimated)")
                 elif gap < floor:
-                    fail(f"{name}: text only {gap * 100:.0f}% from the {edge} edge (estimated)")
+                    warn(f"{name}: text only {gap * 100:.0f}% from the {edge} edge (estimated)")
         for extra in (v.get("issues") or [])[:3]:
             if isinstance(extra, str) and re.search(r"misspel|spelled|typo|wrong letter|cut off|clipped|missing", extra, re.I):
                 fail(f"{name}: {extra.strip()[:140]}")
