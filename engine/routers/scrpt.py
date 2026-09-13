@@ -1011,8 +1011,18 @@ async def export_interior(catalog: str):
     from ..interior.print_service import export_interior as run_export
 
     async def job(handle):
-        handle.progress(0.1, "render", "Rendering pages in print engine")
-        result = await run_export(catalog)
+        # A picture book is its spreads: the generic exporter rendered The
+        # Lighthouse Cat as 8 manuscript pages over a finished 32-page
+        # interior (2026-09-13). Children's books go to their own builder,
+        # which lays out the spreads already drawn and never redraws.
+        _bk = db.get_book_by_catalog(catalog)
+        if _bk and (_bk.get("data") or {}).get("kind") == "childrens" and not (_bk.get("data") or {}).get("workbook"):
+            from ..interior.childrens_interior import build_interior as _kids
+            handle.progress(0.1, "render", "Laying out the picture-book spreads")
+            result = await _kids(catalog, handle=handle, repair=False)
+        else:
+            handle.progress(0.1, "render", "Rendering pages in print engine")
+            result = await run_export(catalog)
         handle.progress(0.75, "validate", "Validating against KDP rules")
 
         # The print wrap depends on the final page count, so it is built here,
