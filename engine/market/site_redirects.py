@@ -8,6 +8,7 @@ Regenerated on every autopilot day and deployed when it changed.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -39,23 +40,45 @@ def render(slug: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _writable(path: Path) -> bool:
+    """The engine (a LaunchAgent) has no Desktop access under macOS privacy
+    rules — PermissionError on the iCloud source copies, 2026-09-13."""
+    try:
+        return path.exists() and os.access(path, os.W_OK) and bool(list(path.iterdir()) or True)
+    except PermissionError:
+        return False
+
+
+def _roots(site: dict) -> list:
+    """Every copy the redirects file should land in: the source when the
+    engine may touch it, and the serving mirror always."""
+    out = []
+    if _writable(site["src"]):
+        out.append(site["src"])
+    if site.get("mirror") and site["mirror"].exists():
+        out.append(site["mirror"])
+    return out
+
+
 def write_all() -> dict:
     changed = {}
     for slug, site in SITES.items():
-        src = site["src"]
-        if not src.exists():
-            continue
-        text = render(slug); f = src / "_redirects"
-        old = f.read_text() if f.exists() else ""
-        if text != old:
-            f.write_text(text); changed[slug] = sum(1 for l in text.splitlines() if l.startswith("/r/sc-"))
+        text = render(slug)
+        for root in _roots(site):
+            f = root / "_redirects"
+            try:
+                old = f.read_text() if f.exists() else ""
+                if text != old:
+                    f.write_text(text); changed[slug] = sum(1 for l in text.splitlines() if l.startswith("/r/sc-"))
+            except PermissionError:
+                continue
     return changed
 
 
 def deploy(slug: str) -> str:
     site = SITES[slug]; src = site["src"]; where = site["mirror"] or src
     cmd = ""
-    if site["mirror"]:
+    if site["mirror"] and _writable(src):     # sync only when the source is reachable; the mirror deploys on its own otherwise
         cmd += f'rsync -a --delete "{src}/" "{where}/" && '
     cmd += f'cd "{where}" && . ~/.nvm/nvm.sh >/dev/null 2>&1; nvm use 20 >/dev/null 2>&1; npx wrangler pages deploy . --project-name={site["project"]} --branch=main --commit-dirty=true 2>&1 | tail -2'
     r = subprocess.run(["/bin/zsh", "-lc", cmd], capture_output=True, text=True, timeout=600)
