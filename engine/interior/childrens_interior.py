@@ -539,10 +539,11 @@ def _build_interior(catalog: str, handle=None, dry_run: bool = False) -> dict:
         lw = side * (flat.width / flat.height)
         c.drawImage(ImageReader(buf), (page_w - lw) / 2, safe + 30,
                     width=lw, height=side)
-    if publisher:
+    # The lockup already carries the name: the mark alone, no word under it
+    # (Lars, 2026-09-14). The name is typeset only when there is no mark.
+    if publisher and not logo_path.exists():
         c.setFillColorRGB(0.30, 0.28, 0.26)
         c.setFont(serif, 9.5)
-        # logo and the name only — no country, no year (Lars, 2026-09-10)
         c.drawCentredString(page_w / 2, safe + 16, publisher.upper())
     c.showPage(); pages_written += 1
 
