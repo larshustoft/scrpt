@@ -626,7 +626,47 @@ class Stager:
             errs = await self._page_errors()
             if errs:
                 await self.shot("details-errors", full=True)
-                raise RuntimeError("KDP refused the details page: " + " | ".join(errs)[:400])
+                # ONE REPAIR PASS (Rex: My Body and Staying Healthy, 2026-09-14):
+                # re-entering an existing draft, KDP asked for "at least one new
+                # category" although categories were "kept", and flagged the
+                # description although it showed in the editor. Place the
+                # categories through the picker and re-set the description,
+                # then save once more before giving up.
+                joined = " ".join(errs).lower()
+                repaired = False
+                if "categor" in joined:
+                    try:
+                        await self.click_text("Edit categories", 3000)
+                        from .kdp_ebook import KINDLE_CATEGORY_DEFAULTS
+                        plan = ((self.d.get("kdp") or {}).get("print_categories_plan")
+                                or PRINT_CATEGORY_DEFAULTS.get(self.d.get("genre_preset") or "")
+                                or KINDLE_CATEGORY_DEFAULTS.get(self.d.get("genre_preset") or "", []))
+                        plan = [c.split(" > ") if isinstance(c, str) else c for c in plan]
+                        placed = await self._place_categories_picker(plan)
+                        self.note(f"repair: categories placed {placed}"); repaired = True
+                    except Exception as e:
+                        self.note(f"repair: categories failed ({str(e)[:80]})")
+                if "description" in joined:
+                    try:
+                        src = p.get_by_role("button", name="Source")
+                        if await src.count():
+                            await src.first.click(timeout=3000); await p.wait_for_timeout(800)
+                            ta = p.locator("textarea")
+                            for i in range(await ta.count()):
+                                el = ta.nth(i)
+                                if await el.is_visible() and ((await el.bounding_box()) or {}).get("height", 0) > 60:
+                                    await el.fill(""); await el.type(body[:20]); await el.fill(body)
+                                    await el.press("Tab"); self.note("repair: description re-set via Source"); repaired = True
+                                    await src.first.click(timeout=3000); break
+                    except Exception as e:
+                        self.note(f"repair: description failed ({str(e)[:80]})")
+                if repaired:
+                    await self.shot("details-repaired", full=True)
+                    await self.click_text("Save and Continue", 6000)
+                    await p.wait_for_timeout(1500)
+                    errs = await self._page_errors() if ("/details" in p.url or "/paperback/new" in p.url) else []
+                if errs:
+                    raise RuntimeError("KDP refused the details page: " + " | ".join(errs)[:400])
         pid = p.url.split("/paperback/")[-1].split("/")[0]
         if pid and pid != "new":
             self._remember({"paperback_id": pid})
