@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -692,8 +693,12 @@ async def _cover_scene(book: dict, d: dict, wb: dict) -> str:
             "what they are doing that shows the book's topic, where (a specific place or time of day), and the "
             "composition (close-up / low angle / wide). It must differ from every sibling in subject, character "
             "count, setting and composition. No text in the description. Return JSON: {\"scene\": \"...\"}",
-            max_tokens=300)
+            max_tokens=700)
         scene = str((extract_json(raw) or {}).get("scene") or "").strip()
+        if not scene:
+            # a JSON answer cut short by the token cap: take the value as far as it got
+            m = re.search(r'"scene"\s*:\s*"(.{30,})', str(raw or ""), re.S)
+            scene = m.group(1).rstrip('"} \n') if m else ""
         if not scene:
             # the model sometimes answers in prose: take it as the scene
             txt = str(raw or "").strip().strip("`").strip()
