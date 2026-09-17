@@ -85,6 +85,18 @@ async def lifespan(app: FastAPI):
     init_jobs_table()
     init_reports_table()
     _cleanup_preview_dirs()
+    # STAY AWAKE: three nights running (14-17 Sep 2026) the desk found KDP
+    # "not signed in" and Amazon/LLM unreachable at 00:11 and then went
+    # silent — the Mac was idling into sleep with the engine only getting
+    # dark-wake slices. caffeinate holds an idle-sleep assertion for as long
+    # as this process lives; no sudo, no pmset change.
+    try:
+        import os as _os, subprocess as _sp
+        _sp.Popen(["/usr/bin/caffeinate", "-i", "-s", "-w", str(_os.getpid())],
+                  stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
+        print("  stay-awake: caffeinate holding idle sleep off for this engine")
+    except Exception as _e:
+        print(f"  stay-awake failed: {_e}")
     print("━" * 60)
     print("  SCRPT Engine v1.0")
     print("  Amazon KDP Book Publishing Automation")

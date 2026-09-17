@@ -327,6 +327,9 @@ async def _run_due_locked(handle, max_per_day, publish, only_workbooks=False) ->
         st = await kdp_mod.session_status()
         if not st.get("signed_in"):
             report["stopped"] = "KDP is not signed in — a person must sign in (SCRPT never types a password)"
+            if st.get("error"):
+                # a browser/network failure is not a sign-out: say which
+                report["stopped"] = "KDP could not be reached: " + str(st.get("error"))[:160]
             _notify("SCRPT release desk", f"{len(todo)} book(s) are due for KDP but KDP is signed out. Sign in and the desk continues tomorrow.")
             _log({"duty": "run", "stopped": report["stopped"], "due": report["due"]})
             return report
