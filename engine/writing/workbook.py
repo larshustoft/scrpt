@@ -662,6 +662,48 @@ def reframe_cover(catalog: str) -> dict:
     return {**res, "framing": rep}
 
 
+async def _cover_scene(book: dict, d: dict, wb: dict) -> str:
+    """One picture per book. Lars, 2026-09-17, on eight Rex workbooks: "These
+    front covers look too similar" — every cover was the same cast lined up
+    in the same clearing. The scene is written from the book's topic, told
+    what its series siblings already show, and stored on the record so the
+    next sibling differs from it in turn (see feedback_series_covers_unique)."""
+    from ..database import list_books
+    from .client import complete, extract_json, mechanical_model, set_model_override
+    ser = (d.get("series") or {}).get("series_title") or ""
+    slug = wb.get("universe") or ""
+    sibs = []
+    for b in list_books(per_page=2000).get("books", []):
+        dd = b.get("data") or {}
+        if b["catalog_number"] == book["catalog_number"]:
+            continue
+        same_series = ser and (dd.get("series") or {}).get("series_title") == ser
+        same_universe = slug and (dd.get("workbook") or {}).get("universe") == slug
+        if same_series or same_universe:
+            sc = (dd.get("cover") or {}).get("scene")
+            sibs.append(f"- {b['title']}: {sc or 'the whole cast standing together in a jungle clearing'}")
+    try:
+        set_model_override(mechanical_model())
+        raw = await complete(
+            "You art-direct children's activity-book covers for a series that shares one cast and style.",
+            f"BOOK: {book['title']}\nTOPIC: {wb.get('pitch') or d.get('description') or ''}\n"
+            f"OTHER COVERS IN THIS UNIVERSE/SERIES ALREADY SHOW:\n" + ("\n".join(sibs[:24]) or "- none") + "\n\n"
+            "Describe ONE cover picture for THIS book in 40-70 words: which one or two characters (not the whole cast), "
+            "what they are doing that shows the book's topic, where (a specific place or time of day), and the "
+            "composition (close-up / low angle / wide). It must differ from every sibling in subject, character "
+            "count, setting and composition. No text in the description. Return JSON: {\"scene\": \"...\"}",
+            max_tokens=300)
+        scene = str((extract_json(raw) or {}).get("scene") or "").strip()
+    except Exception:
+        scene = ""
+    finally:
+        set_model_override(None)
+    if scene:
+        fresh = get_book_by_catalog(book["catalog_number"]); dd = dict(fresh["data"]); cv = dict(dd.get("cover") or {})
+        cv["scene"] = scene; dd["cover"] = cv; update_book(fresh["id"], dd, sections=["cover"])
+    return scene
+
+
 async def design_cover(catalog: str) -> dict:
     """The front cover, with the universe's character plate as the identity
     reference, installed the house way (cover-art, ebook, preview files)."""
@@ -672,8 +714,10 @@ async def design_cover(catalog: str) -> dict:
     slug = wb.get("universe") or ""; uni = UNIVERSE_CAST.get(slug, {})
     plates = [png for png in (_plate_png(slug, rel) for rel in (uni.get("plates") or {}).values()) if png] if uni else []
     author = d.get("author_name") or ""
+    scene = await _cover_scene(book, d, wb)
     brief = (f"Create a paperback front book cover for a children's activity book called: {book['title']}\n"
              f"What the book is about (for the ARTWORK only — do not write any of this on the cover): {wb.get('pitch') or d.get('description') or ''}\n"
+             + (f"THE PICTURE (this book's own, unlike its siblings): {scene}\n" if scene else "")
              + (f"The characters: {uni.get('look')} {uni.get('cast', '')} The attached pictures are the references, in this order: "
                 "Princess, Glitter, Pip, Moss. Draw them in a friendly full-colour cartoon style, happy and inviting.\n" if uni else "")
              + f'The ONLY text anywhere on the cover is the title "{book["title"]}"' + (f' and the author name "{author}" — the author name MUST appear, in small clean type near the bottom of the safe zone' if author else "") + ".\n"
