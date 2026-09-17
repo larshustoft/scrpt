@@ -694,10 +694,23 @@ async def _cover_scene(book: dict, d: dict, wb: dict) -> str:
             "count, setting and composition. No text in the description. Return JSON: {\"scene\": \"...\"}",
             max_tokens=300)
         scene = str((extract_json(raw) or {}).get("scene") or "").strip()
+        if not scene:
+            # the model sometimes answers in prose: take it as the scene
+            txt = str(raw or "").strip().strip("`").strip()
+            scene = txt if 30 < len(txt) < 700 and "{" not in txt else ""
+        if not scene:
+            raw = await complete("You art-direct children's activity-book covers.",
+                                 f"BOOK: {book['title']}\nTOPIC: {wb.get('pitch') or d.get('description') or ''}\n"
+                                 "In 40-70 words, describe one cover picture: one or two named characters doing something that "
+                                 "shows the topic, a specific place and time of day, and the camera angle. Plain prose, no JSON.",
+                                 max_tokens=200)
+            scene = str(raw or "").strip()[:700]
     except Exception:
         scene = ""
     finally:
         set_model_override(None)
+    if not scene:
+        raise RuntimeError("no cover scene could be written — the cover is not drawn without one")
     if scene:
         fresh = get_book_by_catalog(book["catalog_number"]); dd = dict(fresh["data"]); cv = dict(dd.get("cover") or {})
         cv["scene"] = scene; dd["cover"] = cv; update_book(fresh["id"], dd, sections=["cover"])
