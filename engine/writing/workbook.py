@@ -694,7 +694,10 @@ async def _cover_scene(book: dict, d: dict, wb: dict) -> str:
             "composition (close-up / low angle / wide). It must differ from every sibling in subject, character "
             "count, setting and composition. No text in the description. Return JSON: {\"scene\": \"...\"}",
             max_tokens=700)
-        scene = str((extract_json(raw) or {}).get("scene") or "").strip()
+        try:
+            scene = str((extract_json(raw) or {}).get("scene") or "").strip()
+        except Exception:
+            scene = ""                       # cut-short JSON is handled below
         if not scene:
             # a JSON answer cut short by the token cap: take the value as far as it got
             m = re.search(r'"scene"\s*:\s*"(.{30,})', str(raw or ""), re.S)
@@ -710,12 +713,14 @@ async def _cover_scene(book: dict, d: dict, wb: dict) -> str:
                                  "shows the topic, a specific place and time of day, and the camera angle. Plain prose, no JSON.",
                                  max_tokens=200)
             scene = str(raw or "").strip()[:700]
-    except Exception:
-        scene = ""
+    except Exception as e:
+        scene = ""; err = f"{type(e).__name__}: {str(e)[:160]}"
+    else:
+        err = ""
     finally:
         set_model_override(None)
     if not scene:
-        raise RuntimeError("no cover scene could be written — the cover is not drawn without one")
+        raise RuntimeError("no cover scene could be written — the cover is not drawn without one" + (f" ({err})" if err else ""))
     if scene:
         fresh = get_book_by_catalog(book["catalog_number"]); dd = dict(fresh["data"]); cv = dict(dd.get("cover") or {})
         cv["scene"] = scene; dd["cover"] = cv; update_book(fresh["id"], dd, sections=["cover"])
