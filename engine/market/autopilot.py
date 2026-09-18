@@ -150,6 +150,14 @@ async def scheduler():
                 last_try = k.get("kindle_publish_attempted") or ""
                 if last_try[:13] == now_.isoformat()[:13]:
                     continue                                   # one press per hour at most
+                # A REFUSED publish is not retried blindly (2026-09-18): KDP turned
+                # Fracture Point's Kindle away with no reason given; hammering the
+                # Publish button hourly on the account helps nobody. Once refused:
+                # one try a day, three in all, then it waits for a person or a fix
+                # (clear kdp.kindle_publish_refused to release it).
+                if k.get("kindle_publish_refused"):
+                    if tries >= 3 or last_try[:10] == now_.date().isoformat():
+                        continue
                 from ..market.kdp_ebook import publish_kindle_only
                 from ..database import get_book_by_catalog as _gb, update_book as _ub
                 fresh = _gb(b["catalog_number"]); data = dict(fresh["data"])
