@@ -319,6 +319,18 @@ async def _run_due_locked(handle, max_per_day, publish, only_workbooks=False) ->
     from .line import run_line
     from . import kdp as kdp_mod
     todo = [t for t in due() if not only_workbooks or t.get("workbook")]
+    # FRONT OF THE QUEUE (2026-09-18): a book Lars asked for by name goes
+    # first. The Lighthouse Cat was asked for on the 14th, waited behind the
+    # date order while three nights were lost, and the planner then pushed it
+    # to November for lack of lead days. Setting release_desk_first is a JSON
+    # list of catalogue numbers; each leaves the list when it is uploaded.
+    try:
+        _first = json.loads(get_setting("release_desk_first", "") or "[]")
+        _first = _first if isinstance(_first, list) else []
+    except Exception:
+        _first = []
+    if _first:
+        todo.sort(key=lambda t: (_first.index(t["catalog"]) if t["catalog"] in _first else len(_first)))
     report = {"due": [t["catalog"] for t in todo], "ran": [], "stopped": ""}
     if not todo:
         _log({"duty": "run", "note": "nothing due"})
@@ -354,6 +366,8 @@ async def _run_due_locked(handle, max_per_day, publish, only_workbooks=False) ->
                      "steps": [(s["step"], s["ok"], (s.get("detail") or "")[:80]) for s in r.get("steps", [])]}
             report["ran"].append(entry)
             _log({"duty": "run", **entry})
+            if ok and cat in _first:
+                _first.remove(cat); set_setting("release_desk_first", json.dumps(_first))
             if any("sign" in str(s.get("detail", "")).lower() and not s["ok"] for s in r.get("steps", [])):
                 report["stopped"] = f"KDP asked for a sign-in during {cat} — stopped for today"
                 _notify("SCRPT release desk", f"KDP asked for a sign-in while uploading {t['title']}. Sign in; the desk continues tomorrow.")
