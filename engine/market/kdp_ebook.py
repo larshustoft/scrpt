@@ -402,9 +402,30 @@ class KindleStager:
             # pick — the first visible one is the real button
             await p.locator("#save-and-publish-announce").first.click(timeout=10000)
             await p.wait_for_timeout(8000)
-            await self.shot("published")
-            self.note("PUBLISH pressed")
-            self._remember({"kindle_status": "submitted_for_publishing",
+            await self.shot("published", full=True)
+            # A PRESS IS NOT A PUBLISH (Fracture Point, 2026-09-14): KDP answered
+            # "Please fix the highlighted error(s) to continue", the desk wrote
+            # "submitted_for_publishing", and the Kindle sat as a draft while the
+            # paperback went live. Read the page back: errors on it, or still on
+            # Pricing with no confirmation, means it was NOT accepted.
+            errs = await p.evaluate("""() => {
+                const out = [];
+                for (const el of document.querySelectorAll('.a-alert-error, [class*="error"], [role="alert"]')) {
+                    if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+                    const r = el.getBoundingClientRect();
+                    if (!r.width || !r.height) continue;
+                    const t = (el.innerText || '').trim().replace(/\s+/g, ' ');
+                    if (t && t.length < 300 && !out.includes(t)) out.push(t);
+                }
+                return out.slice(0, 12); }""")
+            errs = [e for e in (errs or []) if e]
+            if errs:
+                self.note("PUBLISH refused: " + " | ".join(errs)[:400])
+                self._remember({"kindle_status": "draft_complete_awaiting_publish",
+                                "kindle_publish_refused": " | ".join(errs)[:400]})
+                raise RuntimeError("KDP refused the Kindle publish: " + " | ".join(errs)[:400])
+            self.note("PUBLISH pressed and accepted")
+            self._remember({"kindle_status": "submitted_for_publishing", "kindle_publish_refused": "",
                             "kindle_submitted_at": dt.datetime.now().isoformat(timespec="minutes")})
         else:
             await p.locator("#save-announce").first.click(timeout=10000)
